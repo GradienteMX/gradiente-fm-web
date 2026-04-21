@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS custom properties ────────────────────────────────── */
+:root {
+  --vibe-gradient: linear-gradient(
+    to right,
+    #00ffff  0%,
+    #0066ff 18%,
+    #6600ff 34%,
+    #ff00ff 50%,
+    #ff0066 62%,
+    #ff5500 76%,
+    #ff2200 90%,
+    #ff0000 100%
+  );
+  --font-syne: 'Syne', sans-serif;
+  --font-space-grotesk: 'Space Grotesk', sans-serif;
+  --font-space-mono: 'Space Mono', monospace;
+}
+
+/* ── Base reset ───────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #000000;
+  color: #f0f0f0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-space-grotesk);
+  background-color: #000000;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* ── NGE corner bracket utility ──────────────────────────── */
+@layer components {
+  .nge-bracket {
+    position: relative;
+  }
+  .nge-bracket::before,
+  .nge-bracket::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-color: #E63329;
+    border-style: solid;
+  }
+  .nge-bracket::before {
+    top: -1px;
+    left: -1px;
+    border-width: 1px 0 0 1px;
+  }
+  .nge-bracket::after {
+    top: -1px;
+    right: -1px;
+    border-width: 1px 1px 0 0;
+  }
+
+  .nge-bracket-full {
+    position: relative;
+  }
+  .nge-bracket-full::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(135deg, #E63329 0 20%, transparent 20% 80%, #E63329 80% 100%) 1;
+    pointer-events: none;
+  }
+
+  /* Warning stripe (hazard tape) */
+  .hazard-stripe {
+    background: repeating-linear-gradient(
+      -45deg,
+      #F97316 0px 4px,
+      #000000 4px 12px
+    );
+  }
+
+  /* Terminal text style */
+  .sys-label {
+    font-family: var(--font-space-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #444;
+  }
+
+  /* Blinking cursor */
+  .cursor-blink::after {
+    content: '▋';
+    animation: blink 1.2s step-end infinite;
+    margin-left: 1px;
+  }
+
+  /* Section divider NGE style */
+  .nge-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nge-divider::before {
+    content: '//';
+    font-family: var(--font-space-mono);
+    font-size: 10px;
+    color: #E63329;
+  }
+  .nge-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, #242424, transparent);
+  }
+}
+
+/* ── Vibe gradient utility ───────────────────────────────── */
+.bg-vibe-gradient {
+  background: var(--vibe-gradient);
+}
+
+/* ── NGE data-strip ticker ───────────────────────────────── */
+@keyframes nge-ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── Hologram flicker ────────────────────────────────────── */
+@keyframes holo-flicker {
+  0%, 94%, 96.5%, 100% { opacity: 1; filter: brightness(1); }
+  95%, 96%             { opacity: 0.7; filter: brightness(1.4); }
+}
+
+/* ── EVA orange glow text ────────────────────────────────── */
+.eva-glow {
+  color: #FF8C00;
+  text-shadow:
+    0 0 3px #FF6600,
+    0 0 8px #FF660088,
+    0 0 18px #FF440044,
+    -1px 0 0 #FF000055,
+    1px 0 0 #FF990022;
+  animation: holo-flicker 8s step-end infinite;
+}
+
+.eva-glow-sm {
+  color: #FF8C00;
+  text-shadow: 0 0 4px #FF6600, 0 0 10px #FF440055;
+}
+
+/* ── EVA scan-line overlay ───────────────────────────────── */
+.eva-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0,0,0,0.18) 2px,
+    rgba(0,0,0,0.18) 4px
+  );
+  z-index: 5;
+}
+
+/* ── EVA bordered box ────────────────────────────────────── */
+.eva-box {
+  border: 1px solid #FF660066;
+  box-shadow: 0 0 6px #FF440022, inset 0 0 6px #FF220011;
+  position: relative;
+}
+.eva-box::before,
+.eva-box::after {
+  content: '';
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-color: #FF9900;
+  border-style: solid;
+}
+.eva-box::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.eva-box::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+/* ── Content cascade animation ───────────────────────────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.25s ease-out both;
+}
+
+/* ── Selection color ─────────────────────────────────────── */
+::selection {
+  background-color: #E63329;
+  color: #000;
+}
