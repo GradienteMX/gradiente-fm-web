@@ -5,6 +5,8 @@ import { vibeToColor, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, 
 import { getGenreNames, getTagNames } from '@/lib/genres'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
 import Image from 'next/image'
+import { useRef, type KeyboardEvent } from 'react'
+import { useOverlay } from '@/components/overlay/useOverlay'
 
 export type CardSize = 'sm' | 'md' | 'lg'
 
@@ -329,7 +331,39 @@ function LgCard({ item }: { item: ContentItem }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
-  if (size === 'lg') return <LgCard item={item} />
-  if (size === 'md') return <MdCard item={item} />
-  return <SmCard item={item} />
+  const { open } = useOverlay()
+  const ref = useRef<HTMLDivElement>(null)
+
+  const handleOpen = () => {
+    const rect = ref.current?.getBoundingClientRect()
+    open(
+      item.slug,
+      rect
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : undefined,
+    )
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleOpen()
+    }
+  }
+
+  const Inner = size === 'lg' ? LgCard : size === 'md' ? MdCard : SmCard
+
+  return (
+    <div
+      ref={ref}
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir ${item.title}`}
+      className="h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red"
+    >
+      <Inner item={item} />
+    </div>
+  )
 }

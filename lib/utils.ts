@@ -102,6 +102,27 @@ export function getEventDates(items: ContentItem[]): Date[] {
     .map((i) => parseISO(i.date!))
 }
 
+// Prefers pinned items, falls back to most-recent editorial-flagged non-evento.
+export function getPinnedHero(items: ContentItem[]): ContentItem | null {
+  const heroTypes: ContentItem['type'][] = ['editorial', 'review', 'noticia', 'opinion']
+  const pinned = items
+    .filter((i) => i.pinned && heroTypes.includes(i.type))
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    )
+  if (pinned.length > 0) return pinned[0]
+
+  return (
+    items
+      .filter((i) => i.editorial && heroTypes.includes(i.type))
+      .sort(
+        (a, b) =>
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+      )[0] ?? null
+  )
+}
+
 // ── Format helpers ────────────────────────────────────────────────────────────
 
 export function fmtDateShort(iso: string): string {

@@ -1,10 +1,10 @@
 import { CalendarSidebar } from '@/components/CalendarSidebar'
 import { CategoryRail } from '@/components/CategoryRail'
 import { ContentGrid } from '@/components/ContentGrid'
-import { HeroCard, getPinnedHero } from '@/components/HeroCard'
+import { HeroCard } from '@/components/HeroCard'
 import { PartnersRail } from '@/components/PartnersRail'
 import { MOCK_ITEMS } from '@/lib/mockData'
-import { filterForHome, getEventDates } from '@/lib/utils'
+import { filterForHome, getEventDates, getPinnedHero } from '@/lib/utils'
 
 export default function HomePage() {
   const now = new Date()
