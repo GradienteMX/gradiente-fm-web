@@ -18,7 +18,7 @@ export default function AgendaPage() {
         <div className="nge-divider mb-1">
           <span className="font-mono text-xs tracking-widest text-primary">AGENDA</span>
         </div>
-        <p className="sys-label">EVENTOS · {items.length} ENTRADAS · HOY → PASADO</p>
+        <p className="sys-label">EVENTOS · {items.length} ENTRADAS · FUTURO → PASADO</p>
       </div>
 
       <ContentGrid items={items} mode="category" emptyLabel="// SIN EVENTOS EN ESTE RANGO" />

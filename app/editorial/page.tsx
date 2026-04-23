@@ -13,7 +13,7 @@ export default function EditorialPage() {
         <div className="nge-divider mb-1">
           <span className="font-mono text-xs tracking-widest text-primary">EDITORIAL</span>
         </div>
-        <p className="sys-label">TEXTOS & OPINIÓN · {items.length} ENTRADAS</p>
+        <p className="sys-label">TEXTOS · {items.length} ENTRADAS</p>
       </div>
       <ContentGrid items={items} mode="category" emptyLabel="// SIN EDITORIALES EN ESTE RANGO" />
     </>

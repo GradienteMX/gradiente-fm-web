@@ -46,3 +46,10 @@ EspectroObsidian/
 # Local tools
 Webscraper/
 .claude/
+
+# Obsidian vault — commit shared config, ignore per-user workspace state
+wiki/.obsidian/workspace.json
+wiki/.obsidian/workspace-mobile.json
+wiki/.obsidian/workspaces.json
+wiki/.obsidian/cache
+wiki/.trash/

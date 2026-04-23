@@ -8,8 +8,10 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   noticia: '//NOTICIA',
   review: '//REVIEW',
   editorial: '//EDITORIAL',
+  opinion: '//OPINIÓN',
   evento: '//EVENTO',
   mix: '//MIX',
+  partner: '//PARTNER',
 }
 
 interface ArticleCardProps {
