@@ -224,3 +224,70 @@ body {
   background-color: #E63329;
   color: #000;
 }
+
+/* ── Overlay: backdrop fade ──────────────────────────────── */
+@keyframes overlay-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes overlay-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Overlay: CRT boot-in for the panel ──────────────────── */
+/* Phase 1 (0-25%): horizontal line — scaleY collapsed, full-ish scaleX, bright */
+/* Phase 2 (25-60%): scaleY expands, brightness settles */
+/* Phase 3 (60-100%): settle to rest */
+@keyframes overlay-panel-in {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.35) scaleY(0.005);
+    filter: brightness(3.5) blur(3px);
+  }
+  25% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(0.006);
+    filter: brightness(3) blur(2px);
+  }
+  60% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1.02);
+    filter: brightness(1.4) blur(0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1);
+    filter: brightness(1) blur(0);
+  }
+}
+@keyframes overlay-panel-out {
+  0% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1);
+    filter: brightness(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(0.1);
+    filter: brightness(2);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.3) scaleY(0.004);
+    filter: brightness(3);
+  }
+}
+
+/* ── Overlay: phosphor warm-up flash ─────────────────────── */
+@keyframes overlay-phosphor-in {
+  0%   { opacity: 0.95; }
+  60%  { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+.overlay-backdrop-in  { animation: overlay-backdrop-in 0.18s ease-out both; }
+.overlay-backdrop-out { animation: overlay-backdrop-out 0.2s ease-in both; }
+.overlay-panel-in     { animation: overlay-panel-in 0.5s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
+.overlay-panel-out    { animation: overlay-panel-out 0.24s ease-in both; }
+.overlay-phosphor-in  { animation: overlay-phosphor-in 0.6s ease-out both; }

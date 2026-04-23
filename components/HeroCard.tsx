@@ -1,7 +1,11 @@
+'use client'
+
 import type { ContentItem } from '@/lib/types'
 import { vibeToColor, categoryColor, fmtDateShort } from '@/lib/utils'
 import { getGenreNames, getTagNames } from '@/lib/genres'
 import { Clock, ArrowRight } from 'lucide-react'
+import { useRef, type KeyboardEvent } from 'react'
+import { useOverlay } from '@/components/overlay/useOverlay'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -21,6 +25,25 @@ export function HeroCard({ item }: HeroCardProps) {
   const vibeColor = vibeToColor(item.vibe)
   const genres = getGenreNames(item.genres)
   const tags = getTagNames(item.tags).slice(0, 3)
+  const { open } = useOverlay()
+  const ref = useRef<HTMLElement>(null)
+
+  const handleOpen = () => {
+    const rect = ref.current?.getBoundingClientRect()
+    open(
+      item.slug,
+      rect
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : undefined,
+    )
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleOpen()
+    }
+  }
 
   // Split bodyPreview into paragraphs for rendering
   const paragraphs = item.bodyPreview
@@ -30,7 +53,15 @@ export function HeroCard({ item }: HeroCardProps) {
     : []
 
   return (
-    <section className="mb-6 border border-border">
+    <section
+      ref={ref}
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir ${item.title}`}
+      className="group mb-6 cursor-pointer border border-border focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red"
+    >
       {/* Header bar */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-2">
@@ -175,24 +206,3 @@ export function HeroCard({ item }: HeroCardProps) {
   )
 }
 
-// ── Helper to pick the pinned hero item ───────────────────────────────────────
-// Prefers pinned items, falls back to most-recent editorial-flagged editorial/review/noticia
-export function getPinnedHero(items: ContentItem[]): ContentItem | null {
-  const pinned = items
-    .filter((i) => i.pinned && ['editorial', 'review', 'noticia', 'opinion'].includes(i.type))
-    .sort(
-      (a, b) =>
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-    )
-  if (pinned.length > 0) return pinned[0]
-
-  // Fallback: most recent editorial non-evento
-  return (
-    items
-      .filter((i) => i.editorial && ['editorial', 'review', 'noticia', 'opinion'].includes(i.type))
-      .sort(
-        (a, b) =>
-          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-      )[0] ?? null
-  )
-}

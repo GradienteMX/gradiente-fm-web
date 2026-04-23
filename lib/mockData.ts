@@ -1554,3 +1554,7 @@ export const MOCK_ITEMS: ContentItem[] = [
     partnerLastUpdated: '2026-04-10T08:00:00',
   },
 ]
+
+export function getItemBySlug(slug: string): ContentItem | null {
+  return MOCK_ITEMS.find((item) => item.slug === slug) ?? null
+}

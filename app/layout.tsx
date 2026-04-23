@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
 import { Syne, Space_Grotesk, Space_Mono } from 'next/font/google'
+import { Suspense } from 'react'
 import './globals.css'
 import { Navigation } from '@/components/Navigation'
 import { VibeSlider } from '@/components/VibeSlider'
 import { VibeProvider } from '@/context/VibeContext'
+import { OverlayProvider } from '@/components/overlay/useOverlay'
+import { OverlayRouter } from '@/components/overlay/OverlayRouter'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -41,27 +44,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${syne.variable} ${spaceGrotesk.variable} ${spaceMono.variable}`}>
       <body className="bg-base text-primary">
         <VibeProvider>
-          <Navigation />
-          <VibeSlider />
-          <main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">
-            {children}
-          </main>
-          {/* Footer */}
-          <footer className="border-t border-border px-4 py-6 md:px-8">
-            <div className="mx-auto flex max-w-screen-2xl items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-sys-red">▶</span>
-                <span className="font-syne text-sm font-black text-primary">GRADIENTE·FM</span>
-              </div>
-              <p className="sys-label">
-                © 2026 · DESDE ADENTRO DE LA ESCENA MEXICANA
-              </p>
-              <span className="sys-label flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-sys-green" />
-                ONLINE
-              </span>
-            </div>
-          </footer>
+          <OverlayProvider>
+            <Suspense fallback={null}>
+              <Navigation />
+              <VibeSlider />
+              <main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">
+                {children}
+              </main>
+              {/* Footer */}
+              <footer className="border-t border-border px-4 py-6 md:px-8">
+                <div className="mx-auto flex max-w-screen-2xl items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-sys-red">▶</span>
+                    <span className="font-syne text-sm font-black text-primary">GRADIENTE·FM</span>
+                  </div>
+                  <p className="sys-label">
+                    © 2026 · DESDE ADENTRO DE LA ESCENA MEXICANA
+                  </p>
+                  <span className="sys-label flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sys-green" />
+                    ONLINE
+                  </span>
+                </div>
+              </footer>
+              <OverlayRouter />
+            </Suspense>
+          </OverlayProvider>
         </VibeProvider>
       </body>
     </html>
