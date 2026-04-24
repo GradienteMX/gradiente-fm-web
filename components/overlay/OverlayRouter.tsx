@@ -8,6 +8,7 @@ import { OverlayShell } from './OverlayShell'
 import { EventoOverlay } from './EventoOverlay'
 import { GenericOverlay } from './GenericOverlay'
 import { ReaderOverlay } from './ReaderOverlay'
+import { ArticuloOverlay } from './ArticuloOverlay'
 
 export function OverlayRouter() {
   const { openSlug } = useOverlay()
@@ -67,6 +68,8 @@ function renderByType(item: ContentItem) {
   switch (item.type) {
     case 'evento':
       return <EventoOverlay item={item} />
+    case 'articulo':
+      return <ArticuloOverlay item={item} />
     case 'editorial':
     case 'review':
     case 'opinion':

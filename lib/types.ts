@@ -1,4 +1,31 @@
-export type ContentType = 'evento' | 'mix' | 'noticia' | 'review' | 'editorial' | 'opinion' | 'partner'
+export type ContentType =
+  | 'evento'
+  | 'mix'
+  | 'noticia'
+  | 'review'
+  | 'editorial'
+  | 'opinion'
+  | 'articulo'
+  | 'partner'
+
+// Structured body blocks for long-form `articulo` items.
+// Falls back to paragraph-split `bodyPreview` when absent.
+export type ArticleBlock =
+  | { kind: 'lede'; text: string }
+  | { kind: 'p'; text: string }
+  | { kind: 'h2'; text: string; id?: string }
+  | { kind: 'h3'; text: string }
+  | { kind: 'quote'; text: string; cite?: string }
+  | { kind: 'blockquote'; text: string; cite?: string }
+  | { kind: 'image'; src: string; alt?: string; caption?: string }
+  | { kind: 'divider' }
+  | { kind: 'qa'; speaker: string; text: string; isQuestion?: boolean }
+  | { kind: 'list'; items: string[]; ordered?: boolean }
+
+export interface Footnote {
+  id: string
+  text: string
+}
 
 export type PartnerKind = 'promo' | 'label' | 'promoter' | 'venue' | 'sponsored'
 
@@ -36,6 +63,10 @@ export interface ContentItem {
   editorial?: boolean     // editor seed flag — raises spawn HP (see Curation Model)
   pinned?: boolean        // stays at top of home page hero
   bodyPreview?: string    // first paragraph / longer teaser shown in hero
+  // Long-form `articulo` fields — structured body + footnotes
+  articleBody?: ArticleBlock[]
+  footnotes?: Footnote[]
+  heroCaption?: string    // caption for the hero/lead image
   // Partner rail fields (type === 'partner' only)
   partnerKind?: PartnerKind
   partnerUrl?: string     // outbound link (site, Instagram, Bandcamp, etc.)

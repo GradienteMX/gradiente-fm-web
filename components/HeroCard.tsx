@@ -14,6 +14,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   review: 'REVIEW',
   editorial: 'EDITORIAL',
   opinion: 'OPINIÓN',
+  articulo: 'ARTÍCULO',
   partner: 'PARTNER',
 }
 

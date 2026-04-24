@@ -7,6 +7,7 @@ const CATEGORIES: { type: ContentType; label: string; href: string }[] = [
   { type: 'mix',       label: 'MIX',       href: '/mixes' },
   { type: 'review',    label: 'REVIEW',    href: '/reviews' },
   { type: 'editorial', label: 'EDITORIAL', href: '/editorial' },
+  { type: 'articulo',  label: 'ARTÍCULO',  href: '/articulos' },
   { type: 'noticia',   label: 'NOTICIA',   href: '/noticias' },
   { type: 'opinion',   label: 'OPINIÓN',   href: '/opinion' },
 ]

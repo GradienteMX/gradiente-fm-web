@@ -42,6 +42,7 @@ All content is `ContentItem` with a `type` field:
 - `review` — record or event review
 - `editorial` — long-form editorial
 - `opinion` — opinion column
+- `articulo` — deep-dive longform feature (substack-style, structured body + footnotes)
 - `partner` — sponsor rail only, never in main grid
 
 See [`lib/types.ts`](./lib/types.ts) and [`wiki/20-Domain/Content Types.md`](./wiki/20-Domain/Content Types.md).

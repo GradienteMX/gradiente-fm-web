@@ -12,6 +12,7 @@ export function categoryColor(type: ContentType): string {
     case 'editorial': return '#84CC16'
     case 'noticia':   return '#F5F5F5'
     case 'opinion':   return '#A78BFA'
+    case 'articulo':  return '#FDE68A'
     case 'partner':   return '#6B7280'
   }
 }

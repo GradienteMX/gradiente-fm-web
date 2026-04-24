@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
 import { vibeToColor } from '@/lib/utils'
 import { getGenreById } from '@/lib/genres'
@@ -38,6 +39,9 @@ export function VibeSlider() {
   const draggingRef = useRef<'min' | 'max' | null>(null)
   const rangeRef = useRef(vibeRange)
   rangeRef.current = vibeRange
+  // Mobile-only: genre list starts collapsed behind a "+ N GÉNEROS" pill.
+  // Desktop (md+) always shows the list regardless of this state.
+  const [genresOpen, setGenresOpen] = useState(false)
 
   const [min, max] = vibeRange
 
@@ -101,7 +105,7 @@ export function VibeSlider() {
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
 
         {/* Header: VIBE + RESET — float on stripe band */}
-        <div className="flex items-center justify-between pb-1 pt-2">
+        <div className="flex items-center justify-between pb-0.5 pt-1 md:pb-1 md:pt-2">
           <span className="font-mono text-[10px] font-bold tracking-widest text-white [text-shadow:0_0_6px_#000,0_0_12px_#000]">
             VIBE
           </span>
@@ -116,7 +120,7 @@ export function VibeSlider() {
         </div>
 
         {/* Handle names pinned above the track */}
-        <div className="relative h-4">
+        <div className="relative h-3 md:h-4">
           <span
             className="absolute -translate-x-1/2 font-mono text-[9px] font-bold tracking-widest transition-[left] duration-75 [text-shadow:0_0_8px_#000,0_0_16px_#000]"
             style={{ left: `${minPercent}%`, color: minColor }}
@@ -135,7 +139,7 @@ export function VibeSlider() {
 
         {/* ── The stripe band IS the slider ── */}
         <div
-          className="relative h-10 cursor-crosshair"
+          className="relative h-7 cursor-crosshair md:h-10"
           ref={trackRef}
           onClick={handleTrackClick}
         >
@@ -171,17 +175,41 @@ export function VibeSlider() {
       </div>
 
       {/* ── Black band: genres + ticks ── */}
-      <div className="bg-black px-4 pb-3 pt-2 md:px-8">
+      <div className="bg-black px-4 pb-1 pt-1 md:px-8 md:pb-3 md:pt-2">
         <div className="mx-auto max-w-screen-2xl">
 
           {genresInRange.length > 0 && (
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-              {genresInRange.map((name) => (
-                <span key={name} className="font-mono text-[11px] font-bold text-white">
-                  {name}
-                </span>
-              ))}
-            </div>
+            <>
+              {/* Mobile-only pill — toggles the inline genre list.
+                  Hidden on md+ because the list is always visible there. */}
+              <button
+                type="button"
+                onClick={() => setGenresOpen((v) => !v)}
+                aria-expanded={genresOpen}
+                aria-controls="vibe-genres-panel"
+                className="flex items-center gap-1.5 border border-border/70 bg-black px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-white md:hidden"
+              >
+                <ChevronDown
+                  size={11}
+                  className={`transition-transform ${genresOpen ? 'rotate-180' : ''}`}
+                  aria-hidden
+                />
+                {genresOpen
+                  ? 'OCULTAR'
+                  : `+ ${genresInRange.length} GÉNEROS`}
+              </button>
+
+              <div
+                id="vibe-genres-panel"
+                className={`${genresOpen ? 'mt-2 flex' : 'hidden'} flex-wrap gap-x-3 gap-y-0.5 md:mt-0 md:flex`}
+              >
+                {genresInRange.map((name) => (
+                  <span key={name} className="font-mono text-[11px] font-bold text-white">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </>
           )}
 
         </div>

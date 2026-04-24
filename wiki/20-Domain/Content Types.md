@@ -2,14 +2,14 @@
 type: domain
 status: current
 tags: [content, types, schema]
-updated: 2026-04-22
+updated: 2026-04-23
 ---
 
 # Content Types
 
-> Seven types, one shape. `ContentItem` is a discriminated union by `type`.
+> Eight types, one shape. `ContentItem` is a discriminated union by `type`.
 
-## The seven types
+## The eight types
 
 | Type | Purpose | Key fields |
 |---|---|---|
@@ -19,6 +19,7 @@ updated: 2026-04-22
 | **review** | Record or event review | `author`, `readTime`, `bodyPreview` |
 | **editorial** | Long-form editorial | `author`, `readTime`, `bodyPreview` |
 | **opinion** | Opinion column | `author`, `readTime`, `bodyPreview` |
+| **articulo** | Deep-dive longform feature | `author`, `readTime`, `articleBody`, `footnotes`, `heroCaption` |
 | **partner** | Sponsor / label / venue in rail | `partnerKind`, `partnerUrl`, `partnerLastUpdated` |
 
 See [lib/types.ts](../../lib/types.ts) for the canonical `ContentItem` interface.
@@ -70,6 +71,18 @@ Everything else is optional and type-gated by convention.
 Loosely article-shaped. `author`, `readTime`, `bodyPreview` optional. `editorial: true` boosts spawn HP. `pinned: true` eligible for [[Pinned Hero]].
 
 `noticia` has the fastest decay (2 days) and the lowest score multiplier (0.8) — news should cycle fast. See [[HP Curation System]].
+
+### articulo
+
+The longform dispatch tier — substack-style deep-dives (features, interviews, reported essays). Distinct from `editorial` (curatorial/positional) in that `articulo` is *reportage + form*: section headers, pull-quotes, footnotes, Q&A interview blocks.
+
+Unique fields vs. the other reader types:
+
+- `articleBody?: ArticleBlock[]` — structured body, a discriminated union of blocks (`lede`, `p`, `h2`, `h3`, `quote`, `blockquote`, `image`, `divider`, `qa`, `list`). Falls back to `bodyPreview.split('\n\n')` when absent.
+- `footnotes?: Footnote[]` — numbered list rendered at the end of the article. Inline `[^id]` refs in block text render as superscript `[n]` anchors that scroll to `#fn-<id>`.
+- `heroCaption?: string` — caption for the lead image (unlike [[ReaderOverlay]], `articulo` leads with the hero image rather than demoting it).
+
+`articulo` is **not** in the [[Pinned Hero]] allowlist — it competes in the main feed but doesn't auto-promote to the portada slot. See [[ArticuloOverlay]] for the reader surface.
 
 ### partner
 

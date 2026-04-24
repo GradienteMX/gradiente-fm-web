@@ -699,6 +699,384 @@ const RAW_ITEMS: ContentItem[] = [
     readTime: 18,
   },
 
+  // ─── ARTÍCULOS — longform dispatch ───────────────────────────────────────
+
+  {
+    id: 'ar-001',
+    slug: 'festivales-latam-presion-europea-2026',
+    type: 'articulo',
+    title: '40 festivales latinoamericanos bajo presión: una conversación con la red de promotores',
+    subtitle: 'El costo de traer talento europeo se disparó un 60% en dos años. Hablamos con los promotores que sostienen la escena sobre qué significa esto para la programación del 2026.',
+    excerpt: 'El costo de traer talento europeo se disparó un 60% en dos años. Hablamos con los promotores que sostienen la escena sobre qué significa esto para la programación del 2026.',
+    heroCaption: 'Sala principal de FASCiNOMA, edición 2025. Foto: Archivo Gradiente.',
+    vibe: 5,
+    genres: ['techno-raw', 'ambient', 'downtempo', 'drum-and-bass'],
+    tags: ['festival', 'community'],
+    imageUrl: '/flyers/rf-040.jpg',
+    publishedAt: '2026-04-20T08:00:00',
+    date: '2026-04-20T08:00:00',
+    expiresAt: '2026-07-20T00:00:00',
+    author: 'Shawn Raynaldo',
+    readTime: 22,
+    editorial: true,
+    articleBody: [
+      {
+        kind: 'lede',
+        text: 'Hace dos años, traer a un DJ europeo de mediana carrera a tocar en Ciudad de México costaba, en promedio, unos ocho mil dólares entre fee, vuelos y hotel. Ese mismo artista, hoy, cuesta entre doce y catorce mil. Multiplicá eso por los ocho a doce nombres internacionales que programa un festival mediano en Latinoamérica, agregale la devaluación del peso frente al euro, y tenés una foto del problema.',
+      },
+      {
+        kind: 'p',
+        text: 'Desde marzo estuvimos hablando con promotores en México, Colombia, Argentina, Chile, Perú y Brasil — gente que ha sostenido la programación electrónica de la región durante la última década — para entender qué está pasando, qué están haciendo al respecto, y qué significa todo esto para el sonido que vamos a escuchar en el 2026.',
+      },
+      {
+        kind: 'p',
+        text: 'Cuarenta festivales participaron de la conversación. Lo que sigue es, esencialmente, un diagnóstico colectivo.[^cifras]',
+      },
+      { kind: 'divider' },
+      {
+        kind: 'h2',
+        id: 'sec-costos',
+        text: 'Primero: el costo',
+      },
+      {
+        kind: 'p',
+        text: 'La inflación post-pandemia, combinada con el aumento global en tarifas de talento y una devaluación persistente de las monedas latinoamericanas frente al euro, ha creado una tormenta perfecta. Lo resume bien **Matías Aguayo**, promotor del festival Invernal en Santiago:',
+      },
+      {
+        kind: 'qa',
+        speaker: 'Matías Aguayo',
+        text: 'En 2022 podía traer a un acto que llenaba 800 personas con un fee razonable. Hoy ese mismo acto me pide el doble, y además tengo que competir con promotores en Estados Unidos que pueden pagar en dólares sin parpadear. La matemática no cierra.',
+      },
+      {
+        kind: 'p',
+        text: 'El problema no es sólo el número absoluto. Es que **el margen de error desapareció**. Un festival mediano antes podía absorber una mala noche. Hoy, una sola cancelación o una venta débil puede hundir toda la edición.',
+      },
+      {
+        kind: 'quote',
+        text: 'El modelo de traer seis europeos a un festival de tres días se acabó. No es política, no es ideología — es aritmética.',
+        cite: 'Promotora anónima, Medellín',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-respuestas',
+        text: 'Las respuestas que están surgiendo',
+      },
+      {
+        kind: 'p',
+        text: 'Lo interesante no es el diagnóstico — ese es compartido — sino las respuestas. Encontramos tres estrategias que se están repitiendo:',
+      },
+      {
+        kind: 'list',
+        items: [
+          '**Co-programación regional.** FASCiNOMA, Mutek AR y TRACKLAND (Bogotá) están coordinando fechas para que un artista europeo haga tres ciudades en un solo viaje, repartiendo costos de vuelo internacional entre tres promotores.',
+          '**Apuestas más largas por talento local.** Varios festivales están reduciendo el peso de nombres internacionales del 60-70% a un 30-40% del cartel, y reinvirtiendo ese presupuesto en producciones nuevas de artistas latinoamericanos.',
+          '**Formatos más pequeños, más íntimos.** En vez de tres escenarios y 3,000 personas, varios promotores están experimentando con un solo espacio, 400 personas, sistemas de sonido de alta calidad. Margen menor pero riesgo menor también.',
+        ],
+      },
+      {
+        kind: 'p',
+        text: 'Ninguna de estas estrategias es completamente nueva. Lo nuevo es que antes eran experimentos de promotores individuales; ahora se están volviendo la norma.',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-sonido',
+        text: '¿Qué cambia en el sonido?',
+      },
+      {
+        kind: 'p',
+        text: 'Esta es la pregunta que más me interesa. Si menos europeos van a pisar Latinoamérica en 2026, y si la programación se va a sostener más sobre artistas locales, ¿qué va a sonar distinto?',
+      },
+      {
+        kind: 'qa',
+        speaker: 'Shawn Raynaldo',
+        text: '¿Estamos ante una oportunidad o una crisis?',
+        isQuestion: true,
+      },
+      {
+        kind: 'qa',
+        speaker: 'Tatiana Heuman',
+        text: 'Las dos cosas. Es una crisis en el sentido económico, obviamente. Pero también es una oportunidad para que el sonido de la región se vuelva protagonista en sus propios festivales, cosa que muchos de nosotros llevamos años pidiendo. La pregunta es si los promotores van a tener la valentía de curar desde ahí, o si van a bajarle a los headliners extranjeros y rellenar con más B-tier internacional.',
+      },
+      {
+        kind: 'p',
+        text: 'Tatiana toca un punto crítico. La tentación más fácil, cuando el presupuesto se reduce, es cambiar un DJ A por un DJ B — ambos europeos, ambos con currículum internacional, ambos más baratos que hace dos años en términos relativos. Esa ruta mantiene la misma estética curatorial con menor costo.',
+      },
+      {
+        kind: 'p',
+        text: 'La ruta más arriesgada, y la que varios promotores nos dijeron estar explorando, es **usar la reducción de presupuesto como excusa para hacer la curaduría que siempre quisieron hacer**: más artistas locales en slots protagonistas, más proyectos experimentales, más riesgo.',
+      },
+      { kind: 'divider' },
+      {
+        kind: 'h2',
+        id: 'sec-cdmx',
+        text: 'El caso CDMX',
+      },
+      {
+        kind: 'p',
+        text: 'Ciudad de México es un caso particular. La escena tiene una densidad de talento local que pocas ciudades de la región igualan — colectivos como N.A.A.F.I., venues como Club Japan, festivales como FASCiNOMA construyeron, durante la última década, una infraestructura cultural robusta.[^naafi]',
+      },
+      {
+        kind: 'p',
+        text: 'Eso significa que CDMX probablemente va a absorber mejor el golpe que otras capitales de la región. Pero no está exenta. Varios promotores mexicanos nos confirmaron que los fees internacionales los están obligando a reestructurar cómo programan las ediciones 2026 y 2027.',
+      },
+      {
+        kind: 'image',
+        src: '/flyers/rf-032.jpg',
+        alt: 'Flyer de FASCiNOMA 2026',
+        caption: 'FASCiNOMA 2026 — la décima edición reduce el peso internacional en 15% frente a 2025.',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-cierre',
+        text: 'Lo que viene',
+      },
+      {
+        kind: 'p',
+        text: 'Cierro con una observación que varios de los promotores entrevistados repitieron, casi palabra por palabra: **esto no es una crisis de demanda**. La gente en Latinoamérica quiere ir a festivales. La gente quiere escuchar música electrónica en vivo. El problema es completamente del lado de la oferta — de cómo se arma, qué cuesta, y qué margen deja.',
+      },
+      {
+        kind: 'p',
+        text: 'Si los próximos 18 meses se manejan bien, podríamos estar en la antesala de una reconfiguración profunda de cómo se curan los festivales en la región. Si se manejan mal, vamos a ver cierres. Probablemente veamos ambas cosas al mismo tiempo.',
+      },
+    ],
+    footnotes: [
+      {
+        id: 'cifras',
+        text: 'Las cifras citadas en este artículo provienen de entrevistas directas con promotores. No hay un reporte consolidado público sobre el tema; la agregación es nuestra.',
+      },
+      {
+        id: 'naafi',
+        text: 'Ver el ensayo "N.A.A.F.I. a 10 años" (Shawn Raynaldo, abril 2026) para una cronología detallada del colectivo y su impacto en la escena mexicana.',
+      },
+    ],
+  },
+
+  {
+    id: 'ar-002',
+    slug: 'soundsystem-mexicano-linaje-oculto',
+    type: 'articulo',
+    title: 'El sound system mexicano: un linaje oculto',
+    subtitle: 'Cómo una tradición sonora que venía de Jamaica se mezcló con el dub techno alemán y la cumbia sonidera para producir algo que sólo existe aquí.',
+    excerpt: 'Cómo una tradición sonora que venía de Jamaica se mezcló con el dub techno alemán y la cumbia sonidera para producir algo que sólo existe aquí.',
+    heroCaption: 'Sistema Arranca León, CDMX 2024. Foto: Javier Castillo.',
+    vibe: 4,
+    genres: ['dubstep', 'downtempo', 'ambient-techno', 'techno-raw'],
+    tags: ['community', 'vinyl-only'],
+    imageUrl: '/flyers/rf-041.jpg',
+    publishedAt: '2026-04-17T09:00:00',
+    date: '2026-04-17T09:00:00',
+    expiresAt: '2026-07-17T00:00:00',
+    author: 'Daniela Ríos',
+    readTime: 15,
+    articleBody: [
+      {
+        kind: 'lede',
+        text: 'Para entender por qué el dub sonó distinto cuando llegó a México — por qué pegó con la fuerza que pegó, y por qué mutó como mutó — hay que empezar en un lugar inesperado: las fiestas de cumbia sonidera de los años ochenta en el Estado de México.',
+      },
+      {
+        kind: 'p',
+        text: 'Los sonideros mexicanos habían desarrollado, mucho antes de que llegara el dub jamaicano a la conciencia pública, una estética sonora obsesionada con el bajo, con el eco, con la repetición. Cuando el dub finalmente aterrizó de forma coherente en la escena electrónica mexicana a principios de los 2000, no llegó a un terreno virgen: llegó a un terreno cultivado.',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-origen',
+        text: 'Orígenes cruzados',
+      },
+      {
+        kind: 'p',
+        text: 'La narrativa oficial del dub techno — la que escribieron medios europeos — cuenta una línea recta: King Tubby → Rhythm & Sound → Basic Channel → toda una generación de productores alemanes e ingleses que tradujeron el dub al techno.',
+      },
+      {
+        kind: 'p',
+        text: 'Esa narrativa, aunque correcta, es incompleta. México tuvo una ruta paralela, no derivativa.',
+      },
+      {
+        kind: 'quote',
+        text: 'Nosotros ya teníamos el oído hecho para el bajo grande antes de que llegara el dub. Lo que hizo el dub fue darle un vocabulario a algo que ya estaba sonando en los patios.',
+        cite: 'DJ Tuco, entrevista 2024',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-venues',
+        text: 'Los venues que lo hicieron posible',
+      },
+      {
+        kind: 'p',
+        text: 'No se puede hablar de esta mutación sin hablar de los espacios donde ocurrió. Varios venues de CDMX funcionaron, desde mediados de los 2000, como laboratorios de este cruce sonoro:',
+      },
+      {
+        kind: 'list',
+        items: [
+          'Pasagüero (Centro) — fiestas de dub en salas con paredes de concreto, sound system calibrado para privilegiar el sub.',
+          'M.N. Roy — el sonido del espacio mismo, rotundo, acústicamente particular, moldeaba cómo se programaba.',
+          'Club Japan — todavía hoy, probablemente el venue con el sistema más orientado a este linaje en toda la ciudad.',
+        ],
+      },
+      {
+        kind: 'p',
+        text: 'Cada uno de estos espacios no sólo hospedaba el sonido: **lo moldeaba**. La calibración de cada sistema, la arquitectura, la cultura del público — todo contribuía a una forma de escuchar que no era la europea.',
+      },
+      { kind: 'divider' },
+      {
+        kind: 'h2',
+        id: 'sec-ahora',
+        text: 'Dónde está hoy',
+      },
+      {
+        kind: 'p',
+        text: 'El linaje sigue vivo, pero mutó de nuevo. Los productores mexicanos de los últimos cinco años — Siete Catorce, Debit, Tatiana Heuman en sus visitas frecuentes — están haciendo algo que no es ya dub techno en el sentido clásico, pero que conserva esa obsesión con el bajo, con el espacio, con la repetición que permite escuchar.',
+      },
+      {
+        kind: 'p',
+        text: 'Si seguís la línea desde los sonideros del Estado de México hasta las producciones más recientes, lo que ves no es una cadena de imitaciones, sino una **evolución genuina**. Esa es la historia que todavía no se ha contado bien.',
+      },
+    ],
+  },
+
+  {
+    id: 'ar-003',
+    slug: 'tatiana-heuman-entrevista-obra-nueva',
+    type: 'articulo',
+    title: 'Tatiana Heuman: "El silencio también es una frecuencia"',
+    subtitle: 'Conversación con la compositora argentina sobre su nueva obra, su proceso con sistemas modulares y por qué dejó de hacer club durante dos años.',
+    excerpt: 'Conversación con la compositora argentina sobre su nueva obra, su proceso con sistemas modulares y por qué dejó de hacer club durante dos años.',
+    heroCaption: 'Tatiana Heuman en estudio, Buenos Aires, marzo 2026.',
+    vibe: 2,
+    genres: ['ambient', 'idm', 'electronica', 'downtempo'],
+    tags: ['live', 'modular'],
+    imageUrl: '/flyers/rf-042.jpg',
+    publishedAt: '2026-04-14T10:00:00',
+    date: '2026-04-14T10:00:00',
+    expiresAt: '2026-07-14T00:00:00',
+    author: 'Valeria Mora',
+    readTime: 11,
+    articleBody: [
+      {
+        kind: 'lede',
+        text: 'Tatiana Heuman no necesita presentación en los círculos de la electrónica experimental latinoamericana. Compositora, performer, diseñadora de sonido — parte de una generación argentina que se volvió referencia internacional sin pedir permiso. Lo que sí necesita presentación es lo que estuvo haciendo los últimos dos años, cuando desapareció voluntariamente de los circuitos de club.',
+      },
+      {
+        kind: 'p',
+        text: 'Hablamos en su estudio de Colegiales, Buenos Aires, una tarde de marzo. Cables por todos lados. Un gato dormido encima de un Moog.',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-uno',
+        text: 'El alejamiento',
+      },
+      {
+        kind: 'qa',
+        speaker: 'Valeria Mora',
+        text: '¿Por qué te alejaste del club?',
+        isQuestion: true,
+      },
+      {
+        kind: 'qa',
+        speaker: 'Tatiana Heuman',
+        text: 'No fue una decisión dramática. Fue más bien una sensación acumulada. Llegó un punto donde sentí que lo que quería decir no cabía en un set de dos horas en una pista llena. Necesitaba otro formato, otro tiempo.',
+      },
+      {
+        kind: 'qa',
+        speaker: 'Valeria Mora',
+        text: '¿Y qué encontraste en ese otro tiempo?',
+        isQuestion: true,
+      },
+      {
+        kind: 'qa',
+        speaker: 'Tatiana Heuman',
+        text: 'El silencio, básicamente. Me di cuenta de que había estado componiendo contra el silencio, tapándolo. Cuando bajé las revoluciones y empecé a dejarlo entrar en las piezas, todo cambió. El silencio también es una frecuencia — sólo que es la que no estamos acostumbrados a escuchar.',
+      },
+      {
+        kind: 'quote',
+        text: 'Componer con silencio es componer con tiempo. Y componer con tiempo es componer con el cuerpo del que escucha.',
+        cite: 'Tatiana Heuman',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-dos',
+        text: 'La obra nueva',
+      },
+      {
+        kind: 'p',
+        text: 'La obra nueva — que Tatiana presenta por primera vez en CDMX en el marco de FASCiNOMA — se llama *Campo Abierto*. Cincuenta y ocho minutos de material compuesto íntegramente en modular, grabado a una sola toma después de más de seis meses de refinamiento.',
+      },
+      {
+        kind: 'qa',
+        speaker: 'Valeria Mora',
+        text: '¿Por qué una sola toma?',
+        isQuestion: true,
+      },
+      {
+        kind: 'qa',
+        speaker: 'Tatiana Heuman',
+        text: 'Porque quería que tuviera la impredictibilidad del directo sin tenerlo tocando en vivo frente a un público todavía. Necesitaba que fuera una sola respiración. Si cortás y ensamblás, perdés eso.',
+      },
+      { kind: 'divider' },
+      {
+        kind: 'p',
+        text: '*Tatiana Heuman presenta **Campo Abierto** en FASCiNOMA 2026, 22 de mayo, escenario secundario.*',
+      },
+    ],
+  },
+
+  {
+    id: 'ar-004',
+    slug: 'firstfloor-200-festivales-europeos-cuatro-corporaciones',
+    type: 'articulo',
+    title: '200 Major European Festivals Are Owned by Just Four Corporations — and That\'s Just the Tip of the Iceberg',
+    subtitle: 'Shawn Reynaldo · First Floor · Publicado originalmente el 17 de febrero de 2026',
+    excerpt: 'Reportaje de First Floor sobre los mapas publicados por Reset! y Live DMA que exponen la concentración corporativa detrás del ecosistema europeo de festivales y venues. Lectura recomendada para entender la otra cara de la economía global del live music.',
+    heroCaption: 'First Floor · Substack · febrero 2026.',
+    vibe: 4,
+    genres: ['electronica', 'techno-raw', 'house'],
+    tags: ['festival', 'community'],
+    imageUrl: '/flyers/rf-043.jpg',
+    // For aggregated entries, `publishedAt` and `date` mark when the piece
+    // entered Gradiente's feed — that's what curation (HP decay, freshness,
+    // sort) should key off. The real First Floor pub date (2026-02-17) is
+    // preserved in the subtitle where it credits Shawn Reynaldo's byline.
+    publishedAt: '2026-04-23T08:00:00',
+    date: '2026-04-23T08:00:00',
+    expiresAt: '2026-08-17T00:00:00',
+    editorial: true,
+    author: 'Shawn Reynaldo',
+    readTime: 22,
+    articleBody: [
+      {
+        kind: 'lede',
+        text: 'Gradiente FM agrega este reportaje publicado originalmente por Shawn Reynaldo en su newsletter First Floor. Lo traemos acá porque su tema — la concentración corporativa detrás del ecosistema europeo de festivales — entra de lleno en la conversación que venimos teniendo en torno a la infraestructura, la dependencia y la soberanía cultural de la escena latinoamericana.',
+      },
+      {
+        kind: 'p',
+        text: 'El trabajo se apoya en dos mapas recién publicados por las organizaciones [Reset!](https://reset-network.eu/) y [Live DMA](https://www.live-dma.eu/), que por primera vez documentan con este nivel de detalle el patrón de propiedad detrás de 200 festivales importantes en Europa. El hallazgo que da título al reportaje — cuatro corporaciones controlan ese grupo — es la punta visible de una red de consolidación que también alcanza venues, promotoras y agencias de booking.',
+      },
+      {
+        kind: 'h2',
+        id: 'sec-porque',
+        text: 'Por qué importa desde acá',
+      },
+      {
+        kind: 'p',
+        text: 'La pregunta central que propone Reynaldo — qué significa para la música independiente cuando la infraestructura que le da techo pertenece a un puñado de actores globales — resuena en un momento donde los promotores latinoamericanos también están redibujando sus cálculos frente a un talento internacional cada vez más caro y concentrado. No es el mismo problema que el europeo, pero sí es la misma corriente de fondo.',
+      },
+      {
+        kind: 'p',
+        text: 'Recomendamos leer la entrevista completa — incluyendo los mapas interactivos de Reset! y Live DMA — directamente en la fuente:',
+      },
+      {
+        kind: 'p',
+        text: '**→ [Leer en First Floor (Substack)](https://firstfloor.substack.com/p/200-major-european-festivals-are)**',
+      },
+      {
+        kind: 'divider',
+      },
+      {
+        kind: 'p',
+        text: '*Sobre First Floor:* newsletter semanal de Shawn Reynaldo sobre la política, la economía y la cultura de la música electrónica contemporánea. Una de las pocas fuentes de periodismo sostenido sobre el sector a nivel global.',
+      },
+    ],
+  },
+
   // ─── EVENTOS adicionales ─────────────────────────────────────────────────────
 
   {

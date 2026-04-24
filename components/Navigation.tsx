@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: '/reviews',    label: 'REVIEWS',    code: '03' },
   { href: '/mixes',      label: 'MIXES',      code: '04' },
   { href: '/editorial',  label: 'EDITORIAL',  code: '05' },
+  { href: '/articulos',  label: 'ARTÍCULOS',  code: '06' },
 ]
 
 const DATA_STRIP = [

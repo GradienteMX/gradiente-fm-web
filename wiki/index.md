@@ -22,7 +22,7 @@
 
 - [[Vibe Spectrum]] — 0 glacial → 10 volcán, the core filter axis
 - [[HP Curation System]] — decay-based prominence ranking
-- [[Content Types]] — evento, mix, noticia, review, editorial, opinion, partner
+- [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, partner
 - [[Partners Isolation]] — why partners never enter the main grid
 - [[Editorial Flag]] — the one editor lever (boost spawn HP)
 - [[Pinned Hero]] — single slot, portada logic
@@ -35,6 +35,7 @@
 - [[Mixes]] — `/mixes` — mixes only
 - [[Noticias]] — `/noticias` — news only
 - [[Reviews]] — `/reviews` — reviews only
+- [[Articulos]] — `/articulos` — longform features only
 
 ## 40 — Components
 
@@ -49,6 +50,7 @@
 - [[OverlayShell]] — frame chrome + CRT boot animation for every overlay
 - [[OverlayRouter]] — mount/exit state machine, picks type-specific overlay
 - [[ReaderOverlay]] — terminal reader for editorial / review / opinion / noticia
+- [[ArticuloOverlay]] — longform reader for articulo (hero-led, TOC rail, pull-quotes, footnotes, related reading)
 - [[EventoOverlay]] — flyer-as-hero + event info
 - [[GenericOverlay]] — fallback for mix (until dedicated)
 - [[ContentFeed]] — alternative linear date-grouped feed (not wired to pages)

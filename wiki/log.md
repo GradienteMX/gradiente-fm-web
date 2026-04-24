@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-04-23 · INGEST · Articulo content type + longform overlay shipped
+
+Added `articulo` as the eighth content type — the longform/deep-dive tier that sits alongside `editorial` / `review` / `opinion` / `noticia` in the editorial family but gets its own reader.
+
+**Why a new type:** `editorial` carries a curatorial/positional connotation (editor-flagged opinions, scene-shaping takes). `articulo` is reportage + form — substack-style deep-dives with interviews, pull-quotes, footnotes, section headers. Different register, different reading shape, deserves a distinct surface.
+
+**New:**
+- `articulo` added to `ContentType`, `categoryColor` (`#FDE68A` warm off-white), `TYPE_LABEL` (`ARTÍCULO`), curation half-life maps, peak initializer, score multiplier (1.3, matches review).
+- `ArticleBlock` discriminated union + `Footnote` type in [`lib/types.ts`](../lib/types.ts). Structured block kinds: `lede`, `p`, `h2`, `h3`, `quote`, `blockquote`, `image`, `divider`, `qa`, `list`.
+- `/articulos` route ([[Articulos]]) and `//ARTÍCULO` row in [[CategoryRail]] + [[Navigation]].
+- [[ArticuloOverlay]] — longform reader distinct from [[ReaderOverlay]]: hero image is primary (not archival), sticky TOC rail with active-section tracking, drop-cap lede, vibe-colored pull-quotes, Q&A speaker labels, inline `[^id]` footnote refs → numbered endnotes, FIN hazard-stripe marker, curated `SIGUIENTES·LECTURAS` that swap in-overlay via [[OverlayRouter]].
+- Three seeded articulos in [[mockData]] demonstrating the block variety.
+
+**Deliberately NOT in scope:**
+- `articulo` excluded from `getPinnedHero` allowlist — competes in the feed but doesn't auto-promote to portada. Can be revisited later.
+- No engagement metrics (per [[Size and Position as Only Signals]] + [[No Algorithm]]) — "Ready for more?" translates to curated related-reading, not subscribe/share CTAs.
+
+**Design reference:** [firstfloor.substack.com](https://firstfloor.substack.com), translated through Gradiente's terminal idiom (monospace meta, `//` prefixes, block-bar progress indicators).
+
 ## 2026-04-23 · INGEST · Card → overlay system shipped
 
 Built and documented the full card-click-to-overlay reading surface. PR open at [feat/card-overlay](https://github.com/datavismo-cmyk/espectro-fm-web/compare/main...feat/card-overlay?expand=1).
