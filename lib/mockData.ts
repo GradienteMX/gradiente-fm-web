@@ -3,7 +3,9 @@ import type { ContentItem } from './types'
 // All imageUrl values reference /flyers/* — served from public/flyers/
 // Real info: Fascinoma (fascinoma.space · @fascinoma_mx) + Club Japan (Monterrey 56, Roma Norte · @japan_cdmx)
 
-export const MOCK_ITEMS: ContentItem[] = [
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
+const RAW_ITEMS: ContentItem[] = [
 
   // ─── EVENTOS ─────────────────────────────────────────────────────────────
 
@@ -1554,6 +1556,11 @@ export const MOCK_ITEMS: ContentItem[] = [
     partnerLastUpdated: '2026-04-10T08:00:00',
   },
 ]
+
+export const MOCK_ITEMS: ContentItem[] = RAW_ITEMS.map((item) => ({
+  ...item,
+  imageUrl: item.imageUrl?.startsWith('/') ? `${BASE_PATH}${item.imageUrl}` : item.imageUrl,
+}))
 
 export function getItemBySlug(slug: string): ContentItem | null {
   return MOCK_ITEMS.find((item) => item.slug === slug) ?? null
