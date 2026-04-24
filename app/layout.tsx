@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import './globals.css'
 import { Navigation } from '@/components/Navigation'
 import { VibeSlider } from '@/components/VibeSlider'
+import { CRTOverlay } from '@/components/CRTOverlay'
 import { VibeProvider } from '@/context/VibeContext'
 import { OverlayProvider } from '@/components/overlay/useOverlay'
 import { OverlayRouter } from '@/components/overlay/OverlayRouter'
@@ -43,32 +44,40 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${syne.variable} ${spaceGrotesk.variable} ${spaceMono.variable}`}>
       <body className="bg-base text-primary">
+        {/* Providers live ABOVE CRTOverlay so that when CRTOverlay's mode
+            flips (A → B or vice versa) and the children get re-parented,
+            VibeContext / OverlayContext / etc. don't remount and lose state. */}
         <VibeProvider>
           <OverlayProvider>
-            <Suspense fallback={null}>
-              <Navigation />
-              <VibeSlider />
-              <main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">
-                {children}
-              </main>
-              {/* Footer */}
-              <footer className="border-t border-border px-4 py-6 md:px-8">
-                <div className="mx-auto flex max-w-screen-2xl items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-sys-red">▶</span>
-                    <span className="font-syne text-sm font-black text-primary">GRADIENTE·FM</span>
+            <CRTOverlay>
+              <Suspense fallback={null}>
+                <Navigation />
+                <VibeSlider />
+                <main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">
+                  {children}
+                </main>
+                {/* Footer — SUBSISTEMA chrome strip */}
+                <footer className="border-t border-border bg-black px-4 py-3 md:px-8">
+                  <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-6">
+                    <div className="flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sys-orange" style={{ boxShadow: '0 0 4px #FF6600' }} />
+                      <span className="font-mono text-[9px] tracking-[0.2em] text-sys-orange/70">
+                        SUBSISTEMA·UNIT-10
+                      </span>
+                    </div>
+                    <p className="hidden font-mono text-[9px] tracking-[0.18em] text-muted md:block">
+                      // GRADIENTE·FM · CULTURA ELECTRÓNICA DESDE MÉXICO · DESDE 2088
+                    </p>
+                    <div className="flex items-center gap-4 font-mono text-[9px] tabular-nums text-muted">
+                      <span>LAT 19.4326</span>
+                      <span className="text-border">·</span>
+                      <span>LON -99.1332</span>
+                    </div>
                   </div>
-                  <p className="sys-label">
-                    © 2026 · DESDE ADENTRO DE LA ESCENA MEXICANA
-                  </p>
-                  <span className="sys-label flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sys-green" />
-                    ONLINE
-                  </span>
-                </div>
-              </footer>
-              <OverlayRouter />
-            </Suspense>
+                </footer>
+                <OverlayRouter />
+              </Suspense>
+            </CRTOverlay>
           </OverlayProvider>
         </VibeProvider>
       </body>

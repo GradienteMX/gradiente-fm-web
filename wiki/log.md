@@ -8,6 +8,41 @@
 
 ---
 
+## 2026-04-23 · INGEST · Card → overlay system shipped
+
+Built and documented the full card-click-to-overlay reading surface. PR open at [feat/card-overlay](https://github.com/datavismo-cmyk/espectro-fm-web/compare/main...feat/card-overlay?expand=1).
+
+**New UX primitive:** click any card (including the pinned hero) → full-screen overlay with CRT boot-in animation + dim/blur backdrop. URL updates via `?item=<slug>` for deep-linking, but no route change. See [[Overlay System]].
+
+**New components:**
+- [[OverlayShell]] — frame chrome, close affordances, CRT boot animation
+- [[OverlayRouter]] — mount/exit state machine, type dispatch
+- [[ReaderOverlay]] — terminal reader for `editorial` / `review` / `opinion` / `noticia` (8/4 split, article primary, flyer demoted to archival rail, F-key flyer lightbox, sticky scroll-progress footer)
+- [[EventoOverlay]] — flyer-as-hero for `evento` (date block, line-up, tickets CTA)
+- [[GenericOverlay]] — fallback for `mix` until a dedicated overlay ships
+
+**New module:**
+- [[useOverlay]] — context + hook, URL sync via `history.replaceState` (not `router.replace` — that triggered RSC refetches that remounted the overlay mid-animation)
+
+**Two new decisions enshrined:**
+- [[Contained Single Surface]] — the page is one continuous surface; card click → overlay, never a route. External URLs become explicit user-chosen escape hatches, not the default.
+- [[Reader Terminal Layout]] — long-form overlays are reading subsystems, not enlarged cards. Flyer demotes to archival evidence. Per-type overlays instead of a unified shell with `switch(type)`.
+
+**Updates to existing notes:**
+- [[ContentCard]] — now clickable; opens overlay via [[useOverlay]]
+- [[HeroCard]] — now clickable (whole section, including `// EN PORTADA` header bar); became a client component, `getPinnedHero` moved to [utils.ts](../../lib/utils.ts)
+- [[Open Questions]] — card-click-to-detail resolved; per-type-overlay resolved; Supabase migration explicitly deprioritized (visual MVP phase)
+
+**Deferred (noted in [[Open Questions]]):**
+- MixOverlay (mix still uses [[GenericOverlay]])
+- Mobile swipe-down-to-close
+- Text-size / copy-link / minimap affordances mentioned in [[Reader Terminal Layout]]
+- Full `body` field on `ContentItem` (we render `bodyPreview` for now)
+
+**Tech note:** Framer Motion was attempted first for the overlay animations; animations would not fire reliably and the root cause was never identified. Switched to pure CSS keyframes in [globals.css](../../app/globals.css) — simpler and sufficient for the current motion vocabulary.
+
+---
+
 ## 2026-04-22 · INGEST · "Do now" fixes landed
 
 Shipped the short-effort fixes from [[Open Questions]]:

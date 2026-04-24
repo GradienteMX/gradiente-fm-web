@@ -1,21 +1,21 @@
 ---
 type: component
 status: current
-tags: [component, card, mosaic]
-updated: 2026-04-22
+tags: [component, card, mosaic, overlay]
+updated: 2026-04-23
 ---
 
 # ContentCard
 
-> One card component, three size tiers (sm/md/lg). Image-forward, dark gradient overlay, type badge, vibe color accent.
+> One card component, three size tiers (sm/md/lg). Image-forward, dark gradient overlay, type badge, vibe color accent. Clicking opens a full-screen overlay — see [[Overlay System]].
 
 ## Source
 
 [components/cards/ContentCard.tsx](../../components/cards/ContentCard.tsx)
 
-## Client component? No
+## Client component? Yes
 
-Pure server component — renders static markup. All interactivity (hover, click) is CSS.
+Became a client component when overlay click handling landed — it calls [[useOverlay]] and captures the card's bounding rect on click. Inner sub-cards (SmCard/MdCard/LgCard) are still pure render.
 
 ## Three tiers
 
@@ -55,9 +55,16 @@ Rendered inside the image area with `bg-black/70 backdrop-blur-sm` to stay legib
 
 ## Interaction
 
-The whole card is a `cursor-pointer` article, but **currently doesn't link anywhere** — no `href`. Slug-based routing hasn't been added yet. See [[Open Questions]].
+The top-level export wraps the size-specific sub-card (`SmCard` / `MdCard` / `LgCard`) in a clickable `role="button"` `<div>` that:
 
-Exception: the `TICKETS →` button on LG event cards is an `<a>` with `stopPropagation` to prevent parent click handlers (which don't exist yet, but defensively set).
+1. Captures the card's `getBoundingClientRect()` on click (used for the overlay's grow-from-origin transform).
+2. Calls `open(item.slug, rect)` from [[useOverlay]].
+3. Updates the URL to `?item=<slug>`.
+4. Mounts [[OverlayShell]] + the type-specific overlay ([[ReaderOverlay]] / [[EventoOverlay]] / [[GenericOverlay]]).
+
+Keyboard: `Enter` / `Space` trigger the same handler (`onKeyDown`). Focus ring uses `focus-visible:ring-sys-red`.
+
+Exception: the `TICKETS →` button on LG event cards is still an `<a>` with `stopPropagation` — it bypasses the overlay and opens the ticket site directly. This is intentional: the explicit external escape hatch on event cards matches [[Contained Single Surface]]'s rule about external URLs being user-chosen, not the default.
 
 ## Image strategy
 
@@ -70,6 +77,9 @@ Uses plain `<img>` not `next/image`. Two reasons:
 ## Links
 
 - [[ContentGrid]]
+- [[Overlay System]]
+- [[useOverlay]]
+- [[Contained Single Surface]]
 - [[HP Curation System]]
 - [[Vibe Gradient]]
 - [[Color System]]

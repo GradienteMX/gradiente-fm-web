@@ -53,6 +53,18 @@ body {
   background: #555;
 }
 
+/* Path B CRT — inner scroll container inside the canvas "tube". The scroll
+   itself is real overflow on this element (preserves native sticky refs +
+   fixed containing-block behavior). Scrollbar hidden because it would
+   render visibly inside the tube and break the aesthetic. */
+.crt-pathb-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.crt-pathb-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── NGE corner bracket utility ──────────────────────────── */
 @layer components {
   .nge-bracket {

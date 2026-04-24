@@ -16,6 +16,7 @@
 - [[Folder Structure]] — how `/app`, `/components`, `/lib`, `/context` divide
 - [[App Router Patterns]] — server-by-default, client islands, `@/` aliases
 - [[Dual Feed Systems]] — why `ContentGrid` and `ContentFeed` both exist
+- [[Overlay System]] — card click → full-screen overlay, URL sync, type dispatch
 
 ## 20 — Domain
 
@@ -42,9 +43,14 @@
 - [[CalendarSidebar]] — slide-in month grid, date-based filter
 - [[CategoryRail]] — sticky left rail with counts per type
 - [[ContentGrid]] — HP-driven mosaic with directional layout animations
-- [[ContentCard]] — sm/md/lg tiered card (image-forward)
-- [[HeroCard]] — split portada hero (image + body preview)
+- [[ContentCard]] — sm/md/lg tiered card (image-forward); opens overlay on click
+- [[HeroCard]] — split portada hero; opens overlay on click
 - [[PartnersRail]] — chronological rail, never merges with grid
+- [[OverlayShell]] — frame chrome + CRT boot animation for every overlay
+- [[OverlayRouter]] — mount/exit state machine, picks type-specific overlay
+- [[ReaderOverlay]] — terminal reader for editorial / review / opinion / noticia
+- [[EventoOverlay]] — flyer-as-hero + event info
+- [[GenericOverlay]] — fallback for mix (until dedicated)
 - [[ContentFeed]] — alternative linear date-grouped feed (not wired to pages)
 - [[EventCard]] — linear event card (used by ContentFeed)
 - [[MixCard]] — linear mix card with fake waveform
@@ -53,11 +59,12 @@
 ## 50 — Modules
 
 - [[types]] — `ContentItem`, `ContentType`, `VibeScore`, `Genre`, `Tag`
-- [[mockData]] — seed dataset for all content
+- [[mockData]] — seed dataset for all content (+ `getItemBySlug` lookup)
 - [[curation]] — spawn HP, decay, freshness, prominence, layout tiers
 - [[genres]] — the genre + tag catalogs and lookup helpers
-- [[utils]] — vibe helpers, date helpers, format helpers, filters
+- [[utils]] — vibe helpers, date helpers, format helpers, filters, `getPinnedHero`
 - [[VibeContext]] — global state: vibeRange, selectedDate, calendarOpen
+- [[useOverlay]] — overlay context + hook, URL sync via history.replaceState
 
 ## 60 — Design
 
@@ -92,3 +99,5 @@
 - [[Size and Position as Only Signals]] — no stars, likes, or counters
 - [[No Algorithm]] — editorial curation over engagement metrics
 - [[Why Next.js App Router]] — server-first, file routing
+- [[Contained Single Surface]] — card click → overlay, never a route change
+- [[Reader Terminal Layout]] — long-form overlays are reading subsystems, flyer demotes to archival
