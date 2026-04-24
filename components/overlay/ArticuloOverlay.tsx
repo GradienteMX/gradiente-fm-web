@@ -502,7 +502,7 @@ function BodyBlocks({
                   className="font-syne text-xl font-bold italic leading-snug md:text-2xl"
                   style={{ color: vibeColor }}
                 >
-                  "{b.text}"
+                  &ldquo;{b.text}&rdquo;
                 </p>
                 {b.cite && (
                   <footer className="mt-2 font-mono text-[11px] tracking-widest text-muted">
