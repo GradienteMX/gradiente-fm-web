@@ -107,19 +107,28 @@ export function OverlayShell({
             <button
               onClick={close}
               aria-label="Cerrar"
-              className="flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+              className="flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-muted"
             >
               <span className="hidden sm:inline">[ESC]</span>
-              <span className="sm:hidden">
-                <X size={14} />
-              </span>
-              <span className="hidden sm:inline">CERRAR</span>
+              <X size={14} className="sm:hidden" />
+              <span>CERRAR</span>
             </button>
           </div>
         </div>
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">{children}</div>
+
+        {/* Mobile-only bottom dismiss bar — thumb-reach close affordance.
+            Hidden on sm+ where the top-right chip is within easy reach. */}
+        <button
+          onClick={close}
+          aria-label="Cerrar"
+          className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-base/95 px-4 py-3 font-mono text-[11px] tracking-widest text-primary backdrop-blur-sm transition-colors active:bg-elevated sm:hidden"
+        >
+          <X size={14} />
+          <span>CERRAR</span>
+        </button>
 
         {/* Phosphor warm-up flash — one-shot, only on enter */}
         {!exiting && (
