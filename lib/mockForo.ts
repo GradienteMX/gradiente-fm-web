@@ -9,7 +9,18 @@ import type { ForoReply, ForoThread } from './types'
 // forward; threads with no replies stay at createdAt. Catalog caps at 30
 // visible threads (the page truncates the sorted list).
 
-export const MOCK_THREADS: ForoThread[] = [
+// GitHub Pages serves the site under a basePath (e.g. `/gradiente-fm-web`).
+// Images stored at `/flyers/*.jpg` need that prefix at runtime. Data URLs
+// (user-uploaded session images) start with `data:` and pass through
+// untouched. Same pattern as [[mockData]].
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
+function prefixImagePath(url: string | undefined): string | undefined {
+  if (!url) return url
+  return url.startsWith('/') ? `${BASE_PATH}${url}` : url
+}
+
+const RAW_THREADS: ForoThread[] = [
   {
     id: 'fr-001',
     authorId: 'u-og-loma',
@@ -92,7 +103,12 @@ export const MOCK_THREADS: ForoThread[] = [
   },
 ]
 
-export const MOCK_REPLIES: ForoReply[] = [
+export const MOCK_THREADS: ForoThread[] = RAW_THREADS.map((t) => ({
+  ...t,
+  imageUrl: prefixImagePath(t.imageUrl) ?? t.imageUrl,
+}))
+
+const RAW_REPLIES: ForoReply[] = [
   // fr-001 — after CDMX (3 replies)
   {
     id: 'fp-001-01',
@@ -228,6 +244,11 @@ export const MOCK_REPLIES: ForoReply[] = [
     createdAt: '2026-04-19T07:45:00',
   },
 ]
+
+export const MOCK_REPLIES: ForoReply[] = RAW_REPLIES.map((r) => ({
+  ...r,
+  ...(r.imageUrl ? { imageUrl: prefixImagePath(r.imageUrl) ?? r.imageUrl } : {}),
+}))
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
