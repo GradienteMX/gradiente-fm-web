@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
 import { vibeToColor } from '@/lib/utils'
@@ -29,11 +30,75 @@ const GENRE_VIBE: Record<string, number> = {
   'psy-trance': 10, 'hyperpop': 10, 'gqom': 10,
 }
 
-const STRIPE_MASK = 'repeating-linear-gradient(-45deg, transparent 0px, transparent 9px, #000 9px, #000 18px)'
-const NEON_GRADIENT = 'linear-gradient(to right, #00ffff 0%, #0066ff 18%, #6600ff 34%, #ff00ff 50%, #ff0066 62%, #ff5500 76%, #ff2200 90%, #ff0000 100%)'
-const GREY_STRIPE = `${STRIPE_MASK}, linear-gradient(to right, #333 0%, #333 100%)`
+// Phosphor tape — three horizontal rows of dashes evoking a waveform display:
+//   MIDDLE row: dense, near-continuous baseline across the full width
+//   TOP / BOTTOM rows: sparser, offset by a half-step from each other so the
+//   alternation reads as a subtle saw rhythm above and below the baseline.
+// Dashes inside [min, max] are "lit" (full opacity + glow); others dim.
+// Positions are deterministic per-index so the pattern is stable across renders.
+const MID_COUNT = 120
+const EDGE_COUNT = 40
+
+// Integer-based hash (Math.imul) — bit-exact across JS engines, avoiding SSR/client drift.
+function hash01(seed: number, salt: number): number {
+  let x = Math.imul(seed | 0, 2654435761) ^ Math.imul(salt | 0, 1597334677)
+  x = Math.imul(x ^ (x >>> 16), 2246822519) | 0
+  x = Math.imul(x ^ (x >>> 13), 3266489917) | 0
+  x = x ^ (x >>> 16)
+  return (x >>> 0) / 4294967296
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.replace('#', ''), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+function interpolateVibeColor(vibe: number): string {
+  const lo = Math.floor(vibe)
+  const hi = Math.min(lo + 1, 10)
+  const t = vibe - lo
+  const [ar, ag, ab] = hexToRgb(vibeToColor(lo))
+  const [br, bg, bb] = hexToRgb(vibeToColor(hi))
+  const r = Math.round(ar + (br - ar) * t)
+  const g = Math.round(ag + (bg - ag) * t)
+  const b = Math.round(ab + (bb - ab) * t)
+  return `rgb(${r},${g},${b})`
+}
+
+type Dash = { leftPct: number; bottomPct: number; widthPx: number; color: string; vibe: number }
+
+const DASHES: Dash[] = (() => {
+  const arr: Dash[] = []
+  const makeRow = (count: number, bottomPct: number, halfStep: boolean, widthLo: number, widthHi: number, salt: number) => {
+    for (let i = 0; i < count; i++) {
+      const t = (i + (halfStep ? 0.5 : 0)) / count
+      if (t > 0.995) continue
+      const vibeF = t * 10
+      arr.push({
+        leftPct: Math.round(t * 9900) / 100,
+        bottomPct,
+        widthPx: widthLo + Math.floor(hash01(i, salt) * (widthHi - widthLo + 1)),
+        color: interpolateVibeColor(vibeF),
+        vibe: vibeF,
+      })
+    }
+  }
+  makeRow(MID_COUNT, 50, false, 4, 6, 10)  // middle: dense, thicker dashes → continuous baseline
+  makeRow(EDGE_COUNT, 68, false, 3, 5, 20) // top: sparser
+  makeRow(EDGE_COUNT, 32, true,  3, 5, 30) // bottom: half-step offset from top → saw alternation
+  return arr
+})()
 
 export function VibeSlider() {
+  // Hide on the dashboard — the slider is a feed-curation control and has
+  // nothing to do with the editor's working surface.
+  const pathname = usePathname()
+  if (pathname?.startsWith('/dashboard')) return null
+
+  return <VibeSliderImpl />
+}
+
+function VibeSliderImpl() {
   const { vibeRange, setVibeRange } = useVibe()
   const trackRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef<'min' | 'max' | null>(null)
@@ -50,7 +115,7 @@ export function VibeSlider() {
     if (!track) return 0
     const rect = track.getBoundingClientRect()
     const ratio = (clientX - rect.left) / rect.width
-    return clamp(Math.round(ratio * 10), 0, 10)
+    return clamp(ratio * 10, 0, 10)
   }
 
   useEffect(() => {
@@ -74,10 +139,14 @@ export function VibeSlider() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setVibeRange])
 
+  // min/max are continuous floats (0–10); label & color snap to the nearest integer slot
+  // so the handle label reads cleanly as one of the named vibes.
+  const minSlot = Math.round(min)
+  const maxSlot = Math.round(max)
   const minPercent = (min / 10) * 100
   const maxPercent = (max / 10) * 100
-  const minColor = vibeToColor(min)
-  const maxColor = vibeToColor(max)
+  const minColor = vibeToColor(minSlot)
+  const maxColor = vibeToColor(maxSlot)
   const isFullRange = min === 0 && max === 10
   const labelsOverlap = Math.abs(maxPercent - minPercent) < 14
 
@@ -125,14 +194,14 @@ export function VibeSlider() {
             className="absolute -translate-x-1/2 font-mono text-[9px] font-bold tracking-widest transition-[left] duration-75 [text-shadow:0_0_8px_#000,0_0_16px_#000]"
             style={{ left: `${minPercent}%`, color: minColor }}
           >
-            {VIBE_SLOT_NAMES[min]}
+            {VIBE_SLOT_NAMES[minSlot]}
           </span>
           {!labelsOverlap && (
             <span
               className="absolute -translate-x-1/2 font-mono text-[9px] font-bold tracking-widest transition-[left] duration-75 [text-shadow:0_0_8px_#000,0_0_16px_#000]"
               style={{ left: `${maxPercent}%`, color: maxColor }}
             >
-              {VIBE_SLOT_NAMES[max]}
+              {VIBE_SLOT_NAMES[maxSlot]}
             </span>
           )}
         </div>
@@ -143,15 +212,28 @@ export function VibeSlider() {
           ref={trackRef}
           onClick={handleTrackClick}
         >
-          {/* Neon band — full-width gradient, clipped to [min,max] so colors stay correct */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: `${STRIPE_MASK}, ${NEON_GRADIENT}`,
-              clipPath: `inset(0 ${100 - maxPercent}% 0 ${minPercent}%)`,
-              transition: 'clip-path 75ms linear',
-            }}
-          />
+          {/* Phosphor field — scattered horizontal dashes at random (x, y), not a column grid */}
+          <div className="pointer-events-none absolute inset-0">
+            {DASHES.map((d, i) => {
+              const lit = d.vibe >= min && d.vibe <= max
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: `${d.leftPct}%`,
+                    bottom: `${d.bottomPct}%`,
+                    width: '2.5px',
+                    height: `${d.widthPx}px`,
+                    backgroundColor: d.color,
+                    opacity: lit ? 1 : 0.08,
+                    boxShadow: lit ? `0 0 3px ${d.color}` : 'none',
+                    transition: 'opacity 120ms linear, box-shadow 120ms linear',
+                  }}
+                />
+              )
+            })}
+          </div>
 
           {/* Min handle — white cut-mark with wide drag target */}
           <div

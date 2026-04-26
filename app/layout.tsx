@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Syne, Space_Grotesk, Space_Mono } from 'next/font/google'
 import { Suspense } from 'react'
+import Link from 'next/link'
 import './globals.css'
 import { Navigation } from '@/components/Navigation'
 import { VibeSlider } from '@/components/VibeSlider'
@@ -8,6 +9,12 @@ import { CRTOverlay } from '@/components/CRTOverlay'
 import { VibeProvider } from '@/context/VibeContext'
 import { OverlayProvider } from '@/components/overlay/useOverlay'
 import { OverlayRouter } from '@/components/overlay/OverlayRouter'
+import { AuthProvider } from '@/components/auth/useAuth'
+import { LoginOverlay } from '@/components/auth/LoginOverlay'
+import { PublishConfirmProvider } from '@/components/publish/usePublishConfirm'
+import { PublishConfirmOverlay } from '@/components/publish/PublishConfirmOverlay'
+import { SearchProvider } from '@/components/search/useSearch'
+import { SearchOverlay } from '@/components/search/SearchOverlay'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -47,8 +54,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Providers live ABOVE CRTOverlay so that when CRTOverlay's mode
             flips (A → B or vice versa) and the children get re-parented,
             VibeContext / OverlayContext / etc. don't remount and lose state. */}
+        <AuthProvider>
+        <PublishConfirmProvider>
         <VibeProvider>
           <OverlayProvider>
+          <SearchProvider>
             <CRTOverlay>
               <Suspense fallback={null}>
                 <Navigation />
@@ -58,13 +68,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </main>
                 {/* Footer — SUBSISTEMA chrome strip */}
                 <footer className="border-t border-border bg-black px-4 py-3 md:px-8">
-                  <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-6">
+                  <div className="mx-auto flex max-w-screen-2xl flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
                     <div className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-sys-orange" style={{ boxShadow: '0 0 4px #FF6600' }} />
                       <span className="font-mono text-[9px] tracking-[0.2em] text-sys-orange/70">
                         SUBSISTEMA·UNIT-10
                       </span>
                     </div>
+                    <nav
+                      aria-label="Identidad"
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] tracking-[0.18em] text-muted"
+                    >
+                      <Link href="/about" className="hover:text-sys-orange">/ABOUT</Link>
+                      <span className="text-border">·</span>
+                      <Link href="/manifesto" className="hover:text-sys-orange">/MANIFIESTO</Link>
+                      <span className="text-border">·</span>
+                      <Link href="/equipo" className="hover:text-sys-orange">/EQUIPO</Link>
+                    </nav>
                     <p className="hidden font-mono text-[9px] tracking-[0.18em] text-muted md:block">
                       // GRADIENTE·FM · CULTURA ELECTRÓNICA DESDE MÉXICO · DESDE 2088
                     </p>
@@ -76,10 +96,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 </footer>
                 <OverlayRouter />
+                <LoginOverlay />
+                <PublishConfirmOverlay />
+                <SearchOverlay />
               </Suspense>
             </CRTOverlay>
+          </SearchProvider>
           </OverlayProvider>
         </VibeProvider>
+        </PublishConfirmProvider>
+        </AuthProvider>
       </body>
     </html>
   )

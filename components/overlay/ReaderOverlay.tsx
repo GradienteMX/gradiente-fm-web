@@ -8,8 +8,9 @@ import {
   vibeToLabel,
   categoryColor,
 } from '@/lib/utils'
-import { getGenreNames, getTagNames } from '@/lib/genres'
+import { getGenreById, getTagNames } from '@/lib/genres'
 import { Expand, FileImage, User, Calendar, Clock, Activity } from 'lucide-react'
+import { GenreChipButton } from '@/components/genre/GenreChipButton'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -30,7 +31,10 @@ interface ReaderOverlayProps {
 // article body takes primacy, flyer demotes to an archival rail.
 export function ReaderOverlay({ item }: ReaderOverlayProps) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres)
+  const genres = item.genres.map((id) => ({
+    id,
+    name: getGenreById(id)?.name ?? id,
+  }))
   const tags = getTagNames(item.tags)
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -172,17 +176,18 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
           {/* Bottom taxonomy */}
           {(genres.length > 0 || tags.length > 0) && (
             <div className="mt-10 flex flex-wrap gap-1.5 border-t border-border pt-5">
-              {genres.map((g) => (
-                <span
-                  key={g}
+              {genres.map(({ id, name }) => (
+                <GenreChipButton
+                  key={id}
+                  genreId={id}
                   className="border px-2 py-0.5 font-mono text-[10px] tracking-wide"
                   style={{
                     borderColor: `${vibeColor}55`,
                     color: vibeColor,
                   }}
                 >
-                  {g}
-                </span>
+                  {name}
+                </GenreChipButton>
               ))}
               {tags.map((t) => (
                 <span
@@ -268,10 +273,16 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
           {(genres.length > 0 || tags.length > 0) && (
             <ArchivalBlock index="03" label="ETIQUETAS">
               <ul className="flex flex-col gap-1.5 font-mono text-xs">
-                {genres.map((g) => (
-                  <li key={g} className="flex items-center gap-2">
+                {genres.map(({ id, name }) => (
+                  <li key={id} className="flex items-center gap-2">
                     <span className="text-muted">#</span>
-                    <span style={{ color: vibeColor }}>{g}</span>
+                    <GenreChipButton
+                      genreId={id}
+                      className=""
+                      style={{ color: vibeColor }}
+                    >
+                      {name}
+                    </GenreChipButton>
                   </li>
                 ))}
                 {tags.map((t) => (

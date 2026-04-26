@@ -6,6 +6,7 @@ export type ContentType =
   | 'editorial'
   | 'opinion'
   | 'articulo'
+  | 'listicle'
   | 'partner'
 
 // Structured body blocks for long-form `articulo` items.
@@ -21,11 +22,37 @@ export type ArticleBlock =
   | { kind: 'divider' }
   | { kind: 'qa'; speaker: string; text: string; isQuestion?: boolean }
   | { kind: 'list'; items: string[]; ordered?: boolean }
+  | {
+      kind: 'track'
+      rank?: number            // visual rank, e.g. 10, 9, 8 for a countdown
+      artist: string
+      title: string
+      year?: string | number   // release year
+      bpm?: number
+      imageUrl?: string        // cover art
+      embeds?: MixEmbed[]      // streaming links (uses the Mix embed shape)
+      commentary?: string      // editor's take on this track
+    }
 
 export interface Footnote {
   id: string
   text: string
 }
+
+export type EmbedPlatform = 'soundcloud' | 'youtube' | 'spotify' | 'bandcamp' | 'mixcloud'
+
+export interface MixEmbed {
+  platform: EmbedPlatform
+  url: string
+}
+
+export interface MixTrack {
+  artist: string
+  title: string
+  bpm?: number
+}
+
+export type MixStatus = 'disponible' | 'exclusivo' | 'archivo' | 'proximamente'
 
 export type PartnerKind = 'promo' | 'label' | 'promoter' | 'venue' | 'sponsored'
 
@@ -54,9 +81,16 @@ export interface ContentItem {
   ticketUrl?: string
   price?: string
   // Mix fields
-  mixUrl?: string
-  duration?: string       // "1:23:45"
-  tracklist?: string[]
+  mixUrl?: string               // legacy / card-level primary link — prefer `embeds[0]`
+  embeds?: MixEmbed[]           // multi-platform sources — drives overlay source tabs
+  duration?: string             // "1:23:45"
+  tracklist?: MixTrack[]        // structured per-track: artist, title, bpm
+  mixSeries?: string            // "Espectro Mix"
+  recordedIn?: string           // "CDMX", "Club Japan", "Faldas del Popocatépetl"
+  mixFormat?: string            // "DJ Set", "Live", "Radio Show"
+  bpmRange?: string             // "132-140"
+  musicalKey?: string           // "D#m"
+  mixStatus?: MixStatus         // disponible / exclusivo / archivo / proximamente
   // Article fields
   author?: string
   readTime?: number       // minutes
@@ -76,6 +110,15 @@ export interface ContentItem {
   // Both optional: when absent, spawn defaults apply and decay is from publishedAt
   hp?: number
   hpLastUpdatedAt?: string // ISO — timestamp of last HP write
+
+  // Frontend-only metadata — never persisted to backend.
+  // Set by the dashboard prototype (see lib/drafts.ts) so cards/overlays can
+  // distinguish session-only items from real published content.
+  _draftState?: 'draft' | 'published'
+  // Frontend-only — set transiently when the editor is reviewing a draft for
+  // publication (see [[Publish Confirmation Flow]]). Drives the glitch +
+  // corner-confirm UI on the card.
+  _pendingConfirm?: boolean
 }
 
 export interface Genre {
@@ -90,3 +133,60 @@ export interface Tag {
 }
 
 export type VibeRange = [number, number]
+
+// ── Identity & permissions ──────────────────────────────────────────────────
+//
+// Strict role hierarchy: admin ⊃ moderator ⊃ collaborator ⊃ user.
+// Higher roles inherit every capability of the roles beneath them.
+// `userCategory` is meaningful only when role === 'user'; admins assign it.
+
+export type Role = 'admin' | 'moderator' | 'collaborator' | 'user'
+
+export type UserCategory = 'og' | 'insider' | 'normal'
+
+export interface User {
+  id: string
+  username: string        // login handle, unique
+  displayName: string     // shown in UI
+  role: Role
+  userCategory?: UserCategory  // only set when role === 'user'
+  joinedAt: string        // ISO
+}
+
+// ── Comments & reactions ────────────────────────────────────────────────────
+//
+// Reactions are an open palette of ASCII glyphs, never emoji.
+// All reaction kinds count toward "engagement" additively — no kind cancels
+// another. Disagreement is signal, not suppression. See [[No Algorithm]].
+
+export type ReactionKind =
+  | 'resonates'    // [+]   agreement / endorsement
+  | 'disagree'     // [-]   pushback
+  | 'provocative'  // [?]   questions assumptions, productive disturbance
+  | 'signal'       // [!]   important / worth surfacing
+
+export interface Reaction {
+  userId: string
+  kind: ReactionKind
+  createdAt: string  // ISO
+}
+
+// Moderator deletion leaves the node in place as a tombstone. Replies are
+// preserved; the body is replaced with the moderator's stated reason.
+export interface CommentDeletion {
+  moderatorId: string
+  reason: string
+  deletedAt: string  // ISO
+}
+
+export interface Comment {
+  id: string
+  contentItemId: string   // references ContentItem.id
+  parentId: string | null // null for top-level; otherwise references Comment.id
+  authorId: string        // references User.id
+  body: string
+  createdAt: string       // ISO
+  editedAt?: string       // ISO — set when author edits
+  reactions: Reaction[]
+  deletion?: CommentDeletion  // when set, body should render as tombstone
+}

@@ -2,7 +2,7 @@
 type: design
 status: current
 tags: [design, vibe, gradient, color]
-updated: 2026-04-22
+updated: 2026-04-24
 ---
 
 # Vibe Gradient
@@ -43,26 +43,27 @@ Used for: per-item accents in [[ContentCard]], [[HeroCard]], [[MixCard]], [[Even
 
 Saturated, high-contrast. Closer to fluorescent marker colors. Defined in [utils.ts:19](../../lib/utils.ts).
 
-### 3. `VibeSlider::NEON_GRADIENT` — 8-stop saturated gradient
+### 3. `VibeSlider::interpolateVibeColor()` — per-dash RGB lerp over the 11-step anchors
 
-Used for: the striped band in [[VibeSlider]]. Inline in [VibeSlider.tsx:32](../../components/VibeSlider.tsx).
+Used for: the phosphor tape in [[VibeSlider]]. Inline helper in [VibeSlider.tsx](../../components/VibeSlider.tsx).
 
+Not a separate palette — it piggybacks on `vibeToColor` (scale 2 above). For a float vibe `v`, it does linear RGB interpolation between `vibeToColor(floor(v))` and `vibeToColor(ceil(v))`:
+
+```ts
+interpolateVibeColor(3.7)   // lerp between #6600FF (slot 3) and #CC00FF (slot 4), t=0.7
 ```
-#00ffff  0%   → #0066ff 18% → #6600ff 34% → #ff00ff 50%
-→ #ff0066 62% → #ff5500 76% → #ff2200 90% → #ff0000 100%
-```
 
-Closer to the `vibeToColor` palette than to the Tailwind pastel — essentially the same saturated fluorescents rendered continuously.
+Each dash in the tape is colored by its x-position on `[0, 10]` once at module load — so the band reads as a smooth gradient but anchors exactly on the discrete per-item slot colors. This replaced the old `NEON_GRADIENT` CSS-gradient string when the slider was redesigned as phosphor tape (2026-04-24).
 
 ## Why three
 
 - **Tailwind pastel** — looks good as a large fill (a sticky bar), softer on the eye, less fatiguing when always visible.
 - **Discrete saturated** — individual items benefit from crisp color identity (vibe 7 is unmistakably different from vibe 8).
-- **Saturated gradient** — fills the slider band, which needs to match the discrete per-item accents visually.
+- **Slider interpolation** — lerps between the discrete saturated anchors so the phosphor tape matches per-item accents exactly, with smooth in-between colors on the band itself.
 
 ## Should they unify
 
-Probably. A single exported function that returns color(s) for a vibe with `mode: 'discrete' | 'continuous' | 'pastel'` would be cleaner. Not urgent — the fragmentation is invisible to users. See [[Open Questions]].
+Probably. A single exported function that returns color(s) for a vibe with `mode: 'discrete' | 'continuous' | 'pastel'` would be cleaner — the slider's `interpolateVibeColor` is 80% of what `'continuous'` would be. Not urgent — the fragmentation is invisible to users. See [[Open Questions]].
 
 ## Visual identity
 

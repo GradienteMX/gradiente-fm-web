@@ -9,9 +9,11 @@ import {
   vibeToColor,
   vibeToLabel,
 } from '@/lib/utils'
-import { getGenreNames, getTagNames } from '@/lib/genres'
-import { Calendar, Clock, Quote, User } from 'lucide-react'
+import { getGenreById, getTagNames } from '@/lib/genres'
+import { Calendar, Clock, Quote, User, ExternalLink } from 'lucide-react'
 import { ContentCard } from '@/components/cards/ContentCard'
+import { PLATFORM_LABELS } from '@/components/embed/platforms'
+import { GenreChipButton } from '@/components/genre/GenreChipButton'
 
 interface ArticuloOverlayProps {
   item: ContentItem
@@ -23,7 +25,10 @@ interface ArticuloOverlayProps {
 export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
   const color = categoryColor('articulo')
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres)
+  const genres = item.genres.map((id) => ({
+    id,
+    name: getGenreById(id)?.name ?? id,
+  }))
   const tags = getTagNames(item.tags)
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -362,10 +367,16 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             {(genres.length > 0 || tags.length > 0) && (
               <RailBlock index="03" label="ETIQUETAS">
                 <ul className="flex flex-col gap-1.5 font-mono text-xs">
-                  {genres.map((g) => (
-                    <li key={g} className="flex items-center gap-2">
+                  {genres.map(({ id, name }) => (
+                    <li key={id} className="flex items-center gap-2">
                       <span className="text-muted">#</span>
-                      <span style={{ color: vibeColor }}>{g}</span>
+                      <GenreChipButton
+                        genreId={id}
+                        className=""
+                        style={{ color: vibeColor }}
+                      >
+                        {name}
+                      </GenreChipButton>
                     </li>
                   ))}
                   {tags.map((t) => (
@@ -433,7 +444,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
 }
 
 // ── Body renderer ───────────────────────────────────────────────────────────
-function BodyBlocks({
+export function BodyBlocks({
   blocks,
   color,
   vibeColor,
@@ -609,9 +620,108 @@ function BodyBlocks({
                 ))}
               </ul>
             )
+          case 'track':
+            return <TrackBlock key={i} block={b} color={color} />
         }
       })}
     </div>
+  )
+}
+
+// ── Track block ─────────────────────────────────────────────────────────────
+function TrackBlock({
+  block,
+  color,
+}: {
+  block: Extract<ArticleBlock, { kind: 'track' }>
+  color: string
+}) {
+  const rank = block.rank
+  const meta: string[] = []
+  if (block.year !== undefined) meta.push(String(block.year))
+  if (block.bpm !== undefined) meta.push(`${block.bpm} BPM`)
+
+  return (
+    <section
+      className="my-3 grid grid-cols-[auto_1fr] gap-4 border p-4 md:p-5"
+      style={{ borderColor: '#F97316' }}
+    >
+      {/* Rank column */}
+      <div className="flex w-16 flex-col items-start gap-1 md:w-24">
+        <span className="sys-label text-muted">RANK</span>
+        <span
+          className="font-syne text-4xl font-black leading-none tabular-nums md:text-5xl"
+          style={{ color: '#F97316' }}
+        >
+          {rank !== undefined ? String(rank).padStart(2, '0') : '—'}
+        </span>
+      </div>
+
+      {/* Main column */}
+      <div className="min-w-0 flex flex-col gap-3">
+        <div className="flex gap-3 md:gap-4">
+          {/* Cover */}
+          {block.imageUrl ? (
+            <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden border border-border bg-elevated md:h-[104px] md:w-[104px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={block.imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center border border-border bg-elevated font-mono text-[10px] text-muted md:h-[104px] md:w-[104px]">
+              SIN ARTE
+            </div>
+          )}
+
+          {/* Title / meta */}
+          <div className="min-w-0 flex flex-col gap-1">
+            <p
+              className="font-mono text-[11px] tracking-widest"
+              style={{ color: '#F97316' }}
+            >
+              {block.artist}
+            </p>
+            <h3 className="font-syne text-lg font-black leading-[1.05] text-primary md:text-xl">
+              {block.title}
+            </h3>
+            {meta.length > 0 && (
+              <p className="font-mono text-[11px] text-muted">
+                {meta.join(' · ')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Commentary */}
+        {block.commentary && (
+          <p className="font-grotesk text-[14px] leading-[1.6] text-secondary md:text-[15px]">
+            {block.commentary}
+          </p>
+        )}
+
+        {/* Source link-outs */}
+        {block.embeds && block.embeds.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+            {block.embeds.map((e) => (
+              <a
+                key={e.platform}
+                href={e.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] tracking-widest transition-colors hover:bg-elevated"
+                style={{ borderColor: '#242424', color: '#888888' }}
+              >
+                {PLATFORM_LABELS[e.platform]}
+                <ExternalLink size={10} />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 

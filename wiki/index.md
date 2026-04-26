@@ -8,6 +8,7 @@
 
 - [[_schema]] — vault conventions, how to write notes
 - [[log]] — append-only ingest / query / lint record
+- [[Next Session]] — what to do when picking up work next time
 
 ## 10 — Architecture
 
@@ -22,7 +23,7 @@
 
 - [[Vibe Spectrum]] — 0 glacial → 10 volcán, the core filter axis
 - [[HP Curation System]] — decay-based prominence ranking
-- [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, partner
+- [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, listicle, partner
 - [[Partners Isolation]] — why partners never enter the main grid
 - [[Editorial Flag]] — the one editor lever (boost spawn HP)
 - [[Pinned Hero]] — single slot, portada logic
@@ -36,6 +37,11 @@
 - [[Noticias]] — `/noticias` — news only
 - [[Reviews]] — `/reviews` — reviews only
 - [[Articulos]] — `/articulos` — longform features only
+- [[Dashboard]] — `/dashboard` — auth-gated insider surface for composing new content (visual prototype)
+- [[Dashboard Drafts]] — `/dashboard/drafts` — table view of session items with edit / publish / delete actions
+- [[About]] — `/about` — identity surface: what Gradiente is + partner ecosystem
+- [[Manifesto]] — `/manifesto` — editorial declaration (placeholder copy until team writes)
+- [[Equipo]] — `/equipo` — collaborator list with GH handles + per-person bio placeholders
 
 ## 40 — Components
 
@@ -50,23 +56,48 @@
 - [[OverlayShell]] — frame chrome + CRT boot animation for every overlay
 - [[OverlayRouter]] — mount/exit state machine, picks type-specific overlay
 - [[ReaderOverlay]] — terminal reader for editorial / review / opinion / noticia
-- [[ArticuloOverlay]] — longform reader for articulo (hero-led, TOC rail, pull-quotes, footnotes, related reading)
+- [[ArticuloOverlay]] — longform reader for articulo (hero-led, TOC rail, pull-quotes, footnotes, related reading); also exports `BodyBlocks` (shared with listicle)
+- [[ListicleOverlay]] — ranked/structured list reader; consumes `BodyBlocks` + new `track` block variant
+- [[MixOverlay]] — mix reader with source tabs, decorative waveform, CONTEXTO panel, structured tracklist
 - [[EventoOverlay]] — flyer-as-hero + event info
-- [[GenericOverlay]] — fallback for mix (until dedicated)
+- [[GenericOverlay]] — fallback for types without dedicated overlays (currently nothing hits it — kept as a safety net)
+- [[Embed Primitive]] — shared platform detection + labels (consumed by MixOverlay and ListicleOverlay)
+- [[FeedHeader]] — reactive home-feed status strip; swaps to `//SUBSISTEMA · FILTRADO · X` when category filter is active
+- [[useAuth]] — visual-prototype auth context (sessionStorage-backed `admin/admin`)
+- [[LoginOverlay]] — terminal-aesthetic login modal triggered from the header
+- [[AuthBadge]] — header slot showing LOGIN ↔ DASHBOARD + LOGOUT
+- [[LivePreview]] — dashboard right-pane preview that renders the draft through its real overlay
+- [[Dashboard Forms]] — eight per-type compose forms + shared field primitives + workbench autosave + edit hydration
+- [[PublishConfirmOverlay]] — globally-mounted confirmation modal for the [[Publish Confirmation Flow]]
+- [[ShareButton]] — click-to-copy deep-link affordance in [[OverlayShell]] header
+- [[SearchOverlay]] — `/`-invoked terminal command-bar; pure substring search across mocked + drafts
+- [[GenreChipButton]] — clickable genre-chip wrapper; sets `genreFilter` + closes overlay + lands on home
+- [[BrandPageShell]] — shared chrome + section helpers for the static identity routes (`/about`, `/manifesto`, `/equipo`)
 - [[ContentFeed]] — alternative linear date-grouped feed (not wired to pages)
 - [[EventCard]] — linear event card (used by ContentFeed)
 - [[MixCard]] — linear mix card with fake waveform
 - [[ArticleCard]] — linear article card for text content
+- [[CommentsColumn]] — split-screen right rail inside overlays; chrome + scroll body + composer footer
+- [[CommentList]] — threaded renderer with role badges, ASCII reactions, depth cap, tombstones, focus pulse
+- [[CommentComposer]] — login-gated dual-variant composer (`root` / `reply`); Enter posts
+- [[SavedCommentsSection]] — dashboard `Guardados/Comentarios` surface with two-level draggable folders→files
+- [[DraggableCanvas]] — generic free-form file canvas (sessionStorage-namespaced positions, click-vs-drag threshold)
 
 ## 50 — Modules
 
-- [[types]] — `ContentItem`, `ContentType`, `VibeScore`, `Genre`, `Tag`
+- [[types]] — `ContentItem`, `ContentType`, `VibeScore`, `Genre`, `Tag` (+ frontend-only `_draftState` / `_pendingConfirm`)
 - [[mockData]] — seed dataset for all content (+ `getItemBySlug` lookup)
 - [[curation]] — spawn HP, decay, freshness, prominence, layout tiers
 - [[genres]] — the genre + tag catalogs and lookup helpers
 - [[utils]] — vibe helpers, date helpers, format helpers, filters, `getPinnedHero`
-- [[VibeContext]] — global state: vibeRange, selectedDate, calendarOpen
+- [[drafts]] — sessionStorage-backed editor items store (the [[Publish Confirmation Flow]] backbone)
+- [[VibeContext]] — global state: vibeRange, selectedDate, calendarOpen, categoryFilter
 - [[useOverlay]] — overlay context + hook, URL sync via history.replaceState
+- [[Dashboard Explorer]] — file-explorer shell wrapping every dashboard surface (sidebar + window + details), section-routed via `?section=`
+- [[comments]] — sessionStorage-backed comment store (`added` / `reactionOverrides` / `savedIds`) + hooks
+- [[mockUsers]] — 8-user roster covering all roles + role/category label maps + `getUserById` / `getUserByUsername`
+- [[mockComments]] — 25-comment seed (depth-5 thread, controversy hot-spot, tombstone, edited marker) + tree helpers
+- [[permissions]] — pure-function role/permission helpers (`hasRole`, `canEditComment`, `canModerateComment`, etc.)
 
 ## 60 — Design
 
@@ -80,9 +111,10 @@
 ## 70 — Roadmap
 
 - [[Scraper Pipeline]] — RA → review queue → live feed (core ingestion path)
-- [[Admin Dashboard]] — role-gated editor UI at `/admin`
+- [[Admin Dashboard]] — role-gated editor UI at `/admin` (real-backend version of [[Dashboard]])
 - [[Supabase Migration]] — swapping mockData for a real backend (enables scraper + admin)
 - [[CRT Shader Layer]] — full-viewport CRT post-processing; pushes NGE chrome to real terminal feel
+- [[CRT Scanline Sweep]] — small targeted variant: sweep across the home grid on category-filter changes
 - [[Three.js Islands]] — isolated 3D scenes (vibe sculpture, venue map, ASCII'd) per Canvas
 - [[HTML-on-Canvas]] — earlier exploration of canvas rendering approaches and tradeoffs
 - [[Gamification]] — HP-as-game mechanic, ideas and risks
@@ -103,3 +135,4 @@
 - [[Why Next.js App Router]] — server-first, file routing
 - [[Contained Single Surface]] — card click → overlay, never a route change
 - [[Reader Terminal Layout]] — long-form overlays are reading subsystems, flyer demotes to archival
+- [[Publish Confirmation Flow]] — three-state model (draft / pending / published) with mandatory confirmation gate

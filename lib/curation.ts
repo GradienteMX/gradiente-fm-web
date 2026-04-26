@@ -23,6 +23,7 @@ const ATTENTION_HALF_LIFE_HOURS: Record<ContentType, number> = {
   noticia: 48,
   opinion: 10 * 24,
   articulo: 14 * 24,
+  listicle: 14 * 24,
   partner: 365 * 24, // partners don't decay — rail orders chronologically
 }
 
@@ -35,6 +36,7 @@ const FRESHNESS_HALF_LIFE_HOURS: Record<ContentType, number> = {
   noticia: 3 * 24,
   opinion: 14 * 24,
   articulo: 21 * 24,
+  listicle: 21 * 24,
   partner: 365 * 24,
 }
 
@@ -98,7 +100,7 @@ export type PeakByType = Record<ContentType, number>
 
 export function computePeakByType(items: ContentItem[], now: Date = new Date()): PeakByType {
   const peaks: PeakByType = {
-    evento: 1, mix: 1, editorial: 1, review: 1, noticia: 1, opinion: 1, articulo: 1, partner: 1,
+    evento: 1, mix: 1, editorial: 1, review: 1, noticia: 1, opinion: 1, articulo: 1, listicle: 1, partner: 1,
   }
   for (const item of items) {
     const hp = currentHp(item, now)
@@ -115,6 +117,7 @@ const TYPE_SCORE_MULTIPLIER: Partial<Record<ContentType, number>> = {
   opinion:   1.2,
   editorial: 1.1,
   articulo:  1.3,
+  listicle:  1.3,
   noticia:   0.8,
 }
 

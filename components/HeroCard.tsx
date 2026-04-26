@@ -2,10 +2,12 @@
 
 import type { ContentItem } from '@/lib/types'
 import { vibeToColor, categoryColor, fmtDateShort } from '@/lib/utils'
-import { getGenreNames, getTagNames } from '@/lib/genres'
+import { getGenreById, getTagNames } from '@/lib/genres'
+import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { Clock, ArrowRight } from 'lucide-react'
 import { useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
+import { useVibe } from '@/context/VibeContext'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -15,6 +17,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   editorial: 'EDITORIAL',
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
+  listicle: 'LISTA',
   partner: 'PARTNER',
 }
 
@@ -24,10 +27,18 @@ interface HeroCardProps {
 
 export function HeroCard({ item }: HeroCardProps) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres)
+  const genres = item.genres.map((id) => ({
+    id,
+    name: getGenreById(id)?.name ?? id,
+  }))
   const tags = getTagNames(item.tags).slice(0, 3)
   const { open } = useOverlay()
+  const { categoryFilter } = useVibe()
   const ref = useRef<HTMLElement>(null)
+
+  // When the category filter is active and doesn't match this hero's type,
+  // hide it — the rest of the home grid filters in place.
+  if (categoryFilter && item.type !== categoryFilter) return null
 
   const handleOpen = () => {
     const rect = ref.current?.getBoundingClientRect()
@@ -173,14 +184,15 @@ export function HeroCard({ item }: HeroCardProps) {
           <div className="mt-6">
             {/* Genre + tag chips */}
             <div className="mb-4 flex flex-wrap gap-1.5">
-              {genres.map((g) => (
-                <span
-                  key={g}
+              {genres.map(({ id, name }) => (
+                <GenreChipButton
+                  key={id}
+                  genreId={id}
                   className="px-2 py-0.5 font-mono text-[9px] tracking-wide"
                   style={{ backgroundColor: `${vibeColor}18`, color: vibeColor }}
                 >
-                  {g}
-                </span>
+                  {name}
+                </GenreChipButton>
               ))}
               {tags.map((t) => (
                 <span

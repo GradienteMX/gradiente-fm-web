@@ -11,6 +11,7 @@ interface MixCardProps {
 export function MixCard({ item }: MixCardProps) {
   const vibeColor = vibeToColor(item.vibe)
   const genres = getGenreNames(item.genres).slice(0, 3)
+  const primaryUrl = item.embeds?.[0]?.url ?? item.mixUrl ?? '#'
 
   return (
     <article className="group relative border border-border bg-surface transition-colors hover:border-secondary hover:bg-elevated">
@@ -20,7 +21,7 @@ export function MixCard({ item }: MixCardProps) {
       <div className="flex items-stretch gap-0">
         {/* Play zone */}
         <a
-          href={item.mixUrl ?? '#'}
+          href={primaryUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex w-14 flex-shrink-0 items-center justify-center border-r border-border transition-colors hover:bg-elevated"

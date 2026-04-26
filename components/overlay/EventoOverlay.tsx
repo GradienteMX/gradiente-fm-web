@@ -11,7 +11,8 @@ import {
   vibeToColor,
   vibeToLabel,
 } from '@/lib/utils'
-import { getGenreNames, getTagNames } from '@/lib/genres'
+import { getGenreById, getTagNames } from '@/lib/genres'
+import { GenreChipButton } from '@/components/genre/GenreChipButton'
 
 interface Props {
   item: ContentItem
@@ -19,7 +20,10 @@ interface Props {
 
 export function EventoOverlay({ item }: Props) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres)
+  const genres = item.genres.map((id) => ({
+    id,
+    name: getGenreById(id)?.name ?? id,
+  }))
   const tags = getTagNames(item.tags)
 
   return (
@@ -180,14 +184,15 @@ export function EventoOverlay({ item }: Props) {
         {/* Genres + tags */}
         {(genres.length > 0 || tags.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
-            {genres.map((g) => (
-              <span
-                key={g}
+            {genres.map(({ id, name }) => (
+              <GenreChipButton
+                key={id}
+                genreId={id}
                 className="px-2 py-0.5 font-mono text-[10px] tracking-wide"
                 style={{ backgroundColor: `${vibeColor}22`, color: vibeColor }}
               >
-                {g}
-              </span>
+                {name}
+              </GenreChipButton>
             ))}
             {tags.map((t) => (
               <span

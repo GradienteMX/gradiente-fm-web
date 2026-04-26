@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { AuthBadge } from '@/components/auth/AuthBadge'
 
 const NAV_LINKS = [
   { href: '/',           label: 'HOME',       code: '00' },
@@ -180,6 +181,9 @@ export function Navigation() {
             </span>
           </div>
         </div>
+
+        {/* Auth badge — LOGIN / DASHBOARD slot */}
+        <AuthBadge />
 
         {/* Mobile toggle */}
         <button

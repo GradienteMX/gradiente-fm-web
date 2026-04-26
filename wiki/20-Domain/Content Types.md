@@ -2,24 +2,25 @@
 type: domain
 status: current
 tags: [content, types, schema]
-updated: 2026-04-23
+updated: 2026-04-24
 ---
 
 # Content Types
 
-> Eight types, one shape. `ContentItem` is a discriminated union by `type`.
+> Nine types, one shape. `ContentItem` is a discriminated union by `type`.
 
-## The eight types
+## The nine types
 
 | Type | Purpose | Key fields |
 |---|---|---|
 | **evento** | Live event in CDMX scene | `date`, `endDate`, `venue`, `venueCity`, `artists`, `ticketUrl`, `price` |
-| **mix** | DJ mix / radio show | `mixUrl`, `duration`, `tracklist`, `author` |
+| **mix** | DJ mix / radio show | `embeds`, `duration`, `tracklist`, `author`, `mixSeries`, `recordedIn`, `mixFormat`, `bpmRange`, `musicalKey`, `mixStatus` |
 | **noticia** | Short news item | `bodyPreview` (optional) |
 | **review** | Record or event review | `author`, `readTime`, `bodyPreview` |
 | **editorial** | Long-form editorial | `author`, `readTime`, `bodyPreview` |
 | **opinion** | Opinion column | `author`, `readTime`, `bodyPreview` |
 | **articulo** | Deep-dive longform feature | `author`, `readTime`, `articleBody`, `footnotes`, `heroCaption` |
+| **listicle** | Ranked/structured list feature (e.g. "Top N tracks") | `author`, `articleBody` with `track` blocks, `heroCaption` |
 | **partner** | Sponsor / label / venue in rail | `partnerKind`, `partnerUrl`, `partnerLastUpdated` |
 
 See [lib/types.ts](../../lib/types.ts) for the canonical `ContentItem` interface.
@@ -61,10 +62,22 @@ Everything else is optional and type-gated by convention.
 
 ### mix
 
-- `mixUrl` points to SoundCloud, Mixcloud, Bandcamp, or self-hosted audio.
-- `duration` is a string `"HH:MM:SS"` — no parsing, just display.
-- `tracklist` is an array of strings, each a "Artist — Track" line. Not yet rendered in the UI.
-- [[MixCard]] has a decorative fake waveform. [[ContentCard]] doesn't (yet).
+As of 2026-04-24, mix has a rich metadata profile driven by [[MixOverlay]] and the [[Embed Primitive]]:
+
+- `embeds: MixEmbed[]` — multi-platform sources (`soundcloud`, `youtube`, `spotify`, `bandcamp`, `mixcloud`). Drives the overlay source tabs.
+- `mixUrl` — legacy/card-level primary link. Use `embeds[0]?.url` in new code; `mixUrl` still exists for backward-compat on existing entries.
+- `duration` — `"H:MM:SS"` or `"MM:SS"`. Rendered as "1 h 04 min" in the left meta rail and as raw timestamp in the player.
+- `tracklist: MixTrack[]` — structured rows `{ artist, title, bpm? }`. Now rendered as a numbered table in the `03 TRACKLIST / ETIQUETAS` panel.
+- `mixSeries` — "Espectro Mix", "Guest Mix", etc.
+- `recordedIn` — "CDMX", "Club Japan", etc.
+- `mixFormat` — "DJ Set", "Live Session", "Radio Show".
+- `bpmRange` — "132-140".
+- `musicalKey` — "D#m".
+- `mixStatus` — `'disponible' | 'exclusivo' | 'archivo' | 'proximamente'`.
+
+Audio playback is currently a visual prototype only: transport controls are present but non-functional, ABRIR FUENTE / `O` hotkey opens the active source in a new tab. Real playback is deferred to the audio-context session — see [[Open Questions]].
+
+[[MixCard]] (linear list) still uses a decorative fake waveform. [[ContentCard]] (mosaic) is unchanged.
 
 ### noticia / review / editorial / opinion
 
@@ -83,6 +96,19 @@ Unique fields vs. the other reader types:
 - `heroCaption?: string` — caption for the lead image (unlike [[ReaderOverlay]], `articulo` leads with the hero image rather than demoting it).
 
 `articulo` is **not** in the [[Pinned Hero]] allowlist — it competes in the main feed but doesn't auto-promote to the portada slot. See [[ArticuloOverlay]] for the reader surface.
+
+### listicle
+
+Ranked/structured list features — "Top N tracks that defined X", countdowns, editorial recounts. Architecturally a sibling of `articulo`: same `ArticleBlock[]` body, same prose primitives, but the body almost always includes one or more `track` blocks (new `kind: 'track'` variant on [[ArticleBlock]]).
+
+Unique fields vs. `articulo`:
+
+- Uses the same `articleBody?: ArticleBlock[]` + `heroCaption?` fields as `articulo`.
+- The new `track` block: `{ kind: 'track', rank?, artist, title, year?, bpm?, imageUrl?, embeds?: MixEmbed[], commentary? }`. Embeds reuse the Mix `MixEmbed` shape — shared infrastructure across mix + listicle (and any articulo that wants to include track references).
+
+Rendered by [[ListicleOverlay]]: hero + lede, then rank-badged track cards interleaved with prose. Left rail shows a countdown/ascending/unranked list index; right rail carries the author and ETIQUETAS. Currently each track exposes its sources as **link-out buttons** (open in new tab) — inline iframe embedding is deferred to the audio-context session for the same reason as mix playback. See [[Open Questions]].
+
+Listicle is **not** in the [[Pinned Hero]] allowlist.
 
 ### partner
 

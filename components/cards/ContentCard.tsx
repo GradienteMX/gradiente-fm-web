@@ -2,11 +2,21 @@
 
 import type { ContentItem } from '@/lib/types'
 import { vibeToColor, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
-import { getGenreNames, getTagNames } from '@/lib/genres'
-import { Play, Clock, MapPin, Ticket } from 'lucide-react'
+import { getGenreById, getTagNames } from '@/lib/genres'
+import { Play, Clock, MapPin, Ticket, Check } from 'lucide-react'
 import Image from 'next/image'
-import { useRef, type KeyboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
+import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
+import { GenreChipButton } from '@/components/genre/GenreChipButton'
+
+// Card-side helper — keeps ids + names paired for click-to-filter chips.
+function genreEntries(ids: string[], limit: number) {
+  return ids.slice(0, limit).map((id) => ({
+    id,
+    name: getGenreById(id)?.name ?? id,
+  }))
+}
 
 export type CardSize = 'sm' | 'md' | 'lg'
 
@@ -18,6 +28,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   editorial: 'EDITORIAL',
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
+  listicle: 'LISTA',
   partner: 'PARTNER',
 }
 
@@ -29,6 +40,8 @@ interface ContentCardProps {
 // ── Shared image layer ────────────────────────────────────────────────────────
 function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
   const vibeColor = vibeToColor(item.vibe)
+  const isPending = item._pendingConfirm === true
+  const isDraftOnly = item._draftState === 'draft' && !isPending
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -36,7 +49,9 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
         <img
           src={item.imageUrl}
           alt={item.title}
-          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          className={`h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${
+            isPending ? 'pending-cover-flicker' : ''
+          }`}
           loading="lazy"
         />
       ) : (
@@ -52,8 +67,11 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
         style={{ backgroundColor: vibeColor, opacity: 0.8 }}
       />
 
+      {/* Pending scanline sweep — single thin line that traverses top→bottom */}
+      {isPending && <div className="pending-scanline" aria-hidden />}
+
       {/* Type badge — top left */}
-      <div className="absolute left-3 top-3 flex items-center gap-1.5">
+      <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
         <span
           className="bg-black/70 px-2 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
           style={{ color: categoryColor(item.type) }}
@@ -63,6 +81,31 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
         {item.editorial && (
           <span className="bg-sys-red/90 px-1.5 py-1 font-mono text-[10px] tracking-widest text-white backdrop-blur-sm">
             ★
+          </span>
+        )}
+        {isPending && (
+          <span
+            className="pending-chip-flicker border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
+            style={{
+              borderColor: '#E63329',
+              color: '#E63329',
+              boxShadow: '0 0 8px rgba(230,51,41,0.5)',
+            }}
+            title="Pendiente de confirmar — usa el botón [✓ CONFIRMAR] para publicar"
+          >
+            [PENDIENTE·CONFIRMAR]
+          </span>
+        )}
+        {isDraftOnly && (
+          <span
+            className="border bg-black/80 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
+            style={{
+              borderColor: '#F97316',
+              color: '#F97316',
+            }}
+            title="Borrador local — solo visible en esta sesión"
+          >
+            [DRAFT·SESIÓN]
           </span>
         )}
       </div>
@@ -81,7 +124,7 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
 // ── SM card — 1×1 ────────────────────────────────────────────────────────────
 function SmCard({ item }: { item: ContentItem }) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres).slice(0, 2)
+  const genres = genreEntries(item.genres, 2)
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
@@ -116,10 +159,15 @@ function SmCard({ item }: { item: ContentItem }) {
 
         {genres.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {genres.map((g) => (
-              <span key={g} className="font-mono text-[9px]" style={{ color: vibeColor }}>
-                [{g}]
-              </span>
+            {genres.map(({ id, name }) => (
+              <GenreChipButton
+                key={id}
+                genreId={id}
+                className="font-mono text-[9px]"
+                style={{ color: vibeColor }}
+              >
+                [{name}]
+              </GenreChipButton>
             ))}
           </div>
         )}
@@ -131,7 +179,7 @@ function SmCard({ item }: { item: ContentItem }) {
 // ── MD card — 2×1 (wide) or 1×2 (tall) ──────────────────────────────────────
 function MdCard({ item }: { item: ContentItem }) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres).slice(0, 3)
+  const genres = genreEntries(item.genres, 3)
   const tags = getTagNames(item.tags).slice(0, 3)
   const time = item.date ? fmtTime(item.date) : ''
   const isMix = item.type === 'mix'
@@ -190,10 +238,15 @@ function MdCard({ item }: { item: ContentItem }) {
               {item.readTime} min
             </span>
           )}
-          {genres.slice(0, 2).map((g) => (
-            <span key={g} className="font-mono text-[9px]" style={{ color: vibeColor }}>
-              [{g}]
-            </span>
+          {genres.slice(0, 2).map(({ id, name }) => (
+            <GenreChipButton
+              key={id}
+              genreId={id}
+              className="font-mono text-[9px] transition-colors hover:text-white"
+              style={{ color: vibeColor }}
+            >
+              [{name}]
+            </GenreChipButton>
           ))}
           {item.price && (
             <span className="ml-auto flex items-center gap-1 font-mono text-[9px] text-secondary">
@@ -210,7 +263,7 @@ function MdCard({ item }: { item: ContentItem }) {
 // ── LG card — 2×2 (big featured) ─────────────────────────────────────────────
 function LgCard({ item }: { item: ContentItem }) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres).slice(0, 4)
+  const genres = genreEntries(item.genres, 4)
   const tags = getTagNames(item.tags).slice(0, 4)
   const time = item.date ? fmtTime(item.date) : ''
 
@@ -265,14 +318,15 @@ function LgCard({ item }: { item: ContentItem }) {
 
         {/* Genres + tags */}
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {genres.map((g) => (
-            <span
-              key={g}
+          {genres.map(({ id, name }) => (
+            <GenreChipButton
+              key={id}
+              genreId={id}
               className="px-2 py-0.5 font-mono text-[9px] tracking-wide"
               style={{ backgroundColor: `${vibeColor}20`, color: vibeColor }}
             >
-              {g}
-            </span>
+              {name}
+            </GenreChipButton>
           ))}
           {tags.map((t) => (
             <span key={t} className="border border-white/10 px-2 py-0.5 font-mono text-[9px] text-muted">
@@ -333,7 +387,9 @@ function LgCard({ item }: { item: ContentItem }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
   const { open } = useOverlay()
+  const { openConfirm } = usePublishConfirm()
   const ref = useRef<HTMLDivElement>(null)
+  const isPending = item._pendingConfirm === true
 
   const handleOpen = () => {
     const rect = ref.current?.getBoundingClientRect()
@@ -352,6 +408,16 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
     }
   }
 
+  // Auto-scroll the pending card into view on mount, so editor sees the
+  // glitching card without hunting through the feed.
+  useEffect(() => {
+    if (!isPending || !ref.current) return
+    const t = setTimeout(() => {
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120) // brief delay so card finishes mounting
+    return () => clearTimeout(t)
+  }, [isPending])
+
   const Inner = size === 'lg' ? LgCard : size === 'md' ? MdCard : SmCard
 
   return (
@@ -362,9 +428,35 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`Abrir ${item.title}`}
-      className="h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red"
+      className={`relative h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red ${
+        isPending ? 'pending-glitch border' : ''
+      }`}
+      style={isPending ? { borderWidth: 1 } : undefined}
     >
       <Inner item={item} />
+
+      {isPending && (
+        <button
+          type="button"
+          onClick={(e) => {
+            // Don't bubble — we don't want the card's overlay to open when
+            // the editor is reaching for the confirm button.
+            e.stopPropagation()
+            openConfirm(item.id)
+          }}
+          aria-label="Confirmar publicación"
+          title="Confirmar publicación"
+          className="absolute right-2 top-10 z-30 flex items-center gap-1.5 border bg-black/85 px-2.5 py-1.5 font-mono text-[10px] tracking-widest backdrop-blur-sm transition-colors hover:bg-black"
+          style={{
+            borderColor: '#F97316',
+            color: '#F97316',
+            boxShadow: '0 0 10px rgba(249,115,22,0.55), 0 0 20px rgba(249,115,22,0.25)',
+          }}
+        >
+          <Check size={11} strokeWidth={2.5} />
+          ✓ CONFIRMAR
+        </button>
+      )}
     </div>
   )
 }

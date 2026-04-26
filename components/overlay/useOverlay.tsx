@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 const PARAM = 'item'
 
@@ -28,11 +29,6 @@ interface OverlayContextValue {
 
 const OverlayContext = createContext<OverlayContextValue | null>(null)
 
-function readSlugFromUrl(): string | null {
-  if (typeof window === 'undefined') return null
-  return new URLSearchParams(window.location.search).get(PARAM)
-}
-
 function writeSlugToUrl(slug: string | null) {
   if (typeof window === 'undefined') return
   const url = new URL(window.location.href)
@@ -42,16 +38,24 @@ function writeSlugToUrl(slug: string | null) {
 }
 
 export function OverlayProvider({ children }: { children: ReactNode }) {
-  const [openSlug, setOpenSlugState] = useState<string | null>(null)
+  // Local state is the source of truth — but it stays synced with the URL
+  // both directions:
+  //   - external URL change (back/forward, next/link, manual edit) → local state
+  //   - programmatic open/close → URL via writeSlugToUrl
+  // Reading useSearchParams here makes the effect re-run on Next.js client
+  // routing too, which `popstate` alone misses.
+  const searchParams = useSearchParams()
+  const slugFromUrl = searchParams?.get(PARAM) ?? null
+
+  const [openSlug, setOpenSlugState] = useState<string | null>(slugFromUrl)
   const [originRect, setOriginRect] = useState<OverlayOrigin | null>(null)
 
-  // Hydrate state from URL on mount + respond to back/forward navigation.
+  // Sync external URL changes into local state. Only updates when the URL's
+  // slug differs from what we already have, so programmatic opens (which
+  // also write the URL) don't double-fire.
   useEffect(() => {
-    setOpenSlugState(readSlugFromUrl())
-    const handler = () => setOpenSlugState(readSlugFromUrl())
-    window.addEventListener('popstate', handler)
-    return () => window.removeEventListener('popstate', handler)
-  }, [])
+    setOpenSlugState((prev) => (prev === slugFromUrl ? prev : slugFromUrl))
+  }, [slugFromUrl])
 
   const setOpenSlug = useCallback((slug: string | null) => {
     setOpenSlugState(slug)

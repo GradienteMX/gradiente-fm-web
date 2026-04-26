@@ -1,6 +1,7 @@
 import { CalendarSidebar } from '@/components/CalendarSidebar'
 import { CategoryRail } from '@/components/CategoryRail'
-import { ContentGrid } from '@/components/ContentGrid'
+import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
+import { FeedHeader } from '@/components/FeedHeader'
 import { HeroCard } from '@/components/HeroCard'
 import { PartnersRail } from '@/components/PartnersRail'
 import { MOCK_ITEMS } from '@/lib/mockData'
@@ -34,19 +35,12 @@ export default function HomePage() {
 
           {/* Main feed header */}
           <div className="mb-4 flex items-start justify-between">
-            <div>
-              <div className="nge-divider mb-1">
-                <span className="font-mono text-xs tracking-widest text-primary">TODO LO QUE VIENE</span>
-              </div>
-              <p className="sys-label">
-                {gridItems.length} ENTRADAS · PROMINENCIA ORGÁNICA · SEÑAL + FRESCURA
-              </p>
-            </div>
+            <FeedHeader totalCount={gridItems.length} />
             <span className="sys-label hidden text-sys-green md:block">▶ FEED ACTIVO</span>
           </div>
 
-          {/* Prominence-driven mosaic */}
-          <ContentGrid items={gridItems} mode="home" />
+          {/* Prominence-driven mosaic — wrapper merges any session drafts */}
+          <HomeFeedWithDrafts items={gridItems} mode="home" />
         </div>
 
         {/* Independent partners rail — chronological, no ranking, no vibe filter */}

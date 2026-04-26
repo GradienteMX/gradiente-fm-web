@@ -2,7 +2,8 @@
 
 import type { ContentItem } from '@/lib/types'
 import { fmtDateFull, vibeToColor, vibeToLabel } from '@/lib/utils'
-import { getGenreNames, getTagNames } from '@/lib/genres'
+import { getGenreById, getTagNames } from '@/lib/genres'
+import { GenreChipButton } from '@/components/genre/GenreChipButton'
 
 interface Props {
   item: ContentItem
@@ -12,7 +13,10 @@ interface Props {
 // Each of these will get its own polished component — this is the fallback during MVP build-out.
 export function GenericOverlay({ item }: Props) {
   const vibeColor = vibeToColor(item.vibe)
-  const genres = getGenreNames(item.genres)
+  const genres = item.genres.map((id) => ({
+    id,
+    name: getGenreById(id)?.name ?? id,
+  }))
   const tags = getTagNames(item.tags)
 
   return (
@@ -99,30 +103,17 @@ export function GenericOverlay({ item }: Props) {
           </div>
         )}
 
-        {item.tracklist && item.tracklist.length > 0 && (
-          <section className="border-t border-border pt-4">
-            <h2 className="sys-label mb-3">TRACKLIST</h2>
-            <ol className="flex flex-col gap-1.5 font-mono text-xs text-secondary">
-              {item.tracklist.map((t, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="text-muted">{String(i + 1).padStart(2, '0')}</span>
-                  <span>{t}</span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
-
         {(genres.length > 0 || tags.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
-            {genres.map((g) => (
-              <span
-                key={g}
+            {genres.map(({ id, name }) => (
+              <GenreChipButton
+                key={id}
+                genreId={id}
                 className="px-2 py-0.5 font-mono text-[10px] tracking-wide"
                 style={{ backgroundColor: `${vibeColor}22`, color: vibeColor }}
               >
-                {g}
-              </span>
+                {name}
+              </GenreChipButton>
             ))}
             {tags.map((t) => (
               <span
