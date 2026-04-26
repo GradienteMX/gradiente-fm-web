@@ -35,6 +35,12 @@ Reply ids follow the `fp-{threadShortRef}-NN` mock convention (e.g. `fp-001-01`,
 - fr-001 has a depth-of-conversation thread with `>>fp-001-01` quoted by fp-001-02
 - fr-003 has multi-quote (`>>fp-003-01 >>fp-003-02`) on fp-003-03
 
+## GitHub Pages basePath
+
+Seed `imageUrl` strings are written as `/flyers/*.jpg` for readability. At module load, `MOCK_THREADS` and `MOCK_REPLIES` are derived from internal `RAW_THREADS` / `RAW_REPLIES` via `.map()` that runs `prefixImagePath`, prepending `process.env.NEXT_PUBLIC_BASE_PATH` (set to `/gradiente-fm-web` when `GITHUB_ACTIONS=true`, empty locally). Same pattern as [[mockData]] — see commit 12a4b04 for the original fix.
+
+User-uploaded session images are `data:` URLs and don't start with `/`, so they pass through untouched.
+
 ## Helpers
 
 - `getReplyCount(threadId, replies)` — count for tile badge.

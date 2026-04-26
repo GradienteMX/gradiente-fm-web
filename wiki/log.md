@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-04-26 · INGEST · Foro basePath fix for GitHub Pages
+
+User reported foro mock images don't appear on the deployed Pages site (the home grid did, since [[mockData]] already had the fix from commit 12a4b04). Same root cause: GH Pages serves under `/gradiente-fm-web/`, and `<img src="/flyers/...">` doesn't get auto-prefixed by Next.js — only `next/image` and asset imports do. Applied the same `BASE_PATH` prefix pattern to [[mockForo]]: internal `RAW_THREADS` / `RAW_REPLIES` → exported `MOCK_THREADS` / `MOCK_REPLIES` derived via `.map()` that prepends `process.env.NEXT_PUBLIC_BASE_PATH` to any `imageUrl` starting with `/`. Data URLs (user-uploaded session images) pass through untouched.
+
+Verified the inlined `/gradiente-fm-web` literal lands in the foro client chunk under a `GITHUB_ACTIONS=true` build, and that the runtime `.map()` produces the correct prefixed paths. Locally `NEXT_PUBLIC_BASE_PATH` is empty so images still resolve as `/flyers/orbital-omen.jpg`.
+
+---
+
 ## 2026-04-26 · INGEST · Foro (imageboard-style discussion)
 
 A new top-level destination at `/foro` — imageboard-style threaded discussion, kept fully isolated from the curated content grid. Threads aren't `ContentItem`s, never enter the home feed, never get HP/curation scoring. See [[Foro]] for the full route doc.
