@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ExplorerSection } from './types'
+import { useSavedItems } from '@/lib/saves'
+import { useSavedComments } from '@/lib/comments'
 
 type LucideIconType = LucideIcon
 
@@ -54,6 +56,25 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
     guardados: true,
   })
 
+  // Saved-content counts per Guardados slot. Live-updates as the user
+  // toggles bookmarks anywhere on the public side.
+  const savedItems = useSavedItems()
+  const savedComments = useSavedComments()
+  const savedCounts = useMemo(() => {
+    const by = (...types: string[]) =>
+      savedItems.filter((it) => types.includes(it.type)).length
+    return {
+      feed: savedItems.length,
+      agenda: by('evento'),
+      noticias: by('noticia'),
+      reviews: by('review'),
+      mixes: by('mix'),
+      editoriales: by('editorial', 'opinion'),
+      articulos: by('articulo', 'listicle'),
+      comentarios: savedComments.length,
+    }
+  }, [savedItems, savedComments])
+
   // Top-level items the user can actually act on today.
   const flatItems: SidebarItem[] = useMemo(
     () => [
@@ -66,9 +87,7 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
     [draftCount, publishedCount],
   )
 
-  // Guardados — saved content from the public feed. Stub for now; the save
-  // affordance lives elsewhere on the public side and isn't built yet, but the
-  // folder reserves the destination so the mental model is clear.
+  // Guardados — bookmarked content + saved comments. Counts live-update.
   const folders: SidebarFolder[] = useMemo(
     () => [
       {
@@ -76,18 +95,18 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
         label: 'Guardados',
         Icon: Bookmark,
         items: [
-          { section: 'guardados-feed', label: 'Feed', Icon: Rss, indent: true, stub: true },
-          { section: 'guardados-agenda', label: 'Agenda', Icon: Calendar, indent: true, stub: true },
-          { section: 'guardados-noticias', label: 'Noticias', Icon: Newspaper, indent: true, stub: true },
-          { section: 'guardados-reviews', label: 'Reviews', Icon: Star, indent: true, stub: true },
-          { section: 'guardados-mixes', label: 'Mixes', Icon: Disc3, indent: true, stub: true },
-          { section: 'guardados-editoriales', label: 'Editoriales', Icon: PenLine, indent: true, stub: true },
-          { section: 'guardados-articulos', label: 'Artículos', Icon: ScrollText, indent: true, stub: true },
-          { section: 'guardados-comentarios', label: 'Comentarios', Icon: MessageSquare, indent: true },
+          { section: 'guardados-feed', label: 'Feed', Icon: Rss, indent: true, badge: savedCounts.feed },
+          { section: 'guardados-agenda', label: 'Agenda', Icon: Calendar, indent: true, badge: savedCounts.agenda },
+          { section: 'guardados-noticias', label: 'Noticias', Icon: Newspaper, indent: true, badge: savedCounts.noticias },
+          { section: 'guardados-reviews', label: 'Reviews', Icon: Star, indent: true, badge: savedCounts.reviews },
+          { section: 'guardados-mixes', label: 'Mixes', Icon: Disc3, indent: true, badge: savedCounts.mixes },
+          { section: 'guardados-editoriales', label: 'Editoriales', Icon: PenLine, indent: true, badge: savedCounts.editoriales },
+          { section: 'guardados-articulos', label: 'Artículos', Icon: ScrollText, indent: true, badge: savedCounts.articulos },
+          { section: 'guardados-comentarios', label: 'Comentarios', Icon: MessageSquare, indent: true, badge: savedCounts.comentarios },
         ],
       },
     ],
-    [],
+    [savedCounts],
   )
 
   return (

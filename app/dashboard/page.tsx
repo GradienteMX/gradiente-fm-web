@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
+import { useSavedItems } from '@/lib/saves'
 import { categoryColor } from '@/lib/utils'
 
 import { ExplorerShell } from '@/components/dashboard/explorer/ExplorerShell'
@@ -126,9 +127,8 @@ export default function DashboardPage() {
   const draftItems = useDraftItems()
   const draftCount = draftItems.filter((i) => i._draftState === 'draft').length
   const publishedCount = draftItems.filter((i) => i._draftState === 'published').length
-  // Guardados isn't wired yet — saved-from-feed surface doesn't exist on the
-  // public side. When it does, this becomes a real count.
-  const savedCount = 0
+  const savedItems = useSavedItems()
+  const savedCount = savedItems.length
   const lastEditedAt = useMemo(() => {
     if (draftItems.length === 0) return null
     return draftItems
@@ -401,19 +401,23 @@ function SectionBody({
     case 'profile':
       return <ProfileSection />
     case 'guardados-feed':
-      return <GuardadosSection filter={null} />
+      return <GuardadosSection filter={null} filterKey="feed" />
     case 'guardados-agenda':
-      return <GuardadosSection filter="evento" />
+      return <GuardadosSection filter={['evento']} filterKey="agenda" />
     case 'guardados-noticias':
-      return <GuardadosSection filter="noticia" />
+      return <GuardadosSection filter={['noticia']} filterKey="noticias" />
     case 'guardados-reviews':
-      return <GuardadosSection filter="review" />
+      return <GuardadosSection filter={['review']} filterKey="reviews" />
     case 'guardados-mixes':
-      return <GuardadosSection filter="mix" />
+      return <GuardadosSection filter={['mix']} filterKey="mixes" />
     case 'guardados-editoriales':
-      return <GuardadosSection filter="editorial" />
+      // Editoriales slot covers both `editorial` and `opinion` — they read
+      // editorially, no need to fragment them in the saves view.
+      return <GuardadosSection filter={['editorial', 'opinion']} filterKey="editoriales" />
     case 'guardados-articulos':
-      return <GuardadosSection filter="articulo" />
+      // Articulos slot covers `articulo` and `listicle` — both are feature-
+      // length pieces; listicles are just structured lists rather than prose.
+      return <GuardadosSection filter={['articulo', 'listicle']} filterKey="articulos" />
     case 'guardados-comentarios':
       return <SavedCommentsSection />
     default:

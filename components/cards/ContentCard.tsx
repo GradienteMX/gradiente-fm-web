@@ -9,6 +9,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { SavedBadge } from './SavedBadge'
 
 // Card-side helper — keeps ids + names paired for click-to-filter chips.
 function genreEntries(ids: string[], limit: number) {
@@ -66,6 +67,11 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
         className="absolute right-0 top-0 h-1 w-full"
         style={{ backgroundColor: vibeColor, opacity: 0.8 }}
       />
+
+      {/* Saved indicator — top-right corner, only visible when bookmarked */}
+      <div className="absolute right-3 top-3">
+        <SavedBadge itemId={item.id} />
+      </div>
 
       {/* Pending scanline sweep — single thin line that traverses top→bottom */}
       {isPending && <div className="pending-scanline" aria-hidden />}

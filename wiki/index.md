@@ -82,6 +82,9 @@
 - [[CommentComposer]] — login-gated dual-variant composer (`root` / `reply`); Enter posts
 - [[SavedCommentsSection]] — dashboard `Guardados/Comentarios` surface with two-level draggable folders→files
 - [[DraggableCanvas]] — generic free-form file canvas (sessionStorage-namespaced positions, click-vs-drag threshold)
+- [[SaveItemButton]] — `★ GUARDAR / ★ GUARDADO` chip in OverlayShell header; login-gated
+- [[SavedBadge]] — tiny orange `★` chip on cards when item is saved; renders null otherwise
+- [[GuardadosSection]] — dashboard `Guardados/*` surfaces; DraggableCanvas grid filtered by content type
 
 ## 50 — Modules
 
@@ -95,6 +98,7 @@
 - [[useOverlay]] — overlay context + hook, URL sync via history.replaceState
 - [[Dashboard Explorer]] — file-explorer shell wrapping every dashboard surface (sidebar + window + details), section-routed via `?section=`
 - [[comments]] — sessionStorage-backed comment store (`added` / `reactionOverrides` / `savedIds`) + hooks
+- [[saves]] — sessionStorage-backed save-from-feed store; resolves saved ids across MOCK_ITEMS + drafts
 - [[mockUsers]] — 8-user roster covering all roles + role/category label maps + `getUserById` / `getUserByUsername`
 - [[mockComments]] — 25-comment seed (depth-5 thread, controversy hot-spot, tombstone, edited marker) + tree helpers
 - [[permissions]] — pure-function role/permission helpers (`hasRole`, `canEditComment`, `canModerateComment`, etc.)

@@ -4,6 +4,7 @@ import type { ContentItem } from '@/lib/types'
 import { vibeToColor, categoryColor, fmtDateShort } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { SavedBadge } from '@/components/cards/SavedBadge'
 import { Clock, ArrowRight } from 'lucide-react'
 import { useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
@@ -120,6 +121,11 @@ export function HeroCard({ item }: HeroCardProps) {
             >
               //{TYPE_LABEL[item.type]}
             </span>
+          </div>
+
+          {/* Saved indicator — top-right corner, only when bookmarked */}
+          <div className="absolute right-4 top-4">
+            <SavedBadge itemId={item.id} />
           </div>
 
           {/* NGE bracket — bottom left corner */}

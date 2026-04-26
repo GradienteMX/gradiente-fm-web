@@ -8,6 +8,36 @@
 
 ---
 
+## 2026-04-26 · INGEST · Save-from-feed flow
+
+Closes the long-deferred Guardados/* slot. Users can now bookmark publications from the public side and review them in the dashboard alongside saved comments.
+
+**Storage layer** [[saves]]. `gradiente:saves` sessionStorage with shape `{ savedIds: string[] }`. Mirrors the [[comments]] store idiom — listener-pattern hooks (`useSavedItems`, `useIsItemSaved`), pure-function writers (`toggleSavedItem`, `clearSavedItems`). Resolver looks in `MOCK_ITEMS` first, falls back to [[drafts]] via `getItemById` so session-published items are saveable too. Items whose ids no longer resolve are silently dropped — no ghost rows when a user deletes a saved draft.
+
+**Public-side affordance:**
+- [[SaveItemButton]] — `★ GUARDAR / ★ GUARDADO` chip in the [[OverlayShell]] header, next to [[ShareButton]]. Login-gated, orange-when-active.
+- [[SavedBadge]] — tiny orange `★` chip in the top-right corner of every [[ContentCard]] and [[HeroCard]]. Renders `null` when not saved so the unsaved feed has zero added chrome. Distinct from the red editorial-flag mark by both color (orange vs red) and position (top-right vs top-left).
+
+**Dashboard surface.** [[GuardadosSection]] replaces the previous placeholder body. Filter prop generalized from `ContentType | null` to `ContentType[] | null` so the `editoriales` slot covers both `editorial` and `opinion`, and `articulos` covers `articulo` and `listicle` — keeps editorially-related types together rather than fragmenting them. Each tile uses [[DraggableCanvas]] under namespace `saves:<filterKey>` (e.g. `saves:articulos`) so each filter view has its own drag layout. Tile click navigates via `?item=<slug>` to open the overlay; inline `★ QUITAR` button on the thumbnail unsaves without bubbling to the tile click.
+
+**Sidebar wiring.** Dropped `stub: true` from all 7 `Guardados/*` items in [[ExplorerSidebar]]; wired live count badges from `useSavedItems` (with editorial+opinion / articulo+listicle merging) plus the previously-already-real comments count. The dashboard page's hardcoded `savedCount = 0` became `useSavedItems().length` driving the storage panel total.
+
+### Verified in preview
+
+- Login as `loma_grave` → open `?item=festivales-latam-presion-europea-2026` → click `☆ GUARDAR` → flips to `★ GUARDADO`, aria-pressed=true, sessionStorage shows `{"savedIds":["ar-001"]}`.
+- Close overlay → home grid → `ar-001`'s card shows the saved star badge with `aria-label="Guardado"` alongside its unrelated red editorial mark.
+- `?section=guardados-articulos` → DraggableCanvas with 1 tile (thumbnail + `//ARTICULO` chip + title + inline `★ QUITAR`).
+- Sidebar badges live-update: `Artículos: 01`, `Feed: 01`.
+- `npm run build` passes; 16 routes prerendered as static content.
+
+### Open follow-ups
+
+- Saves are not user-keyed (same caveat as saved comments) — switching mock users in the same tab shows the previous user's saves. Real backend keys per user.
+- The `partner` content type is excluded from saves by design (per [[Partners Isolation]]) — no UI surfaces it for save, no slot in `Guardados/*`.
+- Click-vs-drag on saved-item tiles uses `DraggableCanvas`'s 4px threshold, same as saved-comments tiles. QUITAR button uses `e.stopPropagation()` so it doesn't fire the tile's open-overlay click — same isolation pattern.
+
+---
+
 ## 2026-04-26 · INGEST · Comments system + saved-comments dashboard
 
 Shipped a full discussion subsystem on top of the overlay layer plus a dashboard surface for saving comments back to user-specific bookmarks. Five surfaces + four library modules + a generic file-canvas primitive.
