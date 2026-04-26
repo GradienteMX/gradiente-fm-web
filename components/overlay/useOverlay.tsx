@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Suspense,
   createContext,
   useCallback,
   useContext,
@@ -37,25 +38,34 @@ function writeSlugToUrl(slug: string | null) {
   window.history.replaceState(window.history.state, '', url.toString())
 }
 
-export function OverlayProvider({ children }: { children: ReactNode }) {
-  // Local state is the source of truth — but it stays synced with the URL
-  // both directions:
-  //   - external URL change (back/forward, next/link, manual edit) → local state
-  //   - programmatic open/close → URL via writeSlugToUrl
-  // Reading useSearchParams here makes the effect re-run on Next.js client
-  // routing too, which `popstate` alone misses.
+// useSearchParams forces client-side rendering wherever it's called, and
+// during static export Next.js requires it to be wrapped in a Suspense
+// boundary. Isolating the hook in a small sibling lets us add that Suspense
+// inside OverlayProvider without forcing the whole layout below it to
+// bail out of static prerender.
+function UrlSlugSync({
+  onSlug,
+}: {
+  onSlug: (slug: string | null) => void
+}) {
   const searchParams = useSearchParams()
-  const slugFromUrl = searchParams?.get(PARAM) ?? null
+  const slug = searchParams?.get(PARAM) ?? null
+  useEffect(() => {
+    onSlug(slug)
+  }, [slug, onSlug])
+  return null
+}
 
-  const [openSlug, setOpenSlugState] = useState<string | null>(slugFromUrl)
+export function OverlayProvider({ children }: { children: ReactNode }) {
+  // Local state is the source of truth — UrlSlugSync mirrors external URL
+  // changes (back/forward, next/link, manual edit) into it; setOpenSlug
+  // mirrors programmatic open/close back into the URL.
+  const [openSlug, setOpenSlugState] = useState<string | null>(null)
   const [originRect, setOriginRect] = useState<OverlayOrigin | null>(null)
 
-  // Sync external URL changes into local state. Only updates when the URL's
-  // slug differs from what we already have, so programmatic opens (which
-  // also write the URL) don't double-fire.
-  useEffect(() => {
-    setOpenSlugState((prev) => (prev === slugFromUrl ? prev : slugFromUrl))
-  }, [slugFromUrl])
+  const syncFromUrl = useCallback((slug: string | null) => {
+    setOpenSlugState((prev) => (prev === slug ? prev : slug))
+  }, [])
 
   const setOpenSlug = useCallback((slug: string | null) => {
     setOpenSlugState(slug)
@@ -66,7 +76,14 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     () => ({ openSlug, setOpenSlug, originRect, setOriginRect }),
     [openSlug, setOpenSlug, originRect],
   )
-  return <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>
+  return (
+    <OverlayContext.Provider value={value}>
+      <Suspense fallback={null}>
+        <UrlSlugSync onSlug={syncFromUrl} />
+      </Suspense>
+      {children}
+    </OverlayContext.Provider>
+  )
 }
 
 export function useOverlay() {

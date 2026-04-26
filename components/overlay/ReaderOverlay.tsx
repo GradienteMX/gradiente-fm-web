@@ -20,6 +20,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   editorial: 'EDITORIAL',
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
+  listicle: 'LISTA',
   partner: 'PARTNER',
 }
 

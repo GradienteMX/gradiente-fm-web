@@ -17,11 +17,12 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronRight,
+  type LucideIcon,
 } from 'lucide-react'
-import { useMemo, useState, type ComponentType } from 'react'
+import { useMemo, useState } from 'react'
 import type { ExplorerSection } from './types'
 
-type LucideIconType = ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
+type LucideIconType = LucideIcon
 
 interface SidebarItem {
   section: ExplorerSection

@@ -368,8 +368,12 @@ function SectionBody({
         <NuevoSection
           supported={SUPPORTED}
           selectedType={selectedTplType}
-          onSelect={onPickType}
-          onOpen={onOpenType}
+          // NuevoSection's callbacks are typed wider (any ContentType) but
+          // it only ever invokes them with values from `supported`, which is
+          // narrowed to SupportedType. Cast to satisfy contravariant
+          // function-parameter checks under strictFunctionTypes.
+          onSelect={onPickType as (type: ContentType) => void}
+          onOpen={onOpenType as (type: ContentType) => void}
         />
       )
     case 'drafts':

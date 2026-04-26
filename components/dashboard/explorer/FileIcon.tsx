@@ -1,8 +1,18 @@
 'use client'
 
 import type { ContentType } from '@/lib/types'
-import { Calendar, Disc3, FileText, ListOrdered, MessageSquare, Newspaper, PenLine, ScrollText, Star } from 'lucide-react'
-import type { ComponentType } from 'react'
+import {
+  Calendar,
+  Disc3,
+  FileText,
+  ListOrdered,
+  MessageSquare,
+  Newspaper,
+  PenLine,
+  ScrollText,
+  Star,
+  type LucideIcon,
+} from 'lucide-react'
 
 interface Props {
   color: string
@@ -10,7 +20,7 @@ interface Props {
   type?: ContentType
 }
 
-const ICON_BY_TYPE: Partial<Record<ContentType, ComponentType<{ size?: number; strokeWidth?: number }>>> = {
+const ICON_BY_TYPE: Partial<Record<ContentType, LucideIcon>> = {
   mix: Disc3,
   listicle: ListOrdered,
   articulo: ScrollText,

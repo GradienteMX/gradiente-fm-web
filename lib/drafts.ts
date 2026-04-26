@@ -62,7 +62,8 @@ function writeAll(items: DraftItem[]) {
 
 const listeners = new Set<() => void>()
 function notify() {
-  for (const fn of listeners) fn()
+  // forEach instead of for-of-Set so we don't need `--downlevelIteration`.
+  listeners.forEach((fn) => fn())
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────

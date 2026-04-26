@@ -321,12 +321,17 @@ function TextField({
   onChange,
   placeholder,
   mono,
+  // Accepted for parity with the shared Fields.tsx TextField API. The
+  // local component doesn't visualize required state today; the prop is
+  // here so call sites can express intent without a build error.
+  required: _required,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
   mono?: boolean
+  required?: boolean
 }) {
   return (
     <label className="flex flex-col gap-1">

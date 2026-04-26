@@ -137,7 +137,7 @@ export function PublishConfirmOverlay() {
           <p className="font-mono text-[11px] leading-relaxed text-secondary">
             Una vez publicado, este ítem entra al feed con prominencia normal y
             deja de mostrarse como pendiente. Puedes editarlo más tarde desde el
-            dashboard, pero no podrás "deshacer" la publicación silenciosamente.
+            dashboard, pero no podrás «deshacer» la publicación silenciosamente.
           </p>
 
           <p className="font-mono text-[10px] leading-relaxed text-muted">

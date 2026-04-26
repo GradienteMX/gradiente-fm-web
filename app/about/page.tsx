@@ -43,7 +43,7 @@ export default function AboutPage() {
           <li>Mixes con contexto: dónde se grabaron, BPM, recorrido</li>
           <li>Editoriales y opiniones de gente que está en la escena</li>
           <li>Reviews de discos y noches</li>
-          <li>Listas: "tracks de la temporada", "venues que importan"</li>
+          <li>Listas: «tracks de la temporada», «venues que importan»</li>
         </ul>
       </BrandSection>
 

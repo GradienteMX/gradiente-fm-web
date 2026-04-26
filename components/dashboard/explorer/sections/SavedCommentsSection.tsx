@@ -141,10 +141,12 @@ function FolderGridView({
 }) {
   const folders: FolderItem[] = useMemo(() => {
     const out: FolderItem[] = []
-    for (const [articleId, comments] of groups) {
+    // forEach instead of for-of-Map to avoid `--downlevelIteration` requirement
+    // under the project's tsconfig target.
+    groups.forEach((comments, articleId) => {
       const item = MOCK_ITEMS.find((i) => i.id === articleId) ?? null
       out.push({ articleId, item, count: comments.length })
-    }
+    })
     return out
   }, [groups])
 

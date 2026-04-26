@@ -32,7 +32,7 @@ export default function ManifestoPage() {
         <p>
           La prominencia de cada pieza viene de criterio editorial y decaimiento
           orgánico. No hay engagement metrics visibles, no hay likes, no hay
-          contadores de "trending". El tamaño y la posición de una tarjeta son
+          contadores de «trending». El tamaño y la posición de una tarjeta son
           las únicas señales — porque el editor decidió que esa cosa merece estar
           arriba esta semana.
         </p>
@@ -44,7 +44,7 @@ export default function ManifestoPage() {
       <BrandSection index={3} title="GUÍAS, NO PORTEROS">
         <p>
           Editorial y contenido scrapeado conviven en la misma cuadrícula. No
-          hay un "feed de redacción" separado del "feed real". El editor decide
+          hay un «feed de redacción» separado del «feed real». El editor decide
           qué empuja y qué deja flotar — pero todo compite por la misma
           atención del lector.
         </p>

@@ -59,16 +59,18 @@ function buildTree(flat: Comment[]): CommentNode[] {
   const byId = new Map<string, CommentNode>()
   for (const c of flat) byId.set(c.id, { ...c, children: [] })
 
+  // forEach instead of for-of-Map.values() so we don't need
+  // `--downlevelIteration` under the project's tsconfig target.
   const roots: CommentNode[] = []
-  for (const node of byId.values()) {
+  byId.forEach((node) => {
     if (node.parentId === null) {
       roots.push(node)
     } else {
       const parent = byId.get(node.parentId)
       if (parent) parent.children.push(node)
-      else roots.push(node)  // orphan — surface at top level
+      else roots.push(node) // orphan — surface at top level
     }
-  }
+  })
   return roots
 }
 

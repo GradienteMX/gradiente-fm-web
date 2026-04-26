@@ -1028,7 +1028,10 @@ export function useDraftWorkbench<T extends ContentItem>({
       if (existing) {
         // Strip the frontend-only flags before slotting into form state.
         const { _draftState, _pendingConfirm, ...clean } = existing
-        setDraft({ ...emptyFn(), ...(clean as T) })
+        // Double-cast through `unknown` because TS can't prove the runtime
+        // narrowing matches the form's specific T (e.g. MixDraft) — at this
+        // point we know the existing item's `type` matches the form.
+        setDraft({ ...emptyFn(), ...(clean as unknown as T) })
         setCommittedId(existing.id)
         setIsPublished(existing._draftState === 'published')
         setLastSavedAt(Date.now())
