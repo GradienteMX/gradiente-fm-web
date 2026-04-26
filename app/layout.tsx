@@ -15,6 +15,7 @@ import { PublishConfirmProvider } from '@/components/publish/usePublishConfirm'
 import { PublishConfirmOverlay } from '@/components/publish/PublishConfirmOverlay'
 import { SearchProvider } from '@/components/search/useSearch'
 import { SearchOverlay } from '@/components/search/SearchOverlay'
+import { AudioPlayerProvider } from '@/components/audio/AudioPlayerProvider'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <VibeProvider>
           <OverlayProvider>
           <SearchProvider>
+          <AudioPlayerProvider>
             <CRTOverlay>
               <Suspense fallback={null}>
                 <Navigation />
@@ -101,6 +103,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <SearchOverlay />
               </Suspense>
             </CRTOverlay>
+          </AudioPlayerProvider>
           </SearchProvider>
           </OverlayProvider>
         </VibeProvider>

@@ -1,17 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import {
-  ExternalLink,
-  Pause,
-  Play,
-  Rewind,
-  FastForward,
-  SkipBack,
-  SkipForward,
-  Volume2,
-} from 'lucide-react'
-import type { ContentItem, EmbedPlatform } from '@/lib/types'
+import { useEffect, useMemo } from 'react'
+import type { ContentItem } from '@/lib/types'
 import { MOCK_ITEMS } from '@/lib/mockData'
 import {
   fmtDateFull,
@@ -19,9 +9,19 @@ import {
   vibeToLabel,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
-import { PLATFORM_LABELS, PLATFORM_ORDER } from '@/components/embed/platforms'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
+import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
+
+// Pick the best canonical SoundCloud URL for an item: prefer an explicit
+// SC embed entry, fall back to the mixUrl when it points to soundcloud.
+function pickSoundCloudUrl(item: ContentItem): string | null {
+  const sc = item.embeds?.find((e) => e.platform === 'soundcloud')
+  if (sc?.url) return sc.url
+  if (item.mixUrl && /soundcloud\.com/.test(item.mixUrl)) return item.mixUrl
+  return null
+}
 
 interface Props {
   item: ContentItem
@@ -41,24 +41,6 @@ function fmtDurationHm(duration?: string): string {
   return duration
 }
 
-function fmtDurationMmSs(duration?: string): string {
-  // Overlay player total — "1:04:12" stays as-is; "48:30" stays as-is.
-  return duration ?? '—:—'
-}
-
-function seededWaveform(seed: string, bars: number): number[] {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0
-  const out: number[] = []
-  let s = h || 1
-  for (let i = 0; i < bars; i++) {
-    s = (s * 1664525 + 1013904223) | 0
-    const n = ((s >>> 0) % 1000) / 1000
-    out.push(0.2 + n * 0.8)
-  }
-  return out
-}
-
 const STATUS_LABEL: Record<NonNullable<ContentItem['mixStatus']>, string> = {
   disponible: 'Disponible',
   exclusivo: 'Exclusivo',
@@ -74,45 +56,78 @@ export function MixOverlay({ item }: Props) {
   }))
   const tags = getTagNames(item.tags)
 
-  const embeds = item.embeds ?? []
-  const available = new Set<EmbedPlatform>(embeds.map((e) => e.platform))
-  const visibleTabs =
-    embeds.length > 0
-      ? PLATFORM_ORDER.filter((p) => available.has(p))
-      : (['soundcloud'] as EmbedPlatform[])
+  // Audio is owned by the global AudioPlayerProvider — one persistent iframe
+  // + widget + tab-capture for the entire app. This overlay is only a *view*:
+  // we tell the global player to load this mix when the user hits play, then
+  // mirror its state back into our chrome.
+  const audio = useAudioPlayer()
+  const scCanonicalUrl = pickSoundCloudUrl(item)
+  const isActive = audio.currentItem?.id === item.id
 
-  const [active, setActive] = useState<EmbedPlatform>(
-    visibleTabs[0] ?? 'soundcloud',
-  )
-  const activeEmbed = embeds.find((e) => e.platform === active)
-  const activeUrl = activeEmbed?.url ?? item.mixUrl
-
-  const waveform = useMemo(() => seededWaveform(item.slug, 64), [item.slug])
-  // Decorative "played" progress — stable per mix, purely visual (no audio yet).
-  const progress = useMemo(() => {
-    let h = 0
-    for (let i = 0; i < item.slug.length; i++) h = (h * 31 + item.slug.charCodeAt(i)) | 0
-    return 0.2 + (((h >>> 0) % 600) / 1000) // 0.2 → 0.8
-  }, [item.slug])
+  // When this is the active mix, mirror live transport. Otherwise show the
+  // idle 00:00 state — pressing play will load this mix into the global player.
+  const isPlaying = isActive && audio.isPlaying
+  const currentTime = isActive ? audio.currentTime : 0
+  const duration = isActive ? audio.duration : 0
 
   const openSource = () => {
-    if (!activeUrl || activeUrl === '#') return
-    window.open(activeUrl, '_blank', 'noopener,noreferrer')
+    if (!scCanonicalUrl) return
+    window.open(scCanonicalUrl, '_blank', 'noopener,noreferrer')
   }
 
-  // Keyboard: O → open active source (P reserved for future audio wiring).
+  // Play handler defers everything to the global player. First call ever
+  // requests tab capture; subsequent calls just switch tracks (no popup) or
+  // toggle play/pause if we're already the active mix.
+  const handleTransportToggle = () => {
+    void audio.loadAndPlay(item)
+  }
+  const handleSeek = (sec: number) => {
+    if (isActive) audio.seek(sec)
+  }
+
+  // Status strip — leans on the global matrix state plus this overlay's
+  // local active/idle distinction.
+  const statusLabel = (() => {
+    if (audio.matrixActive) return 'CAPTURA EN VIVO'
+    if (audio.matrixStatus === 'requesting') return 'SOLICITANDO PERMISO'
+    if (audio.matrixStatus === 'denied') return 'PERMISO DENEGADO'
+    if (audio.matrixStatus === 'unsupported') return 'NO COMPATIBLE'
+    if (isPlaying) return 'REPRODUCIENDO'
+    if (isActive && audio.widgetReady) return 'EN ESPERA'
+    return 'PULSA PLAY'
+  })()
+  const statusTone: 'live' | 'paused' | 'idle' | 'error' =
+    audio.matrixActive
+      ? 'live'
+      : audio.matrixStatus === 'denied' ||
+          audio.matrixStatus === 'unsupported' ||
+          audio.matrixStatus === 'error'
+        ? 'error'
+        : isPlaying
+          ? 'live'
+          : 'idle'
+  const statusDetail =
+    audio.matrixActive
+      ? 'analizador · pestaña actual'
+      : audio.matrixErrorMessage ||
+        (scCanonicalUrl
+          ? isActive
+            ? 'pulsa play para reanudar'
+            : 'pulsa play para cargar este mix'
+          : 'fuente pendiente')
+
+  // Hotkeys: O → open source. P → play/pause (or load).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (e.key === 'o' || e.key === 'O') {
-        openSource()
-      }
+      if (e.key === 'o' || e.key === 'O') openSource()
+      if (e.key === 'p' || e.key === 'P') handleTransportToggle()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUrl])
+  }, [scCanonicalUrl, item.id])
 
   return (
     <article className="grid gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
@@ -220,160 +235,39 @@ export function MixOverlay({ item }: Props) {
 
       {/* ── RIGHT: system column (3 panels) ─────────────────── */}
       <div className="flex flex-col gap-4 border-t border-border p-4 md:border-l md:border-t-0 md:p-5">
-        {/* 01 AUDIO EMBED // REPRODUCTOR */}
-        <Panel index="01" title="AUDIO EMBED // REPRODUCTOR">
-          {/* Source tabs */}
-          <div className="flex flex-wrap gap-1.5">
-            {visibleTabs.map((p) => {
-              const isActive = p === active
-              const isAvailable = embeds.length === 0 || available.has(p)
-              return (
-                <button
-                  key={p}
-                  disabled={!isAvailable}
-                  onClick={() => setActive(p)}
-                  className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-30"
-                  style={{
-                    borderColor: isActive ? '#F97316' : '#242424',
-                    backgroundColor: isActive ? 'rgba(249,115,22,0.12)' : 'transparent',
-                    color: isActive ? '#F97316' : '#888888',
-                  }}
-                >
-                  {PLATFORM_LABELS[p]}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Cover + title/waveform */}
-          <div className="mt-3 flex gap-3">
-            <div
-              className="relative h-[120px] w-[120px] shrink-0 overflow-hidden border border-border bg-elevated"
-              aria-hidden
-            >
-              {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.imageUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center font-mono text-[10px] text-muted">
-                  SIN ARTE
-                </div>
-              )}
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <div className="min-w-0">
-                <p className="truncate font-syne text-sm font-black text-primary">
-                  {item.title}
-                </p>
-                {item.subtitle && (
-                  <p className="truncate font-grotesk text-[11px] text-secondary">
-                    {item.subtitle}
-                  </p>
-                )}
-                {item.author && (
-                  <p
-                    className="truncate font-mono text-[11px]"
-                    style={{ color: '#F97316' }}
-                  >
-                    {item.author}
-                  </p>
-                )}
-              </div>
-
-              {/* Decorative waveform */}
-              <div className="mt-1 flex h-8 items-end gap-[2px]">
-                {waveform.map((h, i) => {
-                  const played = i / waveform.length < progress
-                  return (
-                    <div
-                      key={i}
-                      className="flex-1"
-                      style={{
-                        height: `${Math.round(h * 100)}%`,
-                        backgroundColor: played ? '#F97316' : '#3a3a3a',
-                      }}
-                    />
-                  )
-                })}
-              </div>
-
-              {/* Timestamps + progress */}
-              <div className="flex items-center justify-between font-mono text-[11px] text-secondary">
-                <span>00:00</span>
-                <span>{fmtDurationMmSs(item.duration)}</span>
-              </div>
-              <div className="relative h-0.5 w-full bg-border">
-                <div
-                  className="absolute left-0 top-0 h-full"
-                  style={{
-                    width: `${Math.round(progress * 100)}%`,
-                    backgroundColor: '#F97316',
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Transport row (visual only — audio delegated to future session) */}
-          <div className="mt-3 flex items-center justify-center gap-4 border-t border-border pt-3">
-            <TransportBtn aria={`Anterior`} disabled>
-              <SkipBack size={14} />
-            </TransportBtn>
-            <TransportBtn aria={`Retroceder 10s`} disabled>
-              <Rewind size={14} />
-            </TransportBtn>
-            <button
-              onClick={openSource}
-              aria-label="Reproducir en fuente"
-              className="flex h-9 w-9 items-center justify-center border transition-colors"
-              style={{ borderColor: '#F97316', color: '#F97316' }}
-            >
-              <Play size={16} fill="currentColor" />
-            </button>
-            <TransportBtn aria={`Avanzar 10s`} disabled>
-              <FastForward size={14} />
-            </TransportBtn>
-            <TransportBtn aria={`Siguiente`} disabled>
-              <SkipForward size={14} />
-            </TransportBtn>
-            <div className="ml-2 flex items-center gap-1.5 text-muted">
-              <Volume2 size={13} />
-              <div className="flex items-end gap-[2px]">
-                {[3, 5, 7, 9, 11, 13].map((h, i) => (
-                  <div
-                    key={i}
-                    className="w-[3px]"
-                    style={{
-                      height: `${h}px`,
-                      backgroundColor: i < 4 ? '#F97316' : '#3a3a3a',
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom source strip */}
-          <div className="mt-3 flex items-center justify-between border-t border-border pt-2 font-mono text-[10px] text-muted">
-            <span>
-              Embed {activeUrl && activeUrl !== '#' ? 'activo' : 'pendiente'} · fuente
-              configurable
-            </span>
-            <button
-              onClick={openSource}
-              disabled={!activeUrl || activeUrl === '#'}
-              className="tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ color: '#F97316' }}
-            >
-              [ABRIR FUENTE]
-            </button>
-          </div>
-        </Panel>
+        {/* 01 AUDIO EMBED // REPRODUCTOR — view-only. Transport drives the
+            global AudioPlayerProvider (hidden iframe lives at layout root),
+            so closing this overlay does NOT stop playback. The matrix
+            visualizer reads the same tab-capture stream as the persistent
+            HUD in the sidebar. */}
+        {scCanonicalUrl ? (
+          <AudioPlayer3D
+            data={audio.data}
+            sampleRate={audio.sampleRate}
+            title={item.title}
+            subtitle={item.subtitle}
+            source={item.author}
+            coverUrl={item.imageUrl}
+            coverLabel={item.mixSeries}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            onPlayPause={handleTransportToggle}
+            onSeek={handleSeek}
+            liveMatrixActive={audio.matrixActive}
+            onOpenSource={openSource}
+            sourceUrl={scCanonicalUrl}
+            statusLabel={statusLabel}
+            statusTone={statusTone}
+            statusDetail={statusDetail}
+          />
+        ) : (
+          <Panel index="01" title="AUDIO EMBED // REPRODUCTOR">
+            <p className="font-mono text-[11px] text-muted">
+              Sin fuente de SoundCloud configurada para este mix.
+            </p>
+          </Panel>
+        )}
 
         {/* 02 CONTEXTO */}
         <Panel index="02" title="CONTEXTO">
@@ -588,25 +482,3 @@ function ContextRow({
   )
 }
 
-function TransportBtn({
-  children,
-  aria,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode
-  aria: string
-  disabled?: boolean
-  onClick?: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={aria}
-      className="flex h-7 w-7 items-center justify-center border border-border text-muted transition-colors hover:border-white/40 hover:text-primary disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted"
-    >
-      {children}
-    </button>
-  )
-}

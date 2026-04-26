@@ -8,6 +8,29 @@
 
 ---
 
+## 2026-04-26 · INGEST · Audio reactive subsystem
+
+Built end-to-end: persistent global SoundCloud playback that survives overlay close, three.js waterfall spectrogram visualizer reacting to live tab audio, and integration into [[MixOverlay]] + the home rail. New mix entry `mx-goodies-igtt` (lo-fi house, vibe 3) added to [[mockData]] as the canonical test track.
+
+**Stack.** New components under `components/audio/`:
+
+- `audioContext.ts` — shared lazy `AudioContext` singleton, FFT size constants.
+- `Reproductor3D.tsx` — three.js wireframe waterfall spectrogram. Joy-division-plot proportions (48 cols × 80 rows), per-band envelopes (LOW punchy, MID flowy, HIGH spike), soft noise gate, vibe-gradient colors keyed to a mix of rolling track energy + per-cell magnitude + frequency stratification. Has `orientation: 'landscape' | 'portrait'` and `interactive: boolean` props. Portrait rolls the camera 90° via `up = (1, 0, 0)`.
+- `useAudioElementAnalyser.ts` — file-picker source (used by `/lab/audio`).
+- `useTabAudioCapture.ts` — `getDisplayMedia({ audio: true, preferCurrentTab: true })`. The only path to FFT data from cross-origin SC/YT iframes; Chromium-only by browser policy. See memory `reference_get_display_media`.
+- `useSoundCloudWidget.ts` — wraps SoundCloud's Widget JS API (`https://w.soundcloud.com/player/api.js`). Returns the platform-agnostic `EmbedWidget` shape from `types.ts` (`play / pause / toggle / seek / load / isPlaying / currentTime / duration / track`). YT/Mixcloud/Spotify are pending implementations of the same interface; Bandcamp has no JS widget API and will need a fallback path.
+- `AudioPlayerProvider.tsx` — global context at the layout root. Owns one persistent hidden iframe + widget + tab capture for the page lifetime. Track switches happen via `widget.load(url)` (same iframe, no remount), so the user-granted tab-capture permission persists across overlays. `loadAndPlay(item)` lazily requests `getDisplayMedia` on the first play (within the click gesture); subsequent plays don't re-prompt.
+- `AudioPlayer3D.tsx` — composite player chrome used inside [[MixOverlay]]. LIVE MATRIX is a passive status pill (the request is folded into the play button).
+- `NowPlayingHud.tsx` — persistent sidebar block in [[CategoryRail]]; portrait Reproductor3D + transport. The only audio control visible when no overlay is open.
+
+**MixOverlay** is now a *view* — drops the local iframe + hooks, reads/writes everything via `useAudioPlayer()`. Closing the overlay does NOT stop playback. Opening another mix and pressing play calls `widget.load()` to switch tracks; no permission re-prompt.
+
+**Lab** at `/lab/audio` — standalone test bench. Has its own local widget + tab-capture instance for file-picker testing; doesn't share with the global provider.
+
+**Bug fix landed in this session:** Reproductor3D was using `getBoundingClientRect()` to size its WebGL buffer, which includes ancestor CSS transforms — inside the OverlayShell CRT boot animation, this read as ~140 × 1.6 px and locked the canvas to 1px tall. Switched to `offsetWidth` / `offsetHeight` (layout box, ignores transforms). See memory `feedback_layout_box_in_overlay`.
+
+---
+
 ## 2026-04-26 · INGEST · Foro basePath fix for GitHub Pages
 
 User reported foro mock images don't appear on the deployed Pages site (the home grid did, since [[mockData]] already had the fix from commit 12a4b04). Same root cause: GH Pages serves under `/gradiente-fm-web/`, and `<img src="/flyers/...">` doesn't get auto-prefixed by Next.js — only `next/image` and asset imports do. Applied the same `BASE_PATH` prefix pattern to [[mockForo]]: internal `RAW_THREADS` / `RAW_REPLIES` → exported `MOCK_THREADS` / `MOCK_REPLIES` derived via `.map()` that prepends `process.env.NEXT_PUBLIC_BASE_PATH` to any `imageUrl` starting with `/`. Data URLs (user-uploaded session images) pass through untouched.

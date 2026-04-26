@@ -1,7 +1,7 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-04-26** (foro / imageboard-style discussion catalog shipped on top of the save-from-feed flow).
+> Last updated: **2026-04-26** (audio reactive subsystem shipped end-to-end — global persistent player + 3D matrix visualizer + MixOverlay / NowPlayingHud integration).
 
 ## Where we are
 
@@ -43,7 +43,7 @@ See [[log]] under `2026-04-26 · INGEST · Foro` for the latest ship list.
 | 3-A — Search overlay (`/` shortcut) | ✓ done |
 | 3-B — Clickable genre chips (incl. AnimatePresence-blocks-unmount fix) | ✓ done |
 | 3-C — Brand pages (`/about`, `/manifesto`, `/equipo`) | ✓ done |
-| Audio context session | next up |
+| Audio context session | ✓ done — see `2026-04-26 · INGEST · Audio reactive subsystem` in [[log]] |
 | Mobile pass | next up |
 | Dashboard chrome redesign | ✓ done — see [[Dashboard Explorer]] |
 | Save-from-feed flow (unblocks `Guardados/`) | ✓ done |
@@ -60,11 +60,16 @@ Most-impactful next step for the visual MVP. The desktop layout is locked; mobil
 
 **Where to start:** open the home page in a phone viewport, screenshot what breaks, then triage by severity. Probably need a `useMediaQuery` hook or container queries somewhere.
 
-### B. Audio context session
+### B. Multi-platform embed widgets
 
-Deferred earlier as its own focused session — covers persistent audio across overlays and route changes, the reactive waveform HUD driven by Web Audio API, mix transport controls wired to actual playback, inline `track` block embeds in listicles. Iframe-based players built so far are interim and will be replaced. See memory `project_audio_vision`.
+The audio subsystem ships with a generic `EmbedWidget` interface in `components/audio/types.ts`. SoundCloud is implemented (`useSoundCloudWidget`); the same shape is waiting for:
 
-**Where to start:** decide on the audio source-of-truth (Web Audio context at the layout level), then refactor [[MixOverlay]]'s embed tabs to share that context.
+- **YouTube** — IFrame Player API (`https://www.youtube.com/iframe_api`). Common path; needed for any mix that's only on YT.
+- **Mixcloud** — Mixcloud.js Widget API. Important since Mixcloud is heavily used for DJ sets.
+- **Spotify** — Embed iframe API. Lower priority (Spotify rarely hosts DJ-style mixes).
+- **Bandcamp** — no JS widget API. Will need a fallback "open in source" path for Bandcamp-only mixes (transport disabled for that platform).
+
+**Where to start:** copy `useSoundCloudWidget.ts` to `useYouTubeWidget.ts`, swap the API binding (YT requires `enablejsapi=1` on the iframe URL and uses event polling instead of PLAY_PROGRESS), and add a `useEmbedWidget(item)` resolver that picks the right hook by platform. `AudioPlayerProvider` then dispatches via the resolver instead of hard-coding SC.
 
 ### Smaller polish items (any session)
 
