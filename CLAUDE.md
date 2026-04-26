@@ -24,7 +24,7 @@ The repo folder is still named `espectro-fm-web` for historical reasons; the UI 
 ## Folder structure
 
 ```
-app/               Pages (home, agenda, editorial, mixes, noticias, reviews, opinion)
+app/               Pages (home, agenda, editorial, mixes, noticias, reviews, opinion, articulos, foro, dashboard)
 components/        Shared UI — Navigation, VibeSlider, ContentGrid, HeroCard, etc.
 components/cards/  ContentCard (mosaic) + orphan linear cards
 context/           VibeContext — global client-side filter state
@@ -46,6 +46,8 @@ All content is `ContentItem` with a `type` field:
 - `partner` — sponsor rail only, never in main grid
 
 See [`lib/types.ts`](./lib/types.ts) and [`wiki/20-Domain/Content Types.md`](./wiki/20-Domain/Content Types.md).
+
+The `/foro` route runs an isolated subsystem with its own `ForoThread` / `ForoReply` types — not `ContentItem`s, no HP/curation, never enter the main grid. See [`wiki/30-Pages/Foro.md`](./wiki/30-Pages/Foro.md).
 
 ## Vibe score
 

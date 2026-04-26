@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: '/mixes',      label: 'MIXES',      code: '04' },
   { href: '/editorial',  label: 'EDITORIAL',  code: '05' },
   { href: '/articulos',  label: 'ARTÍCULOS',  code: '06' },
+  { href: '/foro',       label: 'FORO',       code: '07' },
 ]
 
 const DATA_STRIP = [

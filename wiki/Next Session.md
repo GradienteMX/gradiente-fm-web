@@ -1,7 +1,7 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-04-25** (dashboard explorer revamp + header auth — Chunk 3 was already closed when this session started).
+> Last updated: **2026-04-26** (foro / imageboard-style discussion catalog shipped on top of the save-from-feed flow).
 
 ## Where we are
 
@@ -26,7 +26,13 @@ Front-end visual prototype. **No backend.** Everything described as "saved" or "
 - Form validation feedback (required fields + missing-field summary)
 - Image upload (drag-drop + file picker, data URL storage)
 
-See [[log]] under `2026-04-25 · INGEST · Editor closure` for the full ship list.
+**User-side surfaces** (built on top of role-aware auth):
+- Comments column inside every overlay (split-screen, threaded, role-colored badges, ASCII reactions, tombstones, focus-pulse from saved-comment deep-links)
+- Saved-comments dashboard surface (two-level draggable folders→files)
+- Save-from-feed flow (★ chip on every card + overlay header, dashboard `Guardados/*` slots show real DraggableCanvas grids per content type)
+- Foro at `/foro` — imageboard-style discussion catalog (8 seed threads, 30-thread cap, bump-order, 1–5 genre tagging, vibe-slider filtering, image-required OPs, flat replies with `>>id` quote-links, backlinks, inline `TÚ` markers when someone is replying to you)
+
+See [[log]] under `2026-04-26 · INGEST · Foro` for the latest ship list.
 
 ## Roadmap state
 
@@ -40,7 +46,8 @@ See [[log]] under `2026-04-25 · INGEST · Editor closure` for the full ship lis
 | Audio context session | next up |
 | Mobile pass | next up |
 | Dashboard chrome redesign | ✓ done — see [[Dashboard Explorer]] |
-| Save-from-feed flow (unblocks `Guardados/`) | next up |
+| Save-from-feed flow (unblocks `Guardados/`) | ✓ done |
+| Foro (imageboard-style discussion) | ✓ done — see [[Foro]] |
 | Backend / Supabase migration | deferred |
 
 ## Suggested first action — pick from these
@@ -53,15 +60,7 @@ Most-impactful next step for the visual MVP. The desktop layout is locked; mobil
 
 **Where to start:** open the home page in a phone viewport, screenshot what breaks, then triage by severity. Probably need a `useMediaQuery` hook or container queries somewhere.
 
-### B. Save-from-feed flow (unblocks `Guardados/`)
-
-The dashboard explorer reserves a `Guardados/` folder with seven content-type slots, but they're disabled stubs because the public side has no save gesture yet. Add a save toggle on each public card (mosaic + overlays) writing to a `gradiente:saves` sessionStorage key keyed by content id. Then the placeholder in [[Dashboard Explorer]]'s `GuardadosSection` becomes a real grid filtered by type.
-
-**Where to start:** decide UX of the save affordance (heart? bookmark? terminal-style `[+ GUARDAR]` chip?) — should match the dim/industrial palette. Then add the toggle to [[ContentCard]] and the overlay headers, and a `useSaves()` hook mirroring [[drafts]]. The dashboard side already has the dispatch wiring; just swap the placeholder body for a draggable file grid (same primitive used by `DraftsSection`).
-
-Long-horizon: the same data model extends to `attendances` (events you went to) and eventually verifiable club perks — see memory `project_guardados_perks_vision`. Don't conflate "saved" with "attended" — different gestures.
-
-### C. Audio context session
+### B. Audio context session
 
 Deferred earlier as its own focused session — covers persistent audio across overlays and route changes, the reactive waveform HUD driven by Web Audio API, mix transport controls wired to actual playback, inline `track` block embeds in listicles. Iframe-based players built so far are interim and will be replaced. See memory `project_audio_vision`.
 
@@ -96,7 +95,9 @@ Boot the preview (`npm run dev` or via `.claude/launch.json` "dev" config). Logi
 3. Edit a published item from the drafts list
 4. Try invalid submit (clear required fields) → see `⚠ FALTA: …` chip
 
-Then pick from A / B / C / smaller polish items above. They're all independent.
+Then pick from A / B / smaller polish items above. They're all independent.
+
+For the foro: open `/foro`, drag the vibe slider to verify the catalog filters, click a tile to verify thread overlay + backlinks, log in via `admin / admin` and start a thread (image + 1–5 genres required) to verify session id format `fr-s01` and bump-to-top behavior.
 
 ## Don't forget
 

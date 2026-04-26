@@ -190,3 +190,34 @@ export interface Comment {
   reactions: Reaction[]
   deletion?: CommentDeletion  // when set, body should render as tombstone
 }
+
+// ── Foro (imageboard-style forum) ──────────────────────────────────────────
+//
+// Standalone subsystem — not a ContentItem, no vibe/HP/curation, never enters
+// the main grid. Catalog ordering is bumpedAt desc with a hard cap of 30
+// visible threads. No reactions, no likes — the only signal is reply count.
+// OP requires an image; replies don't.
+
+export interface ForoThread {
+  id: string
+  authorId: string         // references User.id
+  subject: string          // shown big in catalog tile + thread header
+  body: string             // OP body
+  imageUrl: string         // mandatory — data URL or /flyers/* path
+  genres: string[]         // 1–5 genre ids — drives vibe-slider filtering
+  createdAt: string        // ISO
+  bumpedAt: string         // ISO — last reply, or createdAt when no replies
+}
+
+export const FORO_THREAD_GENRES_MIN = 1
+export const FORO_THREAD_GENRES_MAX = 5
+
+export interface ForoReply {
+  id: string
+  threadId: string         // references ForoThread.id
+  authorId: string
+  body: string
+  imageUrl?: string        // optional on replies
+  createdAt: string
+  quotedReplyIds?: string[] // imageboard >>id quote-links
+}

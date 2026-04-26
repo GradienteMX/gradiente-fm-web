@@ -8,6 +8,54 @@
 
 ---
 
+## 2026-04-26 · INGEST · Foro (imageboard-style discussion)
+
+A new top-level destination at `/foro` — imageboard-style threaded discussion, kept fully isolated from the curated content grid. Threads aren't `ContentItem`s, never enter the home feed, never get HP/curation scoring. See [[Foro]] for the full route doc.
+
+**Catalog rules.** Bump-order desc, hard cap at 30 visible threads (`FORO_THREAD_CAP`). New threads bump to top; new replies bump their parent. No likes, no reactions, no engagement scoring — reply count is the only ranking signal allowed (consistent with [[Size and Position as Only Signals]] / [[No Algorithm]]). The [[VibeSlider]] reappears on /foro and filters threads via genre intersection (`genresIntersectVibeRange` in [[genres]]).
+
+**Thread model.** New `ForoThread` and `ForoReply` types in [[types]]. Threads require `subject`, `body`, `imageUrl` (mandatory on OP), `genres: string[]` (1–5 enforced via `FORO_THREAD_GENRES_MIN/MAX`), `createdAt`, `bumpedAt`. Replies are flat (no nesting), with optional image and `quotedReplyIds: string[]` parsed from `>>id` tokens in the body.
+
+**Storage layer** [[foro]]. `gradiente:foro` sessionStorage with `{ addedThreads, addedReplies, bumpOverrides }`. Mirrors the [[comments]] / [[saves]] idiom — listener-pattern hooks, pure-function writers. `bumpOverrides[mockThreadId] = newBumpedAt` shadows immutable seed thread bumpedAt at read time. `useThreads` / `useThread(id)` / `useReplies(id)` / `useReplyCount(id)` cover the read paths.
+
+**Session id format.** New `newThreadId()` and `newReplyId(threadId)` mirror the mock convention so user-authored ids are visually indistinguishable from seeds in `>>id` quote-tokens. Threads → `fr-s01`, `fr-s02`, … Replies → `fp-{threadShortRef}-s01` (e.g. `fp-003-s05` continues past the 4 mock replies on fr-003). The `s` marker prevents collision if seed numbering is later extended.
+
+**Public-side surfaces:**
+- [[ForoCatalog]] — page body. Reads `useThreads()` + `useVibe().vibeRange`, filters via `genresIntersectVibeRange`, mounts the URL-driven thread + compose overlays (`?thread=` / `?compose=`). Empty states differentiate "no threads at all" from "filtered out by vibe".
+- [[ThreadTile]] — image-forward tile. R·NN reply-count chip top-left, SESIÓN chip top-right when session-authored, `//FR-XXX` id chip bottom-left. First 2 genres + `+N` overflow chip. Whole tile is a `<Link href="/foro?thread=…">`.
+- [[ThreadOverlay]] — modal. Builds `inboundIndex: Map<postId, replyId[]>` for backlinks and `authorByPostId` for the inline-quote `TÚ` marker (see below). Image float-left on each post; body parsed for `>>id` tokens which become orange clickable buttons that scroll-and-pulse the target post (`data-postid` lookup, 1.6s outline pulse).
+- [[NewThreadOverlay]] — composer. Login required, image required, 1–5 genre picker with vibe-color chips and 6th-rejection error. On submit, atomically swaps `?compose=1` for `?thread=<newId>` so user lands on their thread.
+- [[ReplyComposer]] — pinned-bottom in [[ThreadOverlay]]. Login-gated, optional image, `>>id` parsing. Pre-fills with `>>id` quote-back when user clicks a post-id chip (composer remounts via `key` bump to apply `initialQuotedIds`).
+- [[PostHeader]] — role-colored identity chip + `[TÚ]` when own post + clickable `>>postid` on the right.
+
+**Backlinks.** Under each post header, `respondieron: >>id1 >>id2 …` lists inbound replies (only when there are any — quiet for unanswered posts). Map inverted from `quotedReplyIds` once per replies-change via `useMemo`.
+
+**Inline `[TÚ]` on quote-tokens.** When a `>>id` token in body text resolves to a post authored by the current user, an orange `TÚ` chip renders next to it. Surfaces "someone is replying to me" without forcing the reader to scan the thread for the cited post. Complements PostHeader's existing `[TÚ]` (which marks "this post is mine"). Implementation: `authorByPostId` map in [[ThreadOverlay]], `isQuoteToMe(id)` helper threaded through `PostBody` → `BodyText`.
+
+**Genre + vibe sharing.** `GENRE_VIBE` map (was inlined in [[VibeSlider]]) extracted to [[genres]] as an exported const, alongside new helpers `vibeForGenre` and `genresIntersectVibeRange`. Lets the foro catalog and the slider share the genre→vibe lookup, and any future surface can plug in.
+
+**Navigation.** New `/foro` link at code `07` in [[Navigation]]'s NAV_LINKS, between `/articulos` and the auth badge. Mobile + desktop nav share the same source array.
+
+### Verified in preview
+
+- Catalog renders 8 mock threads with reply counts (R·04, R·03, …) and genre chips colored per `GENRE_VIBE`.
+- Click tile → thread overlay opens at `?thread=fr-003`, shows OP + 4 replies with proper role badges (REDACCIÓN/OG/LECTOR/INSIDER), image float, working `>>id` quote-buttons, backlinks under each cited post.
+- Logged out → reply composer shows "INICIA SESIÓN PARA RESPONDER"; "+ NUEVO HILO" trigger opens [[LoginOverlay]].
+- Logged in as `loma_grave` → posting a thread persists to sessionStorage with id `fr-s01`, lands at position 1 in catalog (counter 08/30 → 09/30), overlay opens automatically.
+- Posting a reply on fr-003 (which has 4 mock replies) → id `fp-003-s05`, parent thread bumps to top via `bumpOverrides[fr-003]`.
+- Genre picker: 5/5 cap, 6th selection rejected with `Máximo 5 géneros.` error. Submit disabled until subject + body + image + genres ≥ 1.
+- Vibe slider drag (max 10 → 3): catalog filters from 8 to 2 threads (fr-006 ambient-techno + fr-008 downtempo/dub), counter swaps to `02/08 EN RANGO`.
+- Inline `TÚ` marker: logged in as `tlali.fm`, fp-001-02's body shows `>>fp-001-01` followed by orange `TÚ` chip (her seed reply is being quoted). Negative case verified — switching to `loma_grave` removes the chip in fr-001 and adds it in fr-007 (where her fp-007-01 is quoted by fp-007-02).
+- `npm run dev` clean across all changes; no console or server errors after final reload.
+
+### Open follow-ups
+
+- Catalog cap is read-side only (slice 30). Storage can grow past 30 if a user authors many threads in one session; only the catalog is bounded. Real backend will need server-side prune-on-insert.
+- No moderation surface yet — no thread/reply tombstone equivalent of [[CommentList]]'s deletion stub. Deferred.
+- No per-user keying on session storage (same caveat as [[comments]] / [[saves]]). Real backend keys per user.
+
+---
+
 ## 2026-04-26 · INGEST · Save-from-feed flow
 
 Closes the long-deferred Guardados/* slot. Users can now bookmark publications from the public side and review them in the dashboard alongside saved comments.

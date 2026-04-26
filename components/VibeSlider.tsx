@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
 import { vibeToColor } from '@/lib/utils'
-import { getGenreById } from '@/lib/genres'
+import { GENRE_VIBE, getGenreById } from '@/lib/genres'
 
 function clamp(val: number, min: number, max: number) {
   return Math.min(Math.max(val, min), max)
@@ -16,19 +16,8 @@ const VIBE_SLOT_NAMES: Record<number, string> = {
   5: 'GROOVE',  6: 'WARM',   7: 'HOT',      8: 'FUEGO', 9: 'BRASA', 10: 'VOLCÁN',
 }
 
-const GENRE_VIBE: Record<string, number> = {
-  'ambient': 0,
-  'lo-fi': 1, 'downtempo': 1,
-  'organic-house': 2, 'ambient-techno': 2, 'dub': 2,
-  'deep-house': 3, 'minimal': 3, 'jazz': 3, 'neo-soul': 3,
-  'house': 4, 'electronica': 4, 'melodic-techno': 4, 'nu-disco': 4, 'indie-dance': 4,
-  'tech-house': 5, 'electro': 5, 'idm': 5, 'latin-electronic': 5,
-  'techno-raw': 6, 'progressive-house': 6, 'afro-house': 6, 'breaks': 6,
-  'peak-techno': 7, 'drum-and-bass': 7, 'ukg': 7, 'uk-bass': 7,
-  'hard-techno': 8, 'dark-techno': 8, 'jungle': 8, 'footwork': 8, 'hard-dance': 8,
-  'industrial': 9, 'noise': 9, 'deconstructed': 9,
-  'psy-trance': 10, 'hyperpop': 10, 'gqom': 10,
-}
+// GENRE_VIBE moved to lib/genres.ts so the foro catalog can share it for
+// vibe-filtering threads via their tagged genres.
 
 // Phosphor tape — three horizontal rows of dashes evoking a waveform display:
 //   MIDDLE row: dense, near-continuous baseline across the full width
@@ -90,8 +79,9 @@ const DASHES: Dash[] = (() => {
 })()
 
 export function VibeSlider() {
-  // Hide on the dashboard — the slider is a feed-curation control and has
-  // nothing to do with the editor's working surface.
+  // Hide on the dashboard — the editor working surface isn't a feed.
+  // /foro IS a feed (threads tagged with 1–5 genres each filter by the
+  // shared vibe range), so the slider stays.
   const pathname = usePathname()
   if (pathname?.startsWith('/dashboard')) return null
 

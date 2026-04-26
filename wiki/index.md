@@ -37,6 +37,7 @@
 - [[Noticias]] — `/noticias` — news only
 - [[Reviews]] — `/reviews` — reviews only
 - [[Articulos]] — `/articulos` — longform features only
+- [[Foro]] — `/foro` — imageboard-style discussion catalog (threads + flat replies)
 - [[Dashboard]] — `/dashboard` — auth-gated insider surface for composing new content (visual prototype)
 - [[Dashboard Drafts]] — `/dashboard/drafts` — table view of session items with edit / publish / delete actions
 - [[About]] — `/about` — identity surface: what Gradiente is + partner ecosystem
@@ -85,6 +86,12 @@
 - [[SaveItemButton]] — `★ GUARDAR / ★ GUARDADO` chip in OverlayShell header; login-gated
 - [[SavedBadge]] — tiny orange `★` chip on cards when item is saved; renders null otherwise
 - [[GuardadosSection]] — dashboard `Guardados/*` surfaces; DraggableCanvas grid filtered by content type
+- [[ForoCatalog]] — `/foro` page body: vibe-filtered grid + URL-driven thread + compose overlays
+- [[ThreadTile]] — image-forward tile for the foro catalog (reply count + genre chips)
+- [[ThreadOverlay]] — modal showing one thread (OP + flat replies, image float, `>>id` quote-buttons, backlinks, inline `TÚ` marker)
+- [[NewThreadOverlay]] — login-gated thread composer (image + 1–5 genres required)
+- [[ReplyComposer]] — pinned-bottom reply form; `>>id` parsing + quote-back pre-fill
+- [[PostHeader]] — role-colored identity chrome at the top of each foro post
 
 ## 50 — Modules
 
@@ -102,6 +109,8 @@
 - [[mockUsers]] — 8-user roster covering all roles + role/category label maps + `getUserById` / `getUserByUsername`
 - [[mockComments]] — 25-comment seed (depth-5 thread, controversy hot-spot, tombstone, edited marker) + tree helpers
 - [[permissions]] — pure-function role/permission helpers (`hasRole`, `canEditComment`, `canModerateComment`, etc.)
+- [[foro]] — sessionStorage-backed foro store (threads + replies + bumpOverrides) + listener-pattern hooks
+- [[mockForo]] — 8 seed threads + 16 seed replies (depth-of-conversation hot-spots, multi-quote, role plurality)
 
 ## 60 — Design
 

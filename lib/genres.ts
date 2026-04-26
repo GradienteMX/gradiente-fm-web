@@ -108,6 +108,47 @@ export function getGenreNames(ids: string[]): string[] {
   return ids.map((id) => getGenreById(id)?.name ?? id)
 }
 
+// ── Genre → vibe mapping ───────────────────────────────────────────────────
+//
+// Anchors a subset of genres on the 0–10 vibe spectrum (0 = glacial,
+// 10 = volcán). Used by the VibeSlider to surface "GENRES IN RANGE" hints
+// and by the foro catalog to vibe-filter threads via their tagged genres.
+// Genres not listed here have no implied vibe and won't match the slider —
+// they always pass through filters.
+
+export const GENRE_VIBE: Record<string, number> = {
+  'ambient': 0,
+  'lo-fi': 1, 'downtempo': 1,
+  'organic-house': 2, 'ambient-techno': 2, 'dub': 2,
+  'deep-house': 3, 'minimal': 3, 'jazz': 3, 'neo-soul': 3,
+  'house': 4, 'electronica': 4, 'melodic-techno': 4, 'nu-disco': 4, 'indie-dance': 4,
+  'tech-house': 5, 'electro': 5, 'idm': 5, 'latin-electronic': 5,
+  'techno-raw': 6, 'progressive-house': 6, 'afro-house': 6, 'breaks': 6,
+  'peak-techno': 7, 'drum-and-bass': 7, 'ukg': 7, 'uk-bass': 7,
+  'hard-techno': 8, 'dark-techno': 8, 'jungle': 8, 'footwork': 8, 'hard-dance': 8,
+  'industrial': 9, 'noise': 9, 'deconstructed': 9,
+  'psy-trance': 10, 'hyperpop': 10, 'gqom': 10,
+}
+
+export function vibeForGenre(id: string): number | null {
+  return id in GENRE_VIBE ? GENRE_VIBE[id] : null
+}
+
+// Returns true if any of the supplied genre ids has a GENRE_VIBE in the
+// inclusive range [min, max]. Genres not in GENRE_VIBE are ignored. If the
+// thread has no mapped genres at all, it passes (treated as untagged →
+// always visible) — this avoids hiding threads tagged with edge genres
+// that haven't been anchored on the spectrum.
+export function genresIntersectVibeRange(
+  ids: string[],
+  min: number,
+  max: number,
+): boolean {
+  const mapped = ids.map(vibeForGenre).filter((v): v is number => v !== null)
+  if (mapped.length === 0) return true
+  return mapped.some((v) => v >= min && v <= max)
+}
+
 export function getTagNames(ids: string[]): string[] {
   return ids.map((id) => getTagById(id)?.name ?? id)
 }
