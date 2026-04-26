@@ -98,11 +98,12 @@ export function useTabAudioCapture(): UseTabAudioCaptureResult {
     setErrorMessage(undefined)
 
     try {
-      // `preferCurrentTab` is non-standard but Chromium-only and harmless elsewhere.
+      // `preferCurrentTab`, `selfBrowserSurface`, `systemAudio` are Chromium
+      // hints — harmless on browsers that ignore them. The cast keeps TS happy
+      // across lib versions that include or omit these properties.
       const stream = await md.getDisplayMedia({
         video: true,
         audio: true,
-        // @ts-expect-error — preferCurrentTab is a Chromium hint, not in the TS lib yet
         preferCurrentTab: true,
         selfBrowserSurface: 'include',
         systemAudio: 'include',
