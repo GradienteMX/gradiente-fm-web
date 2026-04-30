@@ -19,7 +19,7 @@
 //   - Listener pattern → Supabase Realtime subscriptions
 
 import { useEffect, useState } from 'react'
-import type { ForoReply, ForoThread } from './types'
+import type { ForoDeletion, ForoReply, ForoThread } from './types'
 import {
   MOCK_REPLIES,
   MOCK_THREADS,
@@ -40,10 +40,15 @@ interface SessionState {
   // Per-thread bumpedAt overrides written when a session reply lands on a
   // mock thread (mock threads are immutable, so we shadow the field).
   bumpOverrides: Record<string, string>
+  // Per-post deletion overrides (keyed by thread or reply id). Mods set
+  // these via tombstoneThread / tombstoneReply; read-time merge applies
+  // them on top of the seed/session record. Tombstoned threads are also
+  // hidden from the catalog (but reachable by direct URL).
+  tombstones: Record<string, ForoDeletion>
 }
 
 function emptyState(): SessionState {
-  return { addedThreads: [], addedReplies: [], bumpOverrides: {} }
+  return { addedThreads: [], addedReplies: [], bumpOverrides: {}, tombstones: {} }
 }
 
 function readSession(): SessionState {
@@ -58,6 +63,10 @@ function readSession(): SessionState {
       bumpOverrides:
         parsed?.bumpOverrides && typeof parsed.bumpOverrides === 'object'
           ? parsed.bumpOverrides
+          : {},
+      tombstones:
+        parsed?.tombstones && typeof parsed.tombstones === 'object'
+          ? parsed.tombstones
           : {},
     }
   } catch {
@@ -79,9 +88,22 @@ function notify() {
 
 // ── Read API ────────────────────────────────────────────────────────────────
 
+function applyThreadTombstone(t: ForoThread, s: SessionState): ForoThread {
+  const stone = s.tombstones[t.id]
+  return stone ? { ...t, deletion: stone } : t
+}
+
+function applyReplyTombstone(r: ForoReply, s: SessionState): ForoReply {
+  const stone = s.tombstones[r.id]
+  return stone ? { ...r, deletion: stone } : r
+}
+
 // Returns the merged thread list (mock + session) sorted by bumpedAt desc,
 // truncated to FORO_THREAD_CAP. Mock threads have their bumpedAt shadowed by
-// session bumpOverrides so a reply lands the parent at the top.
+// session bumpOverrides so a reply lands the parent at the top. Tombstoned
+// threads are excluded from the catalog so the moderator's pruning is
+// visible in the list view (the thread URL still resolves and renders the
+// tombstone).
 function getMergedThreads(): ForoThread[] {
   const s = readSession()
   const merged = [
@@ -91,22 +113,28 @@ function getMergedThreads(): ForoThread[] {
     })),
     ...s.addedThreads,
   ]
+    .map((t) => applyThreadTombstone(t, s))
+    .filter((t) => !t.deletion)
   merged.sort((a, b) => b.bumpedAt.localeCompare(a.bumpedAt))
   return merged.slice(0, FORO_THREAD_CAP)
 }
 
 function getMergedReplies(): ForoReply[] {
   const s = readSession()
-  return [...MOCK_REPLIES, ...s.addedReplies]
+  return [...MOCK_REPLIES, ...s.addedReplies].map((r) => applyReplyTombstone(r, s))
 }
 
 export function getThreadById(id: string): ForoThread | null {
   const s = readSession()
   const mock = MOCK_THREADS.find((t) => t.id === id)
   if (mock) {
-    return { ...mock, bumpedAt: s.bumpOverrides[id] ?? mock.bumpedAt }
+    return applyThreadTombstone(
+      { ...mock, bumpedAt: s.bumpOverrides[id] ?? mock.bumpedAt },
+      s,
+    )
   }
-  return s.addedThreads.find((t) => t.id === id) ?? null
+  const session = s.addedThreads.find((t) => t.id === id)
+  return session ? applyThreadTombstone(session, s) : null
 }
 
 export function getRepliesForThreadId(threadId: string): ForoReply[] {
@@ -136,6 +164,69 @@ export function addReply(reply: ForoReply) {
   s.addedThreads = s.addedThreads.map((t) =>
     t.id === reply.threadId ? { ...t, bumpedAt: reply.createdAt } : t,
   )
+  writeSession(s)
+  notify()
+}
+
+// ── Moderation (tombstones) ─────────────────────────────────────────────────
+//
+// Soft-delete only. Body is preserved in storage so quote-links still
+// resolve; the UI replaces the body with a `//ELIMINADO·POR·MODERACIÓN`
+// stub showing the moderator's stated reason. Catalog hides tombstoned
+// threads, but `?thread=<id>` still resolves and renders the tombstone.
+//
+// Callers MUST gate via canModerate(currentUser) — this writer doesn't
+// re-check; the storage layer trusts the UI to enforce the role check.
+// Real backend will enforce in RLS.
+
+export function tombstoneThread(
+  threadId: string,
+  moderatorId: string,
+  reason: string,
+) {
+  const s = readSession()
+  s.tombstones = {
+    ...s.tombstones,
+    [threadId]: {
+      moderatorId,
+      reason,
+      deletedAt: new Date().toISOString(),
+    },
+  }
+  writeSession(s)
+  notify()
+}
+
+export function tombstoneReply(
+  replyId: string,
+  moderatorId: string,
+  reason: string,
+) {
+  const s = readSession()
+  s.tombstones = {
+    ...s.tombstones,
+    [replyId]: {
+      moderatorId,
+      reason,
+      deletedAt: new Date().toISOString(),
+    },
+  }
+  writeSession(s)
+  notify()
+}
+
+// Revert a tombstone — drops the deletion record so the post reappears.
+// Catalog re-includes the thread; reply body restores. Same gating model
+// as the writers above: caller must hold canModerate. Real backend will
+// enforce in RLS.
+//
+// One function works for both threads and replies because the tombstone map
+// is keyed by post id, not type.
+export function clearTombstone(postId: string) {
+  const s = readSession()
+  if (!(postId in s.tombstones)) return
+  const { [postId]: _, ...rest } = s.tombstones
+  s.tombstones = rest
   writeSession(s)
   notify()
 }

@@ -14,6 +14,7 @@ import { vibeToColor, vibeToLabel } from '@/lib/utils'
 import { LivePreview } from '@/components/dashboard/LivePreview'
 import { EmbedList, useDraftWorkbench } from './shared/Fields'
 import { SubmitFooter } from './shared/Fields'
+import { PollFieldset } from './shared/PollFieldset'
 
 const DRAFT_KEY = 'gradiente:dashboard:mix-draft'
 
@@ -264,6 +265,14 @@ export function MixForm() {
           <TrackListEditor
             tracks={draft.tracklist ?? []}
             onChange={(tracklist) => patch({ tracklist })}
+          />
+        </Section>
+
+        <Section label="08" title="ENCUESTA (opcional)">
+          <PollFieldset
+            type={draft.type}
+            poll={draft.poll}
+            onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
 

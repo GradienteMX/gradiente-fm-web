@@ -29,6 +29,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { PollFieldset } from './shared/PollFieldset'
 
 const DRAFT_KEY = 'gradiente:dashboard:listicle-draft'
 
@@ -179,6 +180,14 @@ export function ListicleForm() {
 
         <Section label="05" title="CUERPO">
           <BlocksEditor blocks={blocks} onChange={setBlocks} />
+        </Section>
+
+        <Section label="06" title="ENCUESTA (opcional)">
+          <PollFieldset
+            type={draft.type}
+            poll={draft.poll}
+            onChange={(poll) => patch({ poll: poll ?? undefined })}
+          />
         </Section>
 
         <SubmitFooter

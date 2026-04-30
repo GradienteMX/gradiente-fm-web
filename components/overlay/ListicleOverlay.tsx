@@ -14,6 +14,7 @@ import { Calendar, User } from 'lucide-react'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { BodyBlocks } from './ArticuloOverlay'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollSection } from '@/components/poll/PollSection'
 
 interface ListicleOverlayProps {
   item: ContentItem
@@ -313,6 +314,15 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
           </div>
         </aside>
       </div>
+
+      {/* Poll — when the listicle has an attached poll, render it after the
+          ranked body and before related lists. Choices auto-derive from the
+          listicle's `track` blocks; see [[polls]] resolvePollChoices. */}
+      {item.poll && (
+        <section className="border-t border-border bg-surface/40 px-5 py-8 md:px-12">
+          <PollSection item={item} className="max-w-2xl" />
+        </section>
+      )}
 
       {/* Related */}
       {related.length > 0 && (

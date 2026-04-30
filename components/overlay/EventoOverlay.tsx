@@ -13,6 +13,7 @@ import {
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollSection } from '@/components/poll/PollSection'
 
 interface Props {
   item: ContentItem
@@ -204,6 +205,10 @@ export function EventoOverlay({ item }: Props) {
             ))}
           </div>
         )}
+
+        {/* Poll — attendance variant for events. Sits above the tickets
+            CTA so the social signal precedes the commercial one. */}
+        {item.poll && <PollSection item={item} />}
 
         {/* Tickets CTA — external escape hatch */}
         {item.ticketUrl && (

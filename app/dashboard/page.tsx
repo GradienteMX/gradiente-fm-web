@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
+import { canAssignRoles, canCreateContent } from '@/lib/permissions'
 import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
 import { useSavedItems } from '@/lib/saves'
 import { categoryColor } from '@/lib/utils'
@@ -24,6 +25,9 @@ import { ProfileSection } from '@/components/dashboard/explorer/sections/Profile
 import { HomeSection } from '@/components/dashboard/explorer/sections/HomeSection'
 import { GuardadosSection } from '@/components/dashboard/explorer/sections/GuardadosSection'
 import { SavedCommentsSection } from '@/components/dashboard/explorer/sections/SavedCommentsSection'
+import { PermisosSection } from '@/components/dashboard/explorer/sections/PermisosSection'
+import { PartnerApprovalsSection } from '@/components/dashboard/explorer/sections/PartnerApprovalsSection'
+import { MiPartnerSection } from '@/components/dashboard/explorer/sections/MiPartnerSection'
 
 import { MixForm } from '@/components/dashboard/forms/MixForm'
 import { ListicleForm } from '@/components/dashboard/forms/ListicleForm'
@@ -67,6 +71,9 @@ const VALID_SECTIONS: ExplorerSection[] = [
   'guardados-editoriales',
   'guardados-articulos',
   'guardados-comentarios',
+  'permisos',
+  'aprobaciones-mkt',
+  'mi-partner',
 ]
 
 function isSupportedType(t: string | null): t is SupportedType {
@@ -90,6 +97,9 @@ const SECTION_LABEL: Record<ExplorerSection, string> = {
   'guardados-editoriales': 'Guardados · Editoriales',
   'guardados-articulos': 'Guardados · Artículos',
   'guardados-comentarios': 'Guardados · Comentarios',
+  permisos: 'Permisos',
+  'aprobaciones-mkt': 'Marketplace',
+  'mi-partner': 'Mi partner',
 }
 
 const SECTION_WINDOW_TITLE: Record<ExplorerSection, string> = {
@@ -106,16 +116,33 @@ const SECTION_WINDOW_TITLE: Record<ExplorerSection, string> = {
   'guardados-editoriales': 'GUARDADOS · EDITORIALES',
   'guardados-articulos': 'GUARDADOS · ARTÍCULOS',
   'guardados-comentarios': 'GUARDADOS · COMENTARIOS',
+  permisos: 'PERMISOS · ROL & BANDERAS',
+  'aprobaciones-mkt': 'MARKETPLACE · APROBACIONES',
+  'mi-partner': 'MI PARTNER',
 }
 
 export default function DashboardPage() {
-  const { isAuthed, username, openLogin } = useAuth()
+  const { currentUser, isAuthed, username, openLogin } = useAuth()
   const router = useRouter()
   const search = useSearchParams()
 
   const rawSection = search?.get('section') ?? null
   const rawType = search?.get('type') ?? null
-  const section: ExplorerSection = isSection(rawSection) ? rawSection : 'home'
+  const requestedSection: ExplorerSection = isSection(rawSection) ? rawSection : 'home'
+  // Defense-in-depth: a non-admin URL-typing `?section=permisos` falls back
+  // to home. The sidebar already hides the row, but URL access shouldn't
+  // bypass the gate.
+  const isAdmin = canAssignRoles(currentUser)
+  const isPartnerTeam = !!currentUser?.partnerId
+  // Admin-only sections fall back to home for non-admins (defense-in-depth;
+  // the sidebar already hides the rows).
+  const adminOnlySections: ExplorerSection[] = ['permisos', 'aprobaciones-mkt']
+  let section: ExplorerSection = requestedSection
+  if (adminOnlySections.includes(section) && !isAdmin) section = 'home'
+  // Partner-team-only section — only visible to users with partnerId set.
+  // Non-partner-team URL access falls back to home, matching the admin
+  // pattern.
+  if (section === 'mi-partner' && !isPartnerTeam) section = 'home'
   const composeType: SupportedType | null = isSupportedType(rawType) ? rawType : null
   const editingId = search?.get('edit') ?? null
 
@@ -129,6 +156,18 @@ export default function DashboardPage() {
   const publishedCount = draftItems.filter((i) => i._draftState === 'published').length
   const savedItems = useSavedItems()
   const savedCount = savedItems.length
+
+  // Content-creation gating. Filter the SUPPORTED template list down to the
+  // types this user is authorized to create. See lib/permissions.ts
+  // canCreateContent for the per-type tier map. The compose URL is also
+  // guarded below — typing `?type=mix` as a non-guide bumps you back to
+  // the picker (and shows whatever templates remain).
+  const allowedTypes: SupportedType[] = useMemo(
+    () => SUPPORTED.filter((t) => canCreateContent(currentUser, t)),
+    [currentUser],
+  )
+  const composeBlocked =
+    composeType !== null && !canCreateContent(currentUser, composeType)
   const lastEditedAt = useMemo(() => {
     if (draftItems.length === 0) return null
     return draftItems
@@ -150,6 +189,16 @@ export default function DashboardPage() {
     setSelectedDraftId(null)
     setSelectedTplType(null)
   }, [section])
+
+  // Compose URL guard — bump a non-authorized user back to the picker when
+  // they type `?type=…&edit=…` for a type they can't create. Done in an
+  // effect so it triggers post-hydration once we know the real role.
+  useEffect(() => {
+    if (!hydrated || !isAuthed) return
+    if (composeBlocked) {
+      router.replace('/dashboard?section=nuevo')
+    }
+  }, [hydrated, isAuthed, composeBlocked, router])
 
   const navigateSection = useCallback(
     (next: ExplorerSection) => {
@@ -212,7 +261,9 @@ export default function DashboardPage() {
   }
 
   // ── Compose mode (form) ──────────────────────────────────────────────────
-  if (composeType) {
+  // The redirect effect above will bump composeBlocked back to the picker —
+  // we render the picker in the meantime so there's no flash of the form.
+  if (composeType && !composeBlocked) {
     return (
       <ExplorerShell
         active="nuevo"
@@ -275,7 +326,16 @@ export default function DashboardPage() {
         openCompose,
         openDraft,
       })}
-      hideDetails={section === 'profile' || section === 'home'}
+      hideDetails={
+        section === 'profile' ||
+        section === 'home' ||
+        section === 'permisos' ||
+        section === 'aprobaciones-mkt' ||
+        section === 'mi-partner' ||
+        // Empty Nuevo (user-tier with no creation rights) — no template can
+        // be selected, so the right details panel has nothing to bind to.
+        (section === 'nuevo' && allowedTypes.length === 0)
+      }
     >
       <ExplorerWindow
         title={SECTION_WINDOW_TITLE[section]}
@@ -298,7 +358,7 @@ export default function DashboardPage() {
             })}
           />
         }
-        countLabel={countLabelFor({ section, draftItems })}
+        countLabel={countLabelFor({ section, draftItems, allowedTypes })}
         viewControls={
           shouldShowViewControls(section) ? (
             <ViewControls mode={viewMode} onChange={setViewMode} />
@@ -313,6 +373,7 @@ export default function DashboardPage() {
           draftItems={draftItems}
           selectedTplType={selectedTplType}
           selectedDraftId={selectedDraftId}
+          allowedTypes={allowedTypes}
           onPickType={(t) => setSelectedTplType(t)}
           onOpenType={(t) => openCompose(t)}
           onSelectDraft={(id) => setSelectedDraftId(id)}
@@ -334,6 +395,7 @@ function SectionBody({
   draftItems,
   selectedTplType,
   selectedDraftId,
+  allowedTypes,
   onPickType,
   onOpenType,
   onSelectDraft,
@@ -347,6 +409,7 @@ function SectionBody({
   draftItems: DraftItem[]
   selectedTplType: SupportedType | null
   selectedDraftId: string | null
+  allowedTypes: SupportedType[]
   onPickType: (t: SupportedType) => void
   onOpenType: (t: SupportedType) => void
   onSelectDraft: (id: string | null) => void
@@ -366,7 +429,7 @@ function SectionBody({
     case 'nuevo':
       return (
         <NuevoSection
-          supported={SUPPORTED}
+          supported={allowedTypes}
           selectedType={selectedTplType}
           // NuevoSection's callbacks are typed wider (any ContentType) but
           // it only ever invokes them with values from `supported`, which is
@@ -420,6 +483,12 @@ function SectionBody({
       return <GuardadosSection filter={['articulo', 'listicle']} filterKey="articulos" />
     case 'guardados-comentarios':
       return <SavedCommentsSection />
+    case 'permisos':
+      return <PermisosSection />
+    case 'aprobaciones-mkt':
+      return <PartnerApprovalsSection />
+    case 'mi-partner':
+      return <MiPartnerSection />
     default:
       return null
   }
@@ -562,11 +631,16 @@ function shouldShowViewControls(section: ExplorerSection): boolean {
 function countLabelFor({
   section,
   draftItems,
+  allowedTypes,
 }: {
   section: ExplorerSection
   draftItems: DraftItem[]
+  allowedTypes: SupportedType[]
 }): string | undefined {
-  if (section === 'nuevo') return `▸ ${SUPPORTED.length} elementos`
+  if (section === 'nuevo') {
+    const n = allowedTypes.length
+    return `▸ ${n} ${n === 1 ? 'plantilla' : 'plantillas'}`
+  }
   if (section === 'drafts') {
     const n = draftItems.filter((i) => i._draftState === 'draft').length
     return `▸ ${n} ${n === 1 ? 'elemento' : 'elementos'}`

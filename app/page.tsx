@@ -4,6 +4,7 @@ import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
 import { FeedHeader } from '@/components/FeedHeader'
 import { HeroCard } from '@/components/HeroCard'
 import { PartnersRail } from '@/components/PartnersRail'
+import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { MOCK_ITEMS } from '@/lib/mockData'
 import { filterForHome, getEventDates, getPinnedHero } from '@/lib/utils'
 
@@ -43,8 +44,17 @@ export default function HomePage() {
           <HomeFeedWithDrafts items={gridItems} mode="home" />
         </div>
 
-        {/* Independent partners rail — chronological, no ranking, no vibe filter */}
-        <PartnersRail items={partners} />
+        {/* Independent right column — partners rail at top, marketplace
+            entry directly below. PartnersRail keeps its own md:block + w
+            wrapper; MarketplaceRail sits in its own w-[260px] block so the
+            two visually align without changing PartnersRail's existing
+            shape. */}
+        <div className="hidden flex-col gap-4 md:flex">
+          <PartnersRail items={partners} />
+          <div className="w-[260px]">
+            <MarketplaceRail />
+          </div>
+        </div>
       </div>
     </>
   )

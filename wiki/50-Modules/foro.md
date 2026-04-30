@@ -1,8 +1,8 @@
 ---
 type: module
 status: current
-tags: [foro, store, sessionstorage, imageboard]
-updated: 2026-04-26
+tags: [foro, store, sessionstorage, imageboard, moderation]
+updated: 2026-04-29
 ---
 
 # foro
@@ -22,6 +22,7 @@ interface SessionState {
   addedThreads: ForoThread[]                  // user-authored threads
   addedReplies: ForoReply[]                   // user-authored replies
   bumpOverrides: Record<string, string>       // mock-thread id → ISO bumpedAt
+  tombstones: Record<string, ForoDeletion>    // thread/reply id → mod deletion
 }
 ```
 
@@ -50,6 +51,11 @@ In-module `Set<() => void>` of refresh callbacks. Every write (`addThread`, `add
 
 - `addThread(thread)` — appends to `addedThreads`, fires `notify()`.
 - `addReply(reply)` — appends to `addedReplies`, sets `bumpOverrides[reply.threadId]` to the reply timestamp, also patches the parent in `addedThreads` if it's a session thread (so its bumpedAt stays consistent across reads).
+- `tombstoneThread(threadId, moderatorId, reason)` — soft-delete. Writes a `ForoDeletion` to `tombstones[threadId]`. The thread's body is preserved in storage (so quote-links keep resolving) but `getMergedThreads` filters it out of the catalog and `getThreadById` returns it with `deletion` set. [[ThreadOverlay]] renders a `Tombstone` block in place of the body and disables the composer.
+- `tombstoneReply(replyId, moderatorId, reason)` — same shape. Reply position is preserved (article still renders, backlinks still work) but the body is replaced with the moderator stub.
+- `clearTombstone(postId)` — drops the deletion record so the post reappears (catalog re-includes the thread; reply body restores). One writer for both kinds because the tombstone map is keyed by post id, not type. Same `canModerate` gating as the writers above.
+
+All three writers trust the caller to gate via `canModerate(currentUser)` from [[permissions]] — the storage layer doesn't re-check. Real backend enforces in RLS.
 
 ## Session id generation
 

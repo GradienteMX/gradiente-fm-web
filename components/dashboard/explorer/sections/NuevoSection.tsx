@@ -71,6 +71,29 @@ interface Props {
 }
 
 export function NuevoSection({ supported, selectedType, onSelect, onOpen }: Props) {
+  if (supported.length === 0) {
+    // Reached when the current role has no creation rights for any type —
+    // see lib/permissions.ts canCreateContent. Reads as a permissions
+    // explanation, not a "coming soon" tease.
+    return (
+      <div
+        className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 px-4 py-8 font-mono text-[11px] leading-relaxed text-muted"
+      >
+        <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
+          //SIN·PLANTILLAS·DISPONIBLES
+        </span>
+        <p>
+          Tu rol no tiene permisos para componer contenido publicable. Los
+          lectores leen, comentan y participan en el foro; la composición
+          editorial está reservada a redacción (curador / guía / insider).
+        </p>
+        <p>
+          Si crees que deberías tener acceso, pídele a un admin que ajuste tu
+          rol desde <span className="text-secondary">Permisos</span>.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {supported.map((t) => {

@@ -17,12 +17,17 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronRight,
+  Lock,
+  ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ExplorerSection } from './types'
 import { useSavedItems } from '@/lib/saves'
 import { useSavedComments } from '@/lib/comments'
+import { useAuth } from '@/components/auth/useAuth'
+import { canAssignRoles } from '@/lib/permissions'
+import { useResolvedPartner } from '@/lib/partnerOverrides'
 
 type LucideIconType = LucideIcon
 
@@ -52,6 +57,10 @@ interface Props {
 }
 
 export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: Props) {
+  const { currentUser } = useAuth()
+  const isAdmin = canAssignRoles(currentUser)
+  const partnerId = currentUser?.partnerId ?? null
+  const myPartner = useResolvedPartner(partnerId)
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({
     guardados: true,
   })
@@ -75,17 +84,37 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
     }
   }, [savedItems, savedComments])
 
-  // Top-level items the user can actually act on today.
-  const flatItems: SidebarItem[] = useMemo(
-    () => [
+  // Top-level items the user can actually act on today. The `permisos` row
+  // appears only for admins (canAssignRoles); non-admins never see it in the
+  // sidebar. The dashboard page also guards URL-typed access — see
+  // [[Roles and Ranks]].
+  const flatItems: SidebarItem[] = useMemo(() => {
+    const items: SidebarItem[] = [
       { section: 'home', label: 'Dashboard', Icon: Home },
       { section: 'nuevo', label: 'Nuevo contenido', Icon: FilePlus },
       { section: 'drafts', label: 'Drafts', Icon: FileText, badge: draftCount },
       { section: 'publicados', label: 'Publicados', Icon: Archive, badge: publishedCount },
       { section: 'profile', label: 'Perfil', Icon: User },
-    ],
-    [draftCount, publishedCount],
-  )
+    ]
+    if (isAdmin) {
+      items.push({ section: 'permisos', label: 'Permisos', Icon: Lock })
+      items.push({
+        section: 'aprobaciones-mkt',
+        label: 'Marketplace',
+        Icon: ShoppingBag,
+      })
+    }
+    if (myPartner) {
+      items.push({
+        section: 'mi-partner',
+        // Use the partner's title so the sidebar reads as "this is your team"
+        // rather than a generic label. Truncated if long.
+        label: myPartner.title,
+        Icon: ShoppingBag,
+      })
+    }
+    return items
+  }, [draftCount, publishedCount, isAdmin, myPartner])
 
   // Guardados — bookmarked content + saved comments. Counts live-update.
   const folders: SidebarFolder[] = useMemo(

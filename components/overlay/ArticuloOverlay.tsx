@@ -14,6 +14,7 @@ import { Calendar, Clock, Quote, User, ExternalLink } from 'lucide-react'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { PLATFORM_LABELS } from '@/components/embed/platforms'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollSection } from '@/components/poll/PollSection'
 
 interface ArticuloOverlayProps {
   item: ContentItem
@@ -391,6 +392,14 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
           </div>
         </aside>
       </div>
+
+      {/* Poll — freeform on articulo. Lives between body+footnotes and the
+          related-reading section. */}
+      {item.poll && (
+        <section className="border-t border-border bg-surface/40 px-5 py-8 md:px-12">
+          <PollSection item={item} className="max-w-2xl" />
+        </section>
+      )}
 
       {/* ── Related reading — stays in overlay via OverlayRouter swap ───── */}
       {related.length > 0 && (

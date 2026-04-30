@@ -8,6 +8,544 @@
 
 ---
 
+## 2026-04-30 · INGEST · Marketplace v2 — Chunk C (sub-overlay listing detail)
+
+Closes the read loop. Clicking any listing in [[MarketplaceOverlay]] now opens a sub-overlay with the full ficha — image gallery, full description, embeds, tags, shipping, vendor link back. Deep-linkable via `?partner=<slug>&listing=<id>`. ESC peels one layer at a time: sub-overlay → partner overlay → catalog.
+
+**New component** — [[MarketplaceListingDetail]] (`components/marketplace/MarketplaceListingDetail.tsx`). Same visual idiom as the partner overlay (eva-box + scanlines + black/85 backdrop with blur, role="dialog"). Stacks at z-60 above the partner overlay's z-50 so the parent stays visible behind the backdrop. Body lock is left to the parent overlay since both stacks share `body.style.overflow = 'hidden'`. Layout splits left/right at the md breakpoint:
+
+- **Left — gallery (55% width on md+)**: large 4:3 main image + thumbnail strip below (orange-bordered active thumb, opacity dim on inactive, `PORTADA` badge on the first thumb). Click any thumb → main image swaps. Single-image listings drop the strip; zero-image listings render the `//CATEGORY` placeholder. `activeImage` resets to 0 on listing-id change so deep-link re-entries always start at the portada.
+- **Right — meta**: `★ MARKET · <PARTNER>` chip, big syne title (`id="listing-detail-title"` so the dialog gets `aria-labelledby`), category/subcategory line in vibe-orange, $price MXN in syne 3xl, a single horizontal strip combining `CONDICIÓN <X>` and the color-coded status pill (so the reader sees "what is it / can I buy it" together), then **//FUENTES** (link-out chips for any embeds, mirrors the `[[Embed Primitive]]` idiom from [[ArticuloOverlay]]'s track blocks — same `<a>` chip with `PLATFORM_LABEL` + `ExternalLink`), **//DESCRIPCIÓN** (free text), **//ETIQUETAS** (`#tag` chips), **//ENTREGA** (icon + label, only when `shippingMode` is set), **//VENDEDOR** (an in-app `← <PARTNER>` button that calls `onClose` to return to the partner overlay, plus an outbound `partnerUrl` chip when present), and a footer disclaimer reminding the buyer that GRADIENTE FM doesn't process pages or shipping.
+
+**MarketplaceOverlay rewiring** — the partner overlay now reads both `?partner=` and `?listing=` from URL via `useSearchParams`. When `listing` is set, it resolves the listing off the partner's `marketplaceListings` (in publishedAt-desc order, mirroring the grid's index badge), and mounts `MarketplaceListingDetail` siblingwise inside its outer container. The detail's `onClose` strips `listing=` *only* via `router.replace`, leaving `partner=` untouched — closer drops back into the partner overlay, not the catalog. Card-click handler in the listings grid pushes `?listing=<id>` on the same URL using `router.replace({ scroll: false })` so the URL stays clean and history doesn't accumulate.
+
+**MarketplaceListingCard becomes optionally clickable** — the card grew an `onClick?: () => void` prop. When provided it renders as a `<button>` with `aria-label="Ver detalle de <title>"` + hover/focus border in vibe-orange; otherwise it stays a presentational `<article>` (the GRID-mode preview in the dashboard composer doesn't get the click affordance, since clicking a preview to open another preview would be silly). Body markup extracted into a sibling `CardBody` component — both branches reuse the same render tree.
+
+**ESC handling** — both overlays bind `keydown` on `window`. To prevent a single ESC from collapsing both at once, the partner overlay's handler is gated on `!listingId` (closure-captured at effect run time). Press order:
+
+1. `?partner=…&listing=…` open → ESC → sub-overlay handler runs → strips `listing=` → next render, parent's effect re-runs without the gate → sub-overlay unmounts.
+2. `?partner=…` open → ESC → parent's handler runs → strips `partner=` → catalog visible.
+
+[[MarketplaceCatalog]]'s `onCloseOverlay` now strips both `partner` and `listing` so closing the partner card via the [×] button never leaves an orphaned listing param.
+
+**Seed enrichment** ([[mockData]]) — `mkl-naafi-01` (Siete Catorce — Volcán) gained 3 images (`/flyers/rf-074.jpg`, `rf-075.jpg`, `rf-076.jpg`), 2 embeds (SoundCloud + YouTube placeholder URLs), and a real description. `mkl-naafi-02` got 2 images. This exercises the gallery-strip swap, the //FUENTES embed chip render, and the embed-less branch (the other 4 listings) in one catalog browse.
+
+### Verified in preview
+
+- `/marketplace?partner=naafi` → 6 listing cards, all `<button data-listing-id>` with proper aria-labels.
+- Click `mkl-naafi-01` → URL becomes `?partner=naafi&listing=mkl-naafi-01`, sub-overlay (`role="dialog"`) mounts. Title strip `//LIST · ID·NAAFI-01`, gallery shows the rf-074 portada + 3 thumbnails with the PORTADA badge on the first, full meta on the right (Siete Catorce — Volcán h1, VINYL · 12" subcat in orange, `$450 MXN` in syne 3xl, CONDICIÓN NM + DISPONIBLE green pill row, //FUENTES with SOUNDCLOUD + YOUTUBE chips, //DESCRIPCIÓN with the full seed copy, //ETIQUETAS with `#limited #club-music #mexico`, //ENTREGA with the truck/AMBOS icon, //VENDEDOR back-button + naafi.net outbound link).
+- Click second thumbnail → main image swaps from `/flyers/rf-074.jpg` to `/flyers/rf-075.jpg`, the second thumb gets `aria-pressed="true"`.
+- Press ESC once → URL → `?partner=naafi`, dialog count drops to 0, partner overlay still open with all 6 listing buttons intact.
+- Press ESC again → URL → `/marketplace/`, both overlays gone, catalog grid visible with the N.A.A.F.I. card.
+- Direct deep-link `?partner=naafi&listing=mkl-naafi-01` opens both overlays from the URL alone (validates the composer's VISTA PREVIA button workflow — the URL pattern Chunk B already targets).
+- Zero console errors throughout. Build clean (no new lint warnings).
+
+### Open follow-ups
+
+- **Embeds editor in the composer**. The detail consumes `embeds`, but the dashboard composer doesn't yet expose an editor for them. Easy follow-up — the existing `EmbedList` from `Fields.tsx` (used by mix/listicle forms) drops in directly with `value={listing.embeds ?? []}` / `onChange={(embeds) => onPatch({ embeds })}`.
+- **Image lightbox**. Clicking the big main image could expand to a full-viewport zoom (similar to the foro thread image float). Today the gallery is "click thumb to swap"; lightbox is a separate gesture.
+- **Inline embed players**. Today embeds are link-outs, not inline iframes. The audio system has SoundCloud working as a live embed (see [[Audio reactive subsystem]]); plumbing that here would let buyers preview without leaving the overlay. Outside the v2 scope.
+- **Quick-filter chips inside MarketplaceOverlay**. The reference screenshot showed `/ VINYL · / CASSETTE · …` chips above the listings grid. Still pending; would let buyers narrow by category without leaving the partner overlay.
+- **Per-listing `sellerId`**. Carry-over from v1 — the detail still shows the partner's name uniformly as the vendor.
+- **Sub-overlay back button on mobile**. The chrome strip's `← VOLVER` button is `hidden sm:flex`. Below sm, only the [×] CERRAR button is visible. Functionally fine (both call the same `onClose`), but a small visual gap.
+
+---
+
+## 2026-04-30 · INGEST · Marketplace v2 — Chunk B (composer rewrite, 3-zone layout)
+
+The visual centerpiece of the v2 plan. Replaces the inline `ListingsEditor` (compact rows + per-row inline editor) inside [[MiPartnerSection]] with a 3-zone layout matching Iker's mockup. Pure UI work on top of Chunk A's type extensions; partnerOverrides write idiom unchanged. See [[MiPartnerSection]].
+
+**Architecture** — single new orchestrator `ListingsManager` owns three sibling regions:
+
+- **LEFT — `ListingComposer`**. Hot-resolved each render from `partner.marketplaceListings` by id, so partnerOverrides writes propagate instantly to both the composer and the preview pane. Empty-state placeholder when nothing is selected. Form fields (each in its own `FormField` wrapper):
+  - `CharCountedInput` — title, max 80, counter flips red on overflow.
+  - `CategorySubcategoryPair` — paired selects; subcategory `<select>` reads `SUBCATEGORIES_BY_CATEGORY[category]` and shows `// n/a` when the catalog is `[]` (only `other`). Switching category drops a now-orphan subcategory.
+  - `<select>` condition + numeric `<input>` price (currency suffix in label from partner).
+  - `StatusRadioRow` — 3-button radio (DISPONIBLE green / RESERVADO yellow / VENDIDO red); active button gets vibe-color border + tinted bg + matching dot.
+  - `MultiImageGallery` — drag-drop drop zone (whole region; data URLs via `FileReader.readAsDataURL`), `+ AGREGAR` empty slot opens the file picker, per-image `↑ / ↓` reorder buttons + `×` remove (revealed on hover or focus-within), `PORTADA` star badge on `images[0]`, `ARCHIVO` label on data-URL slots so partners can spot uploaded vs linked images at a glance, `+ AÑADIR URL` fallback toggles an inline URL input (Enter commits, Esc cancels).
+  - `CharCountedTextarea` — description, max 1000, same overflow treatment.
+  - `TagsChipInput` — chip-style input. Enter or `,` commits; Backspace on empty input removes the last chip; click `×` per chip to remove. Stored lowercase, deduped. Renders as `#name` chips.
+  - `ShippingRadioCards` — 3-card radio (ENVÍO / RECOGIDA / AMBOS) with icon (Truck/MapPin/Package) + label + sublabel. Click again on the active card clears (matches the optional `shippingMode?` shape).
+  - `ActionRow` — `VISTA PREVIA` (Eye icon, opens `/marketplace/?partner=<slug>&listing=<id>` in a new tab — that URL is what Chunk C will react to), `▣ GUARDAR BORRADOR` (gray), `▶ PUBLICAR ITEM` (green primary). Edits are already auto-saved through inline writes, so both action buttons just close the composer and fire a 2.5s flash chip (`◉ GUARDADO` / `▶ PUBLICADO`). A real draft pipeline would need a new `_draft?` flag on `MarketplaceListing` + filter in the public catalog — flagged as a follow-up.
+
+- **RIGHT — `ListingPreviewPane`**. Three-mode toggle in the header (`DESTACADA` / `GRID` / `LISTA`):
+  - `DestacadaPreview` — large 4:3 image (or `//CATEGORY` placeholder), big title + category/subcategory line in vibe-orange, large price, meta block (CONDICIÓN / VENDEDOR / ENTREGA), description preview (line-clamp-4), `#tag` chips, status pill at the bottom.
+  - `GRID` — embeds the existing public-side [[MarketplaceListingCard]] component verbatim, capped at 280px wide for the pane. Single source of truth — when the public card visual changes, the preview follows. (This is the shared component Iker asked about; deferring an extracted `ListingDetailView` until Chunk C lands and we can see the actual sub-overlay shape side-by-side.)
+  - `ListaPreview` — linear row variant (thumb + title + category line + price + status pill).
+  - Empty state when nothing is selected.
+
+- **BOTTOM — `ListingsTable`**. Replaces the v1 compact-row UL.
+  - Columns: thumb (32px), title, category+subcategory, condition, price, status pill (color-coded), updated (relative-ago), actions.
+  - `SortHeader` per sortable column — click to toggle asc/desc; active column shows `↑`/`↓` indicator in orange. Default sort: `updated desc`.
+  - Pagination at 5 per page with chevron-prev / chevron-next + `PÁGINA N / M` indicator. The N.A.A.F.I. seed (6 listings) renders 5 on page 1 + 1 on page 2 — exercises pagination out of the box.
+  - Per-row actions: `Pencil` (edit; opens listing in composer, shows orange-active state when editing), `Copy` (duplicate; clones with new id + ` (copia)` title suffix + `status: 'available'` + `publishedAt: now`, auto-selects clone), `Trash2` (delete; red border).
+  - `+ NUEVO LISTADO` in the header creates a fresh draft (`images: []`) and auto-opens it in the composer.
+  - Editing-row highlight: orange-tint bg + orange-active edit pencil button so the user can always see which listing the composer is bound to.
+
+**Sub-control implementation notes**:
+
+- `relativeAgo(iso)` — handcrafted bucket helper (HOY / Nh / Nd / Nsem / Nmes), avoids pulling in another date-fns format for the table cell.
+- Image gallery's drop zone wraps the entire region (drag highlight on the dashed border) but only `+ AGREGAR` does the file-picker click, so dragging an image directly onto an existing slot doesn't trigger a confusing per-slot replace.
+- ImageSlot key is `${i}-${src.slice(0,24)}` so React doesn't reuse the same DOM node across reorders (the prior key would have caused image flashes during the swap).
+- Auth context's `useResolvedUser` was already synchronous — the composer's hot-resolve trick is just `listings.find((l) => l.id === editingId)` each render; no extra subscription plumbing needed.
+
+**Type changes** — none. Chunk A's `MarketplaceListing` shape carries through cleanly. Used the new `MarketplaceShippingMode` + `SUBCATEGORIES_BY_CATEGORY` exports.
+
+**v1 inline editor + helpers** (`ListingsEditor`, `ListingRow`, `ListingEditor`, `Field`) deleted — not retained as a fallback since Chunk B is a clean replacement for the same surface.
+
+### Verified in preview
+
+- Logged in as `@loma_grave` on `/dashboard?section=mi-partner` → MiPartnerSection mounts MARKETPLACE tab. Both composer and preview show empty placeholders; table shows 6 ITEMS with pagination at PÁGINA 1 / 2 (5 rows page 1).
+- Click pencil on `mkl-naafi-01` → composer header reads `EDITANDO · NAAFI-01`, every field hydrates: title `Siete Catorce — Volcán` (counter 22/80), CATEGORÍA VINYL + SUBCATEGORÍA `12"`, CONDICIÓN NM, PRECIO 450, status DISPONIBLE active, IMÁGENES · 0 with empty drop zone, ETIQUETAS shows `#limited #club-music #mexico` chips, MODO ENTREGA AMBOS active. Preview pane in DESTACADA renders the seed listing with full meta block, status pill, tags, description (when present).
+- Type `TEST · Live Sync` into title → preview's `h3` updates instantly. Restored to original.
+- Click RESERVADO → status active flips, preview pill switches to yellow. Restored to DISPONIBLE.
+- Toggle preview mode to GRID → renders the public [[MarketplaceListingCard]] inside a 280px frame; LISTA → linear-row variant; DESTACADA → full ficha. All three live-bind to the listing.
+- Click PRECIO sort header → table sorts ascending ($200 → $450), header label becomes `PRECIO ↑`. Click again → descending.
+- Click chevron-right → PÁGINA 2 / 2 with the 6th row (`Girl Ultra`). Click duplicate on it → composer opens on the new clone with title `Girl Ultra — Sofía 12" (copia)`, total flips to 7 ITEMS.
+- Click delete (red) on the (copia) row → row gone, total back to 6 ITEMS, composer drops to empty state (since the editing target was deleted out from under it).
+- VISTA PREVIA opens `/marketplace/?partner=naafi&listing=mkl-naafi-01` in a new tab. Chunk C will mount the sub-overlay against this URL pattern; today the partner overlay opens but the listing param is ignored — by design.
+- Zero runtime errors throughout (`preview_console_logs level=error` returned empty).
+- Visual screenshot matches the v2 mockup: composer left, preview right (stacking on narrow viewports — `lg:grid-cols-2` breakpoint), table below with editing-row orange highlight.
+
+### Open follow-ups (carry into Chunk C)
+
+- **Sub-overlay listing detail at `?listing=<id>`**. The composer's VISTA PREVIA button already targets the URL pattern; Chunk C's overlay reacts to it.
+- **Embeds editor inside the composer**. Chunk A's `embeds?: MixEmbed[]` field is on the type but not yet exposed in the composer — Chunk C surfaces the consumer first (read-side embed render in the sub-overlay), Chunk D could add the dashboard editor reusing [[Embed Primitive]]'s `EmbedList` from `Fields.tsx`.
+- **Real draft pipeline**. The GUARDAR / PUBLICAR distinction is cosmetic today (both close + flash). When partners need true save-then-publish semantics, add `_draft?: boolean` on `MarketplaceListing` + filter in the public catalog + a BORRADOR pill in the table.
+- **Publish-confirm flow integration**. The existing [[PublishConfirmOverlay]] could wrap the PUBLICAR ITEM button if the partners want the same glitch-card confirmation gate as content items get.
+- **Drag-handle reorder** in the image gallery. `↑/↓` buttons cover the use case; HTML5 drag-drop reorder would be ergonomic but is non-trivial. Defer.
+- **Image gallery within published listings**. The public listing card still shows only `images[0]`. Chunk C's sub-overlay surfaces the full gallery.
+
+---
+
+## 2026-04-30 · INGEST · Marketplace v2 — Chunk A (type + storage + seed migration)
+
+Foundation chunk for the v2 refinement laid out in [[Marketplace]] § "Planned refinement". Pure type/storage work; v1 UI continues to render unchanged. See [[types]] / [[mockData]] / [[partnerOverrides]].
+
+**Type extensions** ([[types]]). `MarketplaceListing` reshaped:
+
+- `imageUrl?: string` → **`images: string[]`** (required; first index is the portada). Empty array means no portada — the card falls back to the existing category-label placeholder.
+- New `subcategory?: string` — member of the catalog below; the composer's dependent dropdown reads from here.
+- New `tags?: string[]` — free-form chip input (e.g. "limited", "first-press", "sealed").
+- New `shippingMode?: 'shipping' | 'local' | 'both'` (`MarketplaceShippingMode` union).
+- New `embeds?: MixEmbed[]` — reuses the existing audio-system shape so SC/YT/Spotify/Bandcamp/Mixcloud preview links work without new infrastructure.
+
+New const **`SUBCATEGORIES_BY_CATEGORY`** alongside the type — `Record<MarketplaceListingCategory, string[]>` with the catalog from the design doc:
+
+- `vinyl` → `7"` `10"` `12"` `LP` `EP` `Single` `Compilation` `Box Set` `Picture Disc` `Coloured`
+- `cassette` → `Album` `EP` `Mixtape` `Bootleg`
+- `cd` → `Album` `EP` `Single` `Compilation` `Box Set`
+- `synth` → `Analog` `Digital` `Modular` `Module` `Software`
+- `drum-machine` → `Analog` `Digital` `Sampler` `Hybrid`
+- `turntable` → `Direct Drive` `Belt Drive` `Cartridge` `Slipmat`
+- `mixer` → `2-channel` `4-channel` `Rotary` `Battle` `Club`
+- `outboard` → `Effects` `Compressor` `EQ` `Preamp` `Other`
+- `merch` → `Camiseta` `Sudadera` `Gorra` `Tote` `Poster` `Otro`
+- `other` → `[]` (composer should hide the subcategory field when this is selected)
+
+**Seed migration** ([[mockData]]). All 6 N.A.A.F.I. listings rewritten to the new shape: `images: []` (none had portadas), seeded `subcategory` matching their format (the three `12"` vinyl pressings, the `Album` + `Mixtape` cassettes, the `Camiseta` merch), seeded `tags` (e.g. `["limited", "club-music", "mexico"]` on the Volcán pressing) and seeded `shippingMode` per real-world feel (`both` for vinyl/cassette, `shipping` for the merch tee, `local` for the Debit cassette to exercise that branch). No `embeds` on the seed — that's exposed by Chunk B's composer when partners want to attach a SoundCloud preview.
+
+**Consumer migration** — only two read sites touched the old `imageUrl`:
+
+- [[MarketplaceListingCard]] reads `listing.images[0]` for the public card hero, falling back to the same category placeholder as before. Comment refreshed to point at the composer drag-drop landing in Chunk B.
+- [[MiPartnerSection]] inline editor — the single `IMAGEN URL` field now writes back as `images: [value]` (or `images: []` when cleared); the draft-creation default seeds `images: []`. v1 still feels identical to a partner editing one URL, but the field is plumbed through the new array shape so Chunk B can swap in the multi-image gallery without another migration.
+
+[[partnerOverrides]] needs no structural change — `MarketplaceListing` is just typed differently; the override map shape and listing CRUD writers carry through unchanged.
+
+### Verified in preview
+
+- `npm run build` clean — 19/19 routes prerender, only the pre-existing `next/image` lint warnings.
+- `/marketplace?partner=naafi` overlay mounts: `[data-listing-id]` returns all 6 ids (`mkl-naafi-01..06`); `h3` text matches every original title (Siete Catorce — Volcán, Girl Ultra — Sofía 12", BLAKK — Máquina Negra, N.A.A.F.I. 10 Años Camiseta, Debit — Live Recordings, Tatiana Heuman — Sismograma 12"); category placeholders render in lieu of portadas.
+- No console errors after navigation; no runtime type errors.
+- Dashboard inline editor unchanged — the IMAGEN URL field reads/writes through `images[0]` transparently; "AGREGAR LISTING" creates a draft with `images: []`.
+
+### Open follow-ups (carry into Chunk B)
+
+- Composer rewrite — drag-drop multi-image gallery (data URLs in `partnerOverrides`), tags chip input, shipping-mode 3-card radio, character counters, three-view live preview pane, paginated table with duplicate/delete-red.
+- Composer to hide subcategory field when `category === 'other'` (catalog is `[]`).
+
+---
+
+## 2026-04-30 · INGEST · Marketplace v2 plan — composer rewrite + listing detail
+
+Session ran out of context after Iker reviewed v1 and shared a richer composer mockup. Two pain points flagged:
+
+1. **Listings are barebones on the public side** — no detail surface beyond the catalog tile, no embed support.
+2. **Composer is too thin on the dashboard side** — current inline editor has title / category / condition / price / status / image-URL / description. Iker's mockup adds: subcategory pair, multi-image with portada + reorder, character counters on title (80) + description (1000), tags chip input, shipping-mode 3-card radio, three-view live preview pane, proper listings table with sort/paginate/duplicate/delete actions.
+
+Locked design calls before context ended:
+
+- Public listing detail = **sub-overlay** (not expand-in-place). URL pattern `?partner=<slug>&listing=<id>`.
+- Image upload = **drag-drop AND URL fallback**, matching the existing dashboard-form `ImageUrlField` idiom (data URLs in sessionStorage via partner override).
+
+Three chunks laid out in [[Marketplace]] § "Planned refinement":
+
+- **Chunk A** — type extensions: `images: string[]` (replaces `imageUrl?`), `subcategory?`, `tags?: string[]`, `shippingMode?: 'shipping' | 'local' | 'both'`, `embeds?: MixEmbed[]`. Migrate 6 N.A.A.F.I. seed listings. Add `SUBCATEGORIES_BY_CATEGORY` const (vinyl gets 7"/10"/12"/LP/EP/Single/Compilation/Box Set/Picture Disc/Coloured; cassette gets Album/EP/Mixtape/Bootleg; etc.).
+- **Chunk B** — rewrite [[MiPartnerSection]] composer to 3-zone layout: `ListingComposer` (left, full mockup), `ListingPreview` (right, 3 view modes — destacada / grid / lista), `ListingsTable` (bottom, with sort + paginate at 5/page + duplicate + delete-red).
+- **Chunk C** — sub-overlay listing detail from [[MarketplaceOverlay]]. Image gallery, full description, embeds via existing [[Embed Primitive]], tags, shipping line, vendor link back to partner.
+
+Suggested order: A → B → C. Foundation first, then visual centerpiece, then read-loop closure.
+
+[[Next Session]] is the entry point for the next session — has auth shortcuts and smoke-test paths.
+
+---
+
+## 2026-04-30 · INGEST · Marketplace — partner-only commerce, dedicated route
+
+Built the marketplace system end-to-end across four chunks: data + storage + permissions + seed; admin approval surface; partner-team dashboard; public surfaces. See [[Marketplace]] for the full design rationale.
+
+**Identity model — no new role tier.** Per Iker's call: roles stay `user` / `curator` / `guide` / `insider` / `admin`. Partner-team membership is a new `partnerId?: string` field on User (references a partner ContentItem.id), and an in-team admin flag `partnerAdmin?: boolean` (only meaningful when `partnerId` is set). Mirrors the `isMod` / `isOG` flag pattern from [[Roles and Ranks]]. Capability matrix:
+
+- Site `admin` → can approve any partner, manage any team, edit any marketplace card.
+- `partnerAdmin: true` (in-team) → can add/kick team members of *their own* partner only.
+- Regular team member (`partnerId` set) → can edit marketplace card + listings; cannot manage team.
+- Outside the team → read-only via `/marketplace`.
+
+**Types** ([[types]]). New `MarketplaceListing` (id / title / category / price / condition / status / image? / description? / publishedAt) with three string-union helpers (`MarketplaceListingCategory` × 10, `MarketplaceListingCondition` × 7, `MarketplaceListingStatus` = available/reserved/sold). ContentItem extended with `marketplaceEnabled` / `marketplaceDescription` / `marketplaceLocation` / `marketplaceCurrency` / `marketplaceListings`.
+
+**Storage** ([[partnerOverrides]]). New `lib/partnerOverrides.ts` mirroring [[userOverrides]] — sessionStorage `gradiente:partner-overrides` keyed by partner id. Generic `setPartnerOverride` / `clearPartnerOverride` plus convenience listing CRUD: `addMarketplaceListing` / `updateMarketplaceListing` / `removeMarketplaceListing` / `setMarketplaceEnabled`. Hooks: `useResolvedPartner(id)`, `useResolvedPartners()`, `useMarketplaceEnabledPartners()` — all synchronous-per-render with tick-state listeners (matching the auth-flicker fix). [[userOverrides]] extended with `partnerId?: string | null` (null = explicit clear) and `partnerAdmin?: boolean`.
+
+**Permissions** ([[permissions]]). Three new helpers:
+
+- `canApprovePartner(user)` — admin-only; toggles `marketplaceEnabled`.
+- `canManagePartner(user, partnerId)` — admin OR `user.partnerId === partnerId`. Edits the marketplace card + listings.
+- `canManagePartnerTeam(user, partnerId)` — admin OR (`user.partnerId === partnerId && user.partnerAdmin`). Adds/kicks team members.
+
+**Seed data**. N.A.A.F.I. (`pa-naafi`) marketplace pre-enabled with 6 listings spanning all three statuses (`available`, `reserved`, `sold`) and 3 categories (vinyl, cassette, merch) plus description / location / currency / listing count. `loma_grave` set as `partnerId: pa-naafi` + `partnerAdmin: true` (team manager); `yagual` set as `partnerId: pa-naafi` (regular team member). Lets every gating path be exercised without a single admin action.
+
+**Admin approval surface** (chunk 2):
+
+- [[PermisosSection]] user editor — added a `PARTNER · TEAM` block with a partner dropdown (with `· MKT` suffix on enabled partners) + a `PARTNER · ADMIN` toggle (disabled when no partnerId).
+- [[PartnerApprovalsSection]] — new admin-only ExplorerSection. Searchable list of every partner with a `MARKETPLACE OFF/ON` chip + a per-row toggle (ToggleLeft/Right icon flips color and writes via `setMarketplaceEnabled`). Sidebar entry titled `Marketplace` (Lock icon → ShoppingBag).
+
+**Partner-team dashboard** (chunk 3) — [[MiPartnerSection]]:
+
+- Mounts when `currentUser.partnerId` is set. Sidebar row uses the partner's title.
+- Two-tab switcher (MARKETPLACE default / EQUIPO).
+- **Marketplace tab** — card meta editor (description / location / currency, disabled for non-managers) + listings grid with compact summary rows. `EDITAR` toggles inline editor per listing (title / category select / condition select / price number / status select / image url / description). `+ AGREGAR LISTING` creates a draft and auto-opens its editor. `BORRAR` removes (with sys-red border).
+- **Equipo tab** — current team list with per-row promote/demote/kick affordances (gated by `canManagePartnerTeam`). Search-picker `AGREGAR · MIEMBRO` filters off-team users; click adds with `partnerId` set. Read-only notice for regular members.
+- Marketplace-disabled banner at top when `marketplaceEnabled === false` — team can prep content while waiting for approval.
+
+**Public surfaces** (chunk 4):
+
+- [[MarketplaceCatalog]] — `/marketplace` body. Grid sorted by listing count desc, alphabetic tiebreaker. URL-driven overlay open via `?partner=<slug>`.
+- [[MarketplaceCard]] — partner tile in the catalog. Image-forward with stats footer (ITEMS / DISPONIBLES / ZONA).
+- [[MarketplaceOverlay]] — full-screen reader matching Iker's reference screenshot. Identity panel (★ MARKET chip + partner name in massive Syne + description + total/available/reserved/sold stats + location/currency/web + helper note). Listings grid sorted by `publishedAt` desc.
+- [[MarketplaceListingCard]] — single listing tile. Numbered corner badge (01..N), image (or category placeholder), title + category line, price in vibe-orange, meta rows (CONDICIÓN / VENDEDOR / PUBLICADO), status pill at bottom (color-coded with dot).
+- [[MarketplaceRail]] — home-page entry below [[PartnersRail]]. `//MARKETPLACE` strip, up to 3 partner thumbnails (smaller than catalog cards, link to `?partner=<slug>`), `EXPLORAR MARKETPLACE →` orange-bordered CTA linking to `/marketplace`. Per Iker: Spanish UI keeps "marketplace" as the loanword.
+- [[Navigation]] — added `08 MARKETPLACE` link, between `07 FORO` and the auth badge.
+- New route file `app/marketplace/page.tsx` wraps `MarketplaceCatalog` in Suspense for static export.
+- New `ExplorerSection` values: `permisos`, `aprobaciones-mkt`, `mi-partner`. URL guards in the dashboard page route admin-only sections to home for non-admins, and the partner-only section to home for non-team users. `hideDetails` extended to drop the right pane on all three.
+
+### Verified in preview
+
+- `/` (any auth) → home shows the existing partners rail plus a new `//MARKETPLACE 01 ACTIVOS` strip below it with N.A.A.F.I. thumbnail + `EXPLORAR MARKETPLACE →` CTA.
+- Top nav `08 MARKETPLACE` lands on `/marketplace`. Catalog grid renders 1 partner card with N.A.A.F.I. (6 ITEMS, 04 DISPONIBLES, ZONA CDMX, MX).
+- Click N.A.A.F.I. tile → URL becomes `/marketplace/?partner=naafi`. Overlay mounts: identity panel (description, totals 06 / 04 / 01 / 01, ubicación CDMX MX, moneda MXN, web naafi.net) + listings grid with all 6 listings (Siete Catorce — Volcán $450 NM AVAILABLE; Girl Ultra — Sofía 12" $520 NEW AVAILABLE; BLAKK — Máquina Negra cassette $250 NEW AVAILABLE; N.A.A.F.I. 10 Años Camiseta merch $380 NEW RESERVED yellow; Debit — Live Recordings cassette $200 VG+ SOLD grey; Tatiana Heuman — Sismograma 12" $420 VG+ AVAILABLE).
+- ESC / `[× CERRAR]` strips `?partner=` and returns to catalog.
+- Login as `@datavismo-cmyk` (admin) → sidebar gains `Permisos` and `Marketplace` rows. `Marketplace` shows all partners with toggle chips; clicking a row's toggle flips the `MARKETPLACE OFF/ON` state live (storage write in `gradiente:partner-overrides`). `Permisos` user editor shows the new `PARTNER · TEAM` block with the dropdown.
+- Login as `@loma_grave` → sidebar gains `N.A.A.F.I.` row (named after her partner). MiPartnerSection mounts with both tabs visible. EQUIPO shows herself (TÚ + ADMIN chip) and yagual; she can promote/demote and kick. MARKETPLACE shows all 6 listings + the description editor.
+- Login as `@yagual` → same `N.A.A.F.I.` row but EQUIPO is read-only with the explanation. MARKETPLACE editor lets her edit listings + meta but not team.
+- `npm run build` passes; `/marketplace` prerenders cleanly. Lint warnings unchanged (pre-existing `next/image`).
+
+### Open follow-ups (tagged in [[Marketplace]])
+
+- **Per-listing `sellerId`.** The reference screenshot shows different vendor names per item; today the listing card shows the partner name uniformly. Add an optional field + dashboard team-member dropdown.
+- **Listing detail expansion.** Clicking a listing in the public catalog overlay does nothing yet. Sub-overlay or in-place expand for the description / contact / image-zoom.
+- **Status transition / reservation flow.** Manual flips today; real-backend phase will need timeouts + buyer signals.
+- **Filter chips inside the overlay.** Reference screenshot shows `/ VINYL`, `/ CASSETTE`, etc. Easy follow-up.
+- **Listing image upload.** Currently a free-text URL. Use the same drag-drop idiom as [[Dashboard Forms]].
+
+---
+
+## 2026-04-30 · INGEST · Polls — attachment model, card-as-canvas, anonymous-until-vote
+
+Shipped the polls system end-to-end: types + storage + card affordance + overlay section + dashboard authoring. See [[Polls As Attachments]] for the full design rationale.
+
+**Model — attachment, not a content type** ([[types]]). Polls live as an optional `poll?: PollAttachment` on `ContentItem`. The `kind` field — `from-list` / `from-tracklist` / `attendance` / `freeform` — controls how choices are resolved per parent type. Embedding on the parent keeps it the source of truth: edit a listicle's tracks and the poll's choices update automatically.
+
+**Storage** ([[polls]]). New `lib/polls.ts` mirrors the listener idiom from [[comments]] / [[foro]] / [[userOverrides]]. SessionStorage shape `gradiente:polls = { votes: { [pollId]: { [userId]: PollVote } } }` — only votes are session-scoped; poll definitions ride with the parent. Writers: `castVote(pollId, userId, choiceIds)` (replaces on revote), `clearVote` (re-anonymize, not exposed yet). Hooks: `useUserVote(pollId, userId)`, `usePollResults(pollId, choices)`. `resolvePollChoices(item, poll)` is the per-type variant resolver — derives choices from the parent for non-freeform kinds, returns `poll.choices` verbatim for freeform.
+
+**Card-as-canvas** ([[PollCardCanvas]]). The visual challenge — how to surface a poll on a card without competing with the image or breaking mosaic heights. Solution: when the parent has a poll, the card renders one small chip in a corner of the image. Click → the canvas takes over `absolute inset-0` of the image area. Image dims under a black scrim; choices stack on top; vote casts; rows flip to vibe-colored result bars. ESC / click-outside / close button restores the image. The card chrome (title, badges, save mark) stays put — the canvas borrows the image's real estate, never the chrome. Mosaic grid never reflows.
+
+Per-kind chip copy: `?VOTAR · FAV` (listicle), `?VOTAR · TRACK` (mix), `?VAS?` (evento attendance), `?VOTAR` (freeform). After voting → `✓VOTASTE` (sys-orange). After close → `CERRADA`.
+
+**Overlay section** ([[PollSection]]). Sibling component, same data + same anonymous-until-vote gate, laid out as a permanent section inside the parent overlay. Mounted in [[ListicleOverlay]] (between body and `//SIGUIENTES·LISTAS`), [[MixOverlay]] (between tracklist and hotkeys footer), [[EventoOverlay]] (between artists/genres and tickets CTA), [[ReaderOverlay]] (between body and sticky footer), [[ArticuloOverlay]] (between body+footnotes and `//SIGUIENTES·LECTURAS`). Each renders `{item.poll && <PollSection ... />}` so polls only appear when the parent has one.
+
+**Anonymous-until-vote.** Aggregate counts hidden behind `useUserVote(...) !== null`. Closed polls (past `closesAt`) reveal results unconditionally — the gate is for active polls. Carve-out from [[No Algorithm]] / [[Size and Position as Only Signals]]: the rules forbid engagement metrics on the *content surface*; poll counts on the *poll itself* are fine. Counts never affect feed ordering, card size, or curation.
+
+**Authoring** ([[PollFieldset]] + [[Dashboard Forms]]). New shared component dropped into all 8 compose forms (`MixForm`, `ListicleForm`, `ArticuloForm`, `EventoForm`, `ReviewForm`, `EditorialForm`, `OpinionForm`, `NoticiaForm`). One `+ INCLUIR ENCUESTA` toggle to opt in; opens an editor panel with prompt + (for freeform only) choices list + close-date + multi-choice toggle. Editors don't pick the kind — it's auto-derived from the parent's content type. For listicle/mix/evento the choices auto-derive from the parent so the editor just authors the prompt; for noticia/review/editorial/opinion/articulo the editor authors choices manually.
+
+**Seeded mock polls** in [[mockData]] — one per kind:
+
+- `li-hard-techno-cdmx-2026` — `from-list`, "Tu favorito?" (5 tracks)
+- `mx-001` — `from-tracklist`, "Mejor track del set?" (5 tracks)
+- `ev-fascinoma-2026` — `attendance`, "Vas a FASCiNOMA?" + `closesAt`
+- `no-001` — `freeform`, "Headliner que más quieres ver?" + 5 hand-authored choices
+
+### Verified in preview
+
+- Home grid: 4 poll chips render with correct per-kind labels (`VOTAR · FAV`, `VOTAR · TRACK`, `VOTAR`, `VAS?`).
+- Click chip on listicle → canvas opens with 5 auto-derived track choices, prompt "Tu favorito?", reveal-after-vote copy. Vote → results show Phase Fatale 100% (1/1), others 0%, "1 VOTO" footer. Close → chip flips to `✓VOTASTE` (sys-orange).
+- Open evento overlay (`?item=fascinoma-2026-cdmx-outdoor`) → PollSection renders with 3 attendance choices. Vote VOY → storage records `voy`, UI shows VOY 100% (1).
+- Open NoticiaForm in dashboard → Section "05 ENCUESTA (opcional)" with `+ INCLUIR ENCUESTA`. Click → editor surface with `//ENCUESTA · LIBRE` header, prompt input, choices editor with `+ AGREGAR OPCIÓN`, close-date input, voto-múltiple checkbox.
+- `npm run build` clean across all 8 form changes + 5 overlay changes + 2 card changes.
+
+### Open follow-ups
+
+- **Multi-vote UI** — `multiChoice: true` polls let a user pick multiple options, but the card canvas + overlay section only handle the click-once flow. Need: checkbox-style choice rows + an explicit `CONFIRMAR VOTO` button. Not exposed via the seed polls (none use multiChoice yet).
+- **Close-date countdown** — closed polls render `CERRADA` chip + reveal results, but there's no "cierra en 3h" preview while open. Cosmetic; minor.
+- **Vote-undo affordance** — `clearVote` exists but no UI consumer. Could surface as a small "QUITAR VOTO" link inside the canvas/section for already-voted users.
+
+Next chunk per Iker's plan: marketplace surfaces (partner-only feed at its own slug below the partners rail).
+
+---
+
+## 2026-04-30 · INGEST · Loose-end pass — auth-overrides, tombstone revert, empty-Nuevo polish
+
+Closed the three small follow-ups left after the role/permissions arc.
+
+**Auth resolves through overrides** ([[useAuth]]). Refactored `AuthProvider` to hold `userId: string | null` in state; the exposed `currentUser` is now `useResolvedUser(userId)` from [[userOverrides]]. Admin self-edits (and any cross-edit that targets the logged-in user) propagate to every consumer that reads `currentUser` — sidebar `Permisos` row, `canModerate` gates, foro mod buttons, dashboard `Permisos` URL guard — without a page reload. Credential resolution still hits the seed (`MOCK_USERS`) so identity fields can't be unlocked by editing a role override. **Side fix:** rewrote `useResolvedUser` to compute synchronously per render (was effect-driven). The previous shape lagged one render between a `userId` change and the resolved value, which briefly dropped `currentUser` to null and flickered the [[LoginOverlay]] open on first dashboard render. Now uses a tick-state pattern: subscribe via effect to bump a counter; the value itself is derived synchronously from `getResolvedUserById(id)`.
+
+**Tombstone revert.** Two new writers, both gated by the same role rules as the corresponding deletes:
+
+- `clearTombstone(postId)` in [[foro]] — drops the deletion record so the post reappears (catalog re-includes the thread; reply body restores). One writer for both kinds since `tombstones` is keyed by post id, not type.
+- `clearCommentDeletion(commentId)` in [[comments]] — handles both storage paths (drops `deletionOverrides[id]` for mock comments, or clears the `deletion` field on session-added comments).
+
+UI affordance — orange `RESTAURAR` chip (RotateCcw icon) inline with the tombstone heading on each surface:
+
+- Foro Tombstone: visible to `canModerate(currentUser)` (mods + admins).
+- Comment Tombstone: visible to `canModerate` OR `deletion.moderatorId === currentUser.id`. The broader gate gives an author an undo for an accidental self-delete without exposing the affordance to anyone else.
+
+**Empty-Nuevo polish.** Added one condition to the dashboard's `hideDetails`: `(section === 'nuevo' && allowedTypes.length === 0)`. The right details panel now drops out of the user-tier empty Nuevo view — there's nothing to bind a SelectionMeta to since no template can be selected. Pure cosmetic, but cleans up the layout for the user-tier case.
+
+### Verified in preview
+
+- Logged in as `u-datavismo` (admin), open Permisos, click `tlali.fm` row, click `LECTOR` role button → list row updates live to `DETONADOR @tlali.fm EDITADO ›` (rank derives from her !/? reactions; EDITADO chip flips on).
+- Switch auth to `u-insider-tlali` (insider seed → user via override). On `/dashboard?section=nuevo` the page renders `▸ 0 plantillas`, the empty state, and **no Permisos sidebar row** — auth flowing through the override layer is what made `canAssignRoles` and `canCreateContent` see the demoted role.
+- No flash of LoginOverlay during initial dashboard render. The synchronous `useResolvedUser` removed the one-frame `currentUser=null` window that previously triggered `openLogin`.
+- As `u-mod-rumor` on `/foro/?thread=fr-002` (tombstone preset via storage): RESTAURAR chip rendered next to the `//HILO·ELIMINADO·POR·MODERACIÓN` heading. Click → tombstone block gone, composer reappeared (`<textarea>` back), `gradiente:foro.tombstones` is `{}`.
+- As mod on `cm-002` tombstone: RESTAURAR chip click → `gradiente:comments.deletionOverrides` is `{}`, comment body restored.
+- As `u-normal-meri` (user) on `/dashboard?section=nuevo`: empty state renders full-width; the right details pane is hidden.
+- `npm run build` clean across all changes.
+
+### Open follow-ups
+
+The role/permissions arc is now complete. Next chunk per Iker's plan: polls + marketplace surfaces (consumers for `canCreatePoll` / `canCreateMarketplaceCard` — the curator role currently gates nothing visible).
+
+---
+
+## 2026-04-30 · INGEST · NGE prompt overlay + comment delete (author + mod)
+
+Two paired requests: replace the browser-chrome `window.prompt()` calls in the foro mod tools with a modal in the project's visual language, and add the missing delete affordance for comments (author self-delete and mod-delete with reason).
+
+**Generic prompt provider** ([[PromptOverlay]]). New `components/prompt/` with `PromptProvider` + `PromptOverlay` + a `usePrompt()` hook that returns Promise-based `confirm(opts)` and `input(opts)` methods. Mounted once at the layout root (between `AuthProvider` and `PublishConfirmProvider`). Two variants:
+
+- `confirm` — title + optional body + CANCELAR / CONFIRMAR. Returns `boolean`. Title strip `//CONFIRMACIÓN·REQUERIDA`.
+- `input` — same chrome plus a single text field. Returns `string | null`. Title strip `//ENTRADA·REQUERIDA`. Auto-selects the field on open so the `defaultValue` is replaced by typing. Enter inside the field confirms.
+
+`destructive: true` flips the confirm button color from sys-orange to sys-red. ESC and backdrop click both resolve to cancel. Visual idiom matches [[PublishConfirmOverlay]] — eva-box + scanlines + black backdrop with blur, `role="alertdialog"` with proper `aria-labelledby` / `aria-describedby`.
+
+**Foro migration** ([[ThreadOverlay]]). Replaced both `window.prompt()` calls (`onTombstoneThread` and `onTombstoneReply`) with `usePrompt().input` calls — `destructive: true`, NGE chrome, placeholder `spam · acoso · off-topic · …`, default value `spam`. Identical behavior on confirm/cancel.
+
+**Comment delete** ([[CommentList]] + [[comments]]). The `Comment.deletion` field already existed (consumed by the existing `Tombstone` for seed `cm-009`); what was missing was the writer + UI.
+
+- New `tombstoneComment(commentId, actorId, reason)` writer in [[comments]]. One writer covers both flows. For session-added comments the deletion record lands directly on the record; for mock comments it lands in a new `deletionOverrides: Record<string, CommentDeletion>` map and `applyOverrides` merges it at read time. `getCommentsForItemMerged`, `getAllCommentsMerged`, and `getSavedComments` all route through `applyOverrides` so reactions + deletions stay in sync.
+- New `BORRAR` chip in the comment header strip (right-aligned, sys-red border + Trash2 icon). Visible only when `canDelete = !isTombstone && (isOwn || canModerate(currentUser))`. Click branches:
+  - **Author** → `usePrompt().confirm({ destructive: true })` (no reason required) → writer with empty reason.
+  - **Mod** → `usePrompt().input({ destructive: true })` (reason required) → writer with the trimmed value.
+- `Tombstone` component now branches on `deletion.moderatorId === authorId` — renders `//ELIMINADO·POR·AUTOR` (no reason line) for self-delete vs `//ELIMINADO·POR·MODERACIÓN @actor · RAZÓN: …` for mod-delete. [[SavedCommentsSection]]'s tile preview text mirrors the same branch (`[eliminado por autor]` vs `[eliminado · …]`).
+
+### Verified in preview
+
+- `u-mod-rumor` on `?thread=fr-002` → click reply BORRAR → NGE prompt opens with title strip `//ENTRADA·REQUERIDA`, h2 "Borrar respuesta", body description, prefilled `spam`, placeholder copy, CANCELAR + BORRAR buttons. Confirm → `tombstones["fp-002-01"]` written; tombstone block reads `//RESPUESTA·ELIMINADO·POR·MODERACIÓN @rumor.static · RAZÓN: spam`.
+- `u-og-loma` on her own seed comment `cm-006` (articulo overlay): click `Borrar mi comentario` → confirm modal opens with title `//CONFIRMACIÓN·REQUERIDA`, h2 "Borrar tu comentario", **no input field** (correct), CANCELAR + BORRAR. Confirm → `deletionOverrides["cm-006"]` written with `moderatorId: 'u-og-loma'`, empty reason; comment body collapses to `//ELIMINADO·POR·AUTOR` with no reason line — the branch correctly hides it because `moderatorId === authorId`.
+- `u-mod-rumor` on someone else's comment `cm-002`: click `Borrar comentario` → input prompt opens, default `spam`. Confirm → tombstone reads `//ELIMINADO·POR·MODERACIÓN @rumor.static · RAZÓN: spam`. Branch correctly hits the mod path because `moderatorId !== authorId`.
+- `u-og-loma` on someone else's comment: zero `Borrar comentario` buttons (only `Borrar mi comentario` on her own). Defense-in-depth — the storage layer doesn't re-check, but the writer is unreachable from the UI.
+- `npm run build` clean, all routes prerender. Lint warnings unchanged (pre-existing `next/image`).
+
+### Open follow-ups (carried over)
+
+- **Mod-revert action.** Tombstones are still one-way (`clearTombstone` not exposed yet).
+- **Auth context resolves through overrides** — admin self-edits via [[PermisosSection]] don't reflect until reload.
+
+---
+
+## 2026-04-29 · INGEST · Foro mod tools (tombstones)
+
+Closes the third of the three follow-ups from the role/rank chunk. The foro now has the moderation surface that `canModerate` was waiting for. See [[ThreadOverlay]] / [[foro]].
+
+**Type changes** ([[types]]). New `ForoDeletion { moderatorId, reason, deletedAt }` mirroring `CommentDeletion`. Optional `deletion?: ForoDeletion` added to both `ForoThread` and `ForoReply`.
+
+**Storage** ([[foro]]). New `tombstones: Record<postId, ForoDeletion>` in the session state. Read-time merge applies the override on top of the seed/session record. Two new writers:
+
+- `tombstoneThread(threadId, modId, reason)` — soft-delete. Body preserved in storage so quote-links keep resolving. `getMergedThreads` filters tombstoned threads OUT of the catalog (8→7 tiles after one delete) but `getThreadById` still returns them with `deletion` set, so the URL keeps working and the moderator's reasoning is reachable.
+- `tombstoneReply(replyId, modId, reason)` — same shape. Reply position is preserved (article still renders, backlinks still work) but the body is replaced with the moderator stub.
+
+Both writers trust the UI to gate via `canModerate(currentUser)` from [[permissions]] — no re-check at the storage layer. Real backend will enforce in RLS.
+
+**UI** ([[ThreadOverlay]]). `canModerate(currentUser)` flips an `isMod` flag threaded through the article components. When true, each post renders a small red `BORRAR HILO` / `BORRAR` button (Trash2 icon) in the top-right of its header strip. Click → `window.prompt('Razón…')` → tombstone writer.
+
+`Tombstone` component mirrors the [[CommentList]] tombstone — replaces the body with `//HILO·ELIMINADO·POR·MODERACIÓN` or `//RESPUESTA·ELIMINADO·POR·MODERACIÓN` block + `@mod · RAZÓN: …`. Article container, `PostHeader`, and `Backlinks` continue to render normally so quote-IDs and `>>id` navigation still work — pruning is visible in context, not erased.
+
+**Composer closure.** When a thread is tombstoned, the `ReplyComposer` is replaced with `//HILO·CERRADO·POR·MODERACIÓN — no se aceptan respuestas nuevas.` Disables further engagement with a deleted thread.
+
+**Prompt-as-UI.** The reason is collected via `window.prompt()` — intentional cheap UI for the prototype. A real backend would put this behind a structured confirmation modal with a category dropdown. Flagging as a follow-up.
+
+### Verified in preview
+
+- Logged in as `u-mod-rumor` (role: user, isMod: true) on `?thread=fr-001` → 1 `BORRAR HILO` button on the OP + 3 `BORRAR` buttons on the 3 replies.
+- Click `BORRAR` on `fp-001-01` with reason `"spam · prueba"` → sessionStorage gets `tombstones["fp-001-01"]`, the article body collapses to `//RESPUESTA·ELIMINADO·POR·MODERACIÓN @rumor.static · RAZÓN: spam · prueba`, the BORRAR button disappears for that reply (remaining BORRAR count: 2).
+- Click `BORRAR HILO` with reason `"tema duplicado"` → OP body becomes `//HILO·ELIMINADO·POR·MODERACIÓN`, composer replaced with the closed-thread notice (textarea count: 0).
+- Navigate back to `/foro` → catalog shows 7 tiles (was 8); `fr-001` is gone from the list. Direct URL `?thread=fr-001` still loads and shows the tombstone.
+- Switch auth to `u-normal-meri` (user-tier, no mod flag) on `?thread=fr-002` → zero `BORRAR` buttons rendered. Defense-in-depth: storage layer doesn't re-check, but the writer is unreachable from the UI.
+- `npm run build` clean; 16 routes prerender; lint warnings unchanged.
+
+### Open follow-ups
+
+- **Mod-revert action.** Tombstones are one-way today. A `clearTombstone(id)` writer + admin-only RESTAURAR button would let an over-eager mod's call be reversed. Storage layer is ready (just delete the entry from `tombstones`); UI piece pending.
+- **Structured-reason modal.** `window.prompt()` works but breaks the NGE/terminal aesthetic. A category dropdown (`spam` / `off-topic` / `acoso` / `otro`) + freeform line, behind an inline modal, would land closer.
+- **Auth context resolves through overrides** — same caveat as the previous chunks. Admin self-edits to `isMod` via [[PermisosSection]] don't flip the foro mod buttons until reload.
+
+---
+
+## 2026-04-29 · INGEST · Dashboard form gating + curator seed user
+
+Closes the second of the three follow-ups from the earlier `Roles, ranks, and the !/? reaction palette` entry — the dashboard compose surface now respects the role tier.
+
+**Permission helper** ([[permissions]]). New `canCreateContent(user, type)` — single per-type gate that maps every `ContentType` to a creation tier:
+- `listicle` → curator+ (lists / polls / marketplace are the curator's surface)
+- `mix` / `opinion` / `editorial` / `review` / `articulo` / `noticia` / `evento` → guide+
+- `partner` → admin only (rail, not in the SUPPORTED set anyway)
+
+`canCreateList` / `canCreatePoll` / `canCreateMarketplaceCard` / `canCreateOpinion` / `canCreateMix` remain as more specific helpers; `canCreateContent` is the generalized switch the dashboard consumes.
+
+**Dashboard wiring** (`app/dashboard/page.tsx`). `allowedTypes = SUPPORTED.filter(t => canCreateContent(currentUser, t))` filters the template grid by capability. Threaded through to [[NuevoSection]] as the new `supported` prop value (was the static SUPPORTED list). Count label shifts to `▸ N plantilla(s)` and reflects the actual visible count per role.
+
+**Compose URL guard**. `composeBlocked = composeType !== null && !canCreateContent(currentUser, composeType)`. A `useEffect` calls `router.replace('/dashboard?section=nuevo')` when the requested compose type isn't allowed — covers URL-typing `?type=mix&edit=…` as a non-guide. The form render condition becomes `if (composeType && !composeBlocked)` so there's no flash of the form before the redirect lands.
+
+**Empty state in NuevoSection**. When `supported.length === 0` (a `user`-tier viewer with no creation rights), the grid is replaced with a `//SIN·PLANTILLAS·DISPONIBLES` block + explanation copy + a pointer at the admin's `Permisos` surface ("if you should have access, ask an admin to adjust your role"). Reads as a permissions explanation, not a "coming soon" tease.
+
+**Curator seed user**. Added `u-curator-radiolopez` (`radiolopez` / display `radio lopez`) to [[mockUsers]] for full role coverage. Without it, the new `canCreateContent` curator path had no integration-test path — every other seed user was admin / guide / insider / user. radiolopez sees exactly `LISTA` in the template grid and otherwise behaves like the rest.
+
+### Verified in preview
+
+- Logged in as `u-datavismo` (admin) → 8 templates rendered, count label `▸ 8 plantillas`.
+- `u-hzamorate` (guide) → 8 templates (curator-tier listicle inherited + 7 guide-tier types).
+- `u-curator-radiolopez` (curator) → 1 template (`LISTA`), count label `▸ 1 plantilla`.
+- `u-normal-meri` (user) → 0 templates, empty state with `//SIN·PLANTILLAS·DISPONIBLES` + the role explanation copy.
+- URL guard: `u-normal-meri` typing `/dashboard?section=nuevo&type=mix` → instant redirect to `/dashboard?section=nuevo`, empty state renders. No form flash.
+- `npm run build` clean; 16 routes prerender; lint warnings unchanged.
+
+### Open follow-ups (carried over)
+
+- **Foro mod tools** — `canModerate` exists; [[ThreadOverlay]] still has no delete-thread / tombstone-reply affordance.
+- **Auth context resolves through overrides** — admin self-edits via [[PermisosSection]] don't reflect in the dashboard's own gates (which read `currentUser` from [[useAuth]]) until reload. Small follow-up; affects only self-edits.
+- **`hideDetails` for nuevo when empty** — when the empty state renders, the right details panel is still visible. Cosmetic; could conditionally hide.
+
+---
+
+## 2026-04-29 · INGEST · Admin role-assignment surface (PermisosSection)
+
+Closes the first of the three follow-ups flagged at the bottom of the earlier `Roles, ranks, and the !/? reaction palette` entry. The admin surface that the rank/role design implied now exists end-to-end. See [[PermisosSection]] / [[userOverrides]].
+
+**Storage layer** ([[userOverrides]]). New module `lib/userOverrides.ts` modelled after [[comments]]: `gradiente:user-overrides` sessionStorage shape `Record<userId, { role?, isMod?, isOG? }>`. Identity fields (id / username / displayName / joinedAt) are immutable. Listener pattern via in-module `Set<() => void>`; every write fires `notify()`. Hooks: `useResolvedUser(id)` returns the live override-applied User (replaces `getUserById` in badge consumers), `useResolvedUsers()` returns the full live roster, `useHasOverride(id)` powers the `EDITADO` chip. Noop-collapse: a patch that leaves a user matching their seed exactly drops the entry from the map rather than persisting `{}`.
+
+**UI** ([[PermisosSection]]). New dashboard section at `/dashboard?section=permisos`. Two-pane layout — searchable user list + per-user editor. Editor surfaces a read-only identity block, a five-button role grid (LECTOR / CURADOR / GUÍA / INSIDER / ADMIN), MOD and OG flag switches, and a self-edit warning when the admin selects themselves. **Self-demote guard** — when editing yourself, every non-admin role button is disabled. UI-layer only; the storage layer doesn't enforce it (a deliberate caller could still write the patch directly). Real backend will enforce in RLS. **Commit-on-click** — no draft/save dance; every change is a single `setUserOverride` call. `RESTAURAR` button (visible only when an override exists) clears it via `clearUserOverride`.
+
+**Sidebar gate** ([[ExplorerSidebar]]). The `Permisos` row (Lock icon) renders only when `canAssignRoles(currentUser)` is true. Non-admins never see it.
+
+**URL gate** (`app/dashboard/page.tsx`). Defense-in-depth: a non-admin URL-typing `?section=permisos` falls back to `home`. The check happens at section-resolution time, so the breadcrumb / window title / hideDetails all reflect the home path.
+
+**Live propagation**. Migrated [[CommentList]], [[PostHeader]], [[SavedCommentsSection]] from `getUserById` to `useResolvedUser`. Edits in the admin surface propagate to comment columns and foro posts in real time without a page reload.
+
+**Notable non-changes**:
+- `useAuth.currentUser` still returns the seed user — not override-resolved. Means `AuthBadge` and dashboard chrome don't reflect *self-edits* until reload. Acceptable for prototype; rare edge case (admin editing isMod/isOG on themselves), and the rest of the app DOES update live.
+- [[LoginOverlay]]'s quick-switch picker still calls `listUsers()` (seed). The picker is a credential entry point, not a live status display, so showing pre-override values is fine.
+- ThreadTile uses `getUserById(thread.authorId)` only for `displayName` (no badge rendering), so it didn't need migration.
+
+### Verified in preview
+
+- As `u-datavismo` (admin): sidebar shows `Permisos` row. Section renders 8 user rows with correct primary chips + flag chips (`ADMIN @datavismo-cmyk`, `GUÍA @hzamorate`, `GUÍA @ikerio`, `NORMIE + MOD @rumor.static`, `ESPECTRO + OG @loma_grave`, `INSIDER @tlali.fm`, `ESPECTRO @merimekko`, `ESPECTRO @yagual`). Editor shows identity block + role grid + flag switches + self-edit banner.
+- Click `@loma_grave` row → editor switches to her. Click `GUÍA` button → sessionStorage `gradiente:user-overrides` becomes `{"u-og-loma":{"role":"guide"}}`, list row updates to `GUÍA + OG @loma_grave EDITADO ›`.
+- Open the comment column on `?item=festivales-latam-presion-europea-2026` → loma_grave's comment header now reads `@loma_grave GUÍA OG · hace 7 días` (was `ESPECTRO OG` before the override). Live propagation confirmed.
+- Switch auth to `u-hzamorate` (guide) and visit `/dashboard?section=permisos` → sidebar shows no `Permisos` row, URL silently falls back to the home Dashboard view.
+- `npm run build` clean, all 16 routes prerender. Lint warnings unchanged (pre-existing `next/image` only).
+
+### Open follow-ups (carried over)
+
+- **Dashboard form gating** — [[Dashboard Forms]] still lets any logged-in user reach every compose form. Wire `canCreateOpinion` / `canCreateMix` (guide+) and `canCreateList` / `canCreatePoll` / `canCreateMarketplaceCard` (curator+) into [[NuevoSection]] and the per-type forms.
+- **Foro mod tools** — `canModerate` exists; [[ThreadOverlay]] still has no delete-thread / tombstone-reply affordance.
+- **Auth context resolves through overrides** — small follow-up so admin self-edits update AuthBadge without reload.
+
+---
+
+## 2026-04-29 · INGEST · Roles, ranks, and the !/? reaction palette
+
+Locked in the new identity model end-to-end. Three orthogonal axes per user — see [[Roles and Ranks]] for the full design.
+
+**Role axis** — hierarchical creation tier with one sibling pair: `user (0) < curator (1) < {guide, insider} (2) < admin (3)`. `guide` and `insider` share rank 2 with equivalent publishing rights (opinion / mixes); they differ only in *byline framing* — guide is staff editorial voice, insider is scene voice (DJs, promoters, venue folks). The old `collaborator` was rolled into `guide`; `moderator` was split off into a flag (see below).
+
+**Flag axis** — `isMod: boolean` (pruning capability — delete comments / threads, admins implicit) and `isOG: boolean` (cosmetic first-wave-registrant badge). Orthogonal to role; a `user`-tier `isMod` is a regular reader the team trusts to prune, separate from publishing trust.
+
+**Rank axis** — derived on read from received !/? reactions (`user` tier only). NORMIE (floor) → DETONADOR (!-dominant) | ENIGMA (?-dominant) | ESPECTRO (balanced + active). Threshold currently 5 received reactions before leaving NORMIE; bucket boundaries at ≥65% / ≤35% signal-ratio. Pure derivation in [[permissions]] (`rankFromCounts` / `getUserRank`); live React-side hook `useUserRank(userId)` in [[comments]] reads `getAllCommentsMerged()` and re-renders on any reaction toggle.
+
+**Reaction palette** — dropped `+` (resonates) and `−` (disagree). Kept only `!` (signal) and `?` (provocative) — both abstract enough to mean many things, neither reducible to "I like / I don't like." Mutual exclusivity per (user, comment): `toggleReaction` in [[comments]] now *replaces* a user's prior reaction when they pick the other kind, *clears* it when they click the same kind. Seed reactions in [[mockComments]] hand-migrated to the new palette, preserving the controversy hot-spot on `cm-006` (mix of !/? from different users).
+
+**Why ranks aren't an "algorithm".** [[No Algorithm]] forbids engagement-driven *content surfacing* — what gets shown and at what size. Ranks label *people*, not content. They don't affect feed ordering, comment ordering, foro bump-order, or visibility. Added a carve-out section to the No Algorithm decision doc clarifying the line: labels on people OK, weights on content not OK.
+
+**Type system rewrite** ([[types]]):
+- `Role` — new union (`'user' | 'curator' | 'guide' | 'insider' | 'admin'`).
+- `UserRank` — new union; not stored on User, derived.
+- `User` — `userCategory` removed. Replaced by `isMod?`, `isOG?` flags. The old `og` / `insider` / `normal` triple split three ways: og became the flag, insider became a sibling role, normal became "no flag, rank derives."
+- `ReactionKind` — pruned to `'provocative' | 'signal'`.
+
+**Permissions module rewrite** ([[permissions]]):
+- `hasRole(user, atLeast)` retained, with insider/guide sharing tier 2 so `hasRole(insider, 'guide')` returns true.
+- New per-content-type gates: `canCreateList` / `canCreatePoll` / `canCreateMarketplaceCard` (curator+), `canCreateOpinion` / `canCreateMix` (guide+).
+- `canModerate` checks `isMod || role === 'admin'`. `canModerateComment` wraps it.
+- `canEditContent` / `canDeleteContent` admin-or-author. Author still matched by username — switch to authorId post-Supabase.
+- `RANK_THRESHOLD = 5` exported so the gate is tweakable.
+
+**Mock roster migration** ([[mockUsers]]):
+- `hzamorate` / `ikerio` collaborator → guide.
+- `rumor.static` moderator → user + isMod.
+- `loma_grave` user/og → user + isOG.
+- `tlali.fm` user/insider → role: insider (promoted to creation tier).
+- `merimekko` / `yagual` user/normal → user (rank derives).
+- New label/color maps: ROLE_LABEL/ROLE_COLOR, RANK_LABEL/RANK_COLOR, FLAG_LABEL/FLAG_COLOR. New helpers `badgeFor(user, rank)` returns `{label, color}` (was a string), `flagsFor(user)` returns the ordered flag list.
+
+**UI rewiring**:
+- [[CommentList]]: replaced `RoleBadge` with `AuthorBadges` — primary chip (role for staff, derived rank for users) + sibling flag chips. Reaction palette pruned to `[?]` / `[!]`. Reaction button code unchanged; the store-level mutual exclusivity makes click-the-other-kind feel like a single transition (see verification below).
+- [[PostHeader]]: same badge stack as `AuthorBadges`. Removed the unused `inlineRoleLabel` / `inlineRoleColor` exports (no consumers).
+- [[SavedCommentsSection]]: comment-tile badge now uses `badgeFor(user, useUserRank(authorId)).label`. Flag chips intentionally kept off the tile to keep it scannable.
+- [[LoginOverlay]]: quick-switch picker badge updated to read `badgeFor(u).label` (was a bare string under the old API).
+
+**Beta sign-up** — the model intentionally doesn't address public sign-up. The plan is invite-only beta when real auth lands. `useAuth.tsx` still resolves logins against MOCK_USERS; the invite-token gate goes in front of registration when [[Supabase Migration]] starts.
+
+**Marketplace + polls** — deferred. The `curator` role gates `canCreatePoll` and `canCreateMarketplaceCard` already; no UI surface yet. Both can ship later without touching the role model.
+
+### Verified in preview
+
+- Logged in as datavismo (admin) on `?item=festivales-latam-presion-europea-2026`, opened the comment column. Sample badges rendered:
+  - `@datavismo-cmyk` → `ADMIN` (orange) + `[TÚ]`
+  - `@hzamorate` → `GUÍA` (green)
+  - `@loma_grave` → `ESPECTRO` + `OG` (amber) — balanced rank + cosmetic flag
+  - `@merimekko` → `ESPECTRO`
+- Reaction palette: only `[?]` and `[!]` buttons render. No `[+]` or `[−]` anywhere.
+- Mutual exclusivity: clicked `[!]` on `cm-006` (where datavismo has `?` in the seed) — `?` count went 3→2 with aria-pressed false, `!` count went 2→3 with aria-pressed true. Clicked `[!]` again — count went 3→2 with both buttons aria-pressed=false (cleared).
+- Foro `?thread=fr-005` (rumor.static's recordatorio thread): `@rumor.static` rendered as `NORMIE` (grey) + `MOD` (red) — confirms user-tier rank chip + orthogonal mod flag chip together. `@datavismo-cmyk` reply rendered as `ADMIN`. `[TÚ]` marker on datavismo (logged-in viewer).
+- `npm run build` passes — 16 routes prerendered as static content. Lint clean (only pre-existing `next/image` warnings, none touching files I edited).
+
+### Open follow-ups
+
+- **Admin role-assignment UI.** `canAssignRoles` exists; no surface consumes it yet. Plan: hidden dashboard section visible only when `canAssignRoles(currentUser)`, search by username, edit `role` / `isMod` / `isOG`. Rank stays derived (not assignable).
+- **Per-type dashboard form gating.** [[Dashboard Forms]] currently lets any logged-in user reach every compose form. The new permission gates need wiring: opinion/mix forms behind `canCreateOpinion`/`canCreateMix`, future poll/marketplace forms behind their respective gates. Admin can author anything.
+- **Foro thread/reply moderation surface.** `canModerate` exists; no foro mod tools yet (delete thread, tombstone reply). The wiki notes this gap was already deferred from the foro INGEST.
+- **`User.role === 'user'` everywhere as the badge fallback** when `useUserRank` returns 'normie' for a user who literally has no comments. Currently shows `NORMIE` which is honest; no action needed but worth flagging if the badge should suppress until first comment.
+
+---
+
 ## 2026-04-26 · INGEST · Audio reactive subsystem
 
 Built end-to-end: persistent global SoundCloud playback that survives overlay close, three.js waterfall spectrogram visualizer reacting to live tab audio, and integration into [[MixOverlay]] + the home rail. New mix entry `mx-goodies-igtt` (lo-fi house, vibe 3) added to [[mockData]] as the canonical test track.

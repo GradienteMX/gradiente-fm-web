@@ -4,6 +4,7 @@ import type { ContentItem } from '@/lib/types'
 import { vibeToColor, categoryColor, fmtDateShort } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from '@/components/cards/SavedBadge'
 import { Clock, ArrowRight } from 'lucide-react'
 import { useRef, type KeyboardEvent } from 'react'
@@ -135,6 +136,9 @@ export function HeroCard({ item }: HeroCardProps) {
               style={{ borderColor: `${vibeColor}80` }}
             />
           </div>
+
+          {/* Poll affordance — chip when closed, full canvas when open. */}
+          <PollCardCanvas item={item} />
         </div>
 
         {/* RIGHT — text */}

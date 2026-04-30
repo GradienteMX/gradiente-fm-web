@@ -6,10 +6,13 @@ import type { Comment, Reaction, ReactionKind } from './types'
 // ContentItem ids (see lib/mockData.ts). Designed to exercise:
 //   - flat top-level comments + nested replies
 //   - thread depth ≥ 5 (depth-cap linearization will activate at 4)
-//   - controversy hot-spots (high resonates AND high disagree)
+//   - controversy hot-spots (mix of ! and ? on the same comment)
 //   - moderator-deleted tombstone with preserved replies
 //   - edited comments
-//   - the full ASCII reaction palette
+//   - the !/? mutual-exclusive reaction palette
+//
+// Reaction palette is { signal !, provocative ? } only — see lib/types.ts.
+// Each (userId, commentId) pair has at most one reaction.
 //
 // When the real backend (see [[Supabase Migration]]) lands, swap this file
 // for a Supabase `comments` query — consumers use `getCommentsForItem` and
@@ -29,8 +32,8 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Lo que me interesa de este texto es cómo trata la repetición no como recurso sino como tesis. La pista no avanza, te avanza a ti.',
     createdAt: '2026-04-22T14:12:00',
     reactions: [
-      r('u-hzamorate', 'resonates', '2026-04-22T14:30:00'),
-      r('u-og-loma', 'resonates', '2026-04-22T15:01:00'),
+      r('u-hzamorate', 'signal', '2026-04-22T14:30:00'),
+      r('u-og-loma', 'signal', '2026-04-22T15:01:00'),
       r('u-insider-tlali', 'signal', '2026-04-22T16:48:00'),
     ],
   },
@@ -42,8 +45,8 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Exacto. Y por eso el formato largo aguanta — un loop de 90s no se sostiene en un tweet.',
     createdAt: '2026-04-22T15:24:00',
     reactions: [
-      r('u-datavismo', 'resonates', '2026-04-22T15:40:00'),
-      r('u-og-loma', 'resonates', '2026-04-22T16:02:00'),
+      r('u-datavismo', 'signal', '2026-04-22T15:40:00'),
+      r('u-og-loma', 'signal', '2026-04-22T16:02:00'),
     ],
   },
   {
@@ -62,7 +65,7 @@ export const MOCK_COMMENTS: Comment[] = [
     authorId: 'u-normal-meri',
     body: '"More Brilliant Than the Sun" — capítulo 3 si no me equivoco.',
     createdAt: '2026-04-22T18:42:00',
-    reactions: [r('u-og-loma', 'resonates', '2026-04-22T19:00:00')],
+    reactions: [r('u-og-loma', 'signal', '2026-04-22T19:00:00')],
   },
   {
     id: 'cm-005',
@@ -74,7 +77,7 @@ export const MOCK_COMMENTS: Comment[] = [
     reactions: [],
   },
 
-  // controversy hot-spot — high resonates + high disagree, both count
+  // controversy hot-spot — mix of ! and ?, both productive signals
   {
     id: 'cm-006',
     contentItemId: 'ar-001',
@@ -83,10 +86,10 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'No coincido con la tesis central. Reducir el dub techno a "repetición meditativa" es perder de vista que es música de baile, no una sesión de yoga.',
     createdAt: '2026-04-23T09:33:00',
     reactions: [
-      r('u-hzamorate', 'resonates', '2026-04-23T09:58:00'),
-      r('u-normal-yag', 'resonates', '2026-04-23T10:14:00'),
-      r('u-datavismo', 'disagree', '2026-04-23T10:22:00'),
-      r('u-insider-tlali', 'disagree', '2026-04-23T11:01:00'),
+      r('u-hzamorate', 'signal', '2026-04-23T09:58:00'),
+      r('u-normal-yag', 'signal', '2026-04-23T10:14:00'),
+      r('u-datavismo', 'provocative', '2026-04-23T10:22:00'),
+      r('u-insider-tlali', 'provocative', '2026-04-23T11:01:00'),
       r('u-normal-meri', 'provocative', '2026-04-23T11:48:00'),
     ],
   },
@@ -98,9 +101,9 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Esto. Lo único que pediría es que se lea en pista de baile, no en escritorio.',
     createdAt: '2026-04-23T10:18:00',
     reactions: [
-      r('u-og-loma', 'resonates', '2026-04-23T10:32:00'),
-      r('u-insider-tlali', 'disagree', '2026-04-23T11:04:00'),
-      r('u-datavismo', 'disagree', '2026-04-23T11:25:00'),
+      r('u-og-loma', 'signal', '2026-04-23T10:32:00'),
+      r('u-insider-tlali', 'provocative', '2026-04-23T11:04:00'),
+      r('u-datavismo', 'provocative', '2026-04-23T11:25:00'),
     ],
   },
   {
@@ -111,8 +114,8 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Es ambas cosas. La música de baile más interesante de los últimos 30 años justamente disuelve esa frontera. Basic Channel, Chain Reaction, todo el catálogo de Echocord — son discos para bailar Y para escuchar dormido.',
     createdAt: '2026-04-23T11:09:00',
     reactions: [
-      r('u-datavismo', 'resonates', '2026-04-23T11:30:00'),
-      r('u-hzamorate', 'resonates', '2026-04-23T12:01:00'),
+      r('u-datavismo', 'signal', '2026-04-23T11:30:00'),
+      r('u-hzamorate', 'signal', '2026-04-23T12:01:00'),
       r('u-og-loma', 'provocative', '2026-04-23T12:45:00'),
     ],
   },
@@ -151,7 +154,7 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Lo leí dos veces y la segunda funcionó mejor. La primera me perdí en la mitad.',
     createdAt: '2026-04-24T08:14:00',
     editedAt: '2026-04-24T08:22:00',
-    reactions: [r('u-hzamorate', 'resonates', '2026-04-24T08:45:00')],
+    reactions: [r('u-hzamorate', 'signal', '2026-04-24T08:45:00')],
   },
 
   // ── ed-001 — editorial ─────────────────────────────────────────────
@@ -163,7 +166,7 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Esta editorial me parece la posición más clara que han tomado hasta ahora. Bien.',
     createdAt: '2026-04-20T11:00:00',
     reactions: [
-      r('u-datavismo', 'resonates', '2026-04-20T11:15:00'),
+      r('u-datavismo', 'signal', '2026-04-20T11:15:00'),
       r('u-og-loma', 'signal', '2026-04-20T12:30:00'),
     ],
   },
@@ -176,7 +179,7 @@ export const MOCK_COMMENTS: Comment[] = [
     createdAt: '2026-04-20T13:42:00',
     reactions: [
       r('u-hzamorate', 'provocative', '2026-04-20T14:01:00'),
-      r('u-insider-tlali', 'resonates', '2026-04-20T14:18:00'),
+      r('u-insider-tlali', 'signal', '2026-04-20T14:18:00'),
     ],
   },
   {
@@ -187,8 +190,8 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Es bonito leer algo que no intenta venderme nada. Gracias.',
     createdAt: '2026-04-20T16:08:00',
     reactions: [
-      r('u-datavismo', 'resonates', '2026-04-20T16:30:00'),
-      r('u-hzamorate', 'resonates', '2026-04-20T17:00:00'),
+      r('u-datavismo', 'signal', '2026-04-20T16:30:00'),
+      r('u-hzamorate', 'signal', '2026-04-20T17:00:00'),
     ],
   },
   {
@@ -201,7 +204,7 @@ export const MOCK_COMMENTS: Comment[] = [
     editedAt: '2026-04-21T10:18:00',
     reactions: [
       r('u-og-loma', 'provocative', '2026-04-21T10:42:00'),
-      r('u-normal-yag', 'resonates', '2026-04-21T11:05:00'),
+      r('u-normal-yag', 'provocative', '2026-04-21T11:05:00'),
     ],
   },
   {
@@ -212,9 +215,9 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Decisión editorial sí, ranking automatizado no. La diferencia es quién carga la responsabilidad.',
     createdAt: '2026-04-21T11:22:00',
     reactions: [
-      r('u-hzamorate', 'resonates', '2026-04-21T11:40:00'),
+      r('u-hzamorate', 'signal', '2026-04-21T11:40:00'),
       r('u-insider-tlali', 'signal', '2026-04-21T12:18:00'),
-      r('u-normal-meri', 'resonates', '2026-04-21T13:02:00'),
+      r('u-normal-meri', 'signal', '2026-04-21T13:02:00'),
     ],
   },
 
@@ -227,11 +230,11 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Set obligatorio. La transición del minuto 38 al 41 es brutal.',
     createdAt: '2026-04-19T22:14:00',
     reactions: [
-      r('u-hzamorate', 'resonates', '2026-04-19T22:30:00'),
-      r('u-datavismo', 'resonates', '2026-04-19T23:01:00'),
+      r('u-hzamorate', 'signal', '2026-04-19T22:30:00'),
+      r('u-datavismo', 'signal', '2026-04-19T23:01:00'),
       r('u-insider-tlali', 'signal', '2026-04-20T00:18:00'),
-      r('u-normal-meri', 'resonates', '2026-04-20T08:45:00'),
-      r('u-normal-yag', 'resonates', '2026-04-20T09:12:00'),
+      r('u-normal-meri', 'signal', '2026-04-20T08:45:00'),
+      r('u-normal-yag', 'signal', '2026-04-20T09:12:00'),
     ],
   },
   {
@@ -241,7 +244,7 @@ export const MOCK_COMMENTS: Comment[] = [
     authorId: 'u-normal-yag',
     body: 'Track ID del minuto 27? Suena a algo de Livity Sound pero no lo ubico.',
     createdAt: '2026-04-20T10:42:00',
-    reactions: [r('u-normal-meri', 'signal', '2026-04-20T11:00:00')],
+    reactions: [r('u-normal-meri', 'provocative', '2026-04-20T11:00:00')],
   },
   {
     id: 'cm-019',
@@ -251,9 +254,9 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Es Batu — "False Memories", remix de Pessimist. Buen oído.',
     createdAt: '2026-04-20T11:15:00',
     reactions: [
-      r('u-normal-yag', 'resonates', '2026-04-20T11:20:00'),
+      r('u-normal-yag', 'signal', '2026-04-20T11:20:00'),
       r('u-og-loma', 'signal', '2026-04-20T12:08:00'),
-      r('u-hzamorate', 'resonates', '2026-04-20T12:30:00'),
+      r('u-hzamorate', 'signal', '2026-04-20T12:30:00'),
     ],
   },
   {
@@ -264,8 +267,8 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Excelente curaduría de tracks que no son obvios. Gracias por no caer en los hits.',
     createdAt: '2026-04-21T19:30:00',
     reactions: [
-      r('u-datavismo', 'resonates', '2026-04-21T20:00:00'),
-      r('u-og-loma', 'resonates', '2026-04-21T20:45:00'),
+      r('u-datavismo', 'signal', '2026-04-21T20:00:00'),
+      r('u-og-loma', 'signal', '2026-04-21T20:45:00'),
     ],
   },
 
@@ -277,7 +280,7 @@ export const MOCK_COMMENTS: Comment[] = [
     authorId: 'u-normal-meri',
     body: 'La reseña captura exactamente lo que sentí escuchándolo. Coincido en todo.',
     createdAt: '2026-04-18T15:42:00',
-    reactions: [r('u-insider-tlali', 'resonates', '2026-04-18T16:00:00')],
+    reactions: [r('u-insider-tlali', 'signal', '2026-04-18T16:00:00')],
   },
   {
     id: 'cm-022',
@@ -288,8 +291,8 @@ export const MOCK_COMMENTS: Comment[] = [
     createdAt: '2026-04-18T18:21:00',
     reactions: [
       r('u-hzamorate', 'provocative', '2026-04-18T19:00:00'),
-      r('u-normal-yag', 'resonates', '2026-04-18T19:32:00'),
-      r('u-insider-tlali', 'disagree', '2026-04-18T20:08:00'),
+      r('u-normal-yag', 'signal', '2026-04-18T19:32:00'),
+      r('u-insider-tlali', 'provocative', '2026-04-18T20:08:00'),
     ],
   },
   {
@@ -299,7 +302,7 @@ export const MOCK_COMMENTS: Comment[] = [
     authorId: 'u-insider-tlali',
     body: 'Cuáles momentos? Curioso, no lo sentí así.',
     createdAt: '2026-04-18T20:14:00',
-    reactions: [r('u-og-loma', 'signal', '2026-04-18T20:40:00')],
+    reactions: [r('u-og-loma', 'provocative', '2026-04-18T20:40:00')],
   },
   {
     id: 'cm-024',
@@ -310,7 +313,7 @@ export const MOCK_COMMENTS: Comment[] = [
     createdAt: '2026-04-18T21:02:00',
     reactions: [
       r('u-insider-tlali', 'provocative', '2026-04-18T21:30:00'),
-      r('u-hzamorate', 'resonates', '2026-04-18T22:00:00'),
+      r('u-hzamorate', 'signal', '2026-04-18T22:00:00'),
     ],
   },
   {
@@ -321,8 +324,8 @@ export const MOCK_COMMENTS: Comment[] = [
     body: 'Reseña justa, ni hype ni demolición. Más de esto.',
     createdAt: '2026-04-19T09:15:00',
     reactions: [
-      r('u-datavismo', 'resonates', '2026-04-19T09:30:00'),
-      r('u-normal-meri', 'resonates', '2026-04-19T10:00:00'),
+      r('u-datavismo', 'signal', '2026-04-19T09:30:00'),
+      r('u-normal-meri', 'signal', '2026-04-19T10:00:00'),
     ],
   },
 ]
@@ -337,8 +340,8 @@ export function getCommentById(id: string): Comment | undefined {
   return MOCK_COMMENTS.find((c) => c.id === id)
 }
 
-// Engagement = total reaction count, irrespective of kind. No kind subtracts
-// from another — disagreement is signal, not suppression.
+// Engagement = total reaction count, irrespective of kind. Both ! and ?
+// count equally — disagreement-as-doubt is signal, not suppression.
 // See [[No Algorithm]] / "controversy as discussion".
 export function engagementScore(comment: Comment): number {
   return comment.reactions.length

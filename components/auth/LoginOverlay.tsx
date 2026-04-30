@@ -202,7 +202,7 @@ export function LoginOverlay() {
                       className="shrink-0 border px-1.5 py-0.5 text-[9px] tracking-widest"
                       style={{ borderColor: '#242424', color: '#9CA3AF' }}
                     >
-                      {badgeFor(u)}
+                      {badgeFor(u).label}
                     </span>
                   </button>
                 </li>

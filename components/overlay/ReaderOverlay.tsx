@@ -11,6 +11,7 @@ import {
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { Expand, FileImage, User, Calendar, Clock, Activity } from 'lucide-react'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollSection } from '@/components/poll/PollSection'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -297,6 +298,14 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
           )}
         </aside>
       </div>
+
+      {/* Poll — freeform on noticia / review / editorial / opinion. Sits
+          between the article body and the sticky footer. */}
+      {item.poll && (
+        <div className="border-t border-border bg-surface/40 px-4 py-6 md:px-6">
+          <PollSection item={item} className="max-w-2xl" />
+        </div>
+      )}
 
       {/* Sticky reader footer — system status strip */}
       <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t border-border bg-base/95 px-4 py-2 backdrop-blur-sm md:px-6">

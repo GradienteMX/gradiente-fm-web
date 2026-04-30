@@ -11,15 +11,21 @@ import {
 
 import type { User } from '@/lib/types'
 import { getUserById, getUserByUsername } from '@/lib/mockUsers'
+import { useResolvedUser } from '@/lib/userOverrides'
 
-// Visual-prototype auth. Resolves a mock user from MOCK_USERS by username and
-// stores only the user id in sessionStorage. The `password` field is theater:
-// any user can log in with password === their username, OR with the legacy
-// `admin / admin` shortcut (resolves to the canonical admin user).
+// Visual-prototype auth. Stores only the user id in sessionStorage; the
+// exposed `currentUser` is resolved live through [[userOverrides]] so admin
+// self-edits in [[PermisosSection]] (role / isMod / isOG) propagate to every
+// surface that reads `currentUser` — sidebar gating, AuthBadge breadcrumb,
+// canModerate checks — without requiring a page reload.
 //
-// When real auth lands (Supabase), swap login() / loginAs() / readStoredAuth()
-// for real calls — every consumer reads `currentUser` / `isAuthed` / `username`
-// and won't change.
+// The `password` field is theater: any user can log in with password ===
+// their username, OR with the legacy `admin / admin` shortcut (resolves to
+// the canonical admin user).
+//
+// When real auth lands (Supabase), swap login() / loginAs() / the storage
+// helpers below for real calls — every consumer reads `currentUser` /
+// `isAuthed` / `username` and won't change.
 
 const ADMIN_SHORTCUT_USERNAME = 'admin'
 const ADMIN_SHORTCUT_PASSWORD = 'admin'
@@ -42,23 +48,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function readStoredUser(): User | null {
+function readStoredUserId(): string | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
-    if (typeof parsed?.userId !== 'string') return null
-    return getUserById(parsed.userId) ?? null
+    return typeof parsed?.userId === 'string' ? parsed.userId : null
   } catch {
     return null
   }
 }
 
-function persistUser(user: User | null) {
+function persistUserId(id: string | null) {
   try {
-    if (user) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: user.id }))
+    if (id) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: id }))
     } else {
       sessionStorage.removeItem(STORAGE_KEY)
     }
@@ -66,6 +71,9 @@ function persistUser(user: User | null) {
 }
 
 // Resolve a (username, password) pair to a User if the credentials are valid.
+// Reads from MOCK_USERS (the seed) — credential check is independent of any
+// session-only override; you can't unlock a different account by editing
+// someone's role.
 function resolveCredentials(username: string, password: string): User | null {
   const u = username.trim()
   // Back-compat shortcut: admin / admin → first admin user.
@@ -84,41 +92,46 @@ function resolveCredentials(username: string, password: string): User | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Start null on both server and client to avoid hydration drift; read storage after mount.
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  // Source of truth is just the user id; the resolved User comes from
+  // useResolvedUser, which subscribes to override changes and re-renders.
+  // Start null on both server and client to avoid hydration drift; read
+  // storage after mount.
+  const [userId, setUserId] = useState<string | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    setCurrentUser(readStoredUser())
+    setUserId(readStoredUserId())
     setHydrated(true)
   }, [])
+
+  const resolved = useResolvedUser(userId)
 
   const login = useCallback((username: string, password: string): boolean => {
     const user = resolveCredentials(username, password)
     if (!user) return false
-    setCurrentUser(user)
-    persistUser(user)
+    setUserId(user.id)
+    persistUserId(user.id)
     return true
   }, [])
 
   const loginAs = useCallback((userId: string): boolean => {
     const user = getUserById(userId)
     if (!user) return false
-    setCurrentUser(user)
-    persistUser(user)
+    setUserId(user.id)
+    persistUserId(user.id)
     return true
   }, [])
 
   const logout = useCallback(() => {
-    setCurrentUser(null)
-    persistUser(null)
+    setUserId(null)
+    persistUserId(null)
   }, [])
 
   const openLogin = useCallback(() => setLoginOpen(true), [])
   const closeLogin = useCallback(() => setLoginOpen(false), [])
 
-  const exposed = hydrated ? currentUser : null
+  const exposed = hydrated ? resolved ?? null : null
   const value: AuthContextValue = {
     currentUser: exposed,
     username: exposed?.username ?? null,

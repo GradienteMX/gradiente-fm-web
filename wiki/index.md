@@ -38,6 +38,7 @@
 - [[Reviews]] — `/reviews` — reviews only
 - [[Articulos]] — `/articulos` — longform features only
 - [[Foro]] — `/foro` — imageboard-style discussion catalog (threads + flat replies)
+- [[Marketplace Page]] — `/marketplace` — public marketplace catalog; `?partner=<slug>` opens a partner's overlay
 - [[Dashboard]] — `/dashboard` — auth-gated insider surface for composing new content (visual prototype)
 - [[Dashboard Drafts]] — `/dashboard/drafts` — table view of session items with edit / publish / delete actions
 - [[About]] — `/about` — identity surface: what Gradiente is + partner ecosystem
@@ -82,6 +83,16 @@
 - [[CommentList]] — threaded renderer with role badges, ASCII reactions, depth cap, tombstones, focus pulse
 - [[CommentComposer]] — login-gated dual-variant composer (`root` / `reply`); Enter posts
 - [[SavedCommentsSection]] — dashboard `Guardados/Comentarios` surface with two-level draggable folders→files
+- [[PermisosSection]] — admin-only role / flag editor inside the dashboard; writes via [[userOverrides]]
+- [[PromptOverlay]] — NGE-styled `confirm` / `input` modal; replaces `window.prompt` for moderation + delete flows
+- [[PollCardCanvas]] — card-level poll affordance; chip when closed, replaces card image with vote/results canvas when open
+- [[PollSection]] — overlay-level poll surface; permanent section inside the parent's content overlay
+- [[PollFieldset]] — shared poll-authoring section dropped into every dashboard compose form
+- [[PartnerApprovalsSection]] — admin-only marketplace approval table; toggles `marketplaceEnabled` per partner
+- [[MiPartnerSection]] — partner-team-only dashboard surface (Equipo + Marketplace tabs)
+- [[MarketplaceOverlay]] — per-partner full-screen overlay matching the reference screenshot
+- [[MarketplaceListingDetail]] — sub-overlay (z-60) opened from MarketplaceOverlay; gallery + embeds + meta; URL `?partner=&listing=`
+- [[MarketplaceCatalog]] · [[MarketplaceCard]] · [[MarketplaceListingCard]] · [[MarketplaceRail]] — public-side surfaces
 - [[DraggableCanvas]] — generic free-form file canvas (sessionStorage-namespaced positions, click-vs-drag threshold)
 - [[SaveItemButton]] — `★ GUARDAR / ★ GUARDADO` chip in OverlayShell header; login-gated
 - [[SavedBadge]] — tiny orange `★` chip on cards when item is saved; renders null otherwise
@@ -109,6 +120,9 @@
 - [[mockUsers]] — 8-user roster covering all roles + role/category label maps + `getUserById` / `getUserByUsername`
 - [[mockComments]] — 25-comment seed (depth-5 thread, controversy hot-spot, tombstone, edited marker) + tree helpers
 - [[permissions]] — pure-function role/permission helpers (`hasRole`, `canEditComment`, `canModerateComment`, etc.)
+- [[userOverrides]] — sessionStorage patch layer over MOCK_USERS; backs the [[PermisosSection]] admin surface
+- [[polls]] — vote store + per-type choice resolver for poll attachments on `ContentItem`
+- [[partnerOverrides]] — sessionStorage patch layer over partner ContentItems; backs the marketplace approval + edit surfaces
 - [[foro]] — sessionStorage-backed foro store (threads + replies + bumpOverrides) + listener-pattern hooks
 - [[mockForo]] — 8 seed threads + 16 seed replies (depth-of-conversation hot-spots, multi-quote, role plurality)
 
@@ -145,6 +159,9 @@
 - [[Why NGE Aesthetic]] — the founding design call
 - [[Size and Position as Only Signals]] — no stars, likes, or counters
 - [[No Algorithm]] — editorial curation over engagement metrics
+- [[Roles and Ranks]] — three identity axes (creation tier + mod/og flags + auto-rank), !/? reaction palette
+- [[Polls As Attachments]] — poll = optional ContentItem attachment, per-type variant resolution, card-as-canvas voting, anonymous-until-vote
+- [[Marketplace]] — partner-only commerce, dedicated `/marketplace` route, `partnerId` field + `partnerAdmin` flag, four-step approval flow
 - [[Why Next.js App Router]] — server-first, file routing
 - [[Contained Single Surface]] — card click → overlay, never a route change
 - [[Reader Terminal Layout]] — long-form overlays are reading subsystems, flyer demotes to archival

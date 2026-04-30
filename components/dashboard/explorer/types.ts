@@ -19,6 +19,15 @@ export type ExplorerSection =
   // Saved comments live in the same folder but are a sibling rather than a
   // content-type filter — comments aren't ContentItems.
   | 'guardados-comentarios'
+  // Admin-only role / flag editor. Hidden from the sidebar for non-admins;
+  // the dashboard page also guards URL access. See [[Roles and Ranks]].
+  | 'permisos'
+  // Admin-only marketplace approvals — toggle marketplaceEnabled on
+  // partners. See [[Marketplace]].
+  | 'aprobaciones-mkt'
+  // Partner-team-only — visible when currentUser.partnerId is set. Two
+  // tabs: equipo + marketplace.
+  | 'mi-partner'
 
 export interface SelectionMeta {
   id: string

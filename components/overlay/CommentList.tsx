@@ -1,53 +1,42 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { RotateCcw, Trash2 } from 'lucide-react'
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Comment, ReactionKind, Role, UserCategory } from '@/lib/types'
+import type { Comment, ReactionKind, User } from '@/lib/types'
 import {
-  ROLE_LABEL,
-  USER_CATEGORY_LABEL,
-  getUserById,
+  badgeFor,
+  flagsFor,
+  FLAG_COLOR,
+  FLAG_LABEL,
 } from '@/lib/mockUsers'
 import { descendantCount, engagementScore } from '@/lib/mockComments'
 import {
+  clearCommentDeletion,
+  tombstoneComment,
   toggleReaction,
   toggleSavedComment,
   useIsCommentSaved,
+  useUserRank,
 } from '@/lib/comments'
+import { useResolvedUser } from '@/lib/userOverrides'
+import { canModerate } from '@/lib/permissions'
 import { useAuth } from '@/components/auth/useAuth'
+import { usePrompt } from '@/components/prompt/usePrompt'
 import { CommentComposer } from './CommentComposer'
 
 // Visual indent cap. Replies at depth > MAX_VISUAL_DEPTH collapse into a
 // "ver N respuestas más" link to keep the column readable on narrow widths.
 const MAX_VISUAL_DEPTH = 4
 
-// Reaction palette — ASCII glyphs. Order matches comment-meta strip.
+// Reaction palette — ! and ? only. Mutually exclusive per (user, comment);
+// see lib/types.ts ReactionKind for the design rationale.
 const REACTION_GLYPH: Record<ReactionKind, string> = {
-  resonates: '[+]',
-  disagree: '[−]',
   provocative: '[?]',
   signal: '[!]',
 }
-const REACTION_ORDER: ReactionKind[] = [
-  'resonates',
-  'disagree',
-  'provocative',
-  'signal',
-]
-
-// Badge color by role / category.
-const ROLE_COLOR: Record<Role, string> = {
-  admin: '#F97316',       // orange — sysop
-  moderator: '#E63329',   // red — moderator chrome
-  collaborator: '#4ADE80',// green — redacción
-  user: '#9CA3AF',        // neutral — lector
-}
-const CATEGORY_COLOR: Record<UserCategory, string> = {
-  og: '#A78BFA',          // muted purple — OG
-  insider: '#60A5FA',     // muted blue — insider
-  normal: '#9CA3AF',      // neutral — lector
-}
+const REACTION_ORDER: ReactionKind[] = ['provocative', 'signal']
 
 interface CommentNode extends Comment {
   children: CommentNode[]
@@ -150,12 +139,41 @@ interface CommentNodeProps {
 
 function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProps) {
   const [collapsedDeep, setCollapsedDeep] = useState(true)
-  const author = getUserById(node.authorId)
+  const author = useResolvedUser(node.authorId)
   const { currentUser } = useAuth()
   const viewerId = currentUser?.id ?? null
   const isOwn = viewerId !== null && node.authorId === viewerId
   const isFocused = focusedCommentId !== null && focusedCommentId === node.id
   const isTombstone = !!node.deletion
+  const isMod = canModerate(currentUser)
+  const canDelete = !isTombstone && (isOwn || isMod)
+  const { confirm, input: promptInput } = usePrompt()
+  const onDelete = useCallback(async () => {
+    if (!currentUser) return
+    if (isOwn) {
+      // Author self-delete — no reason required, just confirm.
+      const ok = await confirm({
+        title: 'Borrar tu comentario',
+        body: 'El comentario se reemplaza por una lápida con el texto «eliminado por autor». Tus respuestas hijas se conservan.',
+        confirmLabel: 'BORRAR',
+        destructive: true,
+      })
+      if (!ok) return
+      tombstoneComment(node.id, currentUser.id, '')
+      return
+    }
+    // Mod delete — reason required.
+    const reason = await promptInput({
+      title: 'Borrar comentario',
+      body: `Comentario de @${author?.username ?? 'desconocido'}. La razón se mostrará en la lápida.`,
+      placeholder: 'spam · acoso · off-topic · …',
+      defaultValue: 'spam',
+      confirmLabel: 'BORRAR',
+      destructive: true,
+    })
+    if (!reason || !reason.trim()) return
+    tombstoneComment(node.id, currentUser.id, reason.trim())
+  }, [currentUser, isOwn, node.id, author?.username, confirm, promptInput])
   const created = formatDistanceToNowStrict(parseISO(node.createdAt), {
     locale: es,
     addSuffix: true,
@@ -176,8 +194,6 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
 
   // Reaction counts grouped by kind — show only nonzero.
   const reactionCounts: Record<ReactionKind, number> = {
-    resonates: 0,
-    disagree: 0,
     provocative: 0,
     signal: 0,
   }
@@ -219,7 +235,7 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
         {author ? (
           <>
             <span className="text-primary">@{author.username}</span>
-            <RoleBadge role={author.role} category={author.userCategory} />
+            <AuthorBadges author={author} />
             {isOwn && (
               <span
                 className="border px-1.5 py-px text-[9px]"
@@ -240,11 +256,35 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
         {node.editedAt && (
           <span className="text-muted">· EDITADO</span>
         )}
+        {canDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={isOwn ? 'Borrar mi comentario' : 'Borrar comentario'}
+            title={isOwn ? 'Borrar (autor)' : 'Borrar (moderación)'}
+            className="ml-auto flex shrink-0 items-center gap-1 border px-1.5 py-px text-[9px] transition-colors hover:bg-white/[0.02]"
+            style={{ borderColor: '#E63329', color: '#E63329' }}
+          >
+            <Trash2 size={10} strokeWidth={1.5} />
+            <span>BORRAR</span>
+          </button>
+        )}
       </header>
 
       {/* Body — tombstone or text */}
       {isTombstone ? (
-        <Tombstone deletion={node.deletion!} />
+        <Tombstone
+          deletion={node.deletion!}
+          authorId={node.authorId}
+          canRevert={
+            // Mods can always revert. The actor (author who self-deleted, or
+            // mod who deleted) can also revert their own action — gives the
+            // author an undo for an accidental self-delete without exposing
+            // the affordance to anyone else.
+            isMod || node.deletion!.moderatorId === viewerId
+          }
+          onRevert={() => clearCommentDeletion(node.id)}
+        />
       ) : (
         <p className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-secondary">
           {node.body}
@@ -260,9 +300,12 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
               commentId={node.id}
               kind={kind}
               count={reactionCounts[kind]}
-              userReacted={node.reactions.some(
-                (r) => r.userId === viewerId && r.kind === kind,
-              )}
+              userReacted={
+                viewerId !== null &&
+                node.reactions.some(
+                  (r) => r.userId === viewerId && r.kind === kind,
+                )
+              }
             />
           ))}
           <SaveButton commentId={node.id} />
@@ -343,27 +386,34 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
   )
 }
 
-// ── Role badge ─────────────────────────────────────────────────────────────
+// ── Author badges (primary role/rank chip + mod/og flag chips) ─────────────
 
-function RoleBadge({
-  role,
-  category,
-}: {
-  role: Role
-  category?: UserCategory
-}) {
-  // For lector role, prefer the category label (OG / INSIDER / LECTOR) —
-  // it's more informative than the bare role label.
-  const useCategory = role === 'user' && category
-  const label = useCategory ? USER_CATEGORY_LABEL[category] : ROLE_LABEL[role]
-  const color = useCategory ? CATEGORY_COLOR[category] : ROLE_COLOR[role]
+function AuthorBadges({ author }: { author: User }) {
+  // For user-tier accounts the primary chip is the derived rank
+  // (NORMIE/DETONADOR/ENIGMA/ESPECTRO). For staff roles it's the role label.
+  // useUserRank returns 'normie' for non-user accounts too — badgeFor only
+  // consumes it when role === 'user', so the spurious value is harmless.
+  const rank = useUserRank(author.id)
+  const primary = badgeFor(author, rank)
+  const flags = flagsFor(author)
   return (
-    <span
-      className="border px-1.5 py-px text-[9px]"
-      style={{ borderColor: color, color }}
-    >
-      {label}
-    </span>
+    <>
+      <span
+        className="border px-1.5 py-px text-[9px]"
+        style={{ borderColor: primary.color, color: primary.color }}
+      >
+        {primary.label}
+      </span>
+      {flags.map((flag) => (
+        <span
+          key={flag}
+          className="border px-1.5 py-px text-[9px]"
+          style={{ borderColor: FLAG_COLOR[flag], color: FLAG_COLOR[flag] }}
+        >
+          {FLAG_LABEL[flag]}
+        </span>
+      ))}
+    </>
   )
 }
 
@@ -438,26 +488,55 @@ function SaveButton({ commentId }: { commentId: string }) {
   )
 }
 
-// ── Tombstone (mod-deleted comment) ────────────────────────────────────────
+// ── Tombstone (author self-delete or mod-deleted) ─────────────────────────
+//
+// Same shape covers both flows. When the actor (`deletion.moderatorId`) is
+// the post's author, render as "ELIMINADO POR AUTOR" with no reason — a
+// self-delete is implicit, no justification needed. Otherwise render the
+// "ELIMINADO POR MODERACIÓN · RAZÓN: …" form.
 
 function Tombstone({
   deletion,
+  authorId,
+  canRevert,
+  onRevert,
 }: {
   deletion: NonNullable<Comment['deletion']>
+  authorId: string
+  canRevert: boolean
+  onRevert: () => void
 }) {
-  const mod = getUserById(deletion.moderatorId)
+  const actor = useResolvedUser(deletion.moderatorId)
+  const isSelfDelete = deletion.moderatorId === authorId
   return (
     <div
       className="flex flex-col gap-0.5 border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
       style={{ borderColor: '#3a3a3a', color: '#9CA3AF' }}
     >
-      <span className="tracking-widest" style={{ color: '#E63329' }}>
-        //ELIMINADO·POR·MODERACIÓN
-      </span>
-      <span>
-        {mod ? `@${mod.username}` : 'moderador'} ·{' '}
-        <span className="text-secondary">RAZÓN:</span> {deletion.reason}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="tracking-widest" style={{ color: '#E63329' }}>
+          {isSelfDelete ? '//ELIMINADO·POR·AUTOR' : '//ELIMINADO·POR·MODERACIÓN'}
+        </span>
+        {canRevert && (
+          <button
+            type="button"
+            onClick={onRevert}
+            className="flex shrink-0 items-center gap-1 border px-1.5 py-px text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
+            style={{ borderColor: '#F97316', color: '#F97316' }}
+            aria-label="Restaurar"
+            title="Restaurar"
+          >
+            <RotateCcw size={10} strokeWidth={1.5} />
+            <span>RESTAURAR</span>
+          </button>
+        )}
+      </div>
+      {!isSelfDelete && (
+        <span>
+          {actor ? `@${actor.username}` : 'moderador'} ·{' '}
+          <span className="text-secondary">RAZÓN:</span> {deletion.reason}
+        </span>
+      )}
     </div>
   )
 }

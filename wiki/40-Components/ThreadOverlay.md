@@ -1,8 +1,8 @@
 ---
 type: component
 status: current
-tags: [foro, overlay, thread, imageboard]
-updated: 2026-04-26
+tags: [foro, overlay, thread, imageboard, moderation]
+updated: 2026-04-29
 ---
 
 # ThreadOverlay
@@ -47,9 +47,21 @@ Imageboard convention: OP and replies that have `imageUrl` get the image floated
 
 ESC closes the overlay. `document.body.style.overflow = 'hidden'` while open; restored on unmount.
 
+## Moderation tools
+
+`canModerate(currentUser)` (mod flag or admin role) flips the `isMod` boolean threaded through the article components. When true, each post (OP and every reply) renders a small red `BORRAR HILO` / `BORRAR` button (Trash2 icon) in the top-right of its header strip. Click → `window.prompt('Razón…')` → `tombstoneThread` / `tombstoneReply` from [[foro]].
+
+**Tombstone rendering.** `Tombstone` component (mirror of the [[CommentList]] tombstone) replaces the post body with a `//HILO·ELIMINADO·POR·MODERACIÓN` or `//RESPUESTA·ELIMINADO·POR·MODERACIÓN` block + `@mod · RAZÓN: …`. The article container, `PostHeader`, and `Backlinks` continue to render normally so quote-IDs and `>>id` navigation still work (and so a moderator's pruning is visible in context, not erased). When the viewer is a mod, a small orange `RESTAURAR` chip (RotateCcw icon) sits inline with the tombstone heading; click → `clearTombstone(postId)` from [[foro]] → catalog re-includes the thread, body restores.
+
+**Composer closure.** When the thread itself is tombstoned, the `ReplyComposer` is replaced with a `//HILO·CERRADO·POR·MODERACIÓN — no se aceptan respuestas nuevas.` notice. Tombstoned threads are also dropped from the catalog by [[foro]]'s `getMergedThreads`, but `?thread=<id>` still resolves so the reason is reachable.
+
+**Prompt UI.** The reason is collected via [[PromptOverlay]]'s `input` mode (NGE-styled, eva-box chrome). Replaced the earlier `window.prompt()` stand-in.
+
 ## Links
 
 - [[Foro]] · [[ForoCatalog]] · [[PostHeader]] · [[ReplyComposer]]
-- [[foro]] — `useThread` / `useReplies` hooks
+- [[foro]] — `useThread` / `useReplies` / `tombstoneThread` / `tombstoneReply`
+- [[permissions]] — `canModerate` (the mod-tool gate)
+- [[Roles and Ranks]] — the role/flag model `canModerate` consumes
 - [[useAuth]] — current user resolution for the `TÚ` marker
 - [[Contained Single Surface]] — applies within the foro destination

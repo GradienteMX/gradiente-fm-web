@@ -9,12 +9,10 @@ import { es } from 'date-fns/locale'
 import {
   useSavedComments,
   toggleSavedComment,
+  useUserRank,
 } from '@/lib/comments'
-import {
-  getUserById,
-  ROLE_LABEL,
-  USER_CATEGORY_LABEL,
-} from '@/lib/mockUsers'
+import { useResolvedUser } from '@/lib/userOverrides'
+import { badgeFor } from '@/lib/mockUsers'
 import { MOCK_ITEMS } from '@/lib/mockData'
 import { categoryColor } from '@/lib/utils'
 import { DraggableCanvas } from '../DraggableCanvas'
@@ -391,21 +389,26 @@ function CommentFileTile({
   collapsedHeight: number
   expandedHeight: number
 }) {
-  const author = getUserById(comment.authorId)
+  const author = useResolvedUser(comment.authorId)
+  const rank = useUserRank(comment.authorId)
   const created = formatDistanceToNowStrict(parseISO(comment.createdAt), {
     locale: es,
     addSuffix: true,
   })
-  const authorBadge =
-    author?.role === 'user' && author.userCategory
-      ? USER_CATEGORY_LABEL[author.userCategory]
-      : author
-        ? ROLE_LABEL[author.role]
-        : null
+  // Tile shows the primary chip only — flag chips (mod/og) are kept off the
+  // saved-comments tile to keep it scannable; users see them in the full
+  // comment view inside the overlay.
+  const authorBadge = author ? badgeFor(author, rank).label : null
 
   const isTombstone = !!comment.deletion
+  // Self-deletes have no reason; mod-deletes do. Match the in-overlay
+  // [[CommentList]] Tombstone branch so both surfaces tell the same story.
+  const isSelfDelete =
+    isTombstone && comment.deletion!.moderatorId === comment.authorId
   const previewBody = isTombstone
-    ? `[eliminado · ${comment.deletion!.reason}]`
+    ? isSelfDelete
+      ? '[eliminado por autor]'
+      : `[eliminado · ${comment.deletion!.reason}]`
     : comment.body
 
   // The tile owns its own height — the canvas's tileHeight is just a hint

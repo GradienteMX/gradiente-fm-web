@@ -17,6 +17,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { PollFieldset } from './shared/PollFieldset'
 
 const DRAFT_KEY = 'gradiente:dashboard:review-draft'
 
@@ -162,6 +163,14 @@ export function ReviewForm() {
             value={draft.imageUrl ?? ''}
             onChange={(v) => patch({ imageUrl: v })}
             placeholder="/flyers/review-001.jpg"
+          />
+        </Section>
+
+        <Section label="05" title="ENCUESTA (opcional)">
+          <PollFieldset
+            type={draft.type}
+            poll={draft.poll}
+            onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
 

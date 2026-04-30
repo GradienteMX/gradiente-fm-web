@@ -31,6 +31,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { PollFieldset } from './shared/PollFieldset'
 
 const DRAFT_KEY = 'gradiente:dashboard:articulo-draft'
 
@@ -223,6 +224,14 @@ export function ArticuloForm() {
           <FootnotesEditor
             footnotes={footnotes}
             onChange={setFootnotes}
+          />
+        </Section>
+
+        <Section label="07" title="ENCUESTA (opcional)">
+          <PollFieldset
+            type={draft.type}
+            poll={draft.poll}
+            onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
 

@@ -1,14 +1,23 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { RotateCcw, Trash2, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
-import { useReplies, useThread } from '@/lib/foro'
+import {
+  clearTombstone,
+  tombstoneReply,
+  tombstoneThread,
+  useReplies,
+  useThread,
+} from '@/lib/foro'
 import { getGenreById, vibeForGenre } from '@/lib/genres'
+import { canModerate } from '@/lib/permissions'
 import { vibeToColor } from '@/lib/utils'
+import { useResolvedUser } from '@/lib/userOverrides'
+import { usePrompt } from '@/components/prompt/usePrompt'
 import { PostHeader } from './PostHeader'
 import { ReplyComposer } from './ReplyComposer'
-import type { ForoReply } from '@/lib/types'
+import type { ForoDeletion, ForoReply } from '@/lib/types'
 
 // ── ThreadOverlay ──────────────────────────────────────────────────────────
 //
@@ -31,6 +40,43 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
   const thread = useThread(threadId)
   const replies = useReplies(threadId)
   const { currentUser } = useAuth()
+  const isMod = canModerate(currentUser)
+  const threadDeleted = !!thread?.deletion
+  const { input: promptInput } = usePrompt()
+
+  // Mod actions — open the NGE-styled [[PromptOverlay]] for a reason.
+  // The storage layer doesn't re-check the role (real backend will via
+  // RLS); we guard at the UI by only rendering the buttons for mods.
+  const onTombstoneThread = useCallback(async () => {
+    if (!currentUser || !thread) return
+    const reason = await promptInput({
+      title: 'Borrar hilo',
+      body: `Hilo «${thread.subject}». La acción deja una lápida con la razón visible para los demás usuarios.`,
+      placeholder: 'spam · acoso · off-topic · …',
+      defaultValue: 'spam',
+      confirmLabel: 'BORRAR HILO',
+      destructive: true,
+    })
+    if (!reason || !reason.trim()) return
+    tombstoneThread(thread.id, currentUser.id, reason.trim())
+  }, [currentUser, thread, promptInput])
+
+  const onTombstoneReply = useCallback(
+    async (reply: ForoReply) => {
+      if (!currentUser) return
+      const reason = await promptInput({
+        title: 'Borrar respuesta',
+        body: `Respuesta ${reply.id}. Se preserva la posición del post; el cuerpo se reemplaza por la lápida con la razón.`,
+        placeholder: 'spam · acoso · off-topic · …',
+        defaultValue: 'spam',
+        confirmLabel: 'BORRAR',
+        destructive: true,
+      })
+      if (!reason || !reason.trim()) return
+      tombstoneReply(reply.id, currentUser.id, reason.trim())
+    },
+    [currentUser, promptInput],
+  )
   // Reverse-quote map for backlinks. Inverts each reply's quotedReplyIds:
   // for any post id, lists the reply ids that pointed at it. Recomputed when
   // replies change. Cheap because thread reply counts stay small.
@@ -185,45 +231,63 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
               }
               style={{ borderColor: '#3a2200' }}
             >
-              <PostHeader
-                postId={thread.id}
-                authorId={thread.authorId}
-                createdAt={thread.createdAt}
-                onIdClick={() => quotePost(thread.id)}
-              />
-              <Backlinks ids={inboundIndex.get(thread.id) ?? []} onClick={focusPost} />
-              <h1 className="font-syne text-lg font-bold leading-tight text-primary">
-                {thread.subject}
-              </h1>
-              {thread.genres.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1">
-                  {thread.genres.map((id) => {
-                    const g = getGenreById(id)
-                    const v = vibeForGenre(id)
-                    const accent = v !== null ? vibeToColor(v) : '#9CA3AF'
-                    return (
-                      <span
-                        key={id}
-                        className="border px-1.5 py-px font-mono text-[9px] tracking-widest"
-                        style={{
-                          borderColor: accent,
-                          color: accent,
-                          backgroundColor: `${accent}12`,
-                        }}
-                      >
-                        {(g?.name ?? id).toUpperCase()}
-                      </span>
-                    )
-                  })}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <PostHeader
+                    postId={thread.id}
+                    authorId={thread.authorId}
+                    createdAt={thread.createdAt}
+                    onIdClick={() => quotePost(thread.id)}
+                  />
                 </div>
+                {isMod && !threadDeleted && (
+                  <ModDeleteButton onClick={onTombstoneThread} label="BORRAR HILO" />
+                )}
+              </div>
+              <Backlinks ids={inboundIndex.get(thread.id) ?? []} onClick={focusPost} />
+              {threadDeleted ? (
+                <Tombstone
+                  deletion={thread.deletion!}
+                  kind="thread"
+                  canRevert={isMod}
+                  onRevert={() => clearTombstone(thread.id)}
+                />
+              ) : (
+                <>
+                  <h1 className="font-syne text-lg font-bold leading-tight text-primary">
+                    {thread.subject}
+                  </h1>
+                  {thread.genres.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {thread.genres.map((id) => {
+                        const g = getGenreById(id)
+                        const v = vibeForGenre(id)
+                        const accent = v !== null ? vibeToColor(v) : '#9CA3AF'
+                        return (
+                          <span
+                            key={id}
+                            className="border px-1.5 py-px font-mono text-[9px] tracking-widest"
+                            style={{
+                              borderColor: accent,
+                              color: accent,
+                              backgroundColor: `${accent}12`,
+                            }}
+                          >
+                            {(g?.name ?? id).toUpperCase()}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <PostBody
+                    imageUrl={thread.imageUrl}
+                    imageRequired
+                    body={thread.body}
+                    onQuoteClick={focusPost}
+                    isQuoteToMe={isQuoteToMe}
+                  />
+                </>
               )}
-              <PostBody
-                imageUrl={thread.imageUrl}
-                imageRequired
-                body={thread.body}
-                onQuoteClick={focusPost}
-                isQuoteToMe={isQuoteToMe}
-              />
             </article>
 
             {/* Replies */}
@@ -233,23 +297,33 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                 reply={reply}
                 pulsed={pulsedId === reply.id}
                 inboundIds={inboundIndex.get(reply.id) ?? []}
+                isMod={isMod}
                 onIdClick={() => quotePost(reply.id)}
                 onQuoteClick={focusPost}
                 isQuoteToMe={isQuoteToMe}
+                onTombstone={onTombstoneReply}
               />
             ))}
 
-            {/* Composer */}
+            {/* Composer — disabled on tombstoned threads. New replies on a
+                deleted thread don't make sense; the moderator's pruning
+                action also closes the door on continued discussion. */}
             <div ref={composerRef} className="border border-dashed border-border/60 bg-black p-3">
-              <ReplyComposer
-                key={composerKey}
-                threadId={thread.id}
-                initialQuotedIds={pendingQuote}
-                onPosted={() => {
-                  setPendingQuote([])
-                  setComposerKey((k) => k + 1)
-                }}
-              />
+              {threadDeleted ? (
+                <p className="font-mono text-[10px] tracking-widest text-muted">
+                  //HILO·CERRADO·POR·MODERACIÓN — no se aceptan respuestas nuevas.
+                </p>
+              ) : (
+                <ReplyComposer
+                  key={composerKey}
+                  threadId={thread.id}
+                  initialQuotedIds={pendingQuote}
+                  onPosted={() => {
+                    setPendingQuote([])
+                    setComposerKey((k) => k + 1)
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -264,17 +338,22 @@ function ReplyArticle({
   reply,
   pulsed,
   inboundIds,
+  isMod,
   onIdClick,
   onQuoteClick,
   isQuoteToMe,
+  onTombstone,
 }: {
   reply: ForoReply
   pulsed: boolean
   inboundIds: string[]
+  isMod: boolean
   onIdClick: () => void
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
+  onTombstone: (reply: ForoReply) => void
 }) {
+  const deleted = !!reply.deletion
   return (
     <article
       data-postid={reply.id}
@@ -283,20 +362,110 @@ function ReplyArticle({
         (pulsed ? 'ring-2 ring-sys-orange ring-offset-1 ring-offset-base' : '')
       }
     >
-      <PostHeader
-        postId={reply.id}
-        authorId={reply.authorId}
-        createdAt={reply.createdAt}
-        onIdClick={onIdClick}
-      />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <PostHeader
+            postId={reply.id}
+            authorId={reply.authorId}
+            createdAt={reply.createdAt}
+            onIdClick={onIdClick}
+          />
+        </div>
+        {isMod && !deleted && (
+          <ModDeleteButton onClick={() => onTombstone(reply)} label="BORRAR" />
+        )}
+      </div>
       <Backlinks ids={inboundIds} onClick={onQuoteClick} />
-      <PostBody
-        imageUrl={reply.imageUrl}
-        body={reply.body}
-        onQuoteClick={onQuoteClick}
-        isQuoteToMe={isQuoteToMe}
-      />
+      {deleted ? (
+        <Tombstone
+          deletion={reply.deletion!}
+          kind="reply"
+          canRevert={isMod}
+          onRevert={() => clearTombstone(reply.id)}
+        />
+      ) : (
+        <PostBody
+          imageUrl={reply.imageUrl}
+          body={reply.body}
+          onQuoteClick={onQuoteClick}
+          isQuoteToMe={isQuoteToMe}
+        />
+      )}
     </article>
+  )
+}
+
+// ── Mod button — visible only when canModerate(currentUser) ────────────────
+
+function ModDeleteButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex shrink-0 items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
+      style={{ borderColor: '#E63329', color: '#E63329' }}
+      aria-label={label}
+      title={label}
+    >
+      <Trash2 size={10} strokeWidth={1.5} />
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  )
+}
+
+// ── Tombstone — replaces the body of a moderator-deleted post ──────────────
+//
+// Mirrors components/overlay/CommentList.tsx Tombstone. The post stays in
+// place (article + PostHeader + Backlinks all render normally) so quote-IDs
+// and >>id navigation continue to work — only the body content is
+// suppressed in favor of the moderator's stated reason.
+
+function Tombstone({
+  deletion,
+  kind,
+  canRevert,
+  onRevert,
+}: {
+  deletion: ForoDeletion
+  kind: 'thread' | 'reply'
+  canRevert: boolean
+  onRevert: () => void
+}) {
+  const mod = useResolvedUser(deletion.moderatorId)
+  return (
+    <div
+      className="flex flex-col gap-0.5 border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
+      style={{ borderColor: '#3a3a3a', color: '#9CA3AF' }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="tracking-widest" style={{ color: '#E63329' }}>
+          //{kind === 'thread' ? 'HILO' : 'RESPUESTA'}·ELIMINADO·POR·MODERACIÓN
+        </span>
+        {canRevert && (
+          <button
+            type="button"
+            onClick={onRevert}
+            className="flex shrink-0 items-center gap-1 border px-1.5 py-px text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
+            style={{ borderColor: '#F97316', color: '#F97316' }}
+            aria-label="Restaurar"
+            title="Restaurar"
+          >
+            <RotateCcw size={10} strokeWidth={1.5} />
+            <span className="hidden sm:inline">RESTAURAR</span>
+          </button>
+        )}
+      </div>
+      <span>
+        {mod ? `@${mod.username}` : 'moderador'} ·{' '}
+        <span className="text-secondary">RAZÓN:</span> {deletion.reason}
+      </span>
+    </div>
   )
 }
 

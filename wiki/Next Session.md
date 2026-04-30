@@ -1,7 +1,50 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-04-26** (audio reactive subsystem shipped end-to-end — global persistent player + 3D matrix visualizer + MixOverlay / NowPlayingHud integration).
+> Last updated: **2026-04-30** (marketplace v2 shipped end-to-end — Chunks A + B + C all landed. v2 plan is closed. See [[Marketplace]] for the design doc and [[log]] for the three ingest entries.)
+
+## How to start this session
+
+1. Read [[index]] (orientation) and [[log]] (latest entries — the three v2 chunks at top).
+2. Boot the preview (`.claude/launch.json` → `dev`, port 3003). Quick auth shortcuts:
+   - `admin / admin` → `@datavismo-cmyk` (admin) — sees `Permisos` + `Marketplace · Aprobaciones`.
+   - quick-switch `@loma_grave` — partnerAdmin of N.A.A.F.I. team.
+   - quick-switch `@yagual` — regular team member of N.A.A.F.I.
+3. Smoke the v2 surfaces:
+   - `/` — marketplace rail under partners + `EXPLORAR MARKETPLACE` CTA.
+   - `/marketplace?partner=naafi&listing=mkl-naafi-01` — deep-link a sub-overlay; verify gallery thumbs swap, embed chips render, ESC peels one layer at a time.
+   - `/dashboard?section=mi-partner` (as loma or yagual) — 3-zone composer (left) + 3-mode preview (right) + paginated table (bottom). Click any listing in the table to hydrate the composer; everything live-syncs to the preview.
+
+## What's left (carry-over follow-ups, all unblocked, ordered roughly by visible-impact)
+
+### A. Embeds editor in the composer
+Composer doesn't yet expose an editor for `MarketplaceListing.embeds`. The existing `EmbedList` component from `Fields.tsx` (used by [[MixForm]] / [[ListicleForm]]) drops in directly: `<EmbedList embeds={listing.embeds ?? []} onChange={(embeds) => onPatch({ embeds })} />`. Slot it into [[MiPartnerSection]]'s `ListingComposer` between description and tags. Small but unlocks self-service embed authoring for partners.
+
+### B. Quick-filter chips inside MarketplaceOverlay
+Reference screenshot has `/ VINYL · / CASSETTE · /MERCH · …` chips above the listings grid that filter by category. Today the grid is unfiltered. Implementation: chip row reading `listing.category` distinct values, controlled state in `Body`, filter on `sortedListings`.
+
+### C. Inline embed players inside the listing detail
+Today embeds are link-out chips (`SOUNDCLOUD ↗`). The audio subsystem already has SoundCloud working live (see `2026-04-26 · Audio reactive subsystem` entry in [[log]]). Plumbing that into [[MarketplaceListingDetail]] above the //FUENTES line would let buyers preview without leaving the overlay.
+
+### D. Image lightbox
+Clicking the big main image in [[MarketplaceListingDetail]] currently does nothing. A click-to-zoom expansion (full viewport modal, similar to the foro thread image float) would round out the gallery UX.
+
+### E. Per-listing `sellerId`
+Carry-over from v1 — the detail's //VENDEDOR section shows the partner's name uniformly. If different team members are selling different items, add `sellerId?: string` to `MarketplaceListing` + a team-member dropdown in the composer.
+
+### F. Real listing-draft pipeline
+Composer's `GUARDAR BORRADOR` / `PUBLICAR ITEM` buttons are cosmetic today (both close + flash). Adding `_draft?: boolean` on `MarketplaceListing` + filter in the public catalog + a `BORRADOR` pill in the table gives partners true save-then-publish semantics. Could also wrap PUBLICAR with the [[Publish Confirmation Flow]].
+
+### Smaller polish (any session)
+
+- **Mobile pass** — desktop layouts are locked; mobile is largely untested. The home grid mosaic, vibe slider, calendar sidebar, all six overlays, and the new marketplace surfaces all need a small-viewport pass.
+- **Reduced-motion respect** — pending-publish glitch, CRT scanline, chip pulses run regardless of `prefers-reduced-motion`. WCAG-relevant a11y debt.
+- **Tailwind `base` color rename** — patched locally in [[MixOverlay]]; root fix still pending. See [[Open Questions]].
+- **Brand page copy** — replace `[REDACTAR]` markers in [[About]] / [[Manifesto]] / [[Equipo]] when the team writes finished prose.
+
+## What's still under the hood
+
+Everything described as "saved" or "published" lives in `sessionStorage` and dies when the tab closes. **No backend yet.** See [[Supabase Migration]] for the plan when it's time.
 
 ## Where we are
 

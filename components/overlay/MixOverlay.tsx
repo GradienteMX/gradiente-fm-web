@@ -11,6 +11,7 @@ import {
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollSection } from '@/components/poll/PollSection'
 import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 
@@ -355,6 +356,11 @@ export function MixOverlay({ item }: Props) {
             </div>
           )}
         </Panel>
+
+        {/* Poll — when the mix has an attached poll, render between the
+            tracklist panel and the hotkeys footer. Choices auto-derive
+            from the mix's tracklist. */}
+        {item.poll && <PollSection item={item} />}
 
         {/* Hotkeys hint footer */}
         <div className="flex items-center justify-between border-t border-border pt-2 font-mono text-[10px] tracking-widest text-muted">

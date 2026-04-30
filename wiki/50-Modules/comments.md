@@ -1,8 +1,8 @@
 ---
 type: module
 status: current
-tags: [comments, store, sessionstorage]
-updated: 2026-04-26
+tags: [comments, store, sessionstorage, ranks]
+updated: 2026-04-29
 ---
 
 # comments
@@ -19,9 +19,10 @@ updated: 2026-04-26
 
 ```ts
 interface SessionState {
-  added: Comment[]                          // user-authored comments
-  reactionOverrides: Record<string, Reaction[]>  // per-comment, shadows seed reactions
-  savedIds: string[]                        // bookmarked comment ids
+  added: Comment[]                                       // user-authored comments
+  reactionOverrides: Record<string, Reaction[]>          // per-comment, shadows seed reactions
+  deletionOverrides?: Record<string, CommentDeletion>    // mock-comment tombstones (author or mod)
+  savedIds: string[]                                     // bookmarked comment ids
 }
 ```
 
@@ -34,19 +35,23 @@ A small in-module `Set<() => void>` of refresh callbacks. Every write (`addComme
 ## Read API
 
 - `getCommentsForItemMerged(itemId)` — merges seed + session-added comments for one item, applies any reactionOverrides.
+- `getAllCommentsMerged()` — cross-item merged view, used by `useUserRank` to count !/? a user has received across the whole comment surface.
 - `isCommentSaved(commentId)` / `getSavedComments()` — bookmarked comments resolved to full `Comment` objects.
 
 ## Write API
 
 - `addComment(comment)` — appends to `added`. Caller builds the `Comment` shape; `newCommentId()` produces a session-prefixed id (e.g. `cm-session-mofe5xbb-3z77iq`) so it never collides with seed.
-- `toggleReaction(commentId, userId, kind)` — adds the `(userId, kind)` reaction if absent, removes it if present. Result lands in `reactionOverrides[commentId]`. **All reaction kinds count toward engagement equally** — no kind subtracts, no kind suppresses. See [[No Algorithm]] / "controversy as discussion."
+- `toggleReaction(commentId, userId, kind)` — enforces **mutual exclusivity** per (user, comment): clicking the *same* kind clears the user's reaction; clicking the *other* kind replaces it. The result lands in `reactionOverrides[commentId]`. The two kinds (`!` signal / `?` provocative) both count as engagement — neither suppresses the other. See [[Roles and Ranks]] for the palette decision and [[No Algorithm]] for the engagement-as-discussion rule.
 - `toggleSavedComment(commentId)` — flips membership in `savedIds`.
+- `tombstoneComment(commentId, actorId, reason)` — soft-delete. One writer covers both flows: when `actorId === comment.authorId` the [[CommentList]] Tombstone reads it as a self-delete (`//ELIMINADO·POR·AUTOR`, no reason); otherwise as moderation (`//ELIMINADO·POR·MODERACIÓN @actor · RAZÓN: …`). For session-added comments the deletion record is written directly onto the record; for mock comments it lands in `deletionOverrides[id]` and `applyOverrides` merges it at read time. Author self-delete is gated by `canDeleteOwnComment`; mod-delete by `canModerateComment` (see [[permissions]]). Storage doesn't re-check; real backend will via RLS.
+- `clearCommentDeletion(commentId)` — restores the body. Mirrors the foro `clearTombstone`. Both storage paths handled (drops the entry from `deletionOverrides`, or clears the `deletion` field on session-added comments). UI gate is broader than the foro's: `canModerate` OR the original actor — gives an author an undo for an accidental self-delete without exposing the affordance to anyone else.
 
 ## Hooks
 
 - `useComments(itemId)` — merged comment list for one article. Re-renders on any session write.
 - `useIsCommentSaved(commentId)` — boolean per comment, used by the `★ GUARDAR / GUARDADO` button in [[CommentList]].
 - `useSavedComments()` — full saved-comment list, drives [[SavedCommentsSection]].
+- `useUserRank(userId)` — derived rank (NORMIE / DETONADOR / ENIGMA / ESPECTRO) for a user, computed from received !/? reactions. Re-renders on any reaction toggle. Returns `'normie'` server-side and pre-hydration. Calls into `getUserRank` in [[permissions]]. Consumed by [[CommentList]] / [[PostHeader]] / [[SavedCommentsSection]] for the badge chip.
 
 ## Backend migration shape
 

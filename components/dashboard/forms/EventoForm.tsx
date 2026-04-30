@@ -18,6 +18,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { PollFieldset } from './shared/PollFieldset'
 
 const DRAFT_KEY = 'gradiente:dashboard:evento-draft'
 
@@ -219,6 +220,14 @@ export function EventoForm() {
             value={draft.price ?? ''}
             onChange={(v) => patch({ price: v })}
             placeholder="$800 early · $1200 general"
+          />
+        </Section>
+
+        <Section label="08" title="ENCUESTA (opcional)">
+          <PollFieldset
+            type={draft.type}
+            poll={draft.poll}
+            onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
 

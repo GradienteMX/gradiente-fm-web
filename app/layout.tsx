@@ -13,6 +13,8 @@ import { AuthProvider } from '@/components/auth/useAuth'
 import { LoginOverlay } from '@/components/auth/LoginOverlay'
 import { PublishConfirmProvider } from '@/components/publish/usePublishConfirm'
 import { PublishConfirmOverlay } from '@/components/publish/PublishConfirmOverlay'
+import { PromptProvider } from '@/components/prompt/usePrompt'
+import { PromptOverlay } from '@/components/prompt/PromptOverlay'
 import { SearchProvider } from '@/components/search/useSearch'
 import { SearchOverlay } from '@/components/search/SearchOverlay'
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerProvider'
@@ -56,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             flips (A → B or vice versa) and the children get re-parented,
             VibeContext / OverlayContext / etc. don't remount and lose state. */}
         <AuthProvider>
+        <PromptProvider>
         <PublishConfirmProvider>
         <VibeProvider>
           <OverlayProvider>
@@ -100,6 +103,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <OverlayRouter />
                 <LoginOverlay />
                 <PublishConfirmOverlay />
+                <PromptOverlay />
                 <SearchOverlay />
               </Suspense>
             </CRTOverlay>
@@ -108,6 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OverlayProvider>
         </VibeProvider>
         </PublishConfirmProvider>
+        </PromptProvider>
         </AuthProvider>
       </body>
     </html>

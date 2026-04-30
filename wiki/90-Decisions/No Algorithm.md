@@ -57,6 +57,10 @@ It's a **decay function applied to editor choices**, not a recommender.
 - **Event discovery at scale.** If the agenda grows past ~50 upcoming events, personalization pressure rises. Possible compromise: filter/sort preferences via [[VibeContext]] persistence (localStorage only, no server).
 - **Partner monetization.** If sponsored placements become significant revenue, pressure to loosen [[Partners Isolation]] will appear. Hold the line.
 
+## Carve-out — user ranks
+
+The rank system introduced in [[Roles and Ranks]] (NORMIE → DETONADOR / ENIGMA / ESPECTRO) is *not* an algorithm in the sense this decision rejects. Ranks label **people**, not content. They derive from received !/? reactions and decorate a user's identity chip — they never affect feed ordering, comment ordering, foro bump-order, or visibility. If we ever floated high-rank comments to the top or dimmed normies, that would cross the line; we don't.
+
 ## Links
 
 - [[HP Curation System]]
@@ -64,3 +68,4 @@ It's a **decay function applied to editor choices**, not a recommender.
 - [[Editorial Flag]]
 - [[Partners Isolation]]
 - [[Gamification]]
+- [[Roles and Ranks]] — the carve-out's full reasoning

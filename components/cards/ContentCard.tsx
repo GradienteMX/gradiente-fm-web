@@ -9,6 +9,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from './SavedBadge'
 
 // Card-side helper — keeps ids + names paired for click-to-filter chips.
@@ -123,6 +124,11 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
           style={{ borderColor: `${vibeColor}60` }}
         />
       </div>
+
+      {/* Poll affordance — chip when closed, full canvas when open. Lives
+          inside the image container so the canvas borrows the image's real
+          estate. See [[PollCardCanvas]]. */}
+      <PollCardCanvas item={item} />
     </div>
   )
 }
