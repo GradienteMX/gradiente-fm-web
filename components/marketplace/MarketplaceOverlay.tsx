@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { MapPin, Share2, X } from 'lucide-react'
 import type { ContentItem, MarketplaceListing } from '@/lib/types'
 import { MOCK_ITEMS } from '@/lib/mockData'
@@ -41,6 +41,11 @@ export function MarketplaceOverlay({ partnerSlug, onClose }: Props) {
   const partner = useResolvedPartnerBySlug(partnerSlug)
   const router = useRouter()
   const search = useSearchParams()
+  // usePathname returns the URL without basePath; router.replace re-applies
+  // basePath itself — so we MUST pass basePath-stripped paths to it. Reading
+  // window.location.pathname instead would double-apply basePath on Pages
+  // (where basePath = '/gradiente-fm-web') and break navigation with a 404.
+  const pathname = usePathname()
   const listingId = search?.get('listing') ?? null
 
   // The active listing — sub-overlay reads from this. Resolved off the
@@ -61,12 +66,12 @@ export function MarketplaceOverlay({ partnerSlug, onClose }: Props) {
   }, [listingId, partner])
 
   const onCloseListing = () => {
-    if (typeof window === 'undefined') return
     // Strip listing= only — partner= stays so we drop back into the partner
     // overlay, not the catalog grid.
-    const url = new URL(window.location.href)
-    url.searchParams.delete('listing')
-    router.replace(url.pathname + url.search, { scroll: false })
+    const params = new URLSearchParams(search?.toString() ?? '')
+    params.delete('listing')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }
 
   // ESC: when the sub-overlay is up, ITS handler fires first (added later in
@@ -138,7 +143,13 @@ export function MarketplaceOverlay({ partnerSlug, onClose }: Props) {
         {!enabled ? (
           <DisabledState />
         ) : (
-          <Body partner={partner} listings={listings} router={router} />
+          <Body
+            partner={partner}
+            listings={listings}
+            router={router}
+            pathname={pathname}
+            search={search}
+          />
         )}
       </div>
 
@@ -222,10 +233,14 @@ function Body({
   partner,
   listings,
   router,
+  pathname,
+  search,
 }: {
   partner: ContentItem
   listings: MarketplaceListing[]
   router: ReturnType<typeof useRouter>
+  pathname: string
+  search: ReturnType<typeof useSearchParams>
 }) {
   const stats = useMemo(() => deriveStats(listings), [listings])
   const sortedListings = useMemo(
@@ -335,10 +350,11 @@ function Body({
                 partner={partner}
                 index={i + 1}
                 onClick={() => {
-                  if (typeof window === 'undefined') return
-                  const url = new URL(window.location.href)
-                  url.searchParams.set('listing', l.id)
-                  router.replace(url.pathname + url.search, { scroll: false })
+                  const params = new URLSearchParams(search?.toString() ?? '')
+                  params.set('listing', l.id)
+                  router.replace(`${pathname}?${params.toString()}`, {
+                    scroll: false,
+                  })
                 }}
               />
             ))}

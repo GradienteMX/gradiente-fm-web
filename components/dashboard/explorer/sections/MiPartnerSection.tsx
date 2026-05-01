@@ -657,8 +657,11 @@ function ListingsManager({
   const onPreview = () => {
     if (!editing) return
     if (typeof window !== 'undefined') {
-      // URL pattern Chunk C will react to — sub-overlay opens from this state.
-      const url = `/marketplace/?partner=${partner.slug}&listing=${editing.id}`
+      // window.open bypasses Next's router, so basePath must be applied
+      // manually. NEXT_PUBLIC_BASE_PATH is set in next.config.mjs to
+      // `/gradiente-fm-web` on GitHub Pages and `''` locally.
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+      const url = `${basePath}/marketplace/?partner=${partner.slug}&listing=${editing.id}`
       window.open(url, '_blank', 'noopener')
     }
   }

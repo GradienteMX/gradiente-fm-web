@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { useMarketplaceEnabledPartners } from '@/lib/partnerOverrides'
 import { MarketplaceCard } from './MarketplaceCard'
@@ -19,6 +19,10 @@ export function MarketplaceCatalog() {
   const partners = useMarketplaceEnabledPartners()
   const search = useSearchParams()
   const router = useRouter()
+  // basePath is auto-prepended by router.replace; usePathname() returns the
+  // pathname WITHOUT basePath, which is what router expects. Reading
+  // window.location.pathname instead would double the basePath on Pages.
+  const pathname = usePathname()
   const partnerSlug = search?.get('partner') ?? null
 
   // Sort by listing count desc, then by partner title alphabetic. Keeps the
@@ -38,12 +42,12 @@ export function MarketplaceCatalog() {
     // Strip both `partner=` and `listing=` so closing the partner card
     // never leaves an orphaned listing param in the URL. The sub-overlay's
     // own close handler (in MarketplaceOverlay) only strips `listing=`.
-    if (typeof window === 'undefined') return
-    const url = new URL(window.location.href)
-    url.searchParams.delete('partner')
-    url.searchParams.delete('listing')
-    router.replace(url.pathname + url.search, { scroll: false })
-  }, [router])
+    const params = new URLSearchParams(search?.toString() ?? '')
+    params.delete('partner')
+    params.delete('listing')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [router, search, pathname])
 
   return (
     <div className="flex flex-col gap-4">
