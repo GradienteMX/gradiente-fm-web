@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ContentItem } from '@/lib/types'
 import { useOverlay } from '@/components/overlay/useOverlay'
+import { useVibe } from '@/context/VibeContext'
 import { categoryColor } from '@/lib/utils'
 
 const EVENT_RED = categoryColor('evento')
@@ -89,6 +90,14 @@ interface EventosRailProps {
 // events. Pauses on hover/focus so users can target a card.
 export function EventosRail({ items }: EventosRailProps) {
   const { open } = useOverlay()
+  const { categoryFilter } = useVibe()
+
+  // Hide the rail when the user has filtered to a category other than events
+  // (mix / editorial / noticia / etc.) — they explicitly asked to NOT see
+  // events. When filter is null OR 'evento', the rail is visible. Mirrors
+  // the HeroCard filter-respect pattern.
+  const hiddenByCategoryFilter =
+    categoryFilter !== null && categoryFilter !== 'evento'
 
   const sorted = useMemo(
     () =>
@@ -178,7 +187,7 @@ export function EventosRail({ items }: EventosRailProps) {
     }
   }, [sorted.length])
 
-  if (sorted.length === 0) return null
+  if (sorted.length === 0 || hiddenByCategoryFilter) return null
 
   return (
     <section className="my-4" aria-label="Agenda de eventos">
