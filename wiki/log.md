@@ -8,6 +8,204 @@
 
 ---
 
+## 2026-05-01 · INGEST · EventosRail — manual + auto scroll cooperation
+
+Quick fix to the rail shipped earlier today. Iker hit the obvious failure mode: "once an event has scrolled, it is gone until the carousel restarts." The CSS marquee + `overflow-hidden` meant the only motion was auto-scroll, and there was no way to backtrack to a card you missed without waiting ~240s for the next cycle.
+
+### What changed
+
+- **Replaced the CSS animation with a `requestAnimationFrame` loop** that nudges `track.scrollLeft` by `SCROLL_SPEED_PX_PER_SEC * dt` pixels per frame (35 px/sec). Manual scroll (wheel, touch, drag) and auto-scroll now operate on the same `scrollLeft` property — they cooperate naturally.
+- **Wrapper is now `overflow-x-auto`** (was `overflow-hidden`). Users can scroll/swipe/wheel through cards at will. Native scrollbar hidden via `scrollbar-width: none` (Firefox) + a new `.evento-rail-track::-webkit-scrollbar { display: none }` rule in `globals.css` (WebKit) — the rail keeps its clean look; the auto-motion + edge fades carry the scrollability affordance.
+- **Pause rules:**
+  - Hover or focus-within → paused indefinitely (so users can target a card without it sliding away).
+  - User-initiated scroll (`wheel` / `pointerdown` / `touchstart`) → paused for 3s after last interaction. Auto-scroll resumes from wherever the user landed; no jump-back.
+- **Seamless wrap preserved.** Cards are still duplicated (`[...sorted, ...sorted]`); when `scrollLeft >= scrollWidth/2`, the loop subtracts `scrollWidth/2`. Since the second-half cards are identical to the first-half cards at the same on-screen position, the wrap is invisible. Verified with eval: scrollLeft 22418 → 50, leftmost visible card unchanged.
+- **Reduced-motion** still respected: the rAF effect short-circuits when `prefers-reduced-motion: reduce` matches. Manual scroll always works regardless.
+- **Sub-line copy updated** from `PRÓXIMOS · ORDEN CRONOLÓGICO · CLICK PARA DETALLE` → `PRÓXIMOS · ORDEN CRONOLÓGICO · ARRASTRA O ESPERA · CLICK PARA DETALLE` — the `ARRASTRA O ESPERA` ("drag or wait") signals the new affordance without adding chrome.
+
+### Verified in preview
+
+- `track.overflowX === "auto"`, `track.scrollbarWidth === "none"`, scrollWidth 44736px (vs viewport ~1400px in headless preview), 238 cards.
+- Manual scroll to position 5000 → fired wheel event → after 1.5s scrollLeft is still 5000 (pause-on-interaction works).
+- Manual scroll back from 3000 → 1000 → leftmost visible card changed to "ROOFTOP PARTY 'ANGEL DE LA INDEPENDENCIA'" (backward scroll works, user can revisit cards).
+- Wrap math sanity: scrollLeft 22418 → after wrap step → 50. (Auto-tick of the rAF loop doesn't run reliably in the headless background tab, but the wrap math is verifiable directly.)
+
+### Why rAF instead of CSS scroll-snap + auto-cycling
+
+Considered a `scroll-snap-type: x mandatory` + `setInterval(scrollBy(cardWidth))` approach. Rejected because it produces jerky stepwise motion, conflicts with smooth user dragging mid-snap, and snap points feel wrong for a continuous "live ticker" surface. The rAF + `scrollLeft` approach is what carousel libraries like Embla and Splide do under the hood; doing it in 50 lines without a dep felt like the right tradeoff at this scale (single rail, single page, no edge cases).
+
+### Files
+
+- `components/EventosRail.tsx` — rewrote the scroll mechanism (added `useEffect` with rAF loop + event listeners; replaced `motion-safe:animate-[...]` classes with a plain `evento-rail-track` className).
+- `app/globals.css` — added the WebKit scrollbar-hide rule.
+- `wiki/40-Components/EventosRail.md` — updated the Behavior + What it depends on sections.
+
+### Open follow-up
+
+- **`overscroll-behavior-x: contain`** — already added to prevent horizontal swipes from triggering page-level back-nav on touch devices. Worth verifying once the mobile pass happens.
+- The CSS `nge-ticker` keyframe is still in `globals.css` and still used by [[Navigation]]'s data-strip ticker. Don't remove it.
+
+---
+
+## 2026-05-01 · INGEST · EventosRail — early Phase 2 demotion of scraped events
+
+Third change in today's scraper arc, driven by the obvious failure mode of the morning's ship: 128 RA events landed in the home mosaic and immediately swarmed it (190 cards total, mostly scraped). Iker's framing in the chat: "the entire feed got swarmed by them — there's basically 81 events flooding the entire page." Two ideas weighed: HP penalty alone vs horizontal carousel. Recommendation was rail-first with HP/elevation as the editor lever, since pure HP doesn't fix the visual real-estate problem (events sink to the bottom but still consume mosaic positions).
+
+This is functionally [[Scraper Pipeline]] **Phase 2 arriving on day one** — see that doc for the updated phase narrative. Editorial dominates home, scraped lives in its own surface, editor elevation pulls individual scraped events into the mosaic.
+
+### What shipped
+
+- **New field** on [[types]] · `ContentItem.elevated?: boolean` — editor lever. When true on a scraped event, that event leaves the rail and joins the main mosaic where it competes via HP. Default `false` (script never sets it). No-op for non-scraped items.
+- **New component** · [[EventosRail]] — auto-scrolling horizontal marquee under the [[HeroCard]]. ~5-7 cards visible at desktop width, marquee speed scales with item count (`max(60, count*2)` seconds per cycle ≈ 2px/sec at 119 events). Cards are 180px wide with `aspect-[4/5]` image, //EVENTO label, date chip (month/day/weekday), 2-line title, 1-line venue. Pauses on hover/focus; reduced-motion users get a manually-scrollable list (`motion-reduce:overflow-x-auto`). Click → same `useOverlay` flow as [[ContentCard]].
+- **Wiring** · [[Home]] page splits `homeItems` via the `isRailEvent` predicate (`source === 'scraper:ra' && !elevated`). `railEvents` feeds the rail, everything else flows to the mosaic as before. Single source of truth for the split lives in `app/page.tsx` so the filter can be tweaked without touching component internals.
+
+### Visible result (verified in preview)
+
+- Home grid header dropped from `190 ENTRADAS` → `71 ENTRADAS`. The mosaic now reads as editorial-led with the Club Japan editorial pinned hero, then the agenda rail, then editorial + manually-authored event cards.
+- Rail header reads `// AGENDA · 119 EVENTOS · LIVE FEED · RA` with a pulsing green dot — matches the existing system-terminal voice.
+- Rail card click → URL → `?item=ra-<slug>` → EventoOverlay mounts (verified with Salón Sölín card; same flow, same overlay component).
+- Marquee animation configured + running (`animation-play-state: running`, transform offset `-1847px` after page-load). Was paused in headless preview because Chrome throttles backgrounded tabs; will run for users.
+
+### Architectural significance
+
+Original phase plan had the scraper firehose in the home grid for launch (event-listing-first user acquisition) and Phase 2 demotion only after editorial/foro gained organic traction. In practice the firehose was visually unworkable from minute one — 128 cards in a single mosaic is just noise, regardless of HP ranking. The rail solves that without giving up the user-acquisition benefit (the LIVE FEED chip + auto-motion under the hero is highly visible, and the rail is the first thing below the editorial pinned hero — not buried).
+
+The `elevated` lever preserves the [[Guides Not Gatekeepers]] thesis: editor judgment can still pull individual scraped events into the editorial competition. Scraper output is leads, not content.
+
+### Open follow-ups
+
+- **//FUENTE · RA chip** in [[EventoOverlay]] — still pending from the morning's ship. Now that rail cards exist, the chip should also appear on those (small mirror).
+- **Editor-elevation surface** — flipping `elevated: true` is currently file-edit only (write `elevated: true` on the item in `lib/scrapedEvents.ts`). A proper UI lives behind [[Supabase Migration]] / [[Admin Dashboard]] (Phase 3).
+- **Mobile pass** for the rail — touch + reduced-motion fallback path (`overflow-x-auto`) needs testing on small viewports. Consistent with the broader mobile-pass debt in [[Next Session]].
+- **Date-tab filter** above the rail (TONIGHT / TOMORROW / THIS WEEKEND) — option (b) from the ship discussion. Skipped for first ship; revisit if the rail feels too undifferentiated.
+
+---
+
+## 2026-05-01 · INGEST · Scraper Pipeline — hotlink images + RA descriptions
+
+Two follow-up changes to the Phase 1 ship from earlier today, both driven by Iker's feedback:
+
+### Switch from rehosted flyers to hotlinking RA's CDN
+
+Original Phase 1 ship downloaded each flyer to `public/flyers/ra-<id>.jpg` and committed them. Iker's call: hotlink directly to `images.ra.co` instead. Strongest "we're an aggregator" signal — we literally point at RA's files rather than copying them — and zero repo growth from re-scrapes.
+
+**Verified empirically**: `curl -sI -H "Referer: http://localhost:3003/" https://images.ra.co/<sha>.jpg` returns HTTP 200. RA's Cloudflare CDN doesn't enforce a referer check, so hotlinking from any origin works.
+
+**Code changes** in `Webscraper/ra_to_gradiente.py`:
+- Removed `download_flyer()`, `flyer_filename_for()`, the `FLYERS_DIR` constant, and the `--no-flyers` CLI flag.
+- `get_flyer_url()` now returns the raw RA CDN URL; the main loop stores it directly in `imageUrl` (no `/flyers/` prefix).
+- Stats updated: `with_image` / `no_image` / `with_description` instead of `flyers_saved` / `flyers_failed`.
+- Header comment in the script documents the decision + the empirical referer check, so future readers know why we hotlink instead of download.
+
+**Cleanup**: deleted 83 `public/flyers/ra-*.jpg` files left over from the rehost run. Repo back to the original 98 seed flyers.
+
+**Tradeoff to accept**: if RA cycles a URL or takes an event down, the thumbnail breaks (404). Acceptable for MVP; failure mode is "broken thumbnail" not "broken page." Falling back to local rehost is a 5-line revert if it ever becomes a problem.
+
+### Pull RA event descriptions into `excerpt`
+
+Iker noticed scraped cards lacked the well-written event paragraphs that some RA events carry. RA exposes this on `Event.content` (introspected the GraphQL schema to confirm — also saw `pick.blurb` for editorial picks but it's null in the CDMX sample, deferred). Length varies wildly: some events have a one-liner ("Open hours: Wed-Sun 6pm-3am"), others have multi-paragraph copy with line-up bios, pricing details, and credits.
+
+**Code changes** in the same script:
+- Added `content` to the GraphQL query.
+- New `clean_description()` helper that strips stray HTML-ish tags (RA's `lineup` field has `<artist id="...">name</artist>` markers that occasionally bleed into `content`) and collapses whitespace.
+- `emit_item()` writes an `excerpt: "..."` line when present (omitted when null, no empty-string noise in the file).
+- `parse_existing_items()` updated to round-trip `excerpt` across re-runs so manual edits aren't lost (still doesn't preserve manual non-id field edits in general — the open-follow-up flagged earlier today).
+
+**No new types** — the existing `excerpt?: string` field on `ContentItem` already wires through to both the card preview and the EventoOverlay reader pane.
+
+### Verified in preview
+
+- 99 hotlinked images render on the home page, all `complete: true` with non-zero `naturalWidth` (sampled). RA's CDN serves them with permissive caching headers.
+- Clicking a card with a description (`Deseo x fiestuki`) opens the EventoOverlay with: hotlinked flyer at top → structured fields (FECHA, HORA, LUGAR, PRECIO, VIBE, LINE-UP) → full multi-paragraph RA description → `ra` tag chip → orange `COMPRAR BOLETOS ↗` CTA linking back to `https://ra.co/events/<id>`.
+- The aggregator framing is now visibly load-bearing: the image *is* RA's, served by RA, and the only purchase path goes back to RA. We're orienting users toward the event, not capturing them.
+
+### Updated stats (re-run, CDMX-only, 4 weeks)
+
+```
+New events            : 128
+Multi-day collapsed   : 22
+With hotlinked image  : 108
+No image on RA        : 20
+With description      : 81
+```
+
+81 of 128 events (63%) carry an RA-authored description that now renders in the overlay. The other 37% have no `content` on RA — those are the bare cards with just venue + date + lineup.
+
+### Open follow-ups (still pending from this morning's ship)
+
+- **//FUENTE · RA chip** in EventoOverlay when `source === 'scraper:ra'`. The `COMPRAR BOLETOS ↗` button already links to RA, but an explicit attribution chip alongside the //EVENTO label would make the "RA-sourced, edited by us never" framing unambiguous.
+- **Editor review surface** — still file-based for now.
+- **Vibe assignment** — still defaults to 5; manual edits still get clobbered on re-scrape (the round-trip parser preserves `id`, `slug`, `excerpt`, etc. but treats RA as the source of truth on re-fetch).
+- **Phase 2 demotion** — when foro/editorial gain traction, filter `source === 'scraper:ra'` out of home and limit them to `/agenda`.
+
+---
+
+## 2026-05-01 · INGEST · Scraper Pipeline — Phase 1 (direct RA → app, skip Excel)
+
+The RA scraper is back in scope. Iker's call: event listing is the launch user-acquisition draw, so the scraper has to ship for the visual MVP — but feeding directly into the app, no Excel intermediate, no Supabase. See [[Scraper Pipeline]] for the phase strategy (Phase 1 firehose → Phase 2 demotion to /agenda once editorial/foro mature → Phase 3 Supabase + cron).
+
+**New files:**
+- `Webscraper/ra_to_gradiente.py` — adapted from `ra_scraper_v2.py`. Same RA GraphQL fetch + flyer download, but writes a typed `ContentItem[]` TS file instead of an Excel sheet. Dedups against an existing scrape file (regex-parsed for `externalId` values) so re-runs UPSERT, and within-batch dedups multi-day events that RA returns as multiple listings sharing one event.id.
+- `lib/scrapedEvents.ts` — auto-generated. Exports `SCRAPED_EVENTS: ContentItem[]`. Header marks it as machine-written + tells the reader how to regenerate. Items are sorted by date ascending so re-scrape diffs are readable.
+
+**Type additions** ([`lib/types.ts`](../lib/types.ts)):
+- `source?: 'scraper:ra' | 'manual:editor' | 'manual:partner'` — provenance, drives the future //FUENTE attribution chip and the Phase 2 home-vs-/agenda filter.
+- `externalId?: string` — upstream id (RA event id), the dedup key on re-scrapes.
+- New `ContentSource` type alias.
+
+Both fields are optional → no migration needed for existing items.
+
+**Wiring** ([`lib/mockData.ts`](../lib/mockData.ts)) — one-line change: `[...RAW_ITEMS, ...SCRAPED_EVENTS]` instead of just `RAW_ITEMS`. All 7 downstream MOCK_ITEMS consumers (page.tsx, partnerOverrides, saves, category routes, etc.) automatically pick up scraped events without modification because they're already typed `ContentItem`s.
+
+**Field mapping (RA event → ContentItem evento):**
+
+| RA field | ContentItem field | Default |
+|---|---|---|
+| `title` | `title` | "untitled" |
+| `id` | `externalId` + `id: ev-ra-<id>` | — |
+| `date + startTime` | `date` (ISO) | midnight + 22:00 |
+| `date + endTime` (with day-roll if past midnight) | `endDate` | undefined |
+| `venue.name` | `venue` | "Venue TBA" |
+| `venue.area.name` (mapped to short code) | `venueCity` | "Mexico City" |
+| `artists[].name` | `artists` | `[]` |
+| `cost` | `price` (or "Gratis" for "0"/empty + free) | undefined |
+| `contentUrl` | `ticketUrl` (full RA URL) | — |
+| `genres` (mapped via RA_GENRE_MAP) | `genres` | `[]` |
+| `images[FLYERFRONT or first]` (downloaded to `public/flyers/ra-<id>.jpg`) | `imageUrl` | undefined |
+| — | `vibe` | `5` (neutral, editor-set later) |
+| — | `editorial` | `false` |
+| — | `source` | `'scraper:ra'` |
+| — | `tags` | `["ra"]` |
+| — | `slug` | `ra-<sanitized-title>-<external-id>` |
+
+**Phase 1 first run** (CDMX-only, 4 weeks):
+- 150 listings fetched from RA → 128 unique events after collapsing 22 multi-day duplicates.
+- 108 flyers downloaded to `public/flyers/ra-*.jpg` (committed per Iker's call — option (a)). 20 events had no image on RA.
+- Home grid header updated from ~70 entries → 190 entries (190 = ~62 seed + 128 scraped, partners excluded).
+- Real CDMX events render in the mosaic with the same EventoOverlay path as seed content. Verified in preview: "Imago & K'OLIS + LUCRECIA @ Terraza Catedral", "Deseo x fiestuki @ CHICO", etc., with downloaded flyers + date chip + venue subtitle + genre tag.
+
+### Three bugs caught + fixed before final ship
+
+1. **Within-batch duplication** — RA's `eventListings` API returns multi-day events as multiple listings sharing one `event.id`. The first run wrote each event N times. Fix: a `batch_seen_ids` set in the main loop; collapses to one item per `externalId` per scrape. (22 collapses on the first real run.)
+2. **Price `"0"`** — RA returns literal `"0"` for free events. The first run rendered cards with `price: "0"`. Fix: `re.fullmatch(r"0+(?:\.0+)?", s)` returns `"Gratis"`.
+3. **EndDate day-roll** — events ending past midnight (e.g. starts 18:30, ends 01:00) wrote `endDate` on the same calendar day, producing non-monotonic ISO. Fix: if endTime ≤ startTime, bump the date by one day.
+
+### Aggregator framing (per Iker's "we're not stealing data" goal)
+
+- `ticketUrl` always points back to RA (`https://ra.co/events/<id>`). Card CTA is link-out, never an in-house ticketing flow.
+- `source: 'scraper:ra'` on every item — drives the future //FUENTE · RA chip in EventoOverlay (small follow-up, not blocking this ship).
+- Flyers re-hosted to our `public/flyers/` rather than hotlinked — kinder to RA's CDN, faster for our users. The downloaded image is RA's; attribution belongs in the overlay.
+
+### Open follow-ups
+
+- **//FUENTE · RA chip** in EventoOverlay when `source === 'scraper:ra'`. Mirrors the `//FUENTES` pattern from [[ArticuloOverlay]] / [[MarketplaceListingDetail]]. Small one-overlay edit.
+- **Editor review surface**. Today the team reviews scraped output by reading `lib/scrapedEvents.ts` directly. Crude but works at MVP scale. A proper queue UI lives behind [[Supabase Migration]] (Phase 3).
+- **Vibe assignment**. All scraped items default to `vibe: 5`. Editorial team can override case-by-case by editing the file in-place (the file's not regenerated unless `ra_to_gradiente.py` is re-run, and even then the parser preserves existing items via externalId merge — but it does NOT preserve manual edits to non-id fields, so an edited vibe gets clobbered on re-scrape). Worth flagging: a `vibeOverride` side-table or persisting parsed-then-merged-with-edits behavior is the correct fix once we feel the pain.
+- **Phase 2 demotion**. Scraped events currently appear in the home grid alongside editorial. Once foro/editorial gain organic traction, filter `source === 'scraper:ra'` out of the home query and limit them to `/agenda`. Architecture supports this — the `source` field is already filterable from day one.
+- **Cadence + automation**. Manually re-run for now. When Iker wants a schedule, cron lives in [[Supabase Migration]] (Phase 3).
+
+---
+
 ## 2026-04-30 · INGEST · Marketplace v2 — Chunk C (sub-overlay listing detail)
 
 Closes the read loop. Clicking any listing in [[MarketplaceOverlay]] now opens a sub-overlay with the full ficha — image gallery, full description, embeds, tags, shipping, vendor link back. Deep-linkable via `?partner=<slug>&listing=<id>`. ESC peels one layer at a time: sub-overlay → partner overlay → catalog.

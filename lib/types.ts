@@ -128,6 +128,8 @@ export const SUBCATEGORIES_BY_CATEGORY: Record<MarketplaceListingCategory, strin
 // 0 = glacial/ice, 10 = volcán/fire — stored as number, shown as gradient position
 export type VibeScore = number
 
+export type ContentSource = 'scraper:ra' | 'manual:editor' | 'manual:partner'
+
 export interface ContentItem {
   id: string
   slug: string
@@ -143,6 +145,15 @@ export interface ContentItem {
   date?: string           // ISO — event start / article featured date
   endDate?: string        // ISO — event end
   expiresAt?: string      // ISO — when removed from home feed
+  // Provenance — set by scraper / editor surfaces. Drives the //FUENTE attribution chip
+  // and the home-vs-rail filter for scraped events. See Scraper Pipeline.
+  source?: ContentSource
+  externalId?: string     // upstream id (e.g. RA event id) — dedup key on re-scrape
+  // Editor lever — when true, a scraped event leaves the EventosRail and enters
+  // the main mosaic where it competes with editorial via HP. Default false on
+  // scraper output; an editor flips it for individual events worth featuring.
+  // No-op for non-scraped items (they're never in the rail).
+  elevated?: boolean
   // Event fields
   venue?: string
   venueCity?: string

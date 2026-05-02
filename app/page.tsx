@@ -1,5 +1,6 @@
 import { CalendarSidebar } from '@/components/CalendarSidebar'
 import { CategoryRail } from '@/components/CategoryRail'
+import { EventosRail } from '@/components/EventosRail'
 import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
 import { FeedHeader } from '@/components/FeedHeader'
 import { HeroCard } from '@/components/HeroCard'
@@ -14,12 +15,21 @@ export default function HomePage() {
   const eventDates = getEventDates(MOCK_ITEMS)
   const hero = getPinnedHero(MOCK_ITEMS)
 
-  // Partners live in the rail, never in the main mosaic
+  // Partners live in the right rail, never in the main mosaic
   const partners = MOCK_ITEMS.filter((i) => i.type === 'partner')
 
-  // Don't show the hero item again or partners inside the main grid
+  // Scraped events not flagged `elevated` go to the EventosRail; everything
+  // else (editorial, mixes, noticias, manually-authored events, AND scraped
+  // events the editor elevated) competes in the main mosaic via HP. See
+  // wiki/70-Roadmap/Scraper Pipeline.md for the phase strategy this models.
+  const isRailEvent = (i: typeof MOCK_ITEMS[number]) =>
+    i.source === 'scraper:ra' && !i.elevated
+  const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
-    (i) => i.type !== 'partner' && (!hero || i.id !== hero.id),
+    (i) =>
+      i.type !== 'partner' &&
+      (!hero || i.id !== hero.id) &&
+      !isRailEvent(i),
   )
 
   return (
@@ -33,6 +43,10 @@ export default function HomePage() {
         <div className="min-w-0 flex-1">
           {/* Pinned hero — editorial / review / noticia in portada */}
           {hero && <HeroCard item={hero} />}
+
+          {/* Scraped-event firehose — auto-scrolling rail under the hero,
+              above the main mosaic. Empty when no scraped events present. */}
+          <EventosRail items={railEvents} />
 
           {/* Main feed header */}
           <div className="mb-4 flex items-start justify-between">

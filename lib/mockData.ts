@@ -1,4 +1,5 @@
 import type { ContentItem } from "./types";
+import { SCRAPED_EVENTS } from "./scrapedEvents";
 
 // All imageUrl values reference /flyers/* — served from public/flyers/
 // Real info: Fascinoma (fascinoma.space · @fascinoma_mx) + Club Japan (Monterrey 56, Roma Norte · @japan_cdmx)
@@ -2829,7 +2830,7 @@ const RAW_ITEMS: ContentItem[] = [
   },
 ];
 
-export const MOCK_ITEMS: ContentItem[] = RAW_ITEMS.map((item) => ({
+export const MOCK_ITEMS: ContentItem[] = [...RAW_ITEMS, ...SCRAPED_EVENTS].map((item) => ({
   ...item,
   imageUrl: item.imageUrl?.startsWith("/")
     ? `${BASE_PATH}${item.imageUrl}`

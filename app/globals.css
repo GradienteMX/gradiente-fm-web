@@ -158,6 +158,10 @@ body {
   to   { transform: translateX(-50%); }
 }
 
+/* EventosRail track — hide native scrollbar on WebKit so the rAF-driven
+   auto-scroll + edge fades carry the affordance without a stray gutter. */
+.evento-rail-track::-webkit-scrollbar { display: none; }
+
 /* ── Hologram flicker ────────────────────────────────────── */
 @keyframes holo-flicker {
   0%, 94%, 96.5%, 100% { opacity: 1; filter: brightness(1); }

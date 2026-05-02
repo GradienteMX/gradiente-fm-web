@@ -52,6 +52,7 @@
 - [[CalendarSidebar]] — slide-in month grid, date-based filter
 - [[CategoryRail]] — sticky left rail with counts per type
 - [[ContentGrid]] — HP-driven mosaic with directional layout animations
+- [[EventosRail]] — auto-scrolling horizontal marquee of scraped events under the hero; isolates the RA firehose from the editorial mosaic
 - [[ContentCard]] — sm/md/lg tiered card (image-forward); opens overlay on click
 - [[HeroCard]] — split portada hero; opens overlay on click
 - [[PartnersRail]] — chronological rail, never merges with grid
