@@ -90,7 +90,7 @@ function EmptyState({
 
 interface ContentGridProps {
   items: ContentItem[]
-  mode?: 'home' | 'category'
+  mode?: 'home' | 'category' | 'agenda'
   emptyLabel?: string
 }
 
@@ -109,8 +109,9 @@ const MosaicItem = forwardRef<
     layout: CardLayout
     children: React.ReactNode
     priorArea: number | undefined
+    isPast?: boolean
   }
->(function MosaicItem({ id, layout, children, priorArea }, ref) {
+>(function MosaicItem({ id, layout, children, priorArea, isPast }, ref) {
   const area = layout.colSpan * layout.rowSpan
   // Growth: fast/confident. Shrink: slow/quiet. First mount: neutral fade-in.
   const transition =
@@ -128,6 +129,14 @@ const MosaicItem = forwardRef<
     ['--prominence' as any]: layout.intensity.toFixed(3),
     padding: 'calc(var(--prominence) * 0.25rem)',
     transformOrigin: 'center',
+    // Past events on /agenda: desaturate + soften so the archive reads as
+    // archive without losing the discussion record. Hover restores full color
+    // so users can re-engage without ambiguity.
+    ...(isPast && {
+      filter: 'saturate(0.4) brightness(0.85)',
+      opacity: 0.7,
+      transition: 'filter 0.3s ease, opacity 0.3s ease',
+    }),
   }
 
   return (
@@ -183,6 +192,24 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
       return list
     }
 
+    if (mode === 'agenda') {
+      const ranked = rankItems(genreFiltered)
+      const nowMs = Date.now()
+      return ranked.sort((a, b) => {
+        const ta = parseISO(a.item.date ?? a.item.publishedAt).getTime()
+        const tb = parseISO(b.item.date ?? b.item.publishedAt).getTime()
+        const aPast = ta < nowMs ? 1 : 0
+        const bPast = tb < nowMs ? 1 : 0
+        // Future block first; within future, soonest at top.
+        // Past block at bottom; within past, most-recent at top.
+        if (aPast !== bPast) return aPast - bPast
+        if (aPast) return tb - ta
+        if (ta !== tb) return ta - tb
+        // Same-day tiebreak: prominence (HP + freshness + imminenceBonus)
+        return b.prominence - a.prominence
+      })
+    }
+
     return rankItems(genreFiltered).sort(
       (a, b) =>
         parseISO(b.item.date ?? b.item.publishedAt).getTime() -
@@ -236,8 +263,19 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
       {ranked.map(({ item, layout }) => {
         const prior = priorSpans.get(item.id)
         const priorArea = prior ? prior.colSpan * prior.rowSpan : undefined
+        const isPast =
+          mode === 'agenda' &&
+          item.type === 'evento' &&
+          !!item.date &&
+          parseISO(item.date).getTime() < Date.now()
         return (
-          <MosaicItem key={item.id} id={item.id} layout={layout} priorArea={priorArea}>
+          <MosaicItem
+            key={item.id}
+            id={item.id}
+            layout={layout}
+            priorArea={priorArea}
+            isPast={isPast}
+          >
             <ContentCard item={item} size={layout.tier} />
           </MosaicItem>
         )

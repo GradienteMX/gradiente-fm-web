@@ -8,6 +8,50 @@
 
 ---
 
+## 2026-05-02 · INGEST · Agenda — chronological sort + archived-past visual treatment
+
+`/agenda` was displaying events latest-date-first (May 30 at top, May 2 at bottom) — opposite of what users expect from a calendar page. The page even labeled itself `FUTURO → PASADO` while doing the reverse. Iker flagged it: "the sooner the event will appear, the closer to the top."
+
+### What changed
+
+**New sort key for the agenda surface only.** Added `mode="agenda"` to [[ContentGrid]]; `/mixes`, `/noticias`, `/reviews`, etc. keep their existing date-desc behavior since "newest first" is the right metaphor for editorial content. Inside `mode="agenda"`:
+
+1. **Future block first, soonest at top.** `parseISO(item.date) >= now` items sort ascending by `date`.
+2. **Past block at the bottom, most-recent past first.** `parseISO(item.date) < now` items sort descending by `date`.
+3. **Same-day tiebreak: `prominence`** (the curation `0.5 × freshness + 0.5 × score + imminenceBonus` composite). On a busy night, the buzzy event of the night sits at the top of that day. HP still influences ordering — just doesn't override chronology.
+
+**Past events are demoted, not hidden.** Two reasons: (a) past events still accumulate comments and HP via the foro and overlay discussion column, so the historical record matters; (b) the [[HP Curation System]] already accelerates decay 2× past 30 days, so a past event nobody talks about fades to near-zero HP within weeks — that's the democratic mechanism doing its job. Visual demotion is `filter: saturate(0.4) brightness(0.85); opacity: 0.7` with a 0.3s ease transition, applied only when `mode === 'agenda' && item.type === 'evento' && parseISO(item.date) < Date.now()`. Future events stay full color.
+
+**Label updated.** `EVENTOS · N ENTRADAS · FUTURO → PASADO` → `EVENTOS · N ENTRADAS · PRÓXIMOS · ARCHIVO ABAJO`. The new copy reads correctly given the new ordering and signals the archive section.
+
+### Why HP doesn't override chronology on /agenda
+
+Considered using full `prominence` ranking (same as the home grid). Rejected — a high-HP editorial event 3 weeks out would outrank a quieter event tomorrow, which is wrong for a calendar page. Users reading `/agenda` are answering "what's happening soon," not "what's most popular." HP/prominence-driven ranking is the home grid's job; `/agenda` is chronological with HP as a tiebreaker only.
+
+### Why past events stay visible
+
+User flagged the redundancy concern with the [[Foro]] (which also hosts post-event discussion). Conclusion: not a duplication — an event card carries structured metadata (date, venue, lineup, flyer, ticket link) that a foro thread can't, so it's the canonical artifact even after the conversation has migrated. If a past event spawns a long foro thread, that's a signal of HP, not a duplication.
+
+### Verified in preview
+
+- Top 6 cards: all `MAY 2` (today).
+- Bottom 4 cards: `ABR 25 → ABR 19 → ABR 19 → ABR 18` (past, most-recent first).
+- 36 of 151 cards have the desaturate + opacity treatment applied.
+- Future cards keep `filter: none; opacity: 1`.
+- Page label reads `EVENTOS · 151 ENTRADAS · PRÓXIMOS · ARCHIVO ABAJO`.
+- Click-to-overlay still works on past events — just visually muted.
+
+### Files
+
+- `components/ContentGrid.tsx` — added `'agenda'` to the `mode` union, new sort branch, `isPast` prop on `MosaicItem`, conditional CSS filter + opacity.
+- `app/agenda/page.tsx` — `mode="agenda"` + label rewrite.
+
+### Open follow-up
+
+- **Past-event treatment on home** if an editor `elevated: true`'s a past event into the main mosaic. Currently the demotion only fires in `mode="agenda"` so home keeps full color. Probably right — home is HP-driven and editor's intent is "boost this" — but flagged in [[Next Session]] S5 as a deliberate design call.
+
+---
+
 ## 2026-05-02 · INGEST · EventosRail — Windows/high-refresh fixes (subpixel scroll + drag-to-scroll)
 
 Iker pulled the morning's [[EventosRail]] work onto a Windows PC and hit two failure modes that didn't surface on the MacBook. Both got root-caused via instrumented `preview_eval` and shipped today.
