@@ -126,7 +126,8 @@ export function EventosRail({ items }: EventosRailProps) {
   const trackRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef({ pausedUntil: 0, hovered: false })
   const SCROLL_SPEED_PX_PER_SEC = 35  // tuned for "background motion" feel — readable at a glance
-  const PAUSE_AFTER_INTERACTION_MS = 3000
+  const PAUSE_AFTER_INTERACTION_MS = 1500  // wheel / touch — user is likely reading a card
+  const PAUSE_AFTER_DRAG_MS = 500          // user just repositioned the rail; resume quickly
 
   useEffect(() => {
     const track = trackRef.current
@@ -138,13 +139,23 @@ export function EventosRail({ items }: EventosRailProps) {
 
     let raf = 0
     let lastTime = performance.now()
+    // scrollLeft on most engines rounds to integers. At high refresh rates
+    // (120Hz+) the per-frame delta is sub-pixel and rounds to 0 every frame,
+    // freezing the rail. Keep a fractional accumulator and only commit whole
+    // pixels — the fraction carries across frames regardless of refresh rate.
+    let accum = 0
 
     const tick = (now: number) => {
       const dt = (now - lastTime) / 1000
       lastTime = now
       const s = stateRef.current
       if (!s.hovered && now > s.pausedUntil) {
-        track.scrollLeft += SCROLL_SPEED_PX_PER_SEC * dt
+        accum += SCROLL_SPEED_PX_PER_SEC * dt
+        const whole = Math.floor(accum)
+        if (whole > 0) {
+          track.scrollLeft += whole
+          accum -= whole
+        }
         // Seamless wrap — content is doubled, so subtracting half-width
         // lands on a visually identical position.
         const halfWidth = track.scrollWidth / 2
@@ -160,30 +171,93 @@ export function EventosRail({ items }: EventosRailProps) {
       stateRef.current.pausedUntil = performance.now() + ms
     }
     const onWheel = () => pauseFor(PAUSE_AFTER_INTERACTION_MS)
-    const onPointerDown = () => pauseFor(PAUSE_AFTER_INTERACTION_MS)
     const onTouchStart = () => pauseFor(PAUSE_AFTER_INTERACTION_MS)
     const onMouseEnter = () => { stateRef.current.hovered = true }
     const onMouseLeave = () => { stateRef.current.hovered = false }
     const onFocusIn = () => { stateRef.current.hovered = true }
     const onFocusOut = () => { stateRef.current.hovered = false }
 
+    // Click-and-drag scroll. Native overflow-x: auto handles touch/trackpad
+    // but not mouse drag; Windows-with-mouse users had no horizontal scroll
+    // affordance. Pointer events unify mouse / touch / pen. We swallow the
+    // click at pointerup if the user actually dragged (>DRAG_THRESHOLD_PX),
+    // so card click-to-open still works for genuine taps.
+    const DRAG_THRESHOLD_PX = 5
+    let dragStartX = 0
+    let dragStartScroll = 0
+    let pointerId: number | null = null
+    let dragged = false
+
+    const onPointerDown = (e: PointerEvent) => {
+      pauseFor(PAUSE_AFTER_INTERACTION_MS)
+      // Only primary button for mouse; touch/pen always pass
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      pointerId = e.pointerId
+      dragStartX = e.clientX
+      dragStartScroll = track.scrollLeft
+      dragged = false
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (pointerId !== e.pointerId) return
+      const dx = e.clientX - dragStartX
+      if (!dragged && Math.abs(dx) < DRAG_THRESHOLD_PX) return
+      if (!dragged) {
+        dragged = true
+        try { track.setPointerCapture(e.pointerId) } catch {}
+        track.style.cursor = 'grabbing'
+      }
+      track.scrollLeft = dragStartScroll - dx
+      pauseFor(PAUSE_AFTER_INTERACTION_MS)
+    }
+    const endDrag = (e: PointerEvent) => {
+      if (pointerId !== e.pointerId) return
+      if (dragged) {
+        // Guard: hasPointerCapture/releasePointerCapture can throw if the
+        // pointer was never captured (e.g., setPointerCapture failed silently
+        // during a synthetic event or the element was reattached).
+        try { if (track.hasPointerCapture?.(e.pointerId)) track.releasePointerCapture(e.pointerId) } catch {}
+        track.style.cursor = ''
+        // Override the 1500ms pause that pointermove was refreshing — after
+        // release, a short grace period feels right.
+        pauseFor(PAUSE_AFTER_DRAG_MS)
+      }
+      pointerId = null
+    }
+    const onClickCapture = (e: MouseEvent) => {
+      // If the pointerup that just fired was the end of a drag, suppress the
+      // click that would otherwise open an overlay.
+      if (dragged) {
+        e.stopPropagation()
+        e.preventDefault()
+        dragged = false
+      }
+    }
+
     track.addEventListener('wheel', onWheel, { passive: true })
-    track.addEventListener('pointerdown', onPointerDown)
     track.addEventListener('touchstart', onTouchStart, { passive: true })
     track.addEventListener('mouseenter', onMouseEnter)
     track.addEventListener('mouseleave', onMouseLeave)
     track.addEventListener('focusin', onFocusIn)
     track.addEventListener('focusout', onFocusOut)
+    track.addEventListener('pointerdown', onPointerDown)
+    track.addEventListener('pointermove', onPointerMove)
+    track.addEventListener('pointerup', endDrag)
+    track.addEventListener('pointercancel', endDrag)
+    track.addEventListener('click', onClickCapture, true)
 
     return () => {
       cancelAnimationFrame(raf)
       track.removeEventListener('wheel', onWheel)
-      track.removeEventListener('pointerdown', onPointerDown)
       track.removeEventListener('touchstart', onTouchStart)
       track.removeEventListener('mouseenter', onMouseEnter)
       track.removeEventListener('mouseleave', onMouseLeave)
       track.removeEventListener('focusin', onFocusIn)
       track.removeEventListener('focusout', onFocusOut)
+      track.removeEventListener('pointerdown', onPointerDown)
+      track.removeEventListener('pointermove', onPointerMove)
+      track.removeEventListener('pointerup', endDrag)
+      track.removeEventListener('pointercancel', endDrag)
+      track.removeEventListener('click', onClickCapture, true)
     }
   }, [sorted.length])
 
@@ -211,7 +285,7 @@ export function EventosRail({ items }: EventosRailProps) {
       <div className="relative">
         <div
           ref={trackRef}
-          className="evento-rail-track flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+          className="evento-rail-track flex cursor-grab gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain"
           // Hide native scrollbar (Firefox + WebKit) — auto-scroll motion +
           // edge fades carry the affordance; the bar adds visual noise.
           style={{ scrollbarWidth: 'none' }}

@@ -8,6 +8,55 @@
 
 ---
 
+## 2026-05-02 · INGEST · EventosRail — Windows/high-refresh fixes (subpixel scroll + drag-to-scroll)
+
+Iker pulled the morning's [[EventosRail]] work onto a Windows PC and hit two failure modes that didn't surface on the MacBook. Both got root-caused via instrumented `preview_eval` and shipped today.
+
+### Failure mode 1 — auto-scroll appears to start, then freezes
+
+Symptom on Windows: rail nudges ~1px on first frame, then sits still. Same code on MacBook works fine.
+
+**Diagnosis.** `scrollLeft` rounds to integers on this engine (verified empirically — writing 0.21 reads back 0; writing 0.7 reads back 1). The auto-scroll loop was doing `track.scrollLeft += SCROLL_SPEED_PX_PER_SEC * dt` per frame. At 60Hz (`dt ≈ 16.6ms`), the per-frame increment is 0.58px — rounds up to 1, accumulates correctly. At 120Hz+ (`dt ≈ 8ms`), the per-frame increment is 0.29px — rounds to 0 every frame, scroll never advances. The MacBook ran at 60Hz so it worked; Windows monitor was high-refresh and exposed the bug.
+
+**Fix.** Keep a fractional accumulator (`let accum = 0`) outside `scrollLeft`. Per frame: `accum += SCROLL_SPEED_PX_PER_SEC * dt`, then commit only `Math.floor(accum)` whole pixels and subtract them from `accum`. The fraction carries across frames regardless of refresh rate. Verified in preview: 162fps headless, scrollLeft advances 62px over 2s (target 70px, accounting for sample quantization).
+
+### Failure mode 2 — "ARRASTRA O ESPERA" copy lied about drag-to-scroll
+
+The morning ship added the `ARRASTRA O ESPERA` ("drag or wait") sub-line, but native `overflow-x: auto` only wires drag-to-scroll for trackpad/touch — mouse drag on Windows did nothing. The label was aspirational.
+
+**Fix.** Pointer events (mouse + touch + pen unified):
+- `pointerdown` → record `dragStartX`, `dragStartScroll`, set pause; don't yet flag as drag.
+- `pointermove` → if motion exceeds `DRAG_THRESHOLD_PX = 5`, flip `dragged = true`, set pointer capture, change cursor to `grabbing`. Set `track.scrollLeft = dragStartScroll - dx`.
+- `pointerup` / `pointercancel` → if `dragged`, release capture, restore cursor, override the lingering pointermove pause with a shorter `PAUSE_AFTER_DRAG_MS = 500` so auto-scroll resumes promptly after release.
+- `click` (capture phase) → if `dragged`, `stopPropagation` + `preventDefault` so the post-drag click doesn't accidentally open a card overlay.
+
+Genuine taps below the threshold still open the card. Cursor: `grab` on the track, `grabbing` while actively dragging.
+
+**Pause-tuning side effect.** While auditing the pause logic I noticed `PAUSE_AFTER_INTERACTION_MS = 3000` was being refreshed on every pointermove during a drag — so a 5-second drag + release meant a 3s wait before auto-scroll resumed. Dropped the wheel/touch constant to 1500ms (`user is reading a card`) and added `PAUSE_AFTER_DRAG_MS = 500` (`user just repositioned the rail; resume quickly`) applied explicitly in `endDrag`.
+
+### Defensive try/catch on pointer-capture
+
+`setPointerCapture` / `releasePointerCapture` can throw `InvalidStateError` if the pointer isn't an active browser pointer (synthetic events, element re-attachment, etc.). The optional chain `?.` doesn't catch exceptions. Wrapped both in try/catch + a `hasPointerCapture` guard. Production code path doesn't hit this, but it kept biting during synthetic-event testing in the preview.
+
+### Verified in preview
+
+- Subpixel: scrollLeft advances steadily at 35 px/s under 162fps headless.
+- Drag: 6 pointermove events × 12px = 72px drag → scrollLeft moves exactly 72px.
+- Tap (no drag): card overlay opens normally.
+- Drag + release: auto-scroll resumes at ~560ms after release (target 500ms).
+- Cursor: `grab` over the track; `grabbing` mid-drag.
+
+### Files
+
+- `components/EventosRail.tsx` — accumulator, pointer event handlers, pause constants split, capture try/catch, `cursor-grab` class.
+
+### Open follow-ups
+
+- **Mobile pass for the rail** — drag uses pointer events so should work on touch, but the 180px card width means ~1.8 cards visible on a 360px viewport. Probably want a smaller variant. Tracked in [[Next Session]] S4.
+- The subpixel-scroll trap is a generic gotcha — any future rAF loop nudging sub-pixel deltas to `scrollLeft` / `scrollTop` needs the same accumulator pattern. Worth a wiki page if a second offender shows up.
+
+---
+
 ## 2026-05-01 · INGEST · EventosRail — manual + auto scroll cooperation
 
 Quick fix to the rail shipped earlier today. Iker hit the obvious failure mode: "once an event has scrolled, it is gone until the carousel restarts." The CSS marquee + `overflow-hidden` meant the only motion was auto-scroll, and there was no way to backtrack to a card you missed without waiting ~240s for the next cycle.
