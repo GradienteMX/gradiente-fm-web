@@ -18,8 +18,8 @@ import {
   toggleReaction,
   toggleSavedComment,
   useIsCommentSaved,
-  useUserRank,
 } from '@/lib/comments'
+import { useUserRank } from '@/lib/hooks/useUserRank'
 import { useResolvedUser } from '@/lib/userOverrides'
 import { canModerate } from '@/lib/permissions'
 import { useAuth } from '@/components/auth/useAuth'

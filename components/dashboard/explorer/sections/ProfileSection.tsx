@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { User, Mail, MapPin, Headphones, Calendar } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
-import { useUserRank } from '@/lib/comments'
+import { useUserRank } from '@/lib/hooks/useUserRank'
 import { useResolvedUser } from '@/lib/userOverrides'
 import {
   badgeFor,

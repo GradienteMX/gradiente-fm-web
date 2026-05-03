@@ -3,7 +3,7 @@
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuth } from '@/components/auth/useAuth'
-import { useUserRank } from '@/lib/comments'
+import { useUserRank } from '@/lib/hooks/useUserRank'
 import { useResolvedUser } from '@/lib/userOverrides'
 import {
   badgeFor,

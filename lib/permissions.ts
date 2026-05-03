@@ -215,7 +215,7 @@ export function canBanUser(user: User | null): boolean {
 // The threshold is intentionally low for the prototype so the rank system is
 // visible during testing. A real product would tune this against real data.
 
-export const RANK_THRESHOLD = 5
+export const RANK_THRESHOLD = 2
 
 // Pure derivation from received-reaction counts. Easy to unit-test.
 //

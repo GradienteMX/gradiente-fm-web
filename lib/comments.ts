@@ -26,10 +26,8 @@ import type {
   CommentDeletion,
   Reaction,
   ReactionKind,
-  UserRank,
 } from './types'
 import { MOCK_COMMENTS } from './mockComments'
-import { getUserRank } from './permissions'
 import { invalidateAllComments } from './hooks/useComments'
 import {
   addSavedCommentIdLocal,
@@ -128,15 +126,6 @@ export function getCommentsForItemMerged(itemId: string): Comment[] {
   const base = MOCK_COMMENTS.filter((c) => c.contentItemId === itemId)
   const added = session.added.filter((c) => c.contentItemId === itemId)
   return [...base, ...added].map((c) => applyOverrides(c, session))
-}
-
-// Cross-item merged view — used by getUserRank to count all !/? reactions a
-// user has received across the entire comment surface (any content item +
-// session-added comments). Heavier than getCommentsForItemMerged but still
-// in-memory; cheap for prototype scale.
-export function getAllCommentsMerged(): Comment[] {
-  const session = readSession()
-  return [...MOCK_COMMENTS, ...session.added].map((c) => applyOverrides(c, session))
 }
 
 // ── Write API ───────────────────────────────────────────────────────────────
@@ -381,18 +370,8 @@ export function useSavedComments(): Comment[] {
   return items
 }
 
-// Live-data hook for a user's derived rank. Recomputes when any reaction
-// toggles. Returns 'normie' on the server (and pre-hydration) so badges
-// don't flash a wrong rank during SSR.
-export function useUserRank(userId: string): UserRank {
-  const [rank, setRank] = useState<UserRank>('normie')
-  useEffect(() => {
-    const refresh = () => setRank(getUserRank(userId, getAllCommentsMerged()))
-    refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
-  }, [userId])
-  return rank
-}
+// useUserRank moved to lib/hooks/useUserRank.ts — backed by the
+// `user_rank_signals` SQL view (migration 0005) + a batched
+// browser-side cache (lib/userRanksCache.ts). The old in-memory
+// implementation read MOCK_COMMENTS + session and always returned
+// 'normie' once the comment surface migrated to real DB.

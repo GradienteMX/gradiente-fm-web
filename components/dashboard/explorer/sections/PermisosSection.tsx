@@ -11,7 +11,7 @@ import {
   ROLE_COLOR,
   ROLE_LABEL,
 } from '@/lib/mockUsers'
-import { useUserRank } from '@/lib/comments'
+import { useUserRank } from '@/lib/hooks/useUserRank'
 import {
   clearUserOverride,
   setUserOverride,

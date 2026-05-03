@@ -6,10 +6,8 @@ import Image from 'next/image'
 import { ArrowLeft, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react'
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import {
-  toggleSavedComment,
-  useUserRank,
-} from '@/lib/comments'
+import { toggleSavedComment } from '@/lib/comments'
+import { useUserRank } from '@/lib/hooks/useUserRank'
 import { useSavedComments } from '@/lib/hooks/useSavedComments'
 import { useResolvedUser } from '@/lib/userOverrides'
 import { badgeFor } from '@/lib/mockUsers'
