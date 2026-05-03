@@ -259,7 +259,13 @@ export function EventosRail({ items }: EventosRailProps) {
       track.removeEventListener('pointercancel', endDrag)
       track.removeEventListener('click', onClickCapture, true)
     }
-  }, [sorted.length])
+    // hiddenByCategoryFilter is in the dep array so the effect re-runs
+    // (and re-attaches listeners to the freshly-mounted track DOM) when
+    // the user toggles back from a non-event section. Without it, the
+    // first cleanup removes listeners from the old DOM on unmount, the
+    // new DOM mounts on re-show, but no effect re-fires to wire it up —
+    // drag-to-scroll silently dies.
+  }, [sorted.length, hiddenByCategoryFilter])
 
   if (sorted.length === 0 || hiddenByCategoryFilter) return null
 
