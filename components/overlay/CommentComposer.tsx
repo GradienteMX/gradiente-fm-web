@@ -2,8 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
-import { addComment, newCommentId } from '@/lib/comments'
-import type { Comment } from '@/lib/types'
+import { invalidateComments } from '@/lib/hooks/useComments'
 
 // ── CommentComposer ────────────────────────────────────────────────────────
 //
@@ -15,6 +14,10 @@ import type { Comment } from '@/lib/types'
 //
 // Login-gated. Logged-out viewers see a one-click prompt that opens the
 // LoginOverlay; the rest of the comments stay readable.
+//
+// Posts via POST /api/comments (which uses the SSR client, so RLS gates
+// to authenticated only — `comments_authenticated_insert` policy). After
+// success, `invalidateComments(itemId)` re-fetches the column.
 
 interface CommentComposerProps {
   itemId: string
@@ -36,6 +39,8 @@ export function CommentComposer({
   // Root composer is always expanded (it's the column's primary action).
   const [expanded, setExpanded] = useState(variant === 'root')
   const [body, setBody] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const placeholder =
@@ -77,30 +82,38 @@ export function CommentComposer({
     )
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!currentUser) return
     const trimmed = body.trim()
     if (trimmed.length === 0) return
-    const comment: Comment = {
-      id: newCommentId(),
-      contentItemId: itemId,
-      parentId,
-      authorId: currentUser.id,
-      body: trimmed,
-      createdAt: new Date().toISOString(),
-      reactions: [],
-    }
-    addComment(comment)
-    setBody('')
-    if (variant === 'reply') {
-      setExpanded(false)
-      onDone?.()
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ itemId, parentId, body: trimmed }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: 'Failed' }))
+        setError(json.error?.toString().toUpperCase() ?? 'FAILED')
+        return
+      }
+      setBody('')
+      invalidateComments(itemId)
+      if (variant === 'reply') {
+        setExpanded(false)
+        onDone?.()
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const cancel = () => {
     setBody('')
     setExpanded(false)
+    setError(null)
     onDone?.()
   }
 
@@ -133,15 +146,31 @@ export function CommentComposer({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         rows={variant === 'root' ? 2 : 3}
-        className="resize-y border bg-black px-3 py-2 font-mono text-[12px] leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange"
+        disabled={submitting}
+        className="resize-y border bg-black px-3 py-2 font-mono text-[12px] leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange disabled:opacity-60"
         style={{ borderColor: '#242424' }}
       />
+
+      {error && (
+        <div
+          className="border px-2 py-1 font-mono text-[10px] tracking-widest"
+          style={{
+            borderColor: '#E63329',
+            color: '#E63329',
+            backgroundColor: '#E6332910',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       <div className="flex items-center justify-end gap-2">
         {variant === 'reply' && (
           <button
             type="button"
             onClick={cancel}
-            className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+            disabled={submitting}
+            className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary disabled:opacity-40"
           >
             CANCELAR
           </button>
@@ -149,7 +178,7 @@ export function CommentComposer({
         <button
           type="button"
           onClick={submit}
-          disabled={body.trim().length === 0}
+          disabled={submitting || body.trim().length === 0}
           className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
           style={{
             borderColor: '#F97316',
@@ -157,7 +186,7 @@ export function CommentComposer({
             backgroundColor: 'rgba(249,115,22,0.08)',
           }}
         >
-          ▶ ENVIAR
+          {submitting ? '▶ ENVIANDO…' : '▶ ENVIAR'}
         </button>
       </div>
     </div>

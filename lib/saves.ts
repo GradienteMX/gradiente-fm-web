@@ -1,26 +1,32 @@
 'use client'
 
-// ── Frontend-only saves store ───────────────────────────────────────────────
+// ── Saves store (transitional) ──────────────────────────────────────────────
 //
-// User-bookmarked content items (publications). SessionStorage-backed —
-// survives reloads, dies with the tab. Same lifecycle as [[drafts]] /
-// [[comments]]. Real backend keys per-user; this prototype is shared within
-// the tab.
+// MIGRATION STATE (2026-05-03):
+//   - `isItemSaved` / `useIsItemSaved` / `toggleSavedItem` → moved to API +
+//     module-scoped cache (lib/itemSavesCache.ts). Symmetric with
+//     lib/comments.ts toggleSavedComment.
+//   - `useSavedItems` / `getSavedItems` / `clearSavedItems` → STILL on
+//     sessionStorage. Dashboard view migrations (`Guardados/*`) follow in a
+//     later slice and will swap them to a Supabase select joining
+//     user_saves + items. Until then these read an empty array because no
+//     writer populates the session anymore.
 //
-// Resolves saved ids across BOTH the canonical mock catalog (MOCK_ITEMS)
-// and the user's session-published drafts (getItemById from drafts.ts), so
-// items the user has self-published in the prototype are saveable too.
-//
-// When the real backend (see [[Supabase Migration]]) lands:
-//   - Replace `useSavedItems` with a Supabase select joining the user's
-//     bookmarks + content_items.
-//   - Replace `toggleSavedItem` with an upsert RPC.
-//   - Drop the listener registry in favor of Supabase Realtime.
+// When the dashboard slice lands:
+//   - Drop the SessionState block + the listener registry below.
+//   - Re-implement `useSavedItems` against `lib/data/items.ts` filtered by
+//     the cached ids.
 
 import { useEffect, useState } from 'react'
 import type { ContentItem } from './types'
 import { MOCK_ITEMS } from './mockData'
 import { getItemById as getDraftItemById } from './drafts'
+import {
+  addSavedItemIdLocal,
+  isItemSavedSync,
+  removeSavedItemIdLocal,
+  subscribeSavedItems,
+} from './itemSavesCache'
 
 const STORAGE_KEY = 'gradiente:saves'
 
@@ -72,16 +78,30 @@ function resolveItem(id: string): ContentItem | null {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export function isItemSaved(itemId: string): boolean {
-  return readSession().savedIds.includes(itemId)
+  return isItemSavedSync(itemId)
 }
 
-export function toggleSavedItem(itemId: string) {
-  const s = readSession()
-  s.savedIds = s.savedIds.includes(itemId)
-    ? s.savedIds.filter((id) => id !== itemId)
-    : [...s.savedIds, itemId]
-  writeSession(s)
-  notify()
+// Optimistic: update the local cache first so the UI flips instantly, then
+// call the API. Rollback on failure. Mirrors toggleSavedComment.
+export async function toggleSavedItem(itemId: string) {
+  const wasSaved = isItemSavedSync(itemId)
+  if (wasSaved) {
+    removeSavedItemIdLocal(itemId)
+    try {
+      const res = await fetch(`/api/saves/items/${itemId}`, { method: 'DELETE' })
+      if (!res.ok) addSavedItemIdLocal(itemId)  // rollback
+    } catch {
+      addSavedItemIdLocal(itemId)
+    }
+  } else {
+    addSavedItemIdLocal(itemId)
+    try {
+      const res = await fetch(`/api/saves/items/${itemId}`, { method: 'POST' })
+      if (!res.ok) removeSavedItemIdLocal(itemId)  // rollback
+    } catch {
+      removeSavedItemIdLocal(itemId)
+    }
+  }
 }
 
 export function clearSavedItems() {
@@ -117,15 +137,15 @@ export function useSavedItems(): ContentItem[] {
   return items
 }
 
+// Tracks whether `itemId` is in the user's saved set. Subscribes to the
+// shared cache (lib/itemSavesCache) — re-renders when any save/unsave
+// fires, including those triggered elsewhere in the tree.
 export function useIsItemSaved(itemId: string): boolean {
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState(() => isItemSavedSync(itemId))
   useEffect(() => {
-    const refresh = () => setSaved(isItemSaved(itemId))
+    const refresh = () => setSaved(isItemSavedSync(itemId))
     refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
+    return subscribeSavedItems(refresh)
   }, [itemId])
   return saved
 }

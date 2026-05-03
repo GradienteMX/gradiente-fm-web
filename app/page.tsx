@@ -6,23 +6,30 @@ import { FeedHeader } from '@/components/FeedHeader'
 import { HeroCard } from '@/components/HeroCard'
 import { PartnersRail } from '@/components/PartnersRail'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
-import { MOCK_ITEMS } from '@/lib/mockData'
+import { getItems } from '@/lib/data/items'
+import type { ContentItem } from '@/lib/types'
 import { filterForHome, getEventDates, getPinnedHero } from '@/lib/utils'
 
-export default function HomePage() {
+// Reads from Supabase via cookies()-aware server client → forces dynamic.
+// Will become `revalidate = 300` once the SYSTEM UPDATE countdown lands
+// (see Backend Plan § "Realtime architecture").
+export const dynamic = 'force-dynamic'
+
+export default async function HomePage() {
   const now = new Date()
-  const homeItems = filterForHome(MOCK_ITEMS, now)
-  const eventDates = getEventDates(MOCK_ITEMS)
-  const hero = getPinnedHero(MOCK_ITEMS)
+  const allItems = await getItems()
+  const homeItems = filterForHome(allItems, now)
+  const eventDates = getEventDates(allItems)
+  const hero = getPinnedHero(allItems)
 
   // Partners live in the right rail, never in the main mosaic
-  const partners = MOCK_ITEMS.filter((i) => i.type === 'partner')
+  const partners = allItems.filter((i) => i.type === 'partner')
 
   // Scraped events not flagged `elevated` go to the EventosRail; everything
   // else (editorial, mixes, noticias, manually-authored events, AND scraped
   // events the editor elevated) competes in the main mosaic via HP. See
   // wiki/70-Roadmap/Scraper Pipeline.md for the phase strategy this models.
-  const isRailEvent = (i: typeof MOCK_ITEMS[number]) =>
+  const isRailEvent = (i: ContentItem) =>
     i.source === 'scraper:ra' && !i.elevated
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(

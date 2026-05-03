@@ -1,17 +1,22 @@
 'use client'
 
+import { useEffect } from 'react'
 import type { ContentItem } from '@/lib/types'
-import { useComments } from '@/lib/comments'
+import { useComments } from '@/lib/hooks/useComments'
+import { setRealUsers } from '@/lib/userOverrides'
 import { CommentList } from './CommentList'
 import { CommentComposer } from './CommentComposer'
 
 // ── CommentsColumn ──────────────────────────────────────────────────────────
 //
-// Right-rail surface inside the overlay. Renders the threaded discussion for
-// `item` plus a top-level composer at the bottom. The comment list itself is
-// stateless — `useComments(item.id)` merges seed data (lib/mockComments) with
-// session-authored comments (lib/comments). When the backend lands, swap the
-// hook's storage layer; the UI doesn't change.
+// Right-rail surface inside the overlay. Fetches comments + author profiles
+// from Supabase via `useComments(item.id)`. Author profiles are pushed into
+// the global `realUserCache` (lib/userOverrides) so the existing
+// `useResolvedUser` calls inside CommentList / Tombstone resolve to real
+// rows without any prop drilling.
+//
+// Reactions, tombstones, and saves are still on the sessionStorage layer
+// (lib/comments) — chunk 3 follow-up turn migrates those.
 
 interface CommentsColumnProps {
   item: ContentItem
@@ -26,8 +31,14 @@ export function CommentsColumn({
   onClose,
   focusedCommentId = null,
 }: CommentsColumnProps) {
-  const comments = useComments(item.id)
+  const { comments, usersById, loading } = useComments(item.id)
   const total = comments.length
+
+  // Push fetched users into the global cache so the existing
+  // useResolvedUser(authorId) calls inside CommentList resolve correctly.
+  useEffect(() => {
+    if (usersById.size > 0) setRealUsers(usersById.values())
+  }, [usersById])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -60,7 +71,9 @@ export function CommentsColumn({
       {/* Status strip — count + sort label */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-dashed border-border bg-base/60 px-4 py-2 font-mono text-[10px] tracking-widest text-muted">
         <span>
-          {total} {total === 1 ? 'COMENTARIO' : 'COMENTARIOS'}
+          {loading
+            ? 'CARGANDO…'
+            : `${total} ${total === 1 ? 'COMENTARIO' : 'COMENTARIOS'}`}
         </span>
         <span className="text-secondary">ORDEN · ACTIVIDAD</span>
       </div>

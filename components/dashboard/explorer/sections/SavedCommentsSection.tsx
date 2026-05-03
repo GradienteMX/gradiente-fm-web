@@ -7,13 +7,12 @@ import { ArrowLeft, MessageSquare, ChevronDown, ChevronRight } from 'lucide-reac
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
-  useSavedComments,
   toggleSavedComment,
   useUserRank,
 } from '@/lib/comments'
+import { useSavedComments } from '@/lib/hooks/useSavedComments'
 import { useResolvedUser } from '@/lib/userOverrides'
 import { badgeFor } from '@/lib/mockUsers'
-import { MOCK_ITEMS } from '@/lib/mockData'
 import { categoryColor } from '@/lib/utils'
 import { DraggableCanvas } from '../DraggableCanvas'
 import type { Comment, ContentItem } from '@/lib/types'
@@ -40,7 +39,7 @@ const FILE_TILE_H = 96
 const FILE_TILE_H_EXPANDED = 220
 
 export function SavedCommentsSection() {
-  const saved = useSavedComments()
+  const { comments: saved, itemsById } = useSavedComments()
   const [openArticleId, setOpenArticleId] = useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
@@ -62,7 +61,7 @@ export function SavedCommentsSection() {
   }
 
   if (openArticleId) {
-    const item = MOCK_ITEMS.find((i) => i.id === openArticleId) ?? null
+    const item = itemsById.get(openArticleId) ?? null
     const comments = groups.get(openArticleId) ?? []
     return (
       <ArticleCommentsView
@@ -87,6 +86,7 @@ export function SavedCommentsSection() {
   return (
     <FolderGridView
       groups={groups}
+      itemsById={itemsById}
       selectedFolderId={selectedFolderId}
       onSelectFolder={setSelectedFolderId}
       onOpenFolder={(id) => {
@@ -128,11 +128,13 @@ interface FolderItem {
 
 function FolderGridView({
   groups,
+  itemsById,
   selectedFolderId,
   onSelectFolder,
   onOpenFolder,
 }: {
   groups: Map<string, Comment[]>
+  itemsById: Map<string, ContentItem>
   selectedFolderId: string | null
   onSelectFolder: (id: string | null) => void
   onOpenFolder: (articleId: string) => void
@@ -142,11 +144,11 @@ function FolderGridView({
     // forEach instead of for-of-Map to avoid `--downlevelIteration` requirement
     // under the project's tsconfig target.
     groups.forEach((comments, articleId) => {
-      const item = MOCK_ITEMS.find((i) => i.id === articleId) ?? null
+      const item = itemsById.get(articleId) ?? null
       out.push({ articleId, item, count: comments.length })
     })
     return out
-  }, [groups])
+  }, [groups, itemsById])
 
   const total = folders.reduce((s, f) => s + f.count, 0)
 

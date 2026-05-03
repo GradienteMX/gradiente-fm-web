@@ -3,23 +3,39 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useAuth } from './useAuth'
-import { badgeFor, listUsers } from '@/lib/mockUsers'
+
+type Mode = 'login' | 'signup'
 
 export function LoginOverlay() {
-  const { loginOpen, closeLogin, login, loginAs } = useAuth()
+  const { loginOpen, closeLogin, login, signup } = useAuth()
+  const [mode, setMode] = useState<Mode>('login')
+
+  // Login mode: identifier (username or email) + password.
+  // Signup mode: email + username + password + invite code.
+  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [justAuthed, setJustAuthed] = useState(false)
-  const usernameRef = useRef<HTMLInputElement>(null)
+
+  const firstFieldRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (loginOpen) {
+      setMode('login')
+      setIdentifier('')
+      setEmail('')
       setUsername('')
       setPassword('')
+      setInviteCode('')
       setError(null)
       setJustAuthed(false)
-      const t = setTimeout(() => usernameRef.current?.focus(), 50)
+      setSubmitting(false)
+      const t = setTimeout(() => firstFieldRef.current?.focus(), 50)
       return () => clearTimeout(t)
     }
   }, [loginOpen])
@@ -44,27 +60,40 @@ export function LoginOverlay() {
 
   if (!loginOpen) return null
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const ok = login(username.trim(), password)
-    if (ok) {
-      setError(null)
-      setJustAuthed(true)
-      setTimeout(() => closeLogin(), 700)
+    setError(null)
+    setSubmitting(true)
+
+    if (mode === 'login') {
+      const ok = await login(identifier.trim(), password)
+      if (ok) {
+        setJustAuthed(true)
+        setTimeout(() => closeLogin(), 700)
+      } else {
+        setError('CREDENCIALES INVÁLIDAS · ACCESO DENEGADO')
+      }
     } else {
-      setError('CREDENCIALES INVÁLIDAS · ACCESO DENEGADO')
+      const result = await signup({
+        email: email.trim(),
+        password,
+        username: username.trim(),
+        inviteCode: inviteCode.trim(),
+      })
+      if (result.ok) {
+        setJustAuthed(true)
+        setTimeout(() => closeLogin(), 700)
+      } else {
+        setError(result.error.toUpperCase())
+      }
     }
+    setSubmitting(false)
   }
 
-  const quickSwitch = (userId: string) => {
-    if (loginAs(userId)) {
-      setError(null)
-      setJustAuthed(true)
-      setTimeout(() => closeLogin(), 500)
-    }
+  const switchMode = (m: Mode) => {
+    setMode(m)
+    setError(null)
   }
-
-  const users = listUsers()
 
   return (
     <div
@@ -88,7 +117,7 @@ export function LoginOverlay() {
               //AUTH
             </span>
             <span className="sys-label hidden truncate uppercase text-muted sm:inline">
-              login·terminal
+              {mode === 'login' ? 'login·terminal' : 'signup·terminal'}
             </span>
           </div>
           <button
@@ -99,6 +128,30 @@ export function LoginOverlay() {
             <span className="hidden sm:inline">[ESC]</span>
             <X size={14} className="sm:hidden" />
             <span>CERRAR</span>
+          </button>
+        </div>
+
+        {/* Mode tabs */}
+        <div className="flex border-b border-border bg-base/95 font-mono text-[10px] tracking-widest">
+          <button
+            type="button"
+            onClick={() => switchMode('login')}
+            className={`flex-1 px-4 py-2 transition-colors ${
+              mode === 'login' ? 'text-primary' : 'text-muted hover:text-secondary'
+            }`}
+            style={mode === 'login' ? { borderBottom: '2px solid #F97316' } : undefined}
+          >
+            ▶ INGRESAR
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode('signup')}
+            className={`flex-1 px-4 py-2 transition-colors ${
+              mode === 'signup' ? 'text-primary' : 'text-muted hover:text-secondary'
+            }`}
+            style={mode === 'signup' ? { borderBottom: '2px solid #F97316' } : undefined}
+          >
+            ▶ REGISTRARSE
           </button>
         </div>
 
@@ -113,34 +166,74 @@ export function LoginOverlay() {
               SISTEMA·ACCESO
             </span>
             <h1 className="font-syne text-2xl font-black leading-tight text-primary">
-              IDENTIFÍCATE
+              {mode === 'login' ? 'IDENTIFÍCATE' : 'NUEVA IDENTIDAD'}
             </h1>
             <p className="font-mono text-[11px] leading-relaxed text-secondary">
-              Acceso a redacción, partners y lectores del subsistema.
+              {mode === 'login'
+                ? 'Acceso a redacción, partners y lectores del subsistema.'
+                : 'Necesitas un código de invitación para crear una cuenta.'}
             </p>
           </header>
 
           <form onSubmit={submit} className="flex flex-col gap-3">
-            <Field
-              label="USERNAME"
-              value={username}
-              onChange={setUsername}
-              inputRef={usernameRef}
-              autoComplete="username"
-              disabled={justAuthed}
-            />
-            <Field
-              label="PASSWORD"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              autoComplete="current-password"
-              disabled={justAuthed}
-            />
+            {mode === 'login' ? (
+              <>
+                <Field
+                  label="USUARIO O EMAIL"
+                  value={identifier}
+                  onChange={setIdentifier}
+                  inputRef={firstFieldRef}
+                  autoComplete="username"
+                  disabled={submitting || justAuthed}
+                />
+                <Field
+                  label="PASSWORD"
+                  type="password"
+                  value={password}
+                  onChange={setPassword}
+                  autoComplete="current-password"
+                  disabled={submitting || justAuthed}
+                />
+              </>
+            ) : (
+              <>
+                <Field
+                  label="EMAIL"
+                  type="email"
+                  value={email}
+                  onChange={setEmail}
+                  inputRef={firstFieldRef}
+                  autoComplete="email"
+                  disabled={submitting || justAuthed}
+                />
+                <Field
+                  label="USERNAME"
+                  value={username}
+                  onChange={setUsername}
+                  autoComplete="username"
+                  disabled={submitting || justAuthed}
+                />
+                <Field
+                  label="PASSWORD"
+                  type="password"
+                  value={password}
+                  onChange={setPassword}
+                  autoComplete="new-password"
+                  disabled={submitting || justAuthed}
+                />
+                <Field
+                  label="CÓDIGO DE INVITACIÓN"
+                  value={inviteCode}
+                  onChange={setInviteCode}
+                  autoComplete="off"
+                  disabled={submitting || justAuthed}
+                />
+              </>
+            )}
 
             {error && (
               <div
-                className="border px-3 py-2 font-mono text-[10px] tracking-widest"
+                className="border px-3 py-2 font-mono text-[10px] leading-relaxed tracking-widest"
                 style={{
                   borderColor: '#E63329',
                   color: '#E63329',
@@ -166,7 +259,7 @@ export function LoginOverlay() {
 
             <button
               type="submit"
-              disabled={justAuthed}
+              disabled={submitting || justAuthed}
               className="mt-2 border px-4 py-2.5 font-mono text-[11px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               style={{
                 borderColor: '#F97316',
@@ -174,46 +267,39 @@ export function LoginOverlay() {
                 backgroundColor: 'rgba(249,115,22,0.08)',
               }}
             >
-              ▶ ENTRAR AL SUBSISTEMA
+              {submitting
+                ? '▶ PROCESANDO…'
+                : mode === 'login'
+                ? '▶ ENTRAR AL SUBSISTEMA'
+                : '▶ CREAR IDENTIDAD'}
             </button>
           </form>
 
-          {/* Quick-switch picker (prototype only) — log in as any mock user
-              with one click. Lets us exercise role-aware UI without
-              remembering per-user credentials. */}
-          <div className="border-t border-dashed border-border pt-3">
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <span className="sys-label">QUICK·SWITCH</span>
-              <span className="font-mono text-[9px] tracking-widest text-muted">
-                [PROTOTIPO]
-              </span>
-            </div>
-            <ul className="grid grid-cols-1 gap-1">
-              {users.map((u) => (
-                <li key={u.id}>
-                  <button
-                    type="button"
-                    onClick={() => quickSwitch(u.id)}
-                    disabled={justAuthed}
-                    className="group flex w-full items-center justify-between gap-3 border border-transparent px-2 py-1.5 text-left font-mono text-[11px] transition-colors hover:border-border hover:bg-white/[0.02] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <span className="truncate text-primary">@{u.username}</span>
-                    <span
-                      className="shrink-0 border px-1.5 py-0.5 text-[9px] tracking-widest"
-                      style={{ borderColor: '#242424', color: '#9CA3AF' }}
-                    >
-                      {badgeFor(u).label}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted">
-              Forma manual: usa cualquier <span className="text-secondary">@username</span> con
-              password = username, o el atajo{' '}
-              <span style={{ color: '#F97316' }}>admin / admin</span>.
-            </p>
-          </div>
+          <p className="font-mono text-[10px] leading-relaxed text-muted">
+            {mode === 'login' ? (
+              <>
+                ¿No tienes cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('signup')}
+                  className="text-secondary underline transition-colors hover:text-primary"
+                >
+                  Regístrate con un código de invitación.
+                </button>
+              </>
+            ) : (
+              <>
+                ¿Ya tienes cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="text-secondary underline transition-colors hover:text-primary"
+                >
+                  Inicia sesión.
+                </button>
+              </>
+            )}
+          </p>
         </div>
       </div>
     </div>
@@ -232,7 +318,7 @@ function Field({
   label: string
   value: string
   onChange: (v: string) => void
-  type?: 'text' | 'password'
+  type?: 'text' | 'password' | 'email'
   inputRef?: React.RefObject<HTMLInputElement>
   autoComplete?: string
   disabled?: boolean

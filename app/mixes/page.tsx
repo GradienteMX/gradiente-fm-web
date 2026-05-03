@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { ContentGrid } from '@/components/ContentGrid'
-import { MOCK_ITEMS } from '@/lib/mockData'
+import { getItems } from '@/lib/data/items'
 import { filterForCategory } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Mixes' }
+export const dynamic = 'force-dynamic'
 
-export default function MixesPage() {
-  const items = filterForCategory(MOCK_ITEMS, 'mix')
+export default async function MixesPage() {
+  const items = filterForCategory(await getItems(), 'mix')
   return (
     <>
       <div className="mb-4">

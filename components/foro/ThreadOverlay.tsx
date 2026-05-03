@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCcw, Trash2, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import {
-  clearTombstone,
+  clearReplyTombstone,
+  clearThreadTombstone,
   tombstoneReply,
   tombstoneThread,
   useReplies,
@@ -58,7 +59,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
       destructive: true,
     })
     if (!reason || !reason.trim()) return
-    tombstoneThread(thread.id, currentUser.id, reason.trim())
+    void tombstoneThread(thread.id, reason.trim())
   }, [currentUser, thread, promptInput])
 
   const onTombstoneReply = useCallback(
@@ -73,7 +74,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
         destructive: true,
       })
       if (!reason || !reason.trim()) return
-      tombstoneReply(reply.id, currentUser.id, reason.trim())
+      void tombstoneReply(reply.id, threadId, reason.trim())
     },
     [currentUser, promptInput],
   )
@@ -250,7 +251,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                   deletion={thread.deletion!}
                   kind="thread"
                   canRevert={isMod}
-                  onRevert={() => clearTombstone(thread.id)}
+                  onRevert={() => void clearThreadTombstone(thread.id)}
                 />
               ) : (
                 <>
@@ -381,7 +382,7 @@ function ReplyArticle({
           deletion={reply.deletion!}
           kind="reply"
           canRevert={isMod}
-          onRevert={() => clearTombstone(reply.id)}
+          onRevert={() => void clearReplyTombstone(reply.id, reply.threadId)}
         />
       ) : (
         <PostBody

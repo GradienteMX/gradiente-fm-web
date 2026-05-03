@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles, canCreateContent } from '@/lib/permissions'
 import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
+import { useMyPublishedItems } from '@/lib/hooks/useMyPublishedItems'
 import { useSavedItems } from '@/lib/saves'
 import { categoryColor } from '@/lib/utils'
 
@@ -122,7 +123,7 @@ const SECTION_WINDOW_TITLE: Record<ExplorerSection, string> = {
 }
 
 export default function DashboardPage() {
-  const { currentUser, isAuthed, username, openLogin } = useAuth()
+  const { currentUser, isAuthed, authResolved, username, openLogin } = useAuth()
   const router = useRouter()
   const search = useSearchParams()
 
@@ -151,7 +152,21 @@ export default function DashboardPage() {
   const [selectedTplType, setSelectedTplType] = useState<SupportedType | null>(null)
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null)
 
-  const draftItems = useDraftItems()
+  const dbDrafts = useDraftItems()
+  const myPublished = useMyPublishedItems(currentUser?.id ?? null)
+  // Synthesize DraftItem-shaped rows for the published items so the rest
+  // of the dashboard (DraftsSection, counts, lastEditedAt) keeps consuming
+  // a single uniform list. _createdAt/_updatedAt fall back to publishedAt
+  // because items don't carry the explicit composer timestamps.
+  const draftItems: DraftItem[] = useMemo(() => {
+    const publishedAsDrafts: DraftItem[] = myPublished.map((it) => ({
+      ...it,
+      _draftState: 'published' as const,
+      _createdAt: it.publishedAt,
+      _updatedAt: it.publishedAt,
+    }))
+    return [...dbDrafts, ...publishedAsDrafts]
+  }, [dbDrafts, myPublished])
   const draftCount = draftItems.filter((i) => i._draftState === 'draft').length
   const publishedCount = draftItems.filter((i) => i._draftState === 'published').length
   const savedItems = useSavedItems()
@@ -180,9 +195,9 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (!hydrated) return
+    if (!hydrated || !authResolved) return
     if (!isAuthed) openLogin()
-  }, [hydrated, isAuthed, openLogin])
+  }, [hydrated, authResolved, isAuthed, openLogin])
 
   // Reset section-local selections when navigating between sections.
   useEffect(() => {

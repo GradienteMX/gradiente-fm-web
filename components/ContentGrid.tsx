@@ -7,6 +7,7 @@ import type { ContentItem } from '@/lib/types'
 import { useVibe } from '@/context/VibeContext'
 import { filterByVibe } from '@/lib/utils'
 import { rankItems, type CardLayout } from '@/lib/curation'
+import { recordItems } from '@/lib/itemsCache'
 import { ContentCard } from './cards/ContentCard'
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -164,6 +165,13 @@ const MosaicItem = forwardRef<
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
   const { vibeRange, selectedDate, categoryFilter, genreFilter } = useVibe()
   const directions = useDirectionTracker()
+
+  // Bridge server-rendered items into the slug-keyed client cache so the
+  // OverlayRouter can resolve `?item=<slug>` for real DB rows (it used to
+  // only know about MOCK_ITEMS + drafts).
+  useEffect(() => {
+    recordItems(items)
+  }, [items])
 
   const ranked = useMemo(() => {
     const vibeFiltered = filterByVibe(items, vibeRange)

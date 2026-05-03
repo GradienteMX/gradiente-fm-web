@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Send } from 'lucide-react'
 import { usePublishConfirm } from './usePublishConfirm'
-import { getItemById, upsertItem } from '@/lib/drafts'
+import { getItemById, publishItem } from '@/lib/drafts'
+import { removeDraftLocal } from '@/lib/draftsCache'
 import { categoryColor } from '@/lib/utils'
 
 // Globally-mounted confirmation modal for publishing a draft. Opens when
@@ -54,15 +55,25 @@ export function PublishConfirmOverlay() {
 
   const color = categoryColor(item.type)
 
-  const handleConfirm = () => {
-    upsertItem(item, 'published')
+  const handleConfirm = async () => {
+    // Close + clear ?pending first so the modal dismisses via its own state
+    // (not via the cache mutation below pulling `item` out from under the
+    // memoized render). Capture the publish payload locally — closure keeps
+    // it alive for the awaited fetch.
+    const payload = item
     closeConfirm()
-    // Clear the pending URL param — uses replace so we don't pollute history.
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       url.searchParams.delete('pending')
       router.replace(url.pathname + url.search, { scroll: false })
     }
+    // Optimistic: drop from drafts cache so the dashboard drafts list
+    // reflects the publish before the API round-trip completes.
+    removeDraftLocal(payload.id)
+    // Await the publish before refreshing server components so the
+    // re-fetched home/type-page lists actually include the new row.
+    const { ok } = await publishItem(payload)
+    if (ok) router.refresh()
   }
 
   return (

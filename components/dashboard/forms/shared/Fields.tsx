@@ -5,6 +5,8 @@ import { Plus, Trash2, ExternalLink, ClipboardPaste } from 'lucide-react'
 import type { ContentItem, EmbedPlatform, MixEmbed } from '@/lib/types'
 import { GENRES } from '@/lib/genres'
 import { vibeToColor, vibeToLabel } from '@/lib/utils'
+import { compressAndUploadImage } from '@/lib/imageUpload'
+import { useAuth } from '@/components/auth/useAuth'
 import {
   PLATFORM_LABELS,
   PLATFORM_ORDER,
@@ -686,25 +688,38 @@ export function ImageUrlField({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const { currentUser, openLogin } = useAuth()
 
-  const readFileAsDataUrl = (file: File) => {
+  // Compress the picked file in a Web Worker (browser-image-compression)
+  // and upload to the `uploads` Supabase Storage bucket. The returned
+  // public URL becomes the form value — same string contract as the prior
+  // data-URL flow, only it now points at a real CDN object instead of
+  // bloating sessionStorage / drafts.item_payload jsonb.
+  const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       setReadError('Solo imágenes (jpg, png, webp, gif).')
       return
     }
-    setReadError(null)
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result
-      if (typeof result === 'string') onChange(result)
+    if (!currentUser) {
+      setReadError('Necesitas iniciar sesión para subir imágenes.')
+      openLogin()
+      return
     }
-    reader.onerror = () => setReadError('No se pudo leer el archivo.')
-    reader.readAsDataURL(file)
+    setReadError(null)
+    setUploading(true)
+    const res = await compressAndUploadImage(file, currentUser.id)
+    setUploading(false)
+    if (res.ok) {
+      onChange(res.url)
+    } else {
+      setReadError(res.error)
+    }
   }
 
   const handlePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) readFileAsDataUrl(file)
+    if (file) void handleFile(file)
     // Reset so picking the same file again still fires onChange.
     e.target.value = ''
   }
@@ -713,7 +728,7 @@ export function ImageUrlField({
     e.preventDefault()
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
-    if (file) readFileAsDataUrl(file)
+    if (file) void handleFile(file)
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -726,7 +741,9 @@ export function ImageUrlField({
     if (e.currentTarget === e.target) setDragOver(false)
   }
 
-  // Truncate data-URLs so the URL field doesn't show a 30k-char base64 blob.
+  // Legacy data URLs (drafts authored before storage migration) get a
+  // truncated display so the field doesn't render a 30k-char base64 blob.
+  // New uploads return public CDN URLs — short, plain text.
   const isDataUrl = value.startsWith('data:')
   const displayValue = isDataUrl
     ? `${value.slice(0, 32)}… [archivo cargado · ${Math.round(
@@ -763,9 +780,10 @@ export function ImageUrlField({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center justify-center gap-1.5 border border-dashed border-border px-3 py-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+          disabled={uploading}
+          className="flex items-center justify-center gap-1.5 border border-dashed border-border px-3 py-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange disabled:cursor-default disabled:opacity-60"
         >
-          ⎘ ELEGIR ARCHIVO
+          {uploading ? '◌ SUBIENDO…' : '⎘ ELEGIR ARCHIVO'}
         </button>
         <input
           ref={fileInputRef}
@@ -800,7 +818,7 @@ export function ImageUrlField({
                 {dragOver
                   ? 'Suelta para reemplazar'
                   : isDataUrl
-                    ? 'Cover cargado desde disco · solo en esta sesión'
+                    ? 'Cover cargado en sesión · será reemplazado al subir uno nuevo'
                     : 'Vista previa del cover'}
               </span>
               <button

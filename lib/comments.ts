@@ -1,17 +1,24 @@
 'use client'
 
-// ── Frontend-only comment store ─────────────────────────────────────────────
+// ── Comment store (transitional) ────────────────────────────────────────────
 //
-// Visual-prototype scaffolding for the comment system. Mirrors the shape of
-// `drafts.ts`: sessionStorage-backed, survives reloads, dies when the tab
-// closes. Layered ON TOP of MOCK_COMMENTS — the user's session "shadows" the
-// seed data with their own additions and reaction toggles.
+// MIGRATION STATE (2026-05-03):
+//   - Reads (`useComments`, getCommentsForItemMerged) → moved to
+//     [[useComments]] in lib/hooks/useComments.ts (Supabase reads).
+//   - Writes (toggleReaction, toggleSavedComment) → migrated to API calls.
+//   - Tombstones (tombstoneComment, clearCommentDeletion) → API
+//     (POST/DELETE /api/comments/[id]/tombstone), then invalidateAllComments
+//     to trigger refetch. RLS gates self-only-within-15min OR mod/admin
+//     any-time via comments_author_edit_window + comments_mod_edit.
+//   - Saves cache → lib/savedCommentsCache.ts (module-scoped Set).
+//   - addComment → DEAD on the new write path (CommentComposer POSTs
+//     directly). Kept for any stragglers; sessionStorage shim returns its
+//     own writes only.
 //
-// When the real backend (see [[Supabase Migration]]) lands:
-//   - Replace `getCommentsForItemMerged` with a Supabase select
-//   - Replace `addComment` / `toggleReaction` with insert/upsert RPC calls
-//   - Replace listener pattern with Supabase Realtime subscriptions
-// Consumers use `useComments` / `addComment` / `toggleReaction` and won't change.
+// `getCommentsForItemMerged` / `useComments` / `useSavedComments` /
+// `getSavedComments` exports below STILL read MOCK + session for the
+// dashboard saved-comments surface; they'll move to DB in the same
+// follow-up. No new callers should use them.
 
 import { useEffect, useState } from 'react'
 import type {
@@ -23,6 +30,17 @@ import type {
 } from './types'
 import { MOCK_COMMENTS } from './mockComments'
 import { getUserRank } from './permissions'
+import { invalidateAllComments } from './hooks/useComments'
+import {
+  addSavedCommentIdLocal,
+  isCommentSavedSync,
+  removeSavedCommentIdLocal,
+  subscribeSavedComments,
+} from './savedCommentsCache'
+import {
+  clearReactionOverride,
+  setReactionOverride,
+} from './reactionsCache'
 
 const STORAGE_KEY = 'gradiente:comments'
 
@@ -134,28 +152,80 @@ export function addComment(comment: Comment) {
 // (! or ?) per comment. Clicking the same kind clears it. Clicking the other
 // kind replaces the previous one. This enforces the "pick a side" rule from
 // the reaction-palette decision (see lib/types.ts ReactionKind comment).
-export function toggleReaction(
+//
+// Migrated to API call (2026-05-03). Server-side route handler enforces
+// mutual exclusivity by deleting any existing reaction by this user before
+// inserting the new one. Optimistic write happens server-side; we
+// invalidate the comments column on success so UI re-fetches the truth.
+//
+// `userId` parameter retained for back-compat — the server uses auth.uid()
+// regardless. Caller doesn't need to await; fire-and-forget is fine.
+export async function toggleReaction(
   commentId: string,
-  userId: string,
+  _userId: string,
   kind: ReactionKind,
 ) {
-  const s = readSession()
-  const base = s.reactionOverrides[commentId] ?? findBaseReactions(commentId, s)
-  const existing = base.find((r) => r.userId === userId)
-  let next: Reaction[]
-  if (existing && existing.kind === kind) {
-    // Toggling same kind clears it.
-    next = base.filter((r) => r.userId !== userId)
-  } else {
-    // Replace any prior reaction (different kind) with the new one.
-    next = [
-      ...base.filter((r) => r.userId !== userId),
-      { userId, kind, createdAt: new Date().toISOString() },
-    ]
+  const uid = currentAuthUid()
+  if (!uid) return
+
+  const cached = lastFetchedReactions.get(commentId) ?? []
+  const existing = cached.find((r) => r.userId === uid)
+  const action: 'clear' | 'set' = existing && existing.kind === kind ? 'clear' : 'set'
+
+  // Optimistic local update — UI flips at click time.
+  const optimistic: Reaction[] =
+    action === 'clear'
+      ? cached.filter((r) => r.userId !== uid)
+      : [
+          ...cached.filter((r) => r.userId !== uid),
+          { userId: uid, kind, createdAt: new Date().toISOString() },
+        ]
+  setReactionOverride(commentId, optimistic)
+  // Keep our local cached truth in sync so a follow-up toggle on the same
+  // comment computes against the right baseline.
+  lastFetchedReactions.set(commentId, optimistic)
+
+  try {
+    const res =
+      action === 'clear'
+        ? await fetch(`/api/comments/${commentId}/reactions`, { method: 'DELETE' })
+        : await fetch(`/api/comments/${commentId}/reactions`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ kind }),
+          })
+    if (!res.ok) throw new Error('reaction api failed')
+    // On success, KEEP the override. The local `comments` React state
+    // still has the pre-toggle reactions (we don't refetch), so clearing
+    // the override would let the merged view fall back to stale data.
+    // The override persists until the next full refetch (load() in
+    // useComments), at which point server-fetched data is fresh and the
+    // override gets wiped clean — see clearAllReactionOverrides() in load.
+  } catch {
+    // Rollback: drop the override. The merged view falls back to
+    // `comments[i].reactions` which is still the pre-toggle baseline.
+    lastFetchedReactions.set(commentId, cached)
+    clearReactionOverride(commentId)
   }
-  s.reactionOverrides[commentId] = next
-  writeSession(s)
-  notify()
+}
+
+// Tracks the current authenticated user's id so toggleReaction can decide
+// whether the click clears or replaces. Populated by AuthProvider on every
+// auth-state change.
+let _currentAuthUid: string | null = null
+export function setCurrentAuthUidForComments(id: string | null) {
+  _currentAuthUid = id
+}
+function currentAuthUid(): string | null {
+  return _currentAuthUid
+}
+
+// Last fetched reactions per comment. Populated by useComments() after each
+// fetch so toggleReaction can compute whether to POST or DELETE without an
+// extra round-trip. Best-effort cache; conservative behaviour on miss.
+const lastFetchedReactions = new Map<string, Reaction[]>()
+export function recordCommentReactions(comments: Comment[]) {
+  for (const c of comments) lastFetchedReactions.set(c.id, c.reactions)
 }
 
 // Helper for callers building new comment objects: returns a stable id with
@@ -180,85 +250,78 @@ export function newCommentId(): string {
 // The writer trusts the UI to gate (canDeleteOwnComment for self-delete,
 // canModerateComment for mod-delete). Real backend enforces in RLS.
 
-// Revert a tombstone — restores the comment body. Mirrors the foro
-// `clearTombstone` writer. Caller must hold canModerate OR be the actor
-// who set the deletion (so authors can undo their own self-delete).
-// Real backend will enforce in RLS.
-export function clearCommentDeletion(commentId: string) {
-  const s = readSession()
-  // Mock-comment override path.
-  if (s.deletionOverrides && commentId in s.deletionOverrides) {
-    const { [commentId]: _drop, ...rest } = s.deletionOverrides
-    s.deletionOverrides = rest
-    writeSession(s)
-    notify()
-    return
-  }
-  // Session-added comment path — clear the `deletion` field on the record.
-  const idx = s.added.findIndex((c) => c.id === commentId)
-  if (idx === -1) return
-  if (!s.added[idx].deletion) return
-  s.added = s.added.map((c, i) =>
-    i === idx ? { ...c, deletion: undefined } : c,
-  )
-  writeSession(s)
-  notify()
-}
-
-export function tombstoneComment(
+// Tombstone a comment (mod-delete OR author self-delete with empty reason).
+// Server enforces gating via RLS:
+//   - author within 15 min of post (comments_author_edit_window)
+//   - mod/admin any time (comments_mod_edit)
+// `actorId` is unused on the new path — server sets deletion_moderator_id
+// from auth.uid(). Kept in the signature so existing callers don't change.
+//
+// On success, invalidates all mounted comment columns so the new deletion
+// fields are fetched and the Tombstone replaces the body.
+export async function tombstoneComment(
   commentId: string,
-  actorId: string,
+  _actorId: string,
   reason: string,
 ) {
-  const s = readSession()
-  // Tombstone overrides the comment via reactionOverrides? No — the comment
-  // store doesn't have a deletion-override field today. We add one shaped
-  // exactly like reactionOverrides: a per-comment patch applied at read time.
-  // To keep churn minimal, store the deletion record directly on the
-  // session-added comment when applicable, or in a parallel deletionOverrides
-  // map for mock comments.
-  const inSession = s.added.findIndex((c) => c.id === commentId)
-  if (inSession !== -1) {
-    s.added = s.added.map((c, i) =>
-      i === inSession
-        ? {
-            ...c,
-            deletion: {
-              moderatorId: actorId,
-              reason,
-              deletedAt: new Date().toISOString(),
-            },
-          }
-        : c,
-    )
-  } else {
-    // Mock comment — write to the override map (added on demand below).
-    s.deletionOverrides = {
-      ...(s.deletionOverrides ?? {}),
-      [commentId]: {
-        moderatorId: actorId,
-        reason,
-        deletedAt: new Date().toISOString(),
-      },
-    }
+  try {
+    const res = await fetch(`/api/comments/${commentId}/tombstone`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
+    if (!res.ok) return
+    invalidateAllComments()
+  } catch {
+    // Network failure — no UI change to roll back. The user-facing affordance
+    // (the BORRAR button) stays in its pre-click state.
   }
-  writeSession(s)
-  notify()
+}
+
+// Revert a tombstone — clears deletion_at / deletion_moderator_id /
+// deletion_reason. RLS allows mods + admins; non-mod authors who self-deleted
+// will get a 403 from the policy (USING `deletion_at is null` excludes
+// already-deleted rows from the author edit window). UI shows the affordance
+// for the actor regardless — the click silently no-ops on RLS denial.
+export async function clearCommentDeletion(commentId: string) {
+  try {
+    const res = await fetch(`/api/comments/${commentId}/tombstone`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) return
+    invalidateAllComments()
+  } catch {
+    // see above
+  }
 }
 
 // ── Saved comments ──────────────────────────────────────────────────────────
 
 export function isCommentSaved(commentId: string): boolean {
-  return readSession().savedIds.includes(commentId)
+  return isCommentSavedSync(commentId)
 }
 
-export function toggleSavedComment(commentId: string) {
-  const s = readSession()
-  s.savedIds = s.savedIds.includes(commentId)
-    ? s.savedIds.filter((id) => id !== commentId)
-    : [...s.savedIds, commentId]
-  writeSession(s)
-  notify()
+// Optimistic: update local cache first so the UI flips instantly, then call
+// the API. Rollback on failure.
+export async function toggleSavedComment(commentId: string) {
+  const wasSaved = isCommentSavedSync(commentId)
+  if (wasSaved) {
+    removeSavedCommentIdLocal(commentId)
+    try {
+      const res = await fetch(`/api/saves/comments/${commentId}`, { method: 'DELETE' })
+      if (!res.ok) addSavedCommentIdLocal(commentId)  // rollback
+    } catch {
+      addSavedCommentIdLocal(commentId)
+    }
+  } else {
+    addSavedCommentIdLocal(commentId)
+    try {
+      const res = await fetch(`/api/saves/comments/${commentId}`, { method: 'POST' })
+      if (!res.ok) removeSavedCommentIdLocal(commentId)  // rollback
+    } catch {
+      removeSavedCommentIdLocal(commentId)
+    }
+  }
 }
 
 // Returns the merged Comment objects (with reaction + deletion overrides
@@ -292,17 +355,15 @@ export function useComments(itemId: string): Comment[] {
   return items
 }
 
-// Tracks whether `commentId` is in the session's saved set. Re-renders on
-// any session change. Cheap because savedIds is a small array.
+// Tracks whether `commentId` is in the user's saved set. Subscribes to the
+// shared cache (lib/savedCommentsCache) — re-renders when any save/unsave
+// fires, including those triggered elsewhere in the tree.
 export function useIsCommentSaved(commentId: string): boolean {
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState(() => isCommentSavedSync(commentId))
   useEffect(() => {
-    const refresh = () => setSaved(isCommentSaved(commentId))
+    const refresh = () => setSaved(isCommentSavedSync(commentId))
     refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
+    return subscribeSavedComments(refresh)
   }, [commentId])
   return saved
 }

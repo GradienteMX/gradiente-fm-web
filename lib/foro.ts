@@ -1,325 +1,169 @@
 'use client'
 
-// ── Frontend-only foro store ────────────────────────────────────────────────
+// ── Foro store (DB-backed) ─────────────────────────────────────────────────
 //
-// Imageboard-style forum. SessionStorage-backed, layered on top of seed data
-// in [[mockForo]]. New threads + replies created this session "shadow" the
-// merged catalog read.
+// MIGRATION STATE (2026-05-03):
+//   - Reads (`useThreads` / `useThread` / `useReplies` / `useReplyCount`)
+//     re-exported from lib/hooks/useForo.ts (Supabase reads + invalidation
+//     bus + realUserCache push).
+//   - Writes (`createThread` / `createReply`) POST to /api/foro/* and call
+//     invalidateThreadList() / invalidateThread(threadId) on success.
+//   - Tombstones (`tombstoneThread` / `tombstoneReply` /
+//     `clearThreadTombstone` / `clearReplyTombstone`) hit the symmetric
+//     POST/DELETE routes; RLS gates author-edit-window OR mod-edit.
 //
-// Bump rules:
-//   - New thread: bumpedAt = createdAt; appears at top of catalog.
-//   - New reply: parent thread's bumpedAt = reply.createdAt; thread floats up.
-//
-// No reactions, no likes, no engagement scoring. The only signal is reply
-// count, which is computed at read time from the merged reply list.
-//
-// When the real backend lands (see [[Supabase Migration]]):
-//   - Replace `useThreads` / `useThread` / `useReplies` with Supabase selects
-//   - Replace `addThread` / `addReply` with insert RPCs (server bumps parent)
-//   - Listener pattern → Supabase Realtime subscriptions
+// The composer surfaces (NewThreadOverlay, ReplyComposer) used to author
+// full ForoThread / ForoReply objects with synthetic ids. With real DB
+// inserts the id comes back from the server — composers POST input shapes
+// instead, get the new id, and route to the thread.
 
-import { useEffect, useState } from 'react'
-import type { ForoDeletion, ForoReply, ForoThread } from './types'
 import {
-  MOCK_REPLIES,
-  MOCK_THREADS,
-  getRepliesForThread,
-  getReplyCount,
-} from './mockForo'
+  invalidateThread,
+  invalidateThreadList,
+  useReplies,
+  useReplyCount,
+  useThread,
+  useThreads,
+} from './hooks/useForo'
 
-const STORAGE_KEY = 'gradiente:foro'
-
-// Hard cap on visible threads in the catalog (per spec).
+// Hard cap on visible threads in the catalog (per spec). Enforced
+// client-side in ForoCatalog — the DB query returns more, the catalog
+// truncates. Kept in this module for back-compat with existing imports.
 export const FORO_THREAD_CAP = 30
 
-interface SessionState {
-  // Threads created this session — appended to MOCK_THREADS for the catalog.
-  addedThreads: ForoThread[]
-  // Replies created this session — appended to MOCK_REPLIES per thread.
-  addedReplies: ForoReply[]
-  // Per-thread bumpedAt overrides written when a session reply lands on a
-  // mock thread (mock threads are immutable, so we shadow the field).
-  bumpOverrides: Record<string, string>
-  // Per-post deletion overrides (keyed by thread or reply id). Mods set
-  // these via tombstoneThread / tombstoneReply; read-time merge applies
-  // them on top of the seed/session record. Tombstoned threads are also
-  // hidden from the catalog (but reachable by direct URL).
-  tombstones: Record<string, ForoDeletion>
+// Re-export the read hooks so existing consumers (`from '@/lib/foro'`)
+// don't change.
+export { useThreads, useThread, useReplies, useReplyCount }
+
+// ── Create thread ──────────────────────────────────────────────────────────
+
+export interface CreateThreadInput {
+  subject: string
+  body: string
+  imageUrl: string
+  genres: string[]
 }
 
-function emptyState(): SessionState {
-  return { addedThreads: [], addedReplies: [], bumpOverrides: {}, tombstones: {} }
-}
+export type CreateResult =
+  | { ok: true; id: string }
+  | { ok: false; error: string }
 
-function readSession(): SessionState {
-  if (typeof window === 'undefined') return emptyState()
+export async function createThread(input: CreateThreadInput): Promise<CreateResult> {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return emptyState()
-    const parsed = JSON.parse(raw)
-    return {
-      addedThreads: Array.isArray(parsed?.addedThreads) ? parsed.addedThreads : [],
-      addedReplies: Array.isArray(parsed?.addedReplies) ? parsed.addedReplies : [],
-      bumpOverrides:
-        parsed?.bumpOverrides && typeof parsed.bumpOverrides === 'object'
-          ? parsed.bumpOverrides
-          : {},
-      tombstones:
-        parsed?.tombstones && typeof parsed.tombstones === 'object'
-          ? parsed.tombstones
-          : {},
+    const res = await fetch('/api/foro/threads', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      return { ok: false, error: body?.error ?? `HTTP ${res.status}` }
     }
-  } catch {
-    return emptyState()
+    const json = await res.json()
+    invalidateThreadList()
+    return { ok: true, id: json.thread?.id ?? '' }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'network error' }
   }
 }
 
-function writeSession(s: SessionState) {
-  if (typeof window === 'undefined') return
+// ── Create reply ───────────────────────────────────────────────────────────
+
+export interface CreateReplyInput {
+  threadId: string
+  body: string
+  imageUrl?: string
+  quotedReplyIds?: string[]
+}
+
+export async function createReply(input: CreateReplyInput): Promise<CreateResult> {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    const res = await fetch(`/api/foro/threads/${input.threadId}/replies`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        body: input.body,
+        imageUrl: input.imageUrl,
+        quotedReplyIds: input.quotedReplyIds ?? [],
+      }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      return { ok: false, error: body?.error ?? `HTTP ${res.status}` }
+    }
+    const json = await res.json()
+    // The bump trigger reorders the catalog AND mutates the parent thread —
+    // invalidate both. invalidateThread() also broadcasts the catalog.
+    invalidateThread(input.threadId)
+    return { ok: true, id: json.reply?.id ?? '' }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'network error' }
+  }
+}
+
+// ── Tombstones ─────────────────────────────────────────────────────────────
+
+export async function tombstoneThread(threadId: string, reason: string) {
+  try {
+    const res = await fetch(`/api/foro/threads/${threadId}/tombstone`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
+    if (res.ok) invalidateThread(threadId)
+  } catch {
+    // No optimistic state to roll back; surface noise in console only.
+  }
+}
+
+export async function clearThreadTombstone(threadId: string) {
+  try {
+    const res = await fetch(`/api/foro/threads/${threadId}/tombstone`, {
+      method: 'DELETE',
+    })
+    if (res.ok) invalidateThread(threadId)
   } catch {}
 }
 
-const listeners = new Set<() => void>()
-function notify() {
-  listeners.forEach((fn) => fn())
+export async function tombstoneReply(replyId: string, threadId: string, reason: string) {
+  try {
+    const res = await fetch(`/api/foro/replies/${replyId}/tombstone`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
+    if (res.ok) invalidateThread(threadId)
+  } catch {}
 }
 
-// ── Read API ────────────────────────────────────────────────────────────────
-
-function applyThreadTombstone(t: ForoThread, s: SessionState): ForoThread {
-  const stone = s.tombstones[t.id]
-  return stone ? { ...t, deletion: stone } : t
+export async function clearReplyTombstone(replyId: string, threadId: string) {
+  try {
+    const res = await fetch(`/api/foro/replies/${replyId}/tombstone`, {
+      method: 'DELETE',
+    })
+    if (res.ok) invalidateThread(threadId)
+  } catch {}
 }
 
-function applyReplyTombstone(r: ForoReply, s: SessionState): ForoReply {
-  const stone = s.tombstones[r.id]
-  return stone ? { ...r, deletion: stone } : r
-}
-
-// Returns the merged thread list (mock + session) sorted by bumpedAt desc,
-// truncated to FORO_THREAD_CAP. Mock threads have their bumpedAt shadowed by
-// session bumpOverrides so a reply lands the parent at the top. Tombstoned
-// threads are excluded from the catalog so the moderator's pruning is
-// visible in the list view (the thread URL still resolves and renders the
-// tombstone).
-function getMergedThreads(): ForoThread[] {
-  const s = readSession()
-  const merged = [
-    ...MOCK_THREADS.map((t) => ({
-      ...t,
-      bumpedAt: s.bumpOverrides[t.id] ?? t.bumpedAt,
-    })),
-    ...s.addedThreads,
-  ]
-    .map((t) => applyThreadTombstone(t, s))
-    .filter((t) => !t.deletion)
-  merged.sort((a, b) => b.bumpedAt.localeCompare(a.bumpedAt))
-  return merged.slice(0, FORO_THREAD_CAP)
-}
-
-function getMergedReplies(): ForoReply[] {
-  const s = readSession()
-  return [...MOCK_REPLIES, ...s.addedReplies].map((r) => applyReplyTombstone(r, s))
-}
-
-export function getThreadById(id: string): ForoThread | null {
-  const s = readSession()
-  const mock = MOCK_THREADS.find((t) => t.id === id)
-  if (mock) {
-    return applyThreadTombstone(
-      { ...mock, bumpedAt: s.bumpOverrides[id] ?? mock.bumpedAt },
-      s,
-    )
-  }
-  const session = s.addedThreads.find((t) => t.id === id)
-  return session ? applyThreadTombstone(session, s) : null
-}
-
-export function getRepliesForThreadId(threadId: string): ForoReply[] {
-  return getRepliesForThread(threadId, getMergedReplies())
-}
-
-export function getReplyCountForThread(threadId: string): number {
-  return getReplyCount(threadId, getMergedReplies())
-}
-
-// ── Write API ───────────────────────────────────────────────────────────────
-
-export function addThread(thread: ForoThread) {
-  const s = readSession()
-  s.addedThreads = [...s.addedThreads, thread]
-  writeSession(s)
-  notify()
-}
-
-export function addReply(reply: ForoReply) {
-  const s = readSession()
-  s.addedReplies = [...s.addedReplies, reply]
-  // Bump the parent thread.
-  s.bumpOverrides = { ...s.bumpOverrides, [reply.threadId]: reply.createdAt }
-  // If the parent is a session thread, mutate it in place too so its
-  // bumpedAt stays consistent across reads.
-  s.addedThreads = s.addedThreads.map((t) =>
-    t.id === reply.threadId ? { ...t, bumpedAt: reply.createdAt } : t,
-  )
-  writeSession(s)
-  notify()
-}
-
-// ── Moderation (tombstones) ─────────────────────────────────────────────────
+// ── Back-compat shim ───────────────────────────────────────────────────────
 //
-// Soft-delete only. Body is preserved in storage so quote-links still
-// resolve; the UI replaces the body with a `//ELIMINADO·POR·MODERACIÓN`
-// stub showing the moderator's stated reason. Catalog hides tombstoned
-// threads, but `?thread=<id>` still resolves and renders the tombstone.
-//
-// Callers MUST gate via canModerate(currentUser) — this writer doesn't
-// re-check; the storage layer trusts the UI to enforce the role check.
-// Real backend will enforce in RLS.
+// Existing consumers call `clearTombstone(postId)` without distinguishing
+// thread vs reply. With separate DB tables we need the kind; if a caller
+// can't easily provide it (e.g. inside a generic Tombstone component),
+// they can call this and it'll try thread first, then reply. Less efficient
+// than the typed variants — prefer those when the kind is known.
 
-export function tombstoneThread(
-  threadId: string,
-  moderatorId: string,
-  reason: string,
-) {
-  const s = readSession()
-  s.tombstones = {
-    ...s.tombstones,
-    [threadId]: {
-      moderatorId,
-      reason,
-      deletedAt: new Date().toISOString(),
-    },
-  }
-  writeSession(s)
-  notify()
-}
-
-export function tombstoneReply(
-  replyId: string,
-  moderatorId: string,
-  reason: string,
-) {
-  const s = readSession()
-  s.tombstones = {
-    ...s.tombstones,
-    [replyId]: {
-      moderatorId,
-      reason,
-      deletedAt: new Date().toISOString(),
-    },
-  }
-  writeSession(s)
-  notify()
-}
-
-// Revert a tombstone — drops the deletion record so the post reappears.
-// Catalog re-includes the thread; reply body restores. Same gating model
-// as the writers above: caller must hold canModerate. Real backend will
-// enforce in RLS.
-//
-// One function works for both threads and replies because the tombstone map
-// is keyed by post id, not type.
-export function clearTombstone(postId: string) {
-  const s = readSession()
-  if (!(postId in s.tombstones)) return
-  const { [postId]: _, ...rest } = s.tombstones
-  s.tombstones = rest
-  writeSession(s)
-  notify()
-}
-
-// ── Session id generation ───────────────────────────────────────────────────
-//
-// Mirrors the mock id format so quote-links read the same in posts the user
-// authors as in seed posts. Mock threads use `fr-NNN` (e.g. `fr-003`); mock
-// replies use `fp-{threadShort}-NN` (e.g. `fp-003-02`). Session-authored ids
-// substitute the trailing number with `s{NN}` so they never collide with
-// seeds even if seed numbering is extended later.
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-// Strip the `fr-` prefix to get the short thread reference used in reply ids.
-// Works for both mock threads (`fr-003` → `003`) and session threads
-// (`fr-s01` → `s01`).
-function threadShortRef(threadId: string): string {
-  return threadId.replace(/^fr-/, '')
-}
-
-// Reads the current store to determine the next session number. Callers
-// don't need to pass a count — the store is the source of truth.
-export function newThreadId(): string {
-  const s = readSession()
-  return `fr-s${pad2(s.addedThreads.length + 1)}`
-}
-
-export function newReplyId(threadId: string): string {
-  const existing = getRepliesForThreadId(threadId).length
-  return `fp-${threadShortRef(threadId)}-s${pad2(existing + 1)}`
-}
-
-// ── React hooks ─────────────────────────────────────────────────────────────
-
-export function useThreads(): ForoThread[] {
-  const [items, setItems] = useState<ForoThread[]>([])
-  useEffect(() => {
-    const refresh = () => setItems(getMergedThreads())
-    refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
-  }, [])
-  return items
-}
-
-export function useThread(threadId: string | null): ForoThread | null {
-  const [thread, setThread] = useState<ForoThread | null>(null)
-  useEffect(() => {
-    if (!threadId) {
-      setThread(null)
+export async function clearTombstone(postId: string) {
+  try {
+    const a = await fetch(`/api/foro/threads/${postId}/tombstone`, { method: 'DELETE' })
+    if (a.ok) {
+      invalidateThread(postId)
       return
     }
-    const refresh = () => setThread(getThreadById(threadId))
-    refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
-  }, [threadId])
-  return thread
-}
-
-export function useReplies(threadId: string | null): ForoReply[] {
-  const [items, setItems] = useState<ForoReply[]>([])
-  useEffect(() => {
-    if (!threadId) {
-      setItems([])
-      return
-    }
-    const refresh = () => setItems(getRepliesForThreadId(threadId))
-    refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
-  }, [threadId])
-  return items
-}
-
-export function useReplyCount(threadId: string): number {
-  const [count, setCount] = useState(0)
-  useEffect(() => {
-    const refresh = () => setCount(getReplyCountForThread(threadId))
-    refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
-  }, [threadId])
-  return count
+    // Fall through to reply if the thread DELETE failed (e.g. not found
+    // because the id is actually a reply). We don't know the parent thread
+    // id from the reply alone, so broadcast the catalog as a safety net.
+    const b = await fetch(`/api/foro/replies/${postId}/tombstone`, { method: 'DELETE' })
+    if (b.ok) invalidateThreadList()
+  } catch {}
 }

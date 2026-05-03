@@ -3,8 +3,8 @@
 import { useRef, useState } from 'react'
 import { ImagePlus, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
-import { addReply, newReplyId } from '@/lib/foro'
-import type { ForoReply } from '@/lib/types'
+import { createReply } from '@/lib/foro'
+import { compressAndUploadImage } from '@/lib/imageUpload'
 
 // ── ReplyComposer ──────────────────────────────────────────────────────────
 //
@@ -27,7 +27,10 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
       ? initialQuotedIds.map((id) => `>>${id}`).join(' ') + ' '
       : '',
   )
+  // Holds the uploaded Storage URL — name kept for diff-friendliness.
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -44,24 +47,26 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
     )
   }
 
-  const readFile = (file: File) => {
+  const readFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       setReadError('Solo imágenes (jpg, png, webp, gif).')
       return
     }
+    if (!currentUser) return
     setReadError(null)
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result
-      if (typeof result === 'string') setImageDataUrl(result)
+    setUploading(true)
+    const res = await compressAndUploadImage(file, currentUser.id)
+    setUploading(false)
+    if (res.ok) {
+      setImageDataUrl(res.url)
+    } else {
+      setReadError(res.error)
     }
-    reader.onerror = () => setReadError('No se pudo leer el archivo.')
-    reader.readAsDataURL(file)
   }
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) readFile(file)
+    if (file) void readFile(file)
     e.target.value = ''
   }
 
@@ -72,31 +77,32 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
     return Array.from(new Set(matches.map((m) => m.slice(2))))
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!currentUser) return
     const trimmed = body.trim()
     if (trimmed.length === 0) return
-    const reply: ForoReply = {
-      id: newReplyId(threadId),
+    setSubmitting(true)
+    const quotedReplyIds = extractQuotedIds(trimmed)
+    const res = await createReply({
       threadId,
-      authorId: currentUser.id,
       body: trimmed,
-      createdAt: new Date().toISOString(),
-      ...(imageDataUrl ? { imageUrl: imageDataUrl } : {}),
-      ...(extractQuotedIds(trimmed).length > 0
-        ? { quotedReplyIds: extractQuotedIds(trimmed) }
-        : {}),
+      imageUrl: imageDataUrl ?? undefined,
+      quotedReplyIds: quotedReplyIds.length > 0 ? quotedReplyIds : undefined,
+    })
+    setSubmitting(false)
+    if (res.ok) {
+      setBody('')
+      setImageDataUrl(null)
+      onPosted?.()
+    } else {
+      setReadError(res.error)
     }
-    addReply(reply)
-    setBody('')
-    setImageDataUrl(null)
-    onPosted?.()
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      submit()
+      void submit()
     }
     if (e.key === 'Escape') {
       setBody('')
@@ -149,9 +155,10 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary"
+          disabled={uploading}
+          className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:cursor-default disabled:opacity-60"
         >
-          <ImagePlus size={11} /> ADJUNTAR
+          <ImagePlus size={11} /> {uploading ? 'SUBIENDO…' : 'ADJUNTAR'}
         </button>
         <input
           ref={fileInputRef}
@@ -163,7 +170,7 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
         <button
           type="button"
           onClick={submit}
-          disabled={body.trim().length === 0}
+          disabled={body.trim().length === 0 || submitting}
           className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
           style={{
             borderColor: '#F97316',
@@ -171,7 +178,7 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
             backgroundColor: 'rgba(249,115,22,0.08)',
           }}
         >
-          ▶ ENVIAR
+          {submitting ? '◌ ENVIANDO…' : '▶ ENVIAR'}
         </button>
       </div>
     </div>

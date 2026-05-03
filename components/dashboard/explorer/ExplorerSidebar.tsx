@@ -24,7 +24,7 @@ import {
 import { useMemo, useState } from 'react'
 import type { ExplorerSection } from './types'
 import { useSavedItems } from '@/lib/saves'
-import { useSavedComments } from '@/lib/comments'
+import { useSavedComments } from '@/lib/hooks/useSavedComments'
 import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles } from '@/lib/permissions'
 import { useResolvedPartner } from '@/lib/partnerOverrides'
@@ -68,7 +68,7 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
   // Saved-content counts per Guardados slot. Live-updates as the user
   // toggles bookmarks anywhere on the public side.
   const savedItems = useSavedItems()
-  const savedComments = useSavedComments()
+  const { comments: savedComments } = useSavedComments()
   const savedCounts = useMemo(() => {
     const by = (...types: string[]) =>
       savedItems.filter((it) => types.includes(it.type)).length

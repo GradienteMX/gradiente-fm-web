@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ContentItem } from '@/lib/types'
 import { getItemBySlug } from '@/lib/mockData'
 import { useDraftItems } from '@/lib/drafts'
+import { getItemBySlugSync } from '@/lib/itemsCache'
 import { useOverlay } from './useOverlay'
 import { OverlayShell } from './OverlayShell'
 import { EventoOverlay } from './EventoOverlay'
@@ -23,6 +24,12 @@ export function OverlayRouter() {
       if (!slug) return null
       const draft = drafts.find((d) => d.slug === slug)
       if (draft) return draft
+      // Real DB items pushed into the cache by ContentGrid on every page.
+      // Covers both seeded and freshly-published items.
+      const live = getItemBySlugSync(slug)
+      if (live) return live
+      // Last-resort: legacy mock catalog (only matters until mockData is
+      // fully purged).
       return getItemBySlug(slug)
     },
     [drafts],

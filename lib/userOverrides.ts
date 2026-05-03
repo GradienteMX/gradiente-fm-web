@@ -22,6 +22,36 @@ import { getUserById, MOCK_USERS } from './mockUsers'
 
 const STORAGE_KEY = 'gradiente:user-overrides'
 
+// ── Real-user cache (Supabase-backed) ──────────────────────────────────────
+//
+// Bridges the gap between the mock-data world (MOCK_USERS) and the real-auth
+// world (public.users in Supabase). When a client component fetches users
+// from the DB, it calls `setRealUsers(list)` to merge them in here. Anything
+// querying a user id (useResolvedUser, getResolvedUserById) prefers a real
+// user over a mock if both exist, so real signups (like Iker's @iker)
+// resolve correctly throughout the comment column, post headers, etc.
+//
+// The cache is global, monotonically growing, and shared across components
+// — fine at our scale. RLS-enforced reads mean only data the caller is
+// allowed to see ends up here. Will be replaced by Realtime subscriptions
+// in chunk 3 follow-up.
+const realUserCache = new Map<string, User>()
+
+export function setRealUsers(users: Iterable<User>) {
+  let changed = false
+  for (const u of users) {
+    if (realUserCache.get(u.id) !== u) {
+      realUserCache.set(u.id, u)
+      changed = true
+    }
+  }
+  if (changed) notify()
+}
+
+export function getRealUserById(id: string): User | undefined {
+  return realUserCache.get(id)
+}
+
 // What an admin is allowed to edit. Identity fields are intentionally absent.
 //
 // partnerId convention:
@@ -76,7 +106,10 @@ export function getUserOverride(id: string): UserOverride | undefined {
 }
 
 export function getResolvedUserById(id: string): User | undefined {
-  const seed = getUserById(id)
+  // Real users (from Supabase) win over mock seed identities — important for
+  // post-launch when real signups dominate. Mock fallback keeps the visual
+  // prototype's seed comments / threads readable until pre-beta cleanup.
+  const seed = realUserCache.get(id) ?? getUserById(id)
   if (!seed) return undefined
   const ov = readMap()[id]
   if (!ov) return seed

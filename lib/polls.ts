@@ -1,20 +1,23 @@
 'use client'
 
-// ── Frontend-only poll vote store ──────────────────────────────────────────
+// ── Poll vote store ────────────────────────────────────────────────────────
 //
 // Polls themselves are part of the ContentItem (see PollAttachment in
-// lib/types.ts) — this module only tracks per-user *votes*. The poll
-// definition rides along with the parent item through the seed / draft
-// pipeline; only the cast votes are session-scoped.
+// lib/types.ts and the join in lib/data/items.ts) — this module tracks
+// per-user *votes* against the `poll_votes` table.
+//
+// MIGRATION STATE (2026-05-03):
+//   - `castVote` / `clearVote` → API (POST/DELETE /api/polls/[pollId]/vote),
+//     optimistic-local-then-confirm. Mirrors saves / reactions.
+//   - `useUserVote` / `usePollResults` → read from lib/pollVotesCache.ts;
+//     first subscriber per pollId triggers a fetch.
+//   - `getUserVote` / `getPollVotes` → sync reads off the cache. Only
+//     useful AFTER a hook subscription on the same poll has primed it.
 //
 // Anonymous-until-vote: callers that want to render results MUST first
 // check whether the viewer has voted (`useUserVote` returns non-null) and
 // branch on that. The aggregation helper (`usePollResults`) returns the
 // counts unconditionally; the UI handles the reveal gate.
-//
-// When the real backend (see [[Supabase Migration]]) lands, swap castVote /
-// clearVote for Supabase RPCs and replace the listener pattern with
-// Realtime subscriptions on the `poll_votes` table. Hook signatures stay.
 
 import { useEffect, useState } from 'react'
 import type {
@@ -25,87 +28,67 @@ import type {
   PollKind,
   PollVote,
 } from './types'
-
-const STORAGE_KEY = 'gradiente:polls'
-
-interface SessionState {
-  // Per-poll, per-user vote map. One vote per (pollId, userId); revoting
-  // replaces the previous record outright (the poll's `multiChoice` knob
-  // controls whether choiceIds can hold more than one id).
-  votes: Record<string, Record<string, PollVote>>
-}
-
-function emptyState(): SessionState {
-  return { votes: {} }
-}
-
-function readSession(): SessionState {
-  if (typeof window === 'undefined') return emptyState()
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return emptyState()
-    const parsed = JSON.parse(raw)
-    return {
-      votes:
-        parsed?.votes && typeof parsed.votes === 'object' ? parsed.votes : {},
-    }
-  } catch {
-    return emptyState()
-  }
-}
-
-function writeSession(s: SessionState) {
-  if (typeof window === 'undefined') return
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s))
-  } catch {}
-}
-
-const listeners = new Set<() => void>()
-function notify() {
-  listeners.forEach((fn) => fn())
-}
+import {
+  ensurePollVotesFetched,
+  getPollVotesSync,
+  getUserVoteSync,
+  removeLocalVote,
+  setLocalVote,
+  subscribePollVotes,
+} from './pollVotesCache'
 
 // ── Read API ───────────────────────────────────────────────────────────────
 
 export function getUserVote(pollId: string, userId: string): PollVote | null {
-  const s = readSession()
-  return s.votes[pollId]?.[userId] ?? null
+  return getUserVoteSync(pollId, userId)
 }
 
 // All votes for a poll, keyed by userId. Used for aggregation.
 export function getPollVotes(pollId: string): Record<string, PollVote> {
-  return readSession().votes[pollId] ?? {}
+  return getPollVotesSync(pollId)
 }
 
 // ── Write API ──────────────────────────────────────────────────────────────
 
-// Cast (or replace) the user's vote on a poll. `choiceIds` length is 1 for
-// single-choice polls. Caller must validate that the choice ids exist in
-// the resolved choice list — the storage layer doesn't re-check.
-export function castVote(pollId: string, userId: string, choiceIds: string[]) {
+// Cast (or replace) the user's vote on a poll. Optimistic: cache flips
+// immediately, then the API confirms; rollback on failure. `userId` is used
+// for the local cache key — the server uses auth.uid() regardless.
+export async function castVote(
+  pollId: string,
+  userId: string,
+  choiceIds: string[],
+) {
   if (choiceIds.length === 0) return
-  const s = readSession()
-  s.votes = {
-    ...s.votes,
-    [pollId]: {
-      ...(s.votes[pollId] ?? {}),
-      [userId]: { choiceIds, votedAt: new Date().toISOString() },
-    },
+  const previous = getUserVoteSync(pollId, userId)
+  setLocalVote(pollId, userId, {
+    choiceIds,
+    votedAt: new Date().toISOString(),
+  })
+  try {
+    const res = await fetch(`/api/polls/${pollId}/vote`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ choiceIds }),
+    })
+    if (!res.ok) throw new Error('vote api failed')
+  } catch {
+    // Rollback to whatever was there before (might be null = unvoted).
+    if (previous) setLocalVote(pollId, userId, previous)
+    else removeLocalVote(pollId, userId)
   }
-  writeSession(s)
-  notify()
 }
 
-// Drop the user's vote — re-anonymizes them. Useful for an "undo" affordance
-// on the card, not exposed yet.
-export function clearVote(pollId: string, userId: string) {
-  const s = readSession()
-  if (!s.votes[pollId]?.[userId]) return
-  const { [userId]: _drop, ...rest } = s.votes[pollId]
-  s.votes = { ...s.votes, [pollId]: rest }
-  writeSession(s)
-  notify()
+// Drop the user's vote — re-anonymizes them. Optimistic + rollback.
+export async function clearVote(pollId: string, userId: string) {
+  const previous = getUserVoteSync(pollId, userId)
+  if (!previous) return
+  removeLocalVote(pollId, userId)
+  try {
+    const res = await fetch(`/api/polls/${pollId}/vote`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('clear-vote api failed')
+  } catch {
+    setLocalVote(pollId, userId, previous)
+  }
 }
 
 // ── Per-type choice resolution ─────────────────────────────────────────────
@@ -205,23 +188,29 @@ export const POLL_DEFAULT_PROMPT: Record<PollKind, string> = {
 // ── Hooks ──────────────────────────────────────────────────────────────────
 
 // Live user-vote subscription. Returns null when the user hasn't voted on
-// this poll (or when userId is null — logged-out viewer).
+// this poll (or when userId is null — logged-out viewer). Triggers a fetch
+// of the poll's votes on first subscription so anonymous viewers also
+// prime the cache for the parallel usePollResults call.
 export function useUserVote(
   pollId: string | null,
   userId: string | null,
 ): PollVote | null {
-  const [vote, setVote] = useState<PollVote | null>(null)
+  const [vote, setVote] = useState<PollVote | null>(() =>
+    pollId && userId ? getUserVoteSync(pollId, userId) : null,
+  )
   useEffect(() => {
-    if (!pollId || !userId) {
+    if (!pollId) {
       setVote(null)
       return
     }
-    const refresh = () => setVote(getUserVote(pollId, userId))
-    refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
+    void ensurePollVotesFetched(pollId)
+    if (!userId) {
+      setVote(null)
+      return
     }
+    const refresh = () => setVote(getUserVoteSync(pollId, userId))
+    refresh()
+    return subscribePollVotes(refresh)
   }, [pollId, userId])
   return vote
 }
@@ -233,10 +222,14 @@ export function usePollResults(
   pollId: string | null,
   choices: PollChoice[],
 ): PollResults {
-  const [results, setResults] = useState<PollResults>(() => ({
-    totalVotes: 0,
-    perChoice: Object.fromEntries(choices.map((c) => [c.id, 0])),
-  }))
+  const [results, setResults] = useState<PollResults>(() =>
+    pollId
+      ? aggregateVotes(getPollVotesSync(pollId), choices)
+      : {
+          totalVotes: 0,
+          perChoice: Object.fromEntries(choices.map((c) => [c.id, 0])),
+        },
+  )
   useEffect(() => {
     if (!pollId) {
       setResults({
@@ -245,12 +238,11 @@ export function usePollResults(
       })
       return
     }
-    const refresh = () => setResults(aggregateVotes(getPollVotes(pollId), choices))
+    void ensurePollVotesFetched(pollId)
+    const refresh = () =>
+      setResults(aggregateVotes(getPollVotesSync(pollId), choices))
     refresh()
-    listeners.add(refresh)
-    return () => {
-      listeners.delete(refresh)
-    }
+    return subscribePollVotes(refresh)
     // `choices` shape is supplied externally; rebuild when its length changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollId, choices.length])

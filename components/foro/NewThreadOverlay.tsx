@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ImagePlus, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
-import { addThread, newThreadId } from '@/lib/foro'
+import { createThread } from '@/lib/foro'
+import { compressAndUploadImage } from '@/lib/imageUpload'
 import { GENRES, vibeForGenre } from '@/lib/genres'
 import { vibeToColor } from '@/lib/utils'
 import {
   FORO_THREAD_GENRES_MAX,
   FORO_THREAD_GENRES_MIN,
-  type ForoThread,
 } from '@/lib/types'
 
 // ── NewThreadOverlay ───────────────────────────────────────────────────────
@@ -29,7 +29,12 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
   const { currentUser, isAuthed } = useAuth()
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  // The form holds the uploaded image's CDN URL (post-storage migration).
+  // Field name kept as `imageDataUrl` to keep the diff small — value is now
+  // a public Storage URL, not a base64 blob.
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [genres, setGenres] = useState<string[]>([])
   const [genreFilter, setGenreFilter] = useState('')
   const [readError, setReadError] = useState<string | null>(null)
@@ -77,24 +82,29 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const readFile = (file: File) => {
+  const readFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       setReadError('Solo imágenes (jpg, png, webp, gif).')
       return
     }
-    setReadError(null)
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result
-      if (typeof result === 'string') setImageDataUrl(result)
+    if (!currentUser) {
+      setReadError('Inicia sesión para subir imágenes.')
+      return
     }
-    reader.onerror = () => setReadError('No se pudo leer el archivo.')
-    reader.readAsDataURL(file)
+    setReadError(null)
+    setUploading(true)
+    const res = await compressAndUploadImage(file, currentUser.id)
+    setUploading(false)
+    if (res.ok) {
+      setImageDataUrl(res.url)
+    } else {
+      setReadError(res.error)
+    }
   }
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) readFile(file)
+    if (file) void readFile(file)
     e.target.value = ''
   }
 
@@ -102,10 +112,10 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     e.preventDefault()
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
-    if (file) readFile(file)
+    if (file) void readFile(file)
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!currentUser) {
       setSubmitError('Inicia sesión para publicar.')
       return
@@ -124,19 +134,19 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
       return
     }
     setSubmitError(null)
-    const now = new Date().toISOString()
-    const thread: ForoThread = {
-      id: newThreadId(),
-      authorId: currentUser.id,
+    setSubmitting(true)
+    const res = await createThread({
       subject: subj,
       body: bd,
       imageUrl: imageDataUrl!,
       genres,
-      createdAt: now,
-      bumpedAt: now,
+    })
+    setSubmitting(false)
+    if (res.ok) {
+      onPosted(res.id)
+    } else {
+      setSubmitError(res.error)
     }
-    addThread(thread)
-    onPosted(thread.id)
   }
 
   if (!isAuthed) {
@@ -338,14 +348,15 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 border border-dashed py-6 font-mono text-[11px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-primary"
+                  disabled={uploading}
+                  className="flex items-center justify-center gap-2 border border-dashed py-6 font-mono text-[11px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-primary disabled:cursor-default disabled:opacity-60"
                   style={{
                     borderColor: dragOver ? '#F97316' : '#242424',
                     backgroundColor: dragOver ? 'rgba(249,115,22,0.05)' : 'transparent',
                   }}
                 >
                   <ImagePlus size={14} />
-                  <span>ELEGIR ARCHIVO · O ARRASTRA UNA IMAGEN AQUÍ</span>
+                  <span>{uploading ? '◌ SUBIENDO…' : 'ELEGIR ARCHIVO · O ARRASTRA UNA IMAGEN AQUÍ'}</span>
                 </button>
               )}
               <input
@@ -380,7 +391,7 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
           <button
             type="button"
             onClick={submit}
-            disabled={!canSubmit}
+            disabled={!canSubmit || submitting}
             className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             style={{
               borderColor: '#F97316',
@@ -388,7 +399,7 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
               backgroundColor: 'rgba(249,115,22,0.08)',
             }}
           >
-            ▶ PUBLICAR HILO
+            {submitting ? '◌ PUBLICANDO…' : '▶ PUBLICAR HILO'}
           </button>
         </div>
       </div>
