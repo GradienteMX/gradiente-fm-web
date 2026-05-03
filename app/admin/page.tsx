@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AdminInviteCodes } from '@/components/admin/AdminInviteCodes'
 import { AdminUsersEditor } from '@/components/admin/AdminUsersEditor'
+import { AdminPartnersComposer } from '@/components/admin/AdminPartnersComposer'
 import { AdminTabNav, type AdminTab } from '@/components/admin/AdminTabNav'
 import type { Database } from '@/lib/supabase/database.types'
 
@@ -47,7 +48,11 @@ export default async function AdminPage({
   if (!profile || profile.role !== 'admin') redirect('/')
 
   const tab: AdminTab =
-    searchParams.tab === 'users' ? 'users' : 'invites'
+    searchParams.tab === 'users'
+      ? 'users'
+      : searchParams.tab === 'partners'
+      ? 'partners'
+      : 'invites'
 
   // Partners are needed by BOTH tabs (invite-code partner dropdown +
   // user editor partner dropdown), so always fetch them. Cheap query —
@@ -73,6 +78,9 @@ export default async function AdminPage({
       .order('created_at', { ascending: false })
       .limit(50)
     codes = (data as InviteCodeRow[] | null) ?? []
+  } else if (tab === 'partners') {
+    // Partners tab fetches the existing-partners list from `partners`
+    // (already prefetched above for the dropdowns) — no extra query.
   } else {
     // Pre-fetch ELEVATED users only (anyone with non-default perms). At
     // scale this set stays small (~50 even at 10k users) — admins audit
@@ -124,12 +132,13 @@ export default async function AdminPage({
 
       <AdminTabNav />
 
-      {tab === 'invites' ? (
+      {tab === 'invites' && (
         <AdminInviteCodes
           initialCodes={codes}
           partners={(partners as PartnerOption[] | null) ?? []}
         />
-      ) : (
+      )}
+      {tab === 'users' && (
         <AdminUsersEditor
           elevatedUsers={elevatedUsers}
           partners={(partners as PartnerOption[] | null) ?? []}
@@ -137,6 +146,11 @@ export default async function AdminPage({
           totalUsers={totalUsers}
           roleCounts={roleCounts}
           modCount={modCount}
+        />
+      )}
+      {tab === 'partners' && (
+        <AdminPartnersComposer
+          existing={(partners as PartnerOption[] | null) ?? []}
         />
       )}
     </div>
