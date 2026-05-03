@@ -1,5 +1,5 @@
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor } from '@/lib/utils'
+import { vibeToColor, vibeMid, vibeBandGradient } from '@/lib/utils'
 import { getGenreNames, getTagNames } from '@/lib/genres'
 import { fmtDateShort } from '@/lib/utils'
 import { Clock } from 'lucide-react'
@@ -21,16 +21,17 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ item }: ArticleCardProps) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
+  const vibeBand = vibeBandGradient(item)
   const genres = getGenreNames(item.genres).slice(0, 3)
   const tags = getTagNames(item.tags).slice(0, 3)
 
   return (
     <article className="group relative border-b border-border py-4 transition-colors hover:bg-elevated">
-      {/* Left accent */}
+      {/* Left accent — vertical band; gradient when range, solid when point. */}
       <div
         className="absolute left-0 top-0 w-0.5"
-        style={{ backgroundColor: vibeColor, height: '100%' }}
+        style={{ background: `linear-gradient(to bottom, ${vibeBand.startsWith('linear-gradient') ? vibeBand.replace('90deg', '180deg') : vibeBand} 0%, ${vibeColor} 100%)`, height: '100%' }}
       />
 
       <div className="pl-5 pr-2">

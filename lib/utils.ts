@@ -47,8 +47,42 @@ export function vibeToPercent(vibe: number): number {
   return (vibe / 10) * 100
 }
 
-export function isInVibeRange(vibe: number, range: VibeRange): boolean {
-  return vibe >= range[0] && vibe <= range[1]
+// Two ranges overlap when neither sits entirely above or entirely below the
+// other. Used by the vibe filter against an item's [vibeMin, vibeMax] band.
+export function rangesOverlap(
+  a: { vibeMin: number; vibeMax: number },
+  range: VibeRange
+): boolean {
+  return a.vibeMax >= range[0] && a.vibeMin <= range[1]
+}
+
+// Single representative number for the few sites that can't render a band
+// (sort proxies, narrow chrome). Most displays should use the gradient.
+export function vibeMid(item: { vibeMin: number; vibeMax: number }): number {
+  return Math.round((item.vibeMin + item.vibeMax) / 2)
+}
+
+// Display label for a vibe range. Collapses to the point form when min===max
+// so the common case stays compact. Used by card chips and overlay headers.
+export function vibeRangeLabel(item: { vibeMin: number; vibeMax: number }): string {
+  if (item.vibeMin === item.vibeMax) {
+    return `${item.vibeMin} · ${vibeToLabel(item.vibeMin)}`
+  }
+  return `${item.vibeMin}-${item.vibeMax} · ${vibeToLabel(item.vibeMin)} → ${vibeToLabel(item.vibeMax)}`
+}
+
+// CSS linear-gradient string spanning the active band. Discrete integer stops
+// keep each bucket's true color visible in the band rather than smoothly
+// interpolating across them. Use as the `background` of a strip / chip.
+export function vibeBandGradient(item: { vibeMin: number; vibeMax: number }): string {
+  if (item.vibeMin === item.vibeMax) return vibeToColor(item.vibeMin)
+  const span = Math.max(1, item.vibeMax - item.vibeMin)
+  const stops: string[] = []
+  for (let i = item.vibeMin; i <= item.vibeMax; i++) {
+    const pct = ((i - item.vibeMin) / span) * 100
+    stops.push(`${vibeToColor(i)} ${pct.toFixed(2)}%`)
+  }
+  return `linear-gradient(90deg, ${stops.join(', ')})`
 }
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -88,7 +122,7 @@ export function filterForCategory(items: ContentItem[], type: ContentItem['type'
 }
 
 export function filterByVibe(items: ContentItem[], range: VibeRange): ContentItem[] {
-  return items.filter((i) => isInVibeRange(i.vibe, range))
+  return items.filter((i) => rangesOverlap(i, range))
 }
 
 export function filterByDate(items: ContentItem[], date: Date): ContentItem[] {

@@ -30,7 +30,8 @@ interface CreateBody {
   partner_kind: PartnerKind
   partner_url?: string
   image_url: string
-  vibe: number
+  vibe_min: number
+  vibe_max: number
   marketplace_enabled?: boolean
   marketplace_description?: string
   marketplace_location?: string
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
   const slug = body.slug?.trim()
   const partnerKind = body.partner_kind
   const imageUrl = body.image_url?.trim()
-  const vibe = body.vibe
+  const vibeMin = body.vibe_min
+  const vibeMax = body.vibe_max
 
   if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 })
   if (!slug || !/^[a-z0-9-]{2,80}$/.test(slug)) {
@@ -76,8 +78,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `partner_kind invalid (${VALID_KINDS.join('|')})` }, { status: 400 })
   }
   if (!imageUrl) return NextResponse.json({ error: 'image_url required' }, { status: 400 })
-  if (typeof vibe !== 'number' || !Number.isFinite(vibe) || vibe < 0 || vibe > 10) {
-    return NextResponse.json({ error: 'vibe must be 0-10' }, { status: 400 })
+  const vibeValid = (v: unknown): v is number =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 10
+  if (!vibeValid(vibeMin) || !vibeValid(vibeMax)) {
+    return NextResponse.json({ error: 'vibe_min and vibe_max must be 0-10' }, { status: 400 })
+  }
+  if (vibeMin > vibeMax) {
+    return NextResponse.json({ error: 'vibe_min must be <= vibe_max' }, { status: 400 })
   }
 
   const id = `pa-${slug}-${Math.random().toString(36).slice(2, 6)}`
@@ -90,7 +97,8 @@ export async function POST(request: NextRequest) {
       slug,
       type: 'partner',
       title,
-      vibe: Math.round(vibe),
+      vibe_min: Math.round(vibeMin),
+      vibe_max: Math.round(vibeMax),
       genres: [],
       tags: [],
       image_url: imageUrl,

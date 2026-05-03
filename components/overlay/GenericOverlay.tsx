@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { fmtDateFull, vibeToColor, vibeToLabel } from '@/lib/utils'
+import { fmtDateFull, vibeToColor, vibeMid, vibeRangeLabel } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 
@@ -12,7 +12,7 @@ interface Props {
 // Placeholder for types without a dedicated overlay yet (mix, review, editorial, opinion, noticia).
 // Each of these will get its own polished component — this is the fallback during MVP build-out.
 export function GenericOverlay({ item }: Props) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -82,7 +82,7 @@ export function GenericOverlay({ item }: Props) {
             <span className="sys-label">VIBE</span>
             <div className="h-2 w-8" style={{ backgroundColor: vibeColor }} aria-hidden />
             <span style={{ color: vibeColor }}>
-              {item.vibe} · {vibeToLabel(item.vibe)}
+              {vibeRangeLabel(item)}
             </span>
           </div>
         </dl>

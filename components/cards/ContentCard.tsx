@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
+import { vibeToColor, vibeMid, vibeBandGradient, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { Play, Clock, MapPin, Ticket, Check } from 'lucide-react'
 import Image from 'next/image'
@@ -41,7 +41,10 @@ interface ContentCardProps {
 
 // ── Shared image layer ────────────────────────────────────────────────────────
 function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
+  // For ranges, the top strip becomes a gradient band so the card surfaces
+  // the breadth of the item at a glance. Single-point items stay solid.
+  const vibeBand = vibeBandGradient(item)
   const isPending = item._pendingConfirm === true
   const isDraftOnly = item._draftState === 'draft' && !isPending
 
@@ -63,10 +66,11 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
       {/* Gradient: stronger at bottom where text lives */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
 
-      {/* Vibe top-right square indicator */}
+      {/* Vibe band — top strip. Solid color for point items, gradient for
+          ranges. Reads as the item's vibe signature at a glance. */}
       <div
         className="absolute right-0 top-0 h-1 w-full"
-        style={{ backgroundColor: vibeColor, opacity: 0.8 }}
+        style={{ background: vibeBand, opacity: 0.85 }}
       />
 
       {/* Saved indicator — top-right corner, only visible when bookmarked */}
@@ -135,7 +139,7 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
 
 // ── SM card — 1×1 ────────────────────────────────────────────────────────────
 function SmCard({ item }: { item: ContentItem }) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 2)
 
   return (
@@ -190,7 +194,7 @@ function SmCard({ item }: { item: ContentItem }) {
 
 // ── MD card — 2×1 (wide) or 1×2 (tall) ──────────────────────────────────────
 function MdCard({ item }: { item: ContentItem }) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 3)
   const tags = getTagNames(item.tags).slice(0, 3)
   const time = item.date ? fmtTime(item.date) : ''
@@ -274,7 +278,7 @@ function MdCard({ item }: { item: ContentItem }) {
 
 // ── LG card — 2×2 (big featured) ─────────────────────────────────────────────
 function LgCard({ item }: { item: ContentItem }) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 4)
   const tags = getTagNames(item.tags).slice(0, 4)
   const time = item.date ? fmtTime(item.date) : ''

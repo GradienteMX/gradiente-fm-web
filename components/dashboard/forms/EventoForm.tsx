@@ -30,7 +30,7 @@ function emptyDraft(): ContentItem {
     title: '',
     subtitle: '',
     excerpt: '',
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: [],
     tags: [],
     imageUrl: '',
@@ -194,7 +194,7 @@ export function EventoForm() {
         </Section>
 
         <Section label="06" title="VIBE + GÉNEROS">
-          <VibeField value={draft.vibe} onChange={(v) => patch({ vibe: v })} />
+          <VibeField valueMin={draft.vibeMin} valueMax={draft.vibeMax} onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })} />
           <GenreMultiSelect
             value={draft.genres}
             onChange={(genres) => patch({ genres })}

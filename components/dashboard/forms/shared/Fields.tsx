@@ -180,51 +180,139 @@ export function Toggle({
   )
 }
 
+// Two-thumb vibe range picker. Items express a SPAN (vibeMin <= vibeMax) so
+// authors can capture wide-band entities (a label, a venue) AND single-point
+// ones (a peak-time event at 8-8). See `project_vibe_range_arc` memory.
+//
+// Three input affordances:
+//   - Drag either thumb (mouse + touch + keyboard arrows when focused)
+//   - Click a bar in the spectrum strip to collapse the range to that point
+//   - Shift+click a bar to extend the nearer edge to it (quick range expand)
 export function VibeField({
-  value,
+  valueMin,
+  valueMax,
   onChange,
 }: {
-  value: number
-  onChange: (v: number) => void
+  valueMin: number
+  valueMax: number
+  onChange: (min: number, max: number) => void
 }) {
-  const color = vibeToColor(value)
+  const isPoint = valueMin === valueMax
+  const minColor = vibeToColor(valueMin)
+  const maxColor = vibeToColor(valueMax)
+  const minLabel = vibeToLabel(valueMin)
+  const maxLabel = vibeToLabel(valueMax)
+
+  // Background gradient between the two thumbs — fills the active band.
+  // 11 stops at every integer keep the discrete bucket colors true; outside
+  // [min, max] is muted so the active band reads as the highlight.
+  const trackBg = (() => {
+    const stops = Array.from({ length: 11 }, (_, i) => {
+      const inBand = i >= valueMin && i <= valueMax
+      const pct = (i / 10) * 100
+      return `${inBand ? vibeToColor(i) : '#242424'} ${pct}%`
+    })
+    return `linear-gradient(to right, ${stops.join(', ')})`
+  })()
+
+  const handleMinDrag = (v: number) => {
+    const next = Math.min(v, valueMax)
+    onChange(next, valueMax)
+  }
+  const handleMaxDrag = (v: number) => {
+    const next = Math.max(v, valueMin)
+    onChange(valueMin, next)
+  }
+
+  const handleBarClick = (i: number, shift: boolean) => {
+    if (!shift) {
+      onChange(i, i)
+      return
+    }
+    // Shift+click: extend nearer edge.
+    const distToMin = Math.abs(i - valueMin)
+    const distToMax = Math.abs(i - valueMax)
+    if (distToMin <= distToMax) onChange(Math.min(i, valueMax), valueMax)
+    else onChange(valueMin, Math.max(i, valueMin))
+  }
+
   return (
-    <label className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span className="sys-label">VIBE</span>
-        <span
-          className="font-mono text-[11px] tracking-widest"
-          style={{ color }}
-        >
-          {value} · {vibeToLabel(value)}
-        </span>
+        {isPoint ? (
+          <span
+            className="font-mono text-[11px] tracking-widest"
+            style={{ color: minColor }}
+          >
+            {valueMin} · {minLabel}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-widest">
+            <span style={{ color: minColor }}>
+              {valueMin} {minLabel}
+            </span>
+            <span className="text-muted">→</span>
+            <span style={{ color: maxColor }}>
+              {valueMax} {maxLabel}
+            </span>
+          </span>
+        )}
       </div>
-      <input
-        type="range"
-        min={0}
-        max={10}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full"
-        style={{ accentColor: color }}
-      />
+
+      {/* Two-thumb slider. The shared track is rendered behind the inputs;
+          both ranges are absolutely overlaid so each thumb stays grabbable.
+          Pointer-events on the track itself are off; only the thumbs catch
+          input. Browser handles keyboard nav per range. */}
+      <div className="relative h-6">
+        <div
+          className="pointer-events-none absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2"
+          style={{ background: trackBg }}
+        />
+        <input
+          type="range"
+          min={0}
+          max={10}
+          step={1}
+          value={valueMin}
+          onChange={(e) => handleMinDrag(Number(e.target.value))}
+          aria-label="vibe mínimo"
+          className="vibe-range-thumb absolute inset-0 h-full w-full appearance-none bg-transparent"
+          style={{ accentColor: minColor }}
+        />
+        <input
+          type="range"
+          min={0}
+          max={10}
+          step={1}
+          value={valueMax}
+          onChange={(e) => handleMaxDrag(Number(e.target.value))}
+          aria-label="vibe máximo"
+          className="vibe-range-thumb absolute inset-0 h-full w-full appearance-none bg-transparent"
+          style={{ accentColor: maxColor }}
+        />
+      </div>
+
       <div className="flex items-end gap-[3px]">
-        {Array.from({ length: 11 }).map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onChange(i)}
-            className="flex-1 transition-all hover:opacity-80"
-            style={{
-              height: `${6 + i * 1.5}px`,
-              backgroundColor: i <= value ? vibeToColor(i) : '#242424',
-            }}
-            aria-label={`vibe ${i}`}
-          />
-        ))}
+        {Array.from({ length: 11 }).map((_, i) => {
+          const inBand = i >= valueMin && i <= valueMax
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={(e) => handleBarClick(i, e.shiftKey)}
+              className="flex-1 transition-all hover:opacity-80"
+              style={{
+                height: `${6 + i * 1.5}px`,
+                backgroundColor: inBand ? vibeToColor(i) : '#242424',
+              }}
+              aria-label={`vibe ${i}`}
+              title="click: punto · shift+click: extender"
+            />
+          )
+        })}
       </div>
-    </label>
+    </div>
   )
 }
 

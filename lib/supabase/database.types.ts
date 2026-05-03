@@ -491,7 +491,8 @@ export type Database = {
           updated_at: string
           venue: string | null
           venue_city: string | null
-          vibe: number
+          vibe_min: number
+          vibe_max: number
         }
         Insert: {
           article_body?: Json
@@ -550,7 +551,8 @@ export type Database = {
           updated_at?: string
           venue?: string | null
           venue_city?: string | null
-          vibe: number
+          vibe_min: number
+          vibe_max: number
         }
         Update: {
           article_body?: Json
@@ -609,7 +611,8 @@ export type Database = {
           updated_at?: string
           venue?: string | null
           venue_city?: string | null
-          vibe?: number
+          vibe_min?: number
+          vibe_max?: number
         }
         Relationships: [
           {

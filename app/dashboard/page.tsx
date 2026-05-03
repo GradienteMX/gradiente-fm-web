@@ -7,7 +7,7 @@ import { canAssignRoles, canCreateContent } from '@/lib/permissions'
 import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
 import { useMyPublishedItems } from '@/lib/hooks/useMyPublishedItems'
 import { useSavedItems } from '@/lib/hooks/useSavedItems'
-import { categoryColor } from '@/lib/utils'
+import { categoryColor, vibeRangeLabel } from '@/lib/utils'
 
 import { ExplorerShell } from '@/components/dashboard/explorer/ExplorerShell'
 import { ExplorerWindow } from '@/components/dashboard/explorer/ExplorerWindow'
@@ -578,7 +578,7 @@ function draftSelection(item: DraftItem): SelectionMeta {
         key: 'MODIFICADO',
         value: fmtDateTime(item._updatedAt),
       },
-      { key: 'VIBE', value: String(item.vibe ?? 0) },
+      { key: 'VIBE', value: vibeRangeLabel(item) },
     ],
   }
 }

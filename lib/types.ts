@@ -137,7 +137,11 @@ export interface ContentItem {
   title: string
   subtitle?: string
   excerpt?: string
-  vibe: VibeScore
+  // Vibe range — items express a SPAN, not a point. Single-point items set
+  // vibeMin === vibeMax. DB constraint enforces vibeMin <= vibeMax.
+  // See `project_vibe_range_arc` memory + 0007_items_vibe_range migration.
+  vibeMin: VibeScore
+  vibeMax: VibeScore
   genres: string[]        // genre ids
   tags: string[]          // tag ids
   imageUrl?: string

@@ -9,7 +9,8 @@ import {
   fmtMonthShort,
   fmtTime,
   vibeToColor,
-  vibeToLabel,
+  vibeMid,
+  vibeRangeLabel,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export function EventoOverlay({ item }: Props) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -153,7 +154,7 @@ export function EventoOverlay({ item }: Props) {
               className="font-mono text-xs tracking-widest"
               style={{ color: vibeColor }}
             >
-              {item.vibe} · {vibeToLabel(item.vibe)}
+              {vibeRangeLabel(item)}
             </span>
           </dd>
         </dl>

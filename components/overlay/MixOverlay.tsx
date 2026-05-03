@@ -6,7 +6,8 @@ import { MOCK_ITEMS } from '@/lib/mockData'
 import {
   fmtDateFull,
   vibeToColor,
-  vibeToLabel,
+  vibeMid,
+  vibeRangeLabel,
   isEditableTarget,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
@@ -51,7 +52,7 @@ const STATUS_LABEL: Record<NonNullable<ContentItem['mixStatus']>, string> = {
 }
 
 export function MixOverlay({ item }: Props) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -188,22 +189,25 @@ export function MixOverlay({ item }: Props) {
           <div className="col-span-full flex items-center gap-3">
             <span className="sys-label">VIBE</span>
             <div className="flex items-end gap-[3px]">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2"
-                  style={{
-                    height: `${6 + i * 1.3}px`,
-                    backgroundColor: i < item.vibe ? vibeColor : '#242424',
-                  }}
-                />
-              ))}
+              {Array.from({ length: 11 }).map((_, i) => {
+                const inBand = i >= item.vibeMin && i <= item.vibeMax
+                return (
+                  <div
+                    key={i}
+                    className="w-2"
+                    style={{
+                      height: `${6 + i * 1.3}px`,
+                      backgroundColor: inBand ? vibeToColor(i) : '#242424',
+                    }}
+                  />
+                )
+              })}
             </div>
             <span
               className="font-mono text-xs tracking-widest"
               style={{ color: vibeColor }}
             >
-              {item.vibe} · {vibeToLabel(item.vibe)}
+              {vibeRangeLabel(item)}
             </span>
           </div>
         </dl>

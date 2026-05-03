@@ -17,7 +17,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Espacio al aire libre CDMX · Dub · Techno · Jungle",
     excerpt:
       "La décima edición del festival más importante de música de club en México regresa a CDMX con un espacio al aire libre sin precedentes. Tres días de dub techno, ambient, jungle y drum and bass con los mejores artistas del mundo.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: [
       "techno-raw",
       "downtempo",
@@ -66,7 +66,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Modular · Dub Techno · Composición Hipnótica",
     excerpt:
       "El productor italiano y maestro del dub techno hipnótico abre una sesión cerrada de preguntas y conversación sobre su proceso creativo, su relación con el silencio y la repetición.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["techno-raw", "ambient-techno", "idm", "downtempo"],
     tags: ["workshop", "modular"],
     imageUrl: "/flyers/rf-002.jpg",
@@ -89,7 +89,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "EBM · Dark Electro · Hard Techno · Roma Norte",
     excerpt:
       "Una de las noches más oscuras del Japan: cuatro horas de EBM clásico, dark electro y hard techno en el basement de Monterrey 56. Sin concesiones.",
-    vibe: 10,
+    vibeMin: 10, vibeMax: 10,
     genres: ["industrial", "dark-techno", "hard-techno", "wave"],
     tags: ["club-night", "vinyl-only", "anl"],
     imageUrl: "/flyers/rf-003.jpg",
@@ -113,7 +113,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Live A/V · Obra nueva · Foro Indie Rocks",
     excerpt:
       "El productor oaxaqueño presenta su nuevo proyecto audiovisual en vivo: síntesis modular, procesamiento en tiempo real y el Popocatépetl como eje narrativo.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["techno-raw", "electronica", "noise", "ambient-techno"],
     tags: ["live", "anl"],
     imageUrl: "/flyers/rf-004.jpg",
@@ -137,7 +137,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "N.A.A.F.I. · Multiforo Alicia",
     excerpt:
       "La fiesta mensual de N.A.A.F.I. toma Multiforo Alicia. Una noche segura y de cero tolerancia a la violencia.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["ballroom", "breaks", "jersey-club", "footwork"],
     tags: ["lgbtq", "club-night", "feminist"],
     imageUrl: "/flyers/rf-005.jpg",
@@ -161,7 +161,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Techno · Breaks · Rave · All Night",
     excerpt:
       "Los Rat Pack Crew toman el control del Japan para una noche de techno crudo y breaks que no para hasta que sale el sol sobre Roma Norte.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["techno-raw", "breaks", "industrial", "electro"],
     tags: ["rave", "anl", "club-night"],
     imageUrl: "/flyers/rf-006.jpg",
@@ -184,7 +184,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Viernes Oscuro @ El Bajo",
     excerpt:
       "El neoyorquino del reggaeton electrónico y la reina del hard techno se encuentran en El Bajo. Una sesión que nadie esperaba.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["deconstructed", "hard-techno", "techno-raw"],
     tags: ["b2b", "club-night"],
     imageUrl: "/flyers/rf-007.jpg",
@@ -208,7 +208,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Parque Bicentenario · Ambient · Downtempo",
     excerpt:
       "El festival de música electrónica al aire libre regresa con su edición primaveral. Día 1: ambient, downtempo y techno hipnótico.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["ambient", "downtempo", "techno-raw", "organic-house"],
     tags: ["festival", "open-air", "day-party"],
     imageUrl: "/flyers/rf-008.jpg",
@@ -231,7 +231,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Parque Bicentenario · Peak Techno · Hard",
     excerpt:
       "Día 2 del Fauna: el piso de baile se intensifica con peak time techno, hard techno y un cierre b2b sorpresa.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["peak-techno", "hard-techno", "tech-house"],
     tags: ["festival", "open-air", "b2b"],
     imageUrl: "/flyers/rf-009.jpg",
@@ -255,7 +255,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Cøsmetic en residencia · Mayo 2026",
     excerpt:
       "Primera fecha de la residencia mensual de Cøsmetic en el Japan. Tres horas de hard techno de CDMX seguidas de invitados sorpresa.",
-    vibe: 10,
+    vibeMin: 10, vibeMax: 10,
     genres: ["hard-techno", "dark-techno", "industrial"],
     tags: ["residency", "club-night", "anl"],
     imageUrl: "/flyers/rf-010.jpg",
@@ -278,7 +278,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Treinta y Tres — All Night Long",
     excerpt:
       "El colectivo más influyente del underground global presenta a su roster completo. De las 10pm al amanecer.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["deconstructed", "ballroom", "footwork", "breaks"],
     tags: ["showcase", "label-night", "anl"],
     imageUrl: "/flyers/rf-011.jpg",
@@ -302,7 +302,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El Bajo Mundo GDL · Deep House · Soul · Jazz",
     excerpt:
       "Una noche de sólo acetato. Deep house, broken beat, nu-jazz y soul, tocado de manera analógica de inicio a fin.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["deep-house", "jazz", "nu-disco", "soul"],
     tags: ["club-night", "vinyl-only"],
     imageUrl: "/flyers/rf-012.jpg",
@@ -325,7 +325,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Charla · Centro Cultural España",
     excerpt:
       "Mesa redonda sobre la participación de mujeres y personas no binarias en la escena. Con Cøsmetic, re:ni (vía videollamada) y Daniela Ríos.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["electronica"],
     tags: ["charla", "lgbtq", "feminist", "free", "community"],
     imageUrl: "/flyers/rf-013.jpg",
@@ -351,7 +351,7 @@ const RAW_ITEMS: ContentItem[] = [
       "Lo-fi house y disco house para arrancar la semana sin prisas. Actitud despreocupada, vibra relajada y una melancolía elegante que la vuelve esencial para escuchar un lunes.",
     bodyPreview:
       "Es un mix para esos lunes en que la ciudad despierta despacio y lo único que pide el cuerpo es prender la cafetera y dejar que el día tome forma solo. itsgettingtiresometoo arma una sesión que no busca encender el cuarto — busca acompañarte mientras te encuentras contigo mismo.\nLa selección oscila entre lo-fi house de bordes redondeados y disco house de groove paciente, con esa melancolía que no es tristeza sino aceptación: las cosas son lentas, y está bien. Cortes que invitan a moverse en cámara lenta, mirar por la ventana, tomarse el tiempo.\nIdeal para audífonos a las 9am, sobremesas eternas, o esa hora muerta de la tarde donde todo lo que pediste por internet aún no llega.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["lo-fi", "deep-house", "nu-disco", "downtempo"],
     tags: ["lo-fi-house", "disco-house", "melancolia", "2026"],
     imageUrl: "/flyers/rf-077.jpg",
@@ -392,7 +392,7 @@ const RAW_ITEMS: ContentItem[] = [
       "Una sesión en vivo que explora las fronteras del hard techno, industrial, EBM y texturas oscuras. Grabada en CDMX, este mix es una cápsula sonora de atmósferas densas, percusión implacable y energía continua.",
     bodyPreview:
       "Espectro Mix 001 es una sesión continua grabada en vivo en CDMX, donde convergen el hard techno, el industrial y el EBM en un viaje hipnótico de tensión y liberación. Cada capa fue seleccionada para construir una narrativa sonora oscura, mecánica y profundamente inmersiva.\nEl mix fluye entre ritmos implacables y atmósferas densas, con transiciones que priorizan la textura sobre el quiebre. La curva de energía progresa de lo profundo a lo abrasivo, manteniendo un pulso cerebral y físico que no da respiro.\nIdeal para escucharse en la oscuridad, en movimiento o en esos momentos donde necesitas enfoque absoluto. Dale play, sube el volumen y deja que el espectro hable por sí solo.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["techno-raw", "noise", "industrial", "dark-techno"],
     tags: [
       "hard-techno",
@@ -458,7 +458,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Rat Pack Crew",
     excerpt:
       "70 minutos de breaks duros, electro oscuro y referencias directas al rave de los 90. Crudo y sin filtro.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["breaks", "electro", "industrial", "techno-raw"],
     tags: ["radio", "live", "90s", "rave"],
     imageUrl: "/flyers/rf-015.jpg",
@@ -500,7 +500,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Donato Dozzy — Previo FASCiNOMA",
     excerpt:
       "El maestro italiano del dub techno hipnótico entrega un mix exclusivo para Espectro FM como anticipo de su presentación en FASCiNOMA 2026.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["techno-raw", "ambient-techno", "downtempo", "minimal"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-016.jpg",
@@ -520,7 +520,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Archivo oficial · @japan_cdmx",
     excerpt:
       "Selección de las mejores sesiones grabadas en vivo en Club Japan durante 2025: hard techno, EBM, dark electro y techno hipnótico. El archivo definitivo del venue.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["hard-techno", "dark-techno", "industrial", "ebm"],
     tags: ["live", "radio"],
     imageUrl: "/flyers/rf-017.jpg",
@@ -540,7 +540,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Archivo · Primera edición del festival",
     excerpt:
       "Recuperamos el set en vivo de Surgeon en la primera edición de FASCiNOMA en Puebla, 2016. El momento en que el festival definió su identidad.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["techno-peak", "dark-techno", "industrial"],
     tags: ["live"],
     imageUrl: "/flyers/rf-018.jpg",
@@ -560,7 +560,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Aquiles Navarro",
     excerpt:
       "Tercer volumen: vientos, síntesis granular y grabaciones de campo del Istmo de Tehuantepec.",
-    vibe: 1,
+    vibeMin: 1, vibeMax: 1,
     genres: ["ambient", "organic-house", "lo-fi", "downtempo"],
     tags: [],
     imageUrl: "/flyers/rf-019.jpg",
@@ -580,7 +580,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Drum and Bass · UK Garage · UKG",
     excerpt:
       "La DJ londinense entrega una hora de drum and bass y UK garage como anticipo de su debut en México en FASCiNOMA 2026.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["drum-and-bass", "ukg", "breaks", "jungle"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-020.jpg",
@@ -602,7 +602,7 @@ const RAW_ITEMS: ContentItem[] = [
       "FASCiNOMA 2026 confirma su regreso a CDMX con espacio al aire libre inédito",
     excerpt:
       "El festival más importante de música de club en México anuncia lineup completo para su décima edición: Surgeon, Donato Dozzy, re:ni, Debit, Intrusion/Echospace, Alpha & Omega y más.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["techno-raw", "drum-and-bass", "ambient", "dubstep"],
     tags: ["festival"],
     imageUrl: "/flyers/rf-021.jpg",
@@ -635,7 +635,7 @@ const RAW_ITEMS: ContentItem[] = [
       "Club Japan cumple 10 años: el sótano de Roma Norte que cambió la escena",
     excerpt:
       "El venue underground en Monterrey 56 cumple una década de noches de EBM, hard techno e industrial. Un repaso de su historia y lo que viene para el aniversario.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["techno-raw", "industrial", "dark-techno", "hard-techno"],
     tags: ["community"],
     imageUrl: "/flyers/rf-022.jpg",
@@ -653,7 +653,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "N.A.A.F.I. anuncia showcase en Berghain para junio",
     excerpt:
       "El colectivo mexicano llevará a tres de sus artistas al mítico club berlinés en lo que será su presentación más importante en Europa hasta la fecha.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["deconstructed", "ballroom"],
     tags: ["showcase"],
     imageUrl: "/flyers/rf-023.jpg",
@@ -671,7 +671,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "Espacio Clandestino cierra sus puertas después de 8 años",
     excerpt:
       "El venue icónico de la Colonia Guerrero anuncia su cierre definitivo. La comunidad reacciona y se organizan fiestas de despedida con parte del lineup original.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["techno-raw", "minimal"],
     tags: ["community"],
     imageUrl: "/flyers/rf-024.jpg",
@@ -689,7 +689,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "Surgeon tocará en México por primera vez desde 2016",
     excerpt:
       "El productor y DJ de Birmingham regresa a México para FASCiNOMA 2026, diez años después de su legendario set en la primera edición del festival en Puebla.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["techno-peak", "dark-techno", "industrial"],
     tags: ["festival"],
     imageUrl: "/flyers/rf-025.jpg",
@@ -710,7 +710,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El Under, CDMX · Abril 11, 2026",
     excerpt:
       "El pionero del dubstep y fundador de Hyperdub entregó una de las noches más brutales y conceptualmente densas que hemos visto en CDMX en años recientes.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["dubstep", "ukg", "dark-techno"],
     tags: ["club-night"],
     imageUrl: "/flyers/rf-026.jpg",
@@ -730,7 +730,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "8 tracks · 44 min",
     excerpt:
       "El álbum más visceral de Siete Catorce. Ocho piezas que oscilan entre la belleza quebrada y el caos total, con el Popocatépetl como eje narrativo.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["techno-raw", "noise", "electronica", "ambient-techno"],
     tags: [],
     imageUrl: "/flyers/rf-027.jpg",
@@ -750,7 +750,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Crónica de venue · Monterrey 56",
     excerpt:
       "Una crónica personal del Japan: el sistema de sonido brutal, la arquitectura de cemento, y por qué este venue es el lugar más honesto de la escena underground capitalina.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["techno-raw", "industrial", "hard-techno"],
     tags: ["community"],
     imageUrl: "/flyers/rf-028.jpg",
@@ -769,7 +769,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Festival Review · LTJ Bukem · Ben UFO · Laurel Halo · DJ Nobu",
     excerpt:
       "La edición del regreso a Puebla fue una declaración de principios: LTJ Bukem, Ben UFO, Laurel Halo, Jane Fitz y DJ Nobu en una fábrica textil del siglo XIX. FASCiNOMA encontró su alma.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["drum-and-bass", "downtempo", "ambient", "techno-raw"],
     tags: ["festival", "open-air"],
     imageUrl: "/flyers/rf-029.jpg",
@@ -792,7 +792,7 @@ const RAW_ITEMS: ContentItem[] = [
       "La historia del Club Japan no es solo la historia de un venue: es la historia de cómo una comunidad construyó, desde el underground y sin ningún apoyo institucional, la educación sónica de toda una generación.",
     bodyPreview:
       "La primera vez que fui al Club Japan no sabía bien dónde estaba parado. Un sótano sin señalización visible en Monterrey 56, una puerta de metal sin nada que indicara lo que había adentro, y una fila de personas que obviamente sabían algo que yo no. Era 2019. Llevaba seis meses viviendo en CDMX y alguien me había mandado un flyer pixelado por Telegram.\n\nAdentro había un sistema de sonido que no había escuchado nada igual. No era la mejor tecnología del mundo — había venues en Europa con mejor equipo — pero había algo en cómo estaba calibrado, en cómo el sub pegaba exactamente en el centro del pecho, que hacía imposible no mover el cuerpo.\n\nLo que vi en el Japan esa noche, y lo que he seguido viendo en cada visita desde entonces, no es simplemente entretenimiento. Es una clase magistral de historia de la música electrónica: EBM alemán de los 80, industrial inglés, techno de Detroit mutado por manos mexicanas. Una genealogía sonora completa, transmitida no en un aula sino en un sótano oscuro a las 3 de la mañana.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["techno-raw", "industrial", "dark-techno", "hard-techno"],
     tags: ["community"],
     imageUrl: "/flyers/rf-030.jpg",
@@ -815,7 +815,7 @@ const RAW_ITEMS: ContentItem[] = [
       "El género más intenso del momento genera debates sobre accesibilidad, violencia sonora y gentrificación del underground. Una mirada sin filtros.",
     bodyPreview:
       "Hay una conversación que se repite en cada esquina de la escena mexicana desde hace dos años: ¿el hard techno es demasiado agresivo? ¿Es accesible? ¿Excluye? La pregunta parece inocente, pero esconde algo más complejo: el miedo de una escena a los extremos de sí misma.\n\nEl hard techno no es un fenómeno nuevo. Sus raíces están en el techno más oscuro de Detroit y en el industrial europeo de los 90. Lo que sí es nuevo es su popularización masiva — y con ella, la llegada de públicos que no necesariamente vienen de la cultura de club que lo parió.\n\nEn Club Japan llevan años programando noches de hard techno sin que nadie se rasgue las vestiduras. La diferencia está en el contexto: un venue con historia, con comunidad, con reglas implícitas de comportamiento. El problema no es el sonido. El problema es cuando el sonido llega a espacios sin esa estructura.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["hard-techno", "dark-techno", "industrial"],
     tags: ["community"],
     imageUrl: "/flyers/rf-031.jpg",
@@ -837,7 +837,7 @@ const RAW_ITEMS: ContentItem[] = [
       "Una revisión de la primera década de FASCiNOMA: cómo un festival en una fábrica textil de Puebla se convirtió en el proyecto curatorial más importante de la música de club en México.",
     bodyPreview:
       "En noviembre de 2016, en una fábrica textil restaurada a 90 minutos de Ciudad de México, algo cambió. No de inmediato — estas cosas nunca cambian de inmediato — pero en retrospectiva, la primera edición de FASCiNOMA marcó un antes y un después en la historia de los festivales de música electrónica en México.\n\nEl lineup de ese debut decía todo sobre las intenciones del equipo detrás del festival: Larry Heard, Mala, Kode 9, Dâm Funk, DeepChord, Lucy, Joey Anderson. No era una selección pensada para maximizar asistentes. Era una selección pensada para educar, para mostrar genealogías, para conectar puntos que el mainstream mexicano jamás hubiera conectado.\n\nDiez años después, esa filosofía no ha cambiado. FASCiNOMA 2026 trae a Surgeon, Donato Dozzy y Intrusion/Echospace no porque sean los nombres más reconocibles del momento, sino porque representan un hilo conductor en la historia de la música electrónica que vale la pena celebrar.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["techno-raw", "drum-and-bass", "ambient", "downtempo"],
     tags: ["festival", "community"],
     imageUrl: "/flyers/rf-032.jpg",
@@ -856,7 +856,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Por Valeria Mora",
     excerpt:
       "Con el cierre de Espacio Clandestino y rumores de que otros espacios no renovarán, ¿cómo protegemos los lugares que hacen posible la escena? Y qué pueden aprender del modelo Club Japan.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["electronica", "techno-raw"],
     tags: ["community"],
     imageUrl: "/flyers/rf-033.jpg",
@@ -875,7 +875,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: 'Shawn Raynaldo · Substack "Sonidos Nocturnos"',
     excerpt:
       "Una revisión exhaustiva de la primera década de N.A.A.F.I.: cómo un colectivo de CDMX redefinió lo que puede significar la música electrónica latinoamericana a nivel global.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["deconstructed", "ballroom", "footwork"],
     tags: ["community"],
     imageUrl: "/flyers/rf-034.jpg",
@@ -900,7 +900,7 @@ const RAW_ITEMS: ContentItem[] = [
       "El costo de traer talento europeo se disparó un 60% en dos años. Hablamos con los promotores que sostienen la escena sobre qué significa esto para la programación del 2026.",
     heroCaption:
       "Sala principal de FASCiNOMA, edición 2025. Foto: Archivo Gradiente.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["techno-raw", "ambient", "downtempo", "drum-and-bass"],
     tags: ["festival", "community"],
     imageUrl: "/flyers/rf-040.jpg",
@@ -1053,7 +1053,7 @@ const RAW_ITEMS: ContentItem[] = [
     excerpt:
       "Cómo una tradición sonora que venía de Jamaica se mezcló con el dub techno alemán y la cumbia sonidera para producir algo que sólo existe aquí.",
     heroCaption: "Sistema Arranca León, CDMX 2024. Foto: Javier Castillo.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["dubstep", "downtempo", "ambient-techno", "techno-raw"],
     tags: ["community", "vinyl-only"],
     imageUrl: "/flyers/rf-041.jpg",
@@ -1137,7 +1137,7 @@ const RAW_ITEMS: ContentItem[] = [
     excerpt:
       "Conversación con la compositora argentina sobre su nueva obra, su proceso con sistemas modulares y por qué dejó de hacer club durante dos años.",
     heroCaption: "Tatiana Heuman en estudio, Buenos Aires, marzo 2026.",
-    vibe: 2,
+    vibeMin: 2, vibeMax: 2,
     genres: ["ambient", "idm", "electronica", "downtempo"],
     tags: ["live", "modular"],
     imageUrl: "/flyers/rf-042.jpg",
@@ -1226,7 +1226,7 @@ const RAW_ITEMS: ContentItem[] = [
     excerpt:
       "Reportaje de First Floor sobre los mapas publicados por Reset! y Live DMA que exponen la concentración corporativa detrás del ecosistema europeo de festivales y venues. Lectura recomendada para entender la otra cara de la economía global del live music.",
     heroCaption: "First Floor · Substack · febrero 2026.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["electronica", "techno-raw", "house"],
     tags: ["festival", "community"],
     imageUrl: "/flyers/rf-043.jpg",
@@ -1286,7 +1286,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Lo que sonó y movió los cuerpos en el 2026",
     excerpt:
       "Un recuento editorial de las piezas que marcaron el año en la escena hard techno de la Ciudad de México. De lo industrial al acelere, del rave de Japan a los after-hours. Sin rankings de popularidad — curaduría pura.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["hard-techno", "industrial", "dark-techno", "techno-peak"],
     tags: ["curaduria", "hard-techno", "cdmx", "2026"],
     imageUrl: "/flyers/rf-014.jpg",
@@ -1454,7 +1454,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Lo que hay que cancelar para ir",
     excerpt:
       "Mayo trae el cierre de temporada antes del bajón de calor. Esta es la curaduría editorial de los cinco eventos del mes que no deberías saltarte: cinco contextos distintos, cinco intenciones distintas. Ningún top arbitrario — el orden refleja calendario inverso, no jerarquía.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["hard-techno", "techno-raw", "minimal", "electro", "breaks"],
     tags: ["curaduria", "agenda", "cdmx", "2026", "mayo"],
     imageUrl: "/flyers/rf-020.jpg",
@@ -1568,7 +1568,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El soundtrack de la temporada caliente · CDMX 2026",
     excerpt:
       "No es la lista de los hits del momento — es la de los cortes que se quedaron pegados en los DJ booths de la ciudad durante mayo, junio y julio. Mucho house orgánico, breaks suaves, electro de pista alta y disco italiano de los tardes. Cuenta regresiva editorial.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: [
       "house",
       "organic-house",
@@ -1846,7 +1846,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Detroit Electro · Treinta y Tres",
     excerpt:
       "El ícono del electro de Detroit llega a CDMX por primera vez en una noche que promete las rutas más oscuras del Motor City.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["electro", "techno-raw", "industrial", "breaks"],
     tags: ["club-night", "anl"],
     imageUrl: "/flyers/rf-035.jpg",
@@ -1870,7 +1870,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Multiforo Alicia · Noche de Ritmos Híbridos",
     excerpt:
       "Una noche que conecta cumbia chicha, cumbia electrónica y experimentación tropical. Celebración sin apología del sincretismo sonoro mexicano.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["cumbia-electronica", "latin-electronic", "reggaeton"],
     tags: ["club-night", "lgbtq", "community"],
     imageUrl: "/flyers/rf-036.jpg",
@@ -1893,7 +1893,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El Bajo · Noche Completa",
     excerpt:
       "El DJ serbio de Omoide Yokocho y Salon Des Amateurs en CDMX. Una maratón de cinco horas que abarcará ambient, kosmische, dub y techno en su forma más narrativa.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["ambient-techno", "minimal", "techno-raw", "downtempo"],
     tags: ["club-night", "anl"],
     imageUrl: "/flyers/rf-037.jpg",
@@ -1917,7 +1917,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El Bajo Mundo · Guadalajara",
     excerpt:
       "Drum and bass de todo el espectro: desde el liquid funk hasta el neurofunk más oscuro, con residents de GDL y un guest de CDMX.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["drum-and-bass", "jungle", "breaks", "ukg"],
     tags: ["club-night", "rave"],
     imageUrl: "/flyers/rf-038.jpg",
@@ -1940,7 +1940,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Foro Indie Rocks · Material nuevo",
     excerpt:
       "La producción en vivo más esperada del año: Debit presenta un set A/V completamente nuevo en el Foro Indie Rocks antes de su gira europea de verano.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["techno-raw", "ambient-techno", "electronica", "idm"],
     tags: ["live", "club-night"],
     imageUrl: "/flyers/rf-039.jpg",
@@ -1964,7 +1964,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Parque España · Electrónica Orgánica · Día",
     excerpt:
       "Festival de un día en Parque España: música orgánica, ambient y downtempo en formato jardín. Entrada libre para la sección exterior, cuota sugerida para el escenario principal.",
-    vibe: 2,
+    vibeMin: 2, vibeMax: 2,
     genres: ["organic-house", "ambient", "lo-fi", "downtempo", "neo-soul"],
     tags: ["day-party", "free", "community", "open-air"],
     imageUrl: "/flyers/rf-040.jpg",
@@ -1987,7 +1987,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El Bajo · Dub Raíz · Sound System",
     excerpt:
       "Los pioneros del dub londinense traen su sound system completo a El Bajo. Una experiencia que va más allá del concierto: una ceremonia de graves.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["dub", "ambient", "minimal"],
     tags: ["live", "club-night"],
     imageUrl: "/flyers/rf-041.jpg",
@@ -2011,7 +2011,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Evento satélite FASCiNOMA · El Bajo",
     excerpt:
       "Una noche adicional de Rod Modell en formato íntimo: el arquitecto del dub techno detroitiano presenta ambient techno en vivo en El Bajo.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["techno-raw", "ambient-techno", "minimal", "downtempo"],
     tags: ["live", "club-night"],
     imageUrl: "/flyers/rf-042.jpg",
@@ -2035,7 +2035,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Todos los residents · 8 horas",
     excerpt:
       "El Japan cierra su temporada de primavera con todos sus residents en una noche de ocho horas. EBM, dark electro, hard techno e industrial de las 11pm al amanecer.",
-    vibe: 10,
+    vibeMin: 10, vibeMax: 10,
     genres: ["industrial", "dark-techno", "hard-techno", "wave"],
     tags: ["club-night", "anl", "closing-party", "vinyl-only"],
     imageUrl: "/flyers/rf-043.jpg",
@@ -2059,7 +2059,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Treinta y Tres · Sudáfrica en CDMX",
     excerpt:
       "Una noche de gqom, amapiano y afrobeats que conecta la escena global de club africano con la pista de baile capitalina.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["gqom", "afrobeats", "uk-bass", "jersey-club"],
     tags: ["club-night", "lgbtq"],
     imageUrl: "/flyers/rf-044.jpg",
@@ -2084,7 +2084,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "La Mystica",
     excerpt:
       "La residente del Japan entrega 75 minutos de EBM, dark electro y wave pensados para las horas más oscuras de la madrugada.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["industrial", "wave", "dark-techno"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-045.jpg",
@@ -2105,7 +2105,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "BLAKK",
     excerpt:
       "El productor y DJ de CDMX navega por techno industrial, electro y hard techno con una lógica narrativa que muy pocos manejan en la escena.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["hard-techno", "industrial", "electro", "dark-techno"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-046.jpg",
@@ -2125,7 +2125,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Fausto — N.A.A.F.I.",
     excerpt:
       "El productor de N.A.A.F.I. despliega su arsenal: deconstructed club, ballroom, footwork y Jersey club en una hora de radio sin concesiones.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["deconstructed", "ballroom", "footwork", "jersey-club"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-047.jpg",
@@ -2146,7 +2146,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Archivo · Omoide Yokocho 2022",
     excerpt:
       "Recuperamos una de las sesiones más míticas de Ivkovic: cuatro horas de ambient, kosmische y electrónica experimental desde Belgrado.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["ambient-techno", "minimal", "downtempo", "ambient"],
     tags: ["live"],
     imageUrl: "/flyers/rf-048.jpg",
@@ -2166,7 +2166,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Hiele — Techno Hipnótico",
     excerpt:
       "El productor mexicano al límite más lento del techno: 80 minutos de ritmos mínimos, capas drones y texturas que disuelven el tiempo.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["techno-raw", "minimal", "ambient-techno"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-049.jpg",
@@ -2186,7 +2186,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Grabación en vivo · Marzo 2026",
     excerpt:
       "El set en vivo de Girl Ultra en el Multiforo Alicia durante la noche de Atrevida. R&B, pop electrónico y producción hipermoderna.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["rnb", "dance-electro-pop", "nu-disco"],
     tags: ["live", "radio", "lgbtq"],
     imageUrl: "/flyers/rf-050.jpg",
@@ -2207,7 +2207,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Atemporal — Grabaciones de Campo",
     excerpt:
       "El artista oaxaqueño mezcla grabaciones de campo del Istmo con síntesis modular y beats fragmentados. Una de las entregas más personales de la serie.",
-    vibe: 2,
+    vibeMin: 2, vibeMax: 2,
     genres: ["ambient", "lo-fi", "organic-house", "electronica"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-051.jpg",
@@ -2227,7 +2227,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Cumbia · Latin Electronic · Dance",
     excerpt:
       "Segundo volumen: cumbia sintetizada, electrocumbia y ritmos latinoamericanos procesados para la pista sin perder el alma.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["cumbia-electronica", "latin-electronic", "cumbia"],
     tags: ["radio"],
     imageUrl: "/flyers/rf-052.jpg",
@@ -2249,7 +2249,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "El Bajo, CDMX · Marzo 28, 2026",
     excerpt:
       "Cuatro horas y media de música que nunca tocó tierra. Ivkovic construyó un viaje desde el ambient berlinés hasta el kosmische más denso sin que nadie en la sala mirara el teléfono.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["ambient-techno", "minimal", "downtempo"],
     tags: ["club-night"],
     imageUrl: "/flyers/rf-053.jpg",
@@ -2269,7 +2269,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Club Japan, CDMX · Abril 5, 2026",
     excerpt:
       "La primera noche de la residencia de Cøsmetic en el Japan dejó en claro por qué es la DJ más importante de la escena mexicana actual. Una lección de construcción de tensión.",
-    vibe: 10,
+    vibeMin: 10, vibeMax: 10,
     genres: ["hard-techno", "dark-techno", "industrial"],
     tags: ["residency", "club-night"],
     imageUrl: "/flyers/rf-054.jpg",
@@ -2290,7 +2290,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Parque Bicentenario, CDMX · Abril 12, 2026",
     excerpt:
       "El contrabajista venezolano-estadounidense convirtió un domingo en una afirmación política. Vientos, electrónica y jazz libre ante 800 personas.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["jazz", "ambient", "neo-soul", "organic-house"],
     tags: ["live", "open-air", "community"],
     imageUrl: "/flyers/rf-055.jpg",
@@ -2309,7 +2309,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "5 tracks · 27 min",
     excerpt:
       "El productor capitalino entrega su trabajo más maduro: cinco piezas de industrial techno tan crudas como precisas. El mejor debut extendido del año en México.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["industrial", "dark-techno", "hard-techno"],
     tags: [],
     imageUrl: "/flyers/rf-056.jpg",
@@ -2328,7 +2328,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Treinta y Tres, CDMX · Febrero 14, 2026",
     excerpt:
       "Su primera visita a México y dejó a toda la sala sin palabras. re:ni no solo toca drum and bass: lo disecciona, lo reconstruye y lo convierte en algo que solo ella puede hacer.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["drum-and-bass", "ukg", "jungle", "breaks"],
     tags: ["club-night"],
     imageUrl: "/flyers/rf-057.jpg",
@@ -2348,7 +2348,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Multiforo Alicia, CDMX · Marzo 22, 2026",
     excerpt:
       "La fiesta mensual de N.A.A.F.I. sigue siendo el único espacio donde la seguridad no es un añadido: es la estructura completa de la noche.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["ballroom", "jersey-club", "footwork", "breaks"],
     tags: ["lgbtq", "feminist", "club-night"],
     imageUrl: "/flyers/rf-058.jpg",
@@ -2368,7 +2368,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Crónica · El Bajo, CDMX · Noviembre 2025",
     excerpt:
       "Recuperamos la crónica de la visita de Alpha & Omega como anticipo de su regreso en mayo. El dub más denso y espiritual que hemos visto en vivo.",
-    vibe: 3,
+    vibeMin: 3, vibeMax: 3,
     genres: ["dub", "ambient", "minimal"],
     tags: ["live"],
     imageUrl: "/flyers/rf-059.jpg",
@@ -2387,7 +2387,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Festival · Parque Bicentenario · Oct 2025",
     excerpt:
       "La edición 2025 de Fauna redefinió lo que puede hacer un festival de día en CDMX. Crónica de un evento que tardó tres días en terminar de procesar.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["ambient", "organic-house", "techno-raw", "downtempo"],
     tags: ["festival", "open-air"],
     imageUrl: "/flyers/rf-060.jpg",
@@ -2406,7 +2406,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Álbum debut · 11 tracks · 38 min",
     excerpt:
       "El álbum debut de Sofía Escobedo es una declaración de independencia: R&B que se niega a ser domesticado, con producción de Fausto y un arco emocional impecable.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["rnb", "dance-electro-pop", "nu-disco"],
     tags: [],
     imageUrl: "/flyers/rf-061.jpg",
@@ -2426,7 +2426,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Festival · Puebla · 2024",
     excerpt:
       "Recuperamos la reseña del último paso de Surgeon por México como contexto para su regreso en 2026. Una de las actuaciones en vivo más densas que ha dado este escenario.",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: ["techno-peak", "dark-techno", "industrial"],
     tags: ["festival", "live"],
     imageUrl: "/flyers/rf-062.jpg",
@@ -2449,7 +2449,7 @@ const RAW_ITEMS: ContentItem[] = [
       "En México, armar y mover un sound system no es solo logística: es una declaración sobre quién tiene derecho a ocupar el espacio público y producir experiencias colectivas.",
     bodyPreview:
       "La cultura del sound system llegó a México de manera oblicua. No por la ruta directa del reggae jamaicano al grime londinense, sino a través de fragmentos: sistemas de fiesta en el desierto, cumbias tocadas con equipos caseros en Oaxaca, experiencias rave de los 90 importadas por gente que había estado en el Reino Unido.\n\nLo que tardó más en llegar fue el componente político. En el Reino Unido, el sound system siempre fue inseparable de la resistencia: frente a la Criminal Justice Act de 1994, frente al racismo sistémico. En México, esa dimensión tardó en articularse de manera consciente.\n\nHoy, con proyectos como el Jardín Sonoro o las fiestas de El Bajo, empieza a existir un discurso explícito: mover un sistema de varios kilowatts a un parque público, hacer que 300 personas paguen lo que puedan, negarse a programar en venues que cobran $800 por una cerveza. Actos políticos aunque nadie los nombre así.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["techno-raw", "dub", "organic-house"],
     tags: ["community", "free"],
     imageUrl: "/flyers/rf-063.jpg",
@@ -2471,7 +2471,7 @@ const RAW_ITEMS: ContentItem[] = [
       "De Siete Catorce a N.A.A.F.I., de Debit a Cøsmetic: por primera vez en la historia de la música electrónica, México no es solo consumidor de tendencias globales.",
     bodyPreview:
       "Durante décadas, la pregunta que toda persona de la escena mexicana llevaba implícita era la misma: ¿por qué lo bueno siempre viene de afuera? Detroit, Berlín, Londres. Chicago, Bruselas. Los festivales mexicanos llenaban sus carteles con nombres importados porque esos nombres traían certeza de calidad.\n\nEse modelo está roto. No de golpe, pero hay una grieta que se hace más ancha. Siete Catorce tocó en el CTM de Berlín antes de tener una residencia en CDMX. Debit está de gira por Europa mientras en México la descubrimos. N.A.A.F.I. tiene más cobertura en Resident Advisor que en cualquier medio nacional.\n\nLo interesante no es solo que lleguen a esos escenarios, sino que lo hacen siendo explícitamente mexicanos. No hay mimetismo con las estéticas europeas. Siete Catorce habla del Popocatépetl. Debit procesa sonidos de la Ciudad de México. N.A.A.F.I. reivindica el deconstructed club como forma latinoamericana.",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: ["techno-raw", "deconstructed", "electronica"],
     tags: ["community"],
     imageUrl: "/flyers/rf-064.jpg",
@@ -2491,7 +2491,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Por Roberto Sánchez",
     excerpt:
       "No es cumbia digital ni electrocumbia ni sonidero: existe en el espacio liminal entre la tradición y la pista de baile globalizada, y su falta de nombre es su mayor fortaleza.",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["cumbia-electronica", "latin-electronic", "cumbia"],
     tags: ["community"],
     imageUrl: "/flyers/rf-065.jpg",
@@ -2512,7 +2512,7 @@ const RAW_ITEMS: ContentItem[] = [
       "Organizar una fiesta de 300 personas en CDMX puede costarte más de lo que ganas. Una radiografía de la economía invisible que sostiene la escena underground capitalina.",
     bodyPreview:
       "Hacer una fiesta en CDMX tiene una lógica perversa que todos conocen pero pocos dicen en voz alta: cuesta más de lo que da. El promotor independiente trabaja a pérdida o en ceros, subsidiado por su trabajo de día.\n\nLos números son brutales. Un venue de capacidad mediana en Roma Norte puede cobrar entre $15,000 y $30,000 de renta base para una noche. A eso súmale el sistema de sonido, los permisos, la producción gráfica, la promoción, y el pago a los artistas. Para cubrir eso necesitas vender 150-200 entradas a $350 antes de que el venue tome su porcentaje de la barra.\n\nY aun así la gente lo hace. La pregunta es por qué.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["electronica", "techno-raw"],
     tags: ["community"],
     imageUrl: "/flyers/rf-066.jpg",
@@ -2534,7 +2534,7 @@ const RAW_ITEMS: ContentItem[] = [
       "El proyecto de Siete Catorce no es solo música: es una exploración del Popocatépetl como eje narrativo de la identidad sonora mexicana contemporánea.",
     bodyPreview:
       "Hay algo que no es accidental en que el proyecto más internacionalmente relevante de la música electrónica mexicana tome su nombre de la alerta volcánica que define la vida en el Valle de México.\n\nSiete Catorce construye música desde esa tensión. Sus tracks no son representaciones del volcán. La referencia es más profunda: es la experiencia de vivir a la sombra de algo que puede matarte en cualquier momento y a lo que sin embargo has aprendido a darle la espalda.\n\nEso es, para Siete Catorce, lo que significa ser mexicano en 2026. Y es también lo que define al techno en su forma más honesta: música hecha en la sombra de sistemas que te pueden destruir.",
-    vibe: 9,
+    vibeMin: 9, vibeMax: 9,
     genres: ["techno-raw", "noise", "electronica", "ambient-techno"],
     tags: ["community"],
     imageUrl: "/flyers/rf-067.jpg",
@@ -2553,7 +2553,7 @@ const RAW_ITEMS: ContentItem[] = [
     subtitle: "Por Daniela Ríos",
     excerpt:
       "Con entradas que rondan los $500 y venues que no tienen rampa ni baño neutro, la escena underground de CDMX tiene un problema de accesibilidad que nadie quiere nombrar.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["electronica"],
     tags: ["community", "lgbtq", "feminist"],
     imageUrl: "/flyers/rf-068.jpg",
@@ -2573,7 +2573,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "El underground mainstream ya no es underground",
     excerpt:
       'Cuando tu fiesta "experimental" viene con influencer en la guest list y algoritmo de Spotify en la curaduría, algo se rompió. No lo estoy celebrando.',
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: ["techno-raw", "deconstructed"],
     tags: ["community"],
     imageUrl: "/flyers/rf-069.jpg",
@@ -2592,7 +2592,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "¿Necesita la escena una prensa musical seria?",
     excerpt:
       "Vivimos de reseñas de Instagram que duran 48 horas y ninguna que dure 48 meses. La escena no necesita más cobertura — necesita mejor memoria.",
-    vibe: 4,
+    vibeMin: 4, vibeMax: 4,
     genres: ["electronica"],
     tags: ["community"],
     imageUrl: "/flyers/rf-070.jpg",
@@ -2611,7 +2611,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "Residents locales vs. headliners internacionales",
     excerpt:
       "Pagamos $600 por ver a alguien que cobró $8,000 de cachet y $150 por el resident que lleva cinco años construyendo la cultura del venue. Algo está mal en esa ecuación.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["techno-raw", "industrial"],
     tags: ["community"],
     imageUrl: "/flyers/rf-071.jpg",
@@ -2629,7 +2629,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "La gentrificación llegó a los clubs y la estamos dejando pasar",
     excerpt:
       "Roma Norte ya no es Roma Norte. Y los venues que antes eran refugios se están convirtiendo en experiencias de lifestyle para gente que no sabe qué es el EBM.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["techno-raw", "industrial", "electronica"],
     tags: ["community"],
     imageUrl: "/flyers/rf-072.jpg",
@@ -2648,7 +2648,7 @@ const RAW_ITEMS: ContentItem[] = [
     title: "Ir de fiesta sober: la escena no sabe qué hacer contigo",
     excerpt:
       "Decidí dejar el alcohol hace dos años y seguir yendo a clubes. Lo que aprendí sobre cómo están diseñados estos espacios para que necesites beber es bastante revelador.",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: ["electronica", "techno-raw"],
     tags: ["community", "lgbtq"],
     imageUrl: "/flyers/rf-073.jpg",
@@ -2668,7 +2668,7 @@ const RAW_ITEMS: ContentItem[] = [
     type: "partner",
     title: "N.A.A.F.I.",
     subtitle: "Sello · CDMX",
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: [],
     tags: [],
     imageUrl: "/flyers/rf-074.jpg",
@@ -2774,7 +2774,7 @@ const RAW_ITEMS: ContentItem[] = [
     type: "partner",
     title: "Club Japan",
     subtitle: "Venue · Roma Norte",
-    vibe: 8,
+    vibeMin: 8, vibeMax: 8,
     genres: [],
     tags: [],
     imageUrl: "/flyers/rf-075.jpg",
@@ -2789,7 +2789,7 @@ const RAW_ITEMS: ContentItem[] = [
     type: "partner",
     title: "FASCiNOMA",
     subtitle: "Promotora · Festival",
-    vibe: 6,
+    vibeMin: 6, vibeMax: 6,
     genres: [],
     tags: [],
     imageUrl: "/flyers/rf-076.jpg",
@@ -2804,7 +2804,7 @@ const RAW_ITEMS: ContentItem[] = [
     type: "partner",
     title: "Multiforo Alicia",
     subtitle: "Venue · Roma",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: [],
     tags: [],
     imageUrl: "/flyers/rf-077.jpg",
@@ -2819,7 +2819,7 @@ const RAW_ITEMS: ContentItem[] = [
     type: "partner",
     title: "Passline · Boletos sin cargos",
     subtitle: "Promo · Mayo",
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: [],
     tags: [],
     imageUrl: "/flyers/rf-078.jpg",

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
 import { compressAndUploadImage } from '@/lib/imageUpload'
-import { slugify } from '@/components/dashboard/forms/shared/Fields'
+import { slugify, VibeField } from '@/components/dashboard/forms/shared/Fields'
 import type { Database } from '@/lib/supabase/database.types'
 
 type PartnerKind = Database['public']['Enums']['partner_kind']
@@ -58,7 +58,11 @@ export function AdminPartnersComposer({
   const [imageUrl, setImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
-  const [vibe, setVibe] = useState(5)
+  // Partners are typically wide-band (a label spans multiple vibes); admin
+  // slides the thumbs apart in the composer rather than getting a forced
+  // wide default. Both at 5 keeps the initial state explicit.
+  const [vibeMin, setVibeMin] = useState(5)
+  const [vibeMax, setVibeMax] = useState(5)
   const [marketplaceEnabled, setMarketplaceEnabled] = useState(false)
   const [marketplaceLocation, setMarketplaceLocation] = useState('')
   const [marketplaceCurrency, setMarketplaceCurrency] = useState('MXN')
@@ -105,7 +109,8 @@ export function AdminPartnersComposer({
     setPartnerKind('promo')
     setPartnerUrl('')
     setImageUrl('')
-    setVibe(5)
+    setVibeMin(5)
+    setVibeMax(5)
     setMarketplaceEnabled(false)
     setMarketplaceLocation('')
     setMarketplaceCurrency('MXN')
@@ -128,7 +133,8 @@ export function AdminPartnersComposer({
           partner_kind: partnerKind,
           partner_url: partnerUrl.trim() || undefined,
           image_url: imageUrl,
-          vibe,
+          vibe_min: vibeMin,
+          vibe_max: vibeMax,
           marketplace_enabled: marketplaceEnabled,
           marketplace_description: marketplaceDescription.trim() || undefined,
           marketplace_location: marketplaceLocation.trim() || undefined,
@@ -268,14 +274,14 @@ export function AdminPartnersComposer({
             />
           </Field>
 
-          <Field label={`VIBE · ${vibe}`} hint="0 glacial → 10 volcán">
-            <input
-              type="range"
-              min={0}
-              max={10}
-              value={vibe}
-              onChange={(e) => setVibe(Number(e.target.value))}
-              className="accent-sys-orange"
+          <Field label="" hint="0 glacial → 10 volcán · partners suelen ocupar un rango ancho">
+            <VibeField
+              valueMin={vibeMin}
+              valueMax={vibeMax}
+              onChange={(min, max) => {
+                setVibeMin(min)
+                setVibeMax(max)
+              }}
             />
           </Field>
 

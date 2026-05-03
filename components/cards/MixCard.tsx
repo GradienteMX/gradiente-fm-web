@@ -1,5 +1,5 @@
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor } from '@/lib/utils'
+import { vibeToColor, vibeMid, vibeBandGradient } from '@/lib/utils'
 import { getGenreNames } from '@/lib/genres'
 import { fmtDateShort } from '@/lib/utils'
 import { Play } from 'lucide-react'
@@ -9,14 +9,16 @@ interface MixCardProps {
 }
 
 export function MixCard({ item }: MixCardProps) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeMidVal = vibeMid(item)
+  const vibeColor = vibeToColor(vibeMidVal)
+  const vibeBand = vibeBandGradient(item)
   const genres = getGenreNames(item.genres).slice(0, 3)
   const primaryUrl = item.embeds?.[0]?.url ?? item.mixUrl ?? '#'
 
   return (
     <article className="group relative border border-border bg-surface transition-colors hover:border-secondary hover:bg-elevated">
-      {/* Top accent stripe — vibe colored */}
-      <div className="h-0.5 w-full" style={{ backgroundColor: vibeColor }} />
+      {/* Top accent stripe — gradient band when range, solid when point. */}
+      <div className="h-0.5 w-full" style={{ background: vibeBand }} />
 
       <div className="flex items-stretch gap-0">
         {/* Play zone */}
@@ -59,7 +61,7 @@ export function MixCard({ item }: MixCardProps) {
           {/* Fake waveform */}
           <div className="flex h-4 items-end gap-px opacity-60">
             {Array.from({ length: 32 }, (_, i) => {
-              const h = Math.sin(i * 0.7 + item.vibe) * 0.4 + 0.6
+              const h = Math.sin(i * 0.7 + vibeMidVal) * 0.4 + 0.6
               return (
                 <div
                   key={i}

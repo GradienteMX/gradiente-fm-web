@@ -10,9 +10,8 @@ import type {
   MixTrack,
 } from '@/lib/types'
 import { GENRES } from '@/lib/genres'
-import { vibeToColor, vibeToLabel } from '@/lib/utils'
 import { LivePreview } from '@/components/dashboard/LivePreview'
-import { EmbedList, useDraftWorkbench } from './shared/Fields'
+import { EmbedList, useDraftWorkbench, VibeField } from './shared/Fields'
 import { SubmitFooter } from './shared/Fields'
 import { PollFieldset } from './shared/PollFieldset'
 
@@ -46,7 +45,7 @@ function emptyDraft(): ContentItem {
     subtitle: '',
     excerpt: '',
     bodyPreview: '',
-    vibe: 5,
+    vibeMin: 5, vibeMax: 5,
     genres: [],
     tags: [],
     imageUrl: '',
@@ -171,8 +170,9 @@ export function MixForm() {
 
         <Section label="03" title="VIBE + GÉNEROS">
           <VibeField
-            value={draft.vibe}
-            onChange={(v) => patch({ vibe: v })}
+            valueMin={draft.vibeMin}
+            valueMax={draft.vibeMax}
+            onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })}
           />
           <GenreMultiSelect
             value={draft.genres}
@@ -419,54 +419,6 @@ function Toggle({
       <span className="font-mono text-[11px] tracking-widest text-secondary">
         {label}
       </span>
-    </label>
-  )
-}
-
-function VibeField({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (v: number) => void
-}) {
-  const color = vibeToColor(value)
-  return (
-    <label className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="sys-label">VIBE</span>
-        <span
-          className="font-mono text-[11px] tracking-widest"
-          style={{ color }}
-        >
-          {value} · {vibeToLabel(value)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={10}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-sys-orange"
-        style={{ accentColor: color }}
-      />
-      <div className="flex items-end gap-[3px]">
-        {Array.from({ length: 11 }).map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onChange(i)}
-            className="flex-1 transition-all hover:opacity-80"
-            style={{
-              height: `${6 + i * 1.5}px`,
-              backgroundColor: i <= value ? vibeToColor(i) : '#242424',
-            }}
-            aria-label={`vibe ${i}`}
-          />
-        ))}
-      </div>
     </label>
   )
 }

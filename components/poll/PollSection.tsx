@@ -3,7 +3,7 @@
 import { CheckCircle2 } from 'lucide-react'
 import type { ContentItem, PollChoice } from '@/lib/types'
 import { useAuth } from '@/components/auth/useAuth'
-import { vibeToColor } from '@/lib/utils'
+import { vibeToColor, vibeMid } from '@/lib/utils'
 import {
   castVote,
   isPollClosed,
@@ -49,7 +49,7 @@ export function PollSection({ item, className = '' }: Props) {
     castVote(poll.id, viewerId, [choiceId])
   }
 
-  const accent = vibeToColor(item.vibe)
+  const accent = vibeToColor(vibeMid(item))
 
   return (
     <section

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, X } from 'lucide-react'
 import type { ContentItem, PollChoice } from '@/lib/types'
 import { useAuth } from '@/components/auth/useAuth'
-import { vibeToColor } from '@/lib/utils'
+import { vibeToColor, vibeMid } from '@/lib/utils'
 import {
   castVote,
   isPollClosed,
@@ -153,7 +153,7 @@ export function PollCardCanvas({ item }: Props) {
                   <ChoiceRow
                     key={c.id}
                     choice={c}
-                    vibe={item.vibe}
+                    vibe={vibeMid(item)}
                     showResults={showResults}
                     pickedByMe={userVote?.choiceIds.includes(c.id) ?? false}
                     count={results.perChoice[c.id] ?? 0}

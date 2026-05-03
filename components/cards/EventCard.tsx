@@ -1,5 +1,5 @@
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
+import { vibeToColor, vibeMid, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
 import { getGenreNames, getTagNames } from '@/lib/genres'
 import { MapPin, Ticket } from 'lucide-react'
 
@@ -8,7 +8,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ item }: EventCardProps) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = getGenreNames(item.genres).slice(0, 3)
   const tags = getTagNames(item.tags).slice(0, 4)
   const time = item.date ? fmtTime(item.date) : ''
@@ -139,8 +139,8 @@ export function EventCard({ item }: EventCardProps) {
         </div>
       </div>
 
-      {/* Hazard stripe on hot/volcanic vibe items */}
-      {item.vibe >= 9 && (
+      {/* Hazard stripe — shows when ANY part of the vibe range hits FUEGO+. */}
+      {item.vibeMax >= 9 && (
         <div className="w-1.5 flex-shrink-0 hazard-stripe opacity-60" />
       )}
     </article>

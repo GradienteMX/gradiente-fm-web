@@ -7,7 +7,8 @@ import {
   categoryColor,
   fmtDateFull,
   vibeToColor,
-  vibeToLabel,
+  vibeMid,
+  vibeRangeLabel,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { Calendar, Clock, Quote, User, ExternalLink } from 'lucide-react'
@@ -25,7 +26,7 @@ interface ArticuloOverlayProps {
 // footnotes, and curated "SIGUIENTES LECTURAS" that stay in-overlay.
 export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
   const color = categoryColor('articulo')
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -170,7 +171,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               className="font-mono text-[11px] tracking-widest"
               style={{ color: vibeColor }}
             >
-              VIBE {item.vibe} · {vibeToLabel(item.vibe)}
+              VIBE {vibeRangeLabel(item)}
             </span>
           </div>
         </dl>

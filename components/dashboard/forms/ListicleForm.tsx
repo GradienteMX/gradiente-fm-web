@@ -49,7 +49,7 @@ function emptyDraft(): ContentItem {
     title: '',
     subtitle: '',
     excerpt: '',
-    vibe: 7,
+    vibeMin: 7, vibeMax: 7,
     genres: [],
     tags: [],
     imageUrl: '',
@@ -156,7 +156,7 @@ export function ListicleForm() {
         </Section>
 
         <Section label="03" title="VIBE + GÉNEROS">
-          <VibeField value={draft.vibe} onChange={(v) => patch({ vibe: v })} />
+          <VibeField valueMin={draft.vibeMin} valueMax={draft.vibeMax} onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })} />
           <GenreMultiSelect
             value={draft.genres}
             onChange={(genres) => patch({ genres })}

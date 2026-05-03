@@ -7,7 +7,8 @@ import {
   categoryColor,
   fmtDateFull,
   vibeToColor,
-  vibeToLabel,
+  vibeMid,
+  vibeRangeLabel,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { Calendar, User } from 'lucide-react'
@@ -24,7 +25,7 @@ interface ListicleOverlayProps {
 // Shares BodyBlocks with ArticuloOverlay, which handles the `track` block kind.
 export function ListicleOverlay({ item }: ListicleOverlayProps) {
   const color = categoryColor('listicle')
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -140,7 +141,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
               className="font-mono text-[11px] tracking-widest"
               style={{ color: vibeColor }}
             >
-              VIBE {item.vibe} · {vibeToLabel(item.vibe)}
+              VIBE {vibeRangeLabel(item)}
             </span>
           </div>
         </dl>

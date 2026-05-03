@@ -5,7 +5,8 @@ import type { ContentItem } from '@/lib/types'
 import {
   fmtDateFull,
   vibeToColor,
-  vibeToLabel,
+  vibeMid,
+  vibeRangeLabel,
   categoryColor,
   isEditableTarget,
 } from '@/lib/utils'
@@ -33,7 +34,7 @@ interface ReaderOverlayProps {
 // Editorial / review / opinion / noticia — a "terminal reader" layout:
 // article body takes primacy, flyer demotes to an archival rail.
 export function ReaderOverlay({ item }: ReaderOverlayProps) {
-  const vibeColor = vibeToColor(item.vibe)
+  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -159,7 +160,7 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   className="font-mono text-xs tracking-widest"
                   style={{ color: vibeColor }}
                 >
-                  {item.vibe} · {vibeToLabel(item.vibe)}
+                  {vibeRangeLabel(item)}
                 </span>
               </dd>
             </div>
