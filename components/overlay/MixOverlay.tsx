@@ -7,6 +7,7 @@ import {
   fmtDateFull,
   vibeToColor,
   vibeToLabel,
+  isEditableTarget,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { ContentCard } from '@/components/cards/ContentCard'
@@ -117,11 +118,12 @@ export function MixOverlay({ item }: Props) {
             : 'pulsa play para cargar este mix'
           : 'fuente pendiente')
 
-  // Hotkeys: O → open source. P → play/pause (or load).
+  // Hotkeys: O → open source. P → play/pause (or load). Skip when focus
+  // is inside an editable element — MixOverlay also renders inside the
+  // dashboard's LivePreview while the editor types in the composer.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (isEditableTarget(e.target)) return
       if (e.key === 'o' || e.key === 'O') openSource()
       if (e.key === 'p' || e.key === 'P') handleTransportToggle()
     }

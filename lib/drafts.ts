@@ -35,6 +35,7 @@ import {
   setDraftLocal,
   subscribeDrafts,
 } from './draftsCache'
+import { getPublishedItemSync } from './publishedItemsCache'
 
 const STORAGE_KEY = 'gradiente:dashboard:items'
 
@@ -96,6 +97,20 @@ export function getAllItems(): DraftItem[] {
 export function getItemById(id: string): DraftItem | null {
   const fromCache = getDraftSync(id)
   if (fromCache) return fromCache
+  // Published items the user authored (loaded by useMyPublishedItems).
+  // Synthesize the DraftItem shape so the composer's hydration path
+  // (useDraftWorkbench) treats it like a published draft and binds
+  // `committedId` to the existing item id.
+  const fromPublished = getPublishedItemSync(id)
+  if (fromPublished) {
+    const ts = fromPublished.publishedAt ?? new Date().toISOString()
+    return {
+      ...fromPublished,
+      _draftState: 'published',
+      _createdAt: ts,
+      _updatedAt: ts,
+    }
+  }
   return readSessionPublished().find((i) => i.id === id) ?? null
 }
 

@@ -159,3 +159,16 @@ export function fmtTime(iso: string): string {
 export function clsx(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ')
 }
+
+// Whether a keyboard event originated inside an editable element (input,
+// textarea, contenteditable). Use to gate global window-level keydown
+// listeners so they don't hijack normal typing — e.g. ReaderOverlay's `f`
+// hotkey for the flyer lightbox would otherwise fire when the user types
+// 'f' in the dashboard composer that mounts ReaderOverlay as a preview.
+export function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el || !el.tagName) return false
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true
+  if (el.isContentEditable) return true
+  return false
+}

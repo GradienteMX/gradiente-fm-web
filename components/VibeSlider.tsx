@@ -159,6 +159,7 @@ function VibeSliderImpl() {
 
   return (
     <div
+      data-vibe-strip
       className="sticky top-[76px] z-40 border-y-2 border-black bg-black"
     >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">

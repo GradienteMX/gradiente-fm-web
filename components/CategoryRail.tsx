@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import type { ContentItem, ContentType } from '@/lib/types'
 import { categoryColor } from '@/lib/utils'
 import { useVibe } from '@/context/VibeContext'
@@ -29,9 +30,66 @@ export function CategoryRail({ items }: CategoryRailProps) {
   const total = items.length
   const filterActive = categoryFilter !== null
 
+  // Wrap the filter setter so changing categories also resets the page
+  // scroll. Without this, switching from a long category to a short one
+  // (e.g. EVENTO → OPINIÓN) leaves the user scrolled past the new top
+  // cards — a layout shift that reads as "the feed went crazy and
+  // cropped the top cards" because the sticky header overlaps them.
+  //
+  // Scroll INSTANTLY (no smooth) and BEFORE setCategoryFilter so the page
+  // is at top when ContentGrid's Framer Motion `layout` animations kick
+  // in. Smooth-scrolling competes with the card reflow and visibly
+  // crops cards mid-transit.
+  const changeFilter = (next: ContentType | null) => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0 })
+    }
+    setCategoryFilter(next)
+  }
+
+  // Dynamic sticky top: pin the rail BELOW the VibeSlider's sticky chips
+  // strip (data-vibe-strip), not on top of it. Strip height varies with
+  // viewport width — chip wrapping changes the line count — so a static
+  // `top-[105px]` either underlaps (rail covered by chips) or overlaps
+  // (rail covers chips). Measure on mount + resize + after chip-list
+  // mutations so the rail always sits cleanly below the strip.
+  const [stickyTop, setStickyTop] = useState(105)
+  useEffect(() => {
+    const strip = document.querySelector<HTMLElement>('[data-vibe-strip]')
+    if (!strip) return
+    const update = () => {
+      const cs = getComputedStyle(strip)
+      const stripStickyTop = parseInt(cs.top, 10) || 76
+      // 8px breathing room between strip's bottom and rail's top.
+      setStickyTop(stripStickyTop + strip.offsetHeight + 8)
+    }
+    update()
+    window.addEventListener('resize', update)
+    // Genre chips wrap differently if the user toggles filters / picks
+    // a vibe — observe size changes too.
+    const ro = new ResizeObserver(update)
+    ro.observe(strip)
+    return () => {
+      window.removeEventListener('resize', update)
+      ro.disconnect()
+    }
+  }, [])
+
   return (
-    <aside className="hidden w-[120px] shrink-0 lg:block">
-      <div className="sticky top-[105px] flex flex-col gap-5">
+    <aside className="hidden min-h-screen w-[120px] shrink-0 lg:block">
+      {/* `top` + `maxHeight` are dynamic (see useEffect above) so the
+          rail always sits cleanly below the VibeSlider's variable-height
+          chips strip. `overflow-y-auto` handles the (rare) case where
+          SECCION + audio visualizer combined exceed the remaining
+          viewport space. No bg-base / no high z — the rail and chips
+          strip live in disjoint vertical bands. */}
+      <div
+        className="sticky flex flex-col gap-5 overflow-y-auto"
+        style={{
+          top: stickyTop,
+          maxHeight: `calc(100vh - ${stickyTop + 16}px)`,
+        }}
+      >
         <div>
           <div className="mb-3 flex items-center justify-between">
             <div className="nge-divider">
@@ -42,7 +100,7 @@ export function CategoryRail({ items }: CategoryRailProps) {
             {filterActive && (
               <button
                 type="button"
-                onClick={() => setCategoryFilter(null)}
+                onClick={() => changeFilter(null)}
                 aria-label="Limpiar filtro"
                 title="Limpiar filtro · ver todo"
                 className="font-mono text-[9px] tracking-widest transition-colors"
@@ -57,7 +115,7 @@ export function CategoryRail({ items }: CategoryRailProps) {
             {/* TODOS — pseudo-row, active when no filter set */}
             <button
               type="button"
-              onClick={() => setCategoryFilter(null)}
+              onClick={() => changeFilter(null)}
               aria-pressed={!filterActive}
               className="group flex items-center justify-between border-b border-border/40 py-2 transition-colors hover:bg-surface"
               style={{
@@ -89,7 +147,7 @@ export function CategoryRail({ items }: CategoryRailProps) {
                   key={type}
                   type="button"
                   onClick={() =>
-                    setCategoryFilter(isActive ? null : type)
+                    changeFilter(isActive ? null : type)
                   }
                   aria-pressed={isActive}
                   className="group flex items-center justify-between border-b border-border/40 py-2 transition-colors hover:bg-surface"

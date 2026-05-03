@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { X, Trash2, Send, Pencil, MessageSquare } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { ContentItem } from '@/lib/types'
 import { categoryColor } from '@/lib/utils'
 import { useOverlay } from './useOverlay'
@@ -269,6 +269,8 @@ function SessionItemStrip({
     : 'PUBLICADO·SESIÓN · visible en tu feed local'
   const editHref = `/dashboard?type=${item.type}&edit=${encodeURIComponent(item.id)}`
   const { openConfirm } = usePublishConfirm()
+  const { close } = useOverlay()
+  const router = useRouter()
 
   const handlePublish = () => {
     openConfirm(item.id)
@@ -276,6 +278,14 @@ function SessionItemStrip({
   const handleDelete = () => {
     removeItem(item.id)
     onDeleted()
+  }
+  // Close the overlay before navigating to /dashboard?edit=… — without
+  // this, hitting EDITAR pushes the dashboard URL but leaves the overlay
+  // mounted on top of it. The overlay only auto-closes on the `item`
+  // search param being cleared, which doesn't happen for unrelated nav.
+  const handleEdit = () => {
+    close()
+    router.push(editHref)
   }
 
   return (
@@ -303,13 +313,14 @@ function SessionItemStrip({
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <Link
-          href={editHref}
+        <button
+          type="button"
+          onClick={handleEdit}
           className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/60 hover:text-primary"
         >
           <Pencil size={11} />
           EDITAR
-        </Link>
+        </button>
         <button
           type="button"
           onClick={handleDelete}

@@ -7,6 +7,7 @@ import {
   vibeToColor,
   vibeToLabel,
   categoryColor,
+  isEditableTarget,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { Expand, FileImage, User, Calendar, Clock, Activity } from 'lucide-react'
@@ -58,9 +59,13 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     return () => el.removeEventListener('scroll', onScroll)
   }, [])
 
-  // F hotkey opens the flyer lightbox.
+  // F hotkey opens the flyer lightbox. Skip when focus is inside an
+  // editable element — ReaderOverlay also renders inside the dashboard's
+  // LivePreview while the editor types in the composer; without this
+  // guard, typing 'f' anywhere in the form would toggle the lightbox.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return
       if ((e.key === 'f' || e.key === 'F') && item.imageUrl) {
         e.preventDefault()
         setFlyerOpen((v) => !v)
@@ -398,7 +403,14 @@ function FlyerLightbox({
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'f' || e.key === 'F') {
+      // Escape always closes; f/F closes only when not typing in a field.
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+        return
+      }
+      if ((e.key === 'f' || e.key === 'F') && !isEditableTarget(e.target)) {
         e.preventDefault()
         e.stopPropagation()
         onClose()

@@ -25,6 +25,7 @@ import {
   setAllDrafts,
   clearDraftsCache,
 } from '@/lib/draftsCache'
+import { clearPublishedItemsCache } from '@/lib/publishedItemsCache'
 import type { DraftItem } from '@/lib/drafts'
 import type { Database } from '@/lib/supabase/database.types'
 import type { User } from '@/lib/types'
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSavedCommentIds()
       clearSavedItemIds()
       clearDraftsCache()
+      clearPublishedItemsCache()
       setFetchedAuthId(null)  // logged-out resolved state
       return
     }

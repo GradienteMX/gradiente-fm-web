@@ -422,12 +422,22 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
 
   // Auto-scroll the pending card into view on mount, so editor sees the
   // glitching card without hunting through the feed.
+  //
+  // Two scrolls: the first lands while lazy-loaded `<img>`s above/below are
+  // still resolving; once they pop in they shift the layout and the card
+  // ends up off-center. The second scroll at 800ms (after the smooth scroll
+  // completes + most lazy images have loaded) corrects that drift.
   useEffect(() => {
     if (!isPending || !ref.current) return
-    const t = setTimeout(() => {
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 120) // brief delay so card finishes mounting
-    return () => clearTimeout(t)
+    const card = ref.current
+    const scroll = () =>
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const t1 = setTimeout(scroll, 120)
+    const t2 = setTimeout(scroll, 800)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
   }, [isPending])
 
   const Inner = size === 'lg' ? LgCard : size === 'md' ? MdCard : SmCard

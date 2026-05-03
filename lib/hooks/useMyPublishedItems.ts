@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  clearPublishedItemsCache,
+  setAllPublishedItems,
+} from '@/lib/publishedItemsCache'
 import type { ContentItem } from '@/lib/types'
 
 // ── useMyPublishedItems ─────────────────────────────────────────────────────
@@ -25,6 +29,7 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
   useEffect(() => {
     if (!userId) {
       setItems([])
+      clearPublishedItemsCache()
       return
     }
     let cancelled = false
@@ -43,7 +48,13 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
           setItems([])
           return
         }
-        setItems((data ?? []).map(rowToContentItem))
+        const mapped = (data ?? []).map(rowToContentItem)
+        setItems(mapped)
+        // Prime the published-items cache so `getItemById` (lib/drafts.ts)
+        // can resolve published rows synchronously when the editor opens
+        // them from "Publicados". Without this the composer hydrates as
+        // empty and a publish mints a NEW row instead of upserting.
+        setAllPublishedItems(mapped)
       })
     return () => {
       cancelled = true
