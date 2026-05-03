@@ -47,9 +47,20 @@ EspectroObsidian/
 Webscraper/
 .claude/
 
+# Seed credentials + other purely-local-machine artifacts
+.local/
+
+# Supabase CLI temp files
+supabase/.temp/
+supabase/.branches/
+
 # Obsidian vault — commit shared config, ignore per-user workspace state
 wiki/.obsidian/workspace.json
 wiki/.obsidian/workspace-mobile.json
 wiki/.obsidian/workspaces.json
+wiki/.obsidian/graph.json
 wiki/.obsidian/cache
 wiki/.trash/
+
+# Migration squash safety net (kept locally only)
+supabase/migrations.bak/
