@@ -8,6 +8,86 @@
 
 ---
 
+## 2026-05-03 · INGEST · Production live on gradiente.org + 10 polish slices
+
+Big day. Deployed to production for the first time, fixed a long bug list surfaced by live testing, completed two backend follow-ups left over from chunk 3, and added the role/flag + partners composers to `/admin`.
+
+### Production deploy
+- Discovered the GitHub Pages workflow had been silently failing on every push since chunk 1 (when `output: 'export'` was removed). Site had effectively been un-deployed for the entire backend arc.
+- Created Vercel project `gradiente-fm-web` (Hobby tier, Iker's personal team); imported the repo; pasted env vars (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `SUPABASE_SERVICE_ROLE_KEY`) for Production + Preview.
+- DNS wired: Namecheap `gradiente.org` → Vercel anycast IP `216.198.79.1` (apex A record) + `cname.vercel-dns.com` (`www` CNAME with redirect to apex). SSL auto-provisioned by Vercel via Let's Encrypt.
+- Deleted the dead `.github/workflows/deploy.yml` (commit `5c45f56`). Vercel's GitHub integration is now the deploy mechanism on push to main.
+- One CI fix along the way: `tsconfig.json` had no explicit `target`, defaulting to `es5` — caused `for-of` over `Iterable<T>` to fail TS check (surfaced by `lib/draftsCache.ts:49`). Set `target: "es2020"` (commit `104eea2`).
+
+### Live-testing bug fixes (one big batch + one followup)
+Iker reported these from gradiente.org. Bundled into commit `313fa45` (`fix(ui): post-launch bug batch`) + `b1dc4e2` (EventosRail).
+
+1. **Edit-published flow loaded blank composer + minted a new id on publish** (was the most embarrassing). Root cause: `getItemById` (lib/drafts.ts) only consulted the drafts cache + legacy session list — didn't know about `useMyPublishedItems` results. Added `lib/publishedItemsCache.ts` (mirror of draftsCache shape), useMyPublishedItems primes it on fetch, getItemById falls back to it, useAuth clears it on logout.
+2. **F key in dashboard composer toggled the image flyer.** ReaderOverlay (mounted by `LivePreview` while editing) had a window keydown listener for f/F with no input-focus guard. Added `isEditableTarget(target)` helper in lib/utils.ts; applied to ReaderOverlay's two listeners + MixOverlay's o/p shortcuts (same bug class).
+3. **Post-publish autoscroll landed below the pending card.** Lazy-loaded `<img>` elements above/below settled AFTER the smooth scroll completed → layout drift → user lands a few hundred px past the card. Re-scroll at 800ms corrects.
+4. **EDITAR button on session-item overlays navigated to dashboard but left the overlay mounted on top.** SessionItemStrip now calls `useOverlay().close()` before `router.push`.
+5. **SECCION rail covered by VibeSlider's sticky chips strip on scroll.** Two solutions tried — first a z-index/bg-base hack that just *masked* the chips (wrong: rail rendered ON TOP of vibe slider). Final fix: dynamic `top` measurement via `data-vibe-strip` selector + ResizeObserver, so the rail always sits cleanly *below* whatever the chips strip's actual height is. Plus `min-h-screen` on the aside so sticky always has parent room.
+6. **Filter change after scrolling cropped cards.** Page kept scroll position past the new shorter list; Framer Motion `layout` animations on cards competed with a smooth scroll. Switched to instant scroll-to-top BEFORE `setCategoryFilter` so animations start clean.
+7. **EventosRail drag broke after returning to TODOS from a non-event filter.** Component returns null when filtered out, so the JSX with `trackRef` unmounts and re-mounts on re-show — but the effect's dep array was `[sorted.length]` only. Listeners didn't re-attach to the new track DOM. Added `hiddenByCategoryFilter` to the dep array.
+
+### Backend follow-ups completed
+- **B — `useUserRank` migration** (commit `e90bef7`). Replaced the `getAllCommentsMerged() → getUserRank()` in-memory hook (always returned 'normie' on real DB) with a SQL view + browser-side cache. Migrations:
+  - `0005_user_rank_signals.sql` — view aggregating signal/prov counts per author across non-deleted comments. `security_invoker = true` so existing RLS gates results naturally.
+  - `0006_user_rank_signals_include_seed.sql` — dropped the `seed = false` filter so pre-beta testing surfaces meaningful ranks (the 51 seeded reactions now count). After pre-launch seed cleanup the filter is a no-op anyway.
+  - `lib/userRanksCache.ts` — module-scoped Map + microtask-batched fetch (multiple components rendering badges hit one SELECT in (ids), not N).
+  - `lib/hooks/useUserRank.ts` — replaces the old in-comments hook; 5 callers swap import path.
+  - `RANK_THRESHOLD: 5 → 2` (lower bar to leave 'normie' during pre-beta testing).
+  - Skill-tree expansion (tiers within branches) noted in [[Open Questions]] + project memory `project_skill_tree_ranks` as post-beta roadmap.
+
+- **#2 — `useSavedItems` migration** (commit `ab17ab8`). The dashboard's saved-items panel had been showing 0 results because the legacy hook read sessionStorage that no writer populated. Mirrors `useSavedComments`: fetches from `items` (joined to `polls`) for the ids in `itemSavesCache`. Cleaned `lib/saves.ts` of the dead sessionStorage block.
+
+### Admin tools
+- **Discord scrub** (commit `4ea7d44`) — purged 5 wiki references to "Discord webhook for scraper notification" (hallucinated planning Iker corrected). Saved memory `feedback_no_discord_notifications`. Default observability: Sentry for app errors, GH Actions email for cron failures, "check the page" for scraper success.
+
+- **Smaller items (4) — tabbed /admin + role/flag editor** (commit `3ced4e3`). New tabbed shell (`?tab=invites|users`) so admin sections don't share scroll. Built scale-aware from day one:
+  - Server prefetch only ELEVATED users (role != user OR is_mod OR is_og OR partner_id IS NOT NULL) — bounded ~50 even at 10k accounts (audit-staff workflow).
+  - Search bar hits `/api/admin/users/search?q=` (debounced 250ms, ilike on username + display_name, limit 25).
+  - Stats strip doubles as filter chips: TODOS · ADMIN · GUIDE · CURATOR · INSIDER · MOD. Click to narrow elevated list, click again or TODOS to clear.
+  - Per-row inline editor: role, partner, mod/og/partner_admin. Self-demote shows a warning chip.
+  - PATCH `/api/admin/users/[id]` — admin-only, RLS-gated via users_admin_all. Field allowlist (no username/display_name).
+  - Verified end-to-end: Iker promoted two test users to mod via the UI; rows persisted in `public.users`.
+
+- **Smaller items (3) — partners onboarding composer** (commit `7da80ac`). Third tab //PARTNERS replaces "INSERT into items via Studio" for adding new partners.
+  - POST `/api/admin/partners` — admin-only (stricter than the items_staff_write RLS); validates required fields + slug shape; returns 409 on slug collision. id format `pa-{slug}-{rand}`.
+  - AdminPartnersComposer — existing-partners chips at top (duplicate-check reference) + composer below: title, auto-derived slug, partner_kind enum, partner_url, vibe slider, image upload (compressed → uploads bucket), marketplace toggle that exposes location/currency/description.
+  - V1 is create-only; edit/delete deferred. Vibe is single value here — will get swapped to a two-thumb when the vibe-range arc lands.
+
+### Steps that didn't ship
+- **Smaller items (5) — Espectro→Gradiente rename** — Iker corrected mid-stream: "Espectro Mix" is a partner's brand (not the platform's old name). All staged renames reverted clean to HEAD; no commit.
+- **Smaller items (1) — cross-tab save sync via BroadcastChannel** — Iker's call: not worth the effort. "A user that browses the page and saves an item from the feed or a comment won't really have 2 tabs open at the same time. The synching in real time is more for interactions that involve different users" — Realtime publication on comments/foro/reactions already covers cross-USER, which is the meaningful surface.
+
+### Files / commits this session
+| commit | scope |
+|---|---|
+| `3243dda` | (last session) chore(db): squash migrations 0001-0015 into 4 clean files |
+| `502f830` | (last session) chore(config): Supabase + image-compression deps + Vercel deploy target |
+| `2601beb` | (last session) feat(supabase): wire all surfaces to backend |
+| `ccd9952` | (last session) docs(wiki): Backend Plan + chunks 1+2+3 logs + migration squash |
+| `104eea2` | fix(build): add tsconfig target es2020 |
+| `5c45f56` | chore(ci): remove dead GitHub Pages deploy workflow |
+| `4ea7d44` | docs(wiki): remove Discord notification placeholders |
+| `313fa45` | fix(ui): post-launch bug batch — edit-republish + 5 UX fixes |
+| `b1dc4e2` | fix(EventosRail): re-attach listeners on filter re-show |
+| `e90bef7` | feat(ranks): live useUserRank backed by SQL view + batched cache |
+| `ab17ab8` | feat(dashboard): live useSavedItems backed by user_saves join |
+| `3ced4e3` | feat(admin): tabbed /admin + role/flag editor with search & chip filter |
+| `7da80ac` | feat(admin): partners tab with onboarding composer |
+
+### Things known to be next
+- **VIBE RANGE ARC** — Iker's call: every content item should have a vibe RANGE (vibeMin + vibeMax) instead of a single point. ~2-3hr arc touching schema, types, mock data, all rowToContentItem mappers, filter logic (overlap test instead of point-in-range), every card that colors by vibe. See `project_vibe_range_arc` memory for full technical scope. Card displays should render the range as a gradient band (not just midpoint).
+- **A — Chunk 4 ops layer** — still the actual beta-open gate. pg_cron rollups (HP signals, foro 30-day delete, orphan storage prune), `/api/health`, Sentry, Upstash rate limits, restore drill, `wiki/Runbook.md`.
+- **Edit-in-place for partners** — v2 of the //PARTNERS tab. Currently create-only; mistakes get fixed in Studio.
+- **E — Mobile pass** — desktop locked, mobile untested.
+- **C — Chunk 5 scraper Phase 3** — GH Actions cron MWF + admin review queue.
+- Remaining smaller items: `Mi Partner` composer (marketplace_listings still session), `lib/mockData.ts` cleanup (importable fallback), reduced-motion respect.
+
+---
+
 ## 2026-05-03 · INGEST · Migration squash — 0001-0015 → 4 clean files
 
 [[Backend Plan]] § "Migration sprawl" debt closed. Staged 4 consolidated migrations from `supabase/squash-staging/` cut over to `supabase/migrations/` via the repair-history pattern. Schema on remote unchanged; only the `supabase_migrations.schema_migrations` table was rewritten.
