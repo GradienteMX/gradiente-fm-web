@@ -25,7 +25,7 @@ updated: 2026-04-25
 
 - **[[Dual Feed Systems]]** — delete the orphan [[ContentFeed]] + row cards, or resurrect as a toggleable list view?
 - **[[Vibe Gradient]] reconciliation** — three color scales overlap. Consolidate into one module?
-- **[[mockData]]** — when do we commit to [[Supabase Migration]]? Deprioritized for now — project is in [[Visual MVP Phase]] (see memory); mockData is fine until look/feel is locked.
+- ~~**[[mockData]]** — when do we commit to [[Supabase Migration]]?~~ — **decided 2026-05-02.** Visual MVP is feature-complete enough; backend is now the next major arc. Plan in [[Backend Plan]] (supersedes the older [[Supabase Migration]] draft). Mock data migrates with a `seed=true` flag that RLS hides from public reads — admins keep visibility for testing, real content can swap in incrementally, batch-delete when ready.
 - ~~**Card click → detail view**~~ — **decided 2026-04-23.** Overlay, not route. See [[Contained Single Surface]] and [[Overlay System]].
 - ~~**Per-type vs unified overlay**~~ — **decided 2026-04-23.** Per-type for expressive latitude. See [[Reader Terminal Layout]].
 - **`body` field on `ContentItem`** — to support full articles in admin / full reader experience. Plus `externalUrl` for Substack-hosted pieces. Currently [[ReaderOverlay]] renders `bodyPreview` only. See [[Admin Dashboard]].

@@ -1,11 +1,13 @@
 ---
 type: roadmap
-status: draft
-tags: [roadmap, backend, supabase, db]
-updated: 2026-04-22
+status: stale
+tags: [roadmap, backend, supabase, db, superseded]
+updated: 2026-05-02
 ---
 
 # Supabase Migration
+
+> **Superseded by [[Backend Plan]] (2026-05-02).** That note is the consolidated, current plan covering stack, schema, RLS, auth, beta gate, image lifecycle, foro retention, scraper schedule, realtime, captcha, budget, and phasing. Kept here because the schema sketch + effort estimate are still useful reference.
 
 > The code already expects a backend to arrive. [[curation]] comments reference Supabase specifically. [[mockData]] exists to be replaced.
 

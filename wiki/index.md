@@ -138,9 +138,10 @@
 
 ## 70 — Roadmap
 
+- [[Backend Plan]] — current consolidated plan: Supabase + Vercel + R2 + GH Actions cron, magic-link signup + username/password login, invite-code beta gate, image auto-compression, foro 30-day retention, MWF scraper, SYSTEM UPDATE countdown
 - [[Scraper Pipeline]] — RA → review queue → live feed (core ingestion path)
 - [[Admin Dashboard]] — role-gated editor UI at `/admin` (real-backend version of [[Dashboard]])
-- [[Supabase Migration]] — swapping mockData for a real backend (enables scraper + admin)
+- [[Supabase Migration]] — older, narrower draft superseded by [[Backend Plan]]
 - [[CRT Shader Layer]] — full-viewport CRT post-processing; pushes NGE chrome to real terminal feel
 - [[CRT Scanline Sweep]] — small targeted variant: sweep across the home grid on category-filter changes
 - [[Three.js Islands]] — isolated 3D scenes (vibe sculpture, venue map, ASCII'd) per Canvas

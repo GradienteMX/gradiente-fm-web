@@ -8,6 +8,355 @@
 
 ---
 
+## 2026-05-03 · INGEST · Migration squash — 0001-0015 → 4 clean files
+
+[[Backend Plan]] § "Migration sprawl" debt closed. Staged 4 consolidated migrations from `supabase/squash-staging/` cut over to `supabase/migrations/` via the repair-history pattern. Schema on remote unchanged; only the `supabase_migrations.schema_migrations` table was rewritten.
+
+### Bugs found in the staged squash (fixed before cutover)
+1. **Forward FK** — `0001_init.sql` items table declared `created_by uuid references users(id)` inline before `users` was created. Postgres would have failed `relation "users" does not exist` on any fresh deploy. Fix: pulled `created_by` out of `CREATE TABLE items`; added as a trailing `ALTER TABLE items ADD COLUMN ... REFERENCES users(id)` after `users` exists. Same fix preserves the live ordinal_position 57 (last column) → keeps `pg_dump`/`db diff` parity.
+2. **`set_updated_at` missing `SET search_path TO 'public'`** — Supabase advisor recommendation present in live, missing in squash. Added.
+
+### Dropped from remote DB
+- `private.lookup_email_by_username(text)` — dead code (login route uses `auth.admin.getUserById`). Dropped via Supabase Studio (MCP is `read_only=true`, psql not installed locally).
+
+### Cutover sequence
+1. `migration repair --status reverted` × 15 (0001-0015)
+2. `mv supabase/migrations/000* supabase/migrations.bak/` — note: runbook's `000*` glob only catches 0001-0009; 0010-0015 needed a separate `mv`
+3. `mv supabase/squash-staging/* supabase/migrations/`
+4. `SQUASH_RUNBOOK.md` relocated → `supabase/SQUASH_2026-05-03_RUNBOOK.md` (it was getting moved into `migrations/` by the wildcard, which we don't want)
+5. `migration repair --status applied` × 4 (0001-0004)
+6. `gen types --linked` produced byte-identical TS types (only CLI noise differed)
+
+### Verification
+`supabase db diff` blocked (requires Docker; not running locally). Substituted MCP-based equivalent: tables + column ordinals, indexes, RLS policies, functions, triggers, storage policies, realtime publication tables — all match squash declarations. `private` schema confirmed to have exactly 6 functions (5 auth helpers + `bump_thread_on_reply`).
+
+### Final state
+- `supabase/migrations/` — 4 files (`0001_init`, `0002_rls`, `0003_storage`, `0004_realtime`)
+- `supabase/migrations.bak/` — 15 originals, untracked (local safety net only)
+- `supabase/SQUASH_2026-05-03_RUNBOOK.md` — preserved as historical reference (with the BOOT-* code value scrubbed)
+- Remote `supabase_migrations.schema_migrations` — 4 rows, in sync with local
+- Commit: `3243dda chore(db): squash migrations 0001-0015 into 4 clean files` (5 files / 1058 insertions, squash + runbook only — chunks 2/3/Realtime work still uncommitted in 38+ modified + many untracked files; separate commits)
+
+### Lessons worth keeping
+- **Squash files must be runnable on a fresh deploy**, not just reflect final state. Inline FKs that forward-reference later tables fail. Read carefully for table-creation order before swapping.
+- **Live column `ordinal_position` matters** when reproducing existing schemas. `ALTER ADD COLUMN` columns end up last; squash needs equivalent execution order to keep `pg_dump`/`db diff` parity.
+- **Read-only MCP can't do DDL**. For one-off cleanup drops during ops like this, either flip the MCP to read-write, install psql, or paste into Supabase Studio.
+
+---
+
+## 2026-05-03 · INGEST · Backend chunk 3 COMPLETE — saves, polls, tombstones, drafts, publishing, storage, foro, realtime, saved-comments view
+
+[[Backend Plan]] chunk 3 finished in a single multi-hour pickup session. Every user-facing surface is now real DB / Storage / Realtime; zero sessionStorage in the user-facing path. Eight slices shipped in order:
+
+### Slices (in order)
+1. **Item saves (`★` chips)** — `/api/saves/items/[itemId]` POST + DELETE; `lib/itemSavesCache.ts`; AuthProvider loads on auth state change. Verified iker → ed-001 row in `user_saves`.
+2. **Polls (vote)** — `/api/polls/[pollId]/vote` upsert by composite PK; `lib/pollVotesCache.ts` (per-poll Map with lazy `ensurePollVotesFetched`); `lib/data/items.ts` extended to embed `polls` join via `polls.item_id` FK so `item.poll` populates from DB. All 4 poll kinds verified (attendance / from-tracklist / freeform / from-list); revote upserts in place.
+3. **Comment tombstones** — `/api/comments/[id]/tombstone` POST + DELETE; lib/comments.ts `tombstoneComment` / `clearCommentDeletion` async + invalidateAllComments. Mod-delete + author-self-delete + revert all verified. Foro tombstones deferred to the foro slice.
+4. **Drafts CRUD** — `/api/drafts` POST upsert (jsonb path lookup by ContentItem.id), `/api/drafts/[itemId]` DELETE; `lib/draftsCache.ts` + lib/drafts.ts hybrid. AuthProvider primes the cache on auth.
+5. **Publishing items** — `/api/items` POST upsert by id, INSERTs poll if `item.poll` set, DELETEs the matching draft atomically. New `lib/data/items.ts` `contentItemToRow` mapper (mirrors `itemToRow` from seed.ts). PublishConfirmOverlay awaits `publishItem` then `router.refresh()` so server components re-render with the new row.
+6. **Two follow-up bugs caught + fixed**: (a) `OverlayRouter` couldn't open published items because it only knew MOCK_ITEMS — added `lib/itemsCache.ts` slug-keyed cache populated by ContentGrid on every render. (b) Dashboard "Publicados" was empty because items had no `author_id` column — migration 0012 added `items.created_by`, route handler stamps it, new `lib/hooks/useMyPublishedItems` filters by it.
+7. **Image uploads to Storage** — migration 0013 created `uploads` bucket (public read, self-only writes by path prefix `${user.id}/...`); installed `browser-image-compression@2.0.2`; `lib/imageUpload.ts` `compressAndUploadImage(file, userId, opts?)`; `Fields.tsx` ImageUrlField + foro composers all swapped from `FileReader.readAsDataURL` to compressed Storage uploads. GIFs pass through uncompressed (preserves animation). Verified: a 2.7MB inline data URL on `items.image_url` shrunk to a 135-char CDN URL on the same row after re-publish.
+8. **Foro writes (the big one)** — `lib/data/foro.ts` server reads, `lib/hooks/useForo.ts` browser hooks with per-thread + catalog invalidation buses, four routes (`/api/foro/threads`, `.../[id]/replies`, `.../[id]/tombstone`, `/api/foro/replies/[id]/tombstone`), migration 0014 (foro_replies INSERT trigger that bumps parent thread `bumped_at` via SECURITY DEFINER `private.bump_thread_on_reply`), `lib/foro.ts` rewritten (DB-backed; `addThread`/`addReply`/`newThreadId`/`newReplyId` dropped — DB generates UUIDs), NewThreadOverlay + ReplyComposer rewired to upload-then-POST. Verified: thread create, reply create with image, parent bumped to microsecond, mod-tombstone, restore.
+9. **Saved-comments dashboard view** — `lib/hooks/useSavedComments.ts` fetches comments where `id IN savedCommentsCache` + parent items + authors in parallel; SavedCommentsSection + ExplorerSidebar swap to it. Last user-facing sessionStorage holdout gone.
+10. **Realtime layer** — migration 0015 added `comments`/`comment_reactions`/`foro_threads`/`foro_replies` to the `supabase_realtime` publication. `useComments` mounts per-item channel. `useThreads` mounts ONE shared `foro:all` channel that broadcasts `invalidateThreadOnly(id)` to per-thread bus — covers reply counts on N tiles + open thread overlays from a single websocket. `useThread`/`useReplies`/`useReplyCount` no longer mount their own. Cross-tab live updates verified.
+
+### Bug fix worth remembering: dashboard login overlay race
+Dashboard popped login over an already-authed user during mount. Root cause: `isAuthed = profile !== null` is false during the async profile fetch even though session is set. Added `authResolved = ready && fetchedAuthId === sessionAuthId` to useAuth context, derived from current state (the earlier separate-boolean attempt had a stale-true race). Dashboard gates `openLogin` on `authResolved` now. Also added a safety net: when `loginOpen && profile !== null`, force-close.
+
+### Migrations added
+| # | Purpose |
+|---|---|
+| 0011 | `saved_comments` table |
+| 0012 | `items.created_by` column + index |
+| 0013 | `uploads` Storage bucket + 4 RLS policies on `storage.objects` |
+| 0014 | `private.bump_thread_on_reply()` + AFTER INSERT trigger on `foro_replies` |
+| 0015 | Add comments/reactions/foro_threads/foro_replies to `supabase_realtime` publication |
+
+### Patterns crystallized this session (now codified in `project_backend_architecture` memory)
+- **Optimistic write shape**: cache + listener + sync getter + async writer that flips local then API-confirms-or-rolls-back. Used 6+ times now (saves, comments-saves, reactions, polls, drafts, items publish).
+- **`authResolved` gate**: `ready && fetchedAuthId === sessionAuthId`. Use this not `ready` when deciding to redirect / show login.
+- **Single shared Realtime channel + bus broadcast**: don't mount N channels for N tiles. `foro:all` covers the entire foro from useThreads; useReplyCount on each tile listens to the existing per-thread bus.
+- **`invalidateThreadOnly` vs `invalidateThread`**: the *Only variant for Realtime callbacks (catalog refreshed by the same channel's foro_threads handler), the standard variant for API callers (instant local feedback).
+- **Server-vs-browser modules**: `lib/data/*` server-only (createClient from `@/lib/supabase/server`); `lib/hooks/*` browser-only. Row mappers duplicated locally — `next/headers` poisons the client bundle.
+
+### Squash + handoff
+Drafted consolidated migrations in `supabase/squash-staging/` (0001 init + 0002 rls + 0003 storage + 0004 realtime — replaces 0001-0015) plus `SQUASH_RUNBOOK.md` with `migration repair` cutover steps. Not yet executed; safe to apply when fresh.
+
+### Open follow-ups
+1. **Squash** — staged, run runbook when fresh
+2. **`useUserRank`** — still computes from MOCK + session; everyone shows as 'normie' rank in PostHeader/CommentList badges. Needs a SQL view aggregating per-user reaction counts OR a batched server fetch
+3. **`Mi Partner` composer** — marketplace_listings jsonb still on session
+4. **lib/mockData.ts cleanup** — still imported as fallback in OverlayRouter
+5. **Chunk 4 ops** — pg_cron rollups (HP signals, foro 30-day delete sweep, orphan storage prune), Sentry, /api/health, Upstash rate limits, restore drill, `wiki/Runbook.md`
+6. **Chunk 5 scraper Phase 3** — GH Actions cron + admin review queue
+
+### Files created (~25) / modified (~10)
+- New routes: `app/api/saves/items/[itemId]/route.ts`, `app/api/polls/[pollId]/vote/route.ts`, `app/api/comments/[id]/tombstone/route.ts`, `app/api/drafts/route.ts`, `app/api/drafts/[itemId]/route.ts`, `app/api/items/route.ts`, `app/api/foro/threads/route.ts`, `app/api/foro/threads/[id]/replies/route.ts`, `app/api/foro/threads/[id]/tombstone/route.ts`, `app/api/foro/replies/[id]/tombstone/route.ts`
+- New caches/hooks: `lib/itemSavesCache.ts`, `lib/pollVotesCache.ts`, `lib/draftsCache.ts`, `lib/itemsCache.ts`, `lib/imageUpload.ts`, `lib/data/foro.ts`, `lib/hooks/useForo.ts`, `lib/hooks/useMyPublishedItems.ts`, `lib/hooks/useSavedComments.ts`
+- Major rewrites: `lib/saves.ts`, `lib/polls.ts`, `lib/comments.ts` (tombstones), `lib/drafts.ts` (hybrid), `lib/foro.ts` (DB-backed), `components/auth/useAuth.tsx`, `components/dashboard/forms/shared/Fields.tsx` (ImageUrlField), `components/foro/NewThreadOverlay.tsx`, `components/foro/ReplyComposer.tsx`, `components/foro/ThreadOverlay.tsx`, `components/dashboard/explorer/sections/SavedCommentsSection.tsx`, `components/HomeFeedWithDrafts.tsx`, `components/overlay/OverlayRouter.tsx`, `components/ContentGrid.tsx`, `components/publish/PublishConfirmOverlay.tsx`, `app/dashboard/page.tsx`
+- Deps: `browser-image-compression@2.0.2`
+- next.config.mjs: allowlisted `*.supabase.co` for Next/Image
+
+---
+
+## 2026-05-03 · INGEST · Backend chunk 3 — Comment overlay user-writes shipped (same session as chunks 1+2)
+
+[[Backend Plan]] chunk 3 — User writes — half-shipped in the same 05-03 mega-session. The whole **comment overlay subsystem** is now real-data backed: read, post, react (`!`/`?`), save (`★`). All optimistic, no perceived latency. Foro writes, drafts/publishing, item saves, polls, tombstones, dashboard views still pending — see the punch list at the bottom.
+
+### Migration added
+
+| # | Migration | Purpose |
+|---|---|---|
+| 0011 | `saved_comments` | Per-user comment-save table (`user_id`, `comment_id`, `saved_at`). Self-only RLS via `saved_comments_self_only`. Symmetric with the existing `user_saves` (item saves) table — comment-saves land here, item-saves there. |
+
+### Route handlers
+
+- `app/api/comments/route.ts` — POST (create comment). Trusts RLS (`comments_authenticated_insert` requires `auth.uid() = author_id`); we just attach `user.id` and let Postgres enforce.
+- `app/api/comments/[id]/reactions/route.ts` — POST (set/replace reaction with `kind: 'signal' | 'provocative'`) + DELETE (clear). Server-side mutual-exclusivity: deletes any prior reaction by this user before inserting.
+- `app/api/saves/comments/[commentId]/route.ts` — POST (save) + DELETE (unsave). Idempotent — duplicate save returns success; nothing-to-unsave returns success.
+
+### Frontend additions
+
+- `lib/data/users.ts` — server-only: `getUserById`, `getUsersByIds(ids)`, `listUsers`. `rowToUser` mapper.
+- `lib/data/comments.ts` — server-only: `getCommentsForItem(itemId)` with `comment_reactions(*)` joined.
+- `lib/hooks/useComments.ts` — browser-side hook. Fetches comments + reactions in one query, then a batched users-by-ids query for distinct authors + tombstone moderators. Returns `{ comments, usersById, loading }`. Subscribes to a per-itemId invalidation bus + the global reaction-override cache; merges optimistic reaction overrides over server-fetched `comment.reactions`.
+- `lib/savedCommentsCache.ts` — module-scoped Set + listener pattern. Set populated by AuthProvider on auth-state change (`select comment_id from saved_comments where user_id = auth.uid()`). `useIsCommentSaved` subscribes; `toggleSavedComment` updates locally + API-confirms.
+- `lib/reactionsCache.ts` — module-scoped Map<commentId, Reaction[]> with the same listener shape. Holds optimistic overrides. Cleared in bulk by `useComments` on every full refetch (server is fresh truth).
+- Modified `lib/comments.ts`:
+  - `toggleReaction` is now async, optimistic: writes to `reactionsCache`, fires API in background, rolls back on failure. **Does NOT call invalidateAllComments** — full refetch isn't needed because the override carries the truth until `useComments` next runs `load()`.
+  - `toggleSavedComment` likewise optimistic via `savedCommentsCache`.
+  - `isCommentSaved` reads sync from cache (matches the previous prototype's call-site shape).
+  - `setCurrentAuthUidForComments(id)` + `recordCommentReactions(list)` exported as glue between `useAuth` / `useComments` and the toggle logic so toggleReaction knows the calling user + has a baseline to compute against without an extra round-trip.
+  - `addComment` left as-is on sessionStorage (dead code now — `CommentComposer` posts via API directly). Cleanup in next slice.
+- Modified `lib/userOverrides.ts` — added `realUserCache` (Map) + `setRealUsers(iterable)` + `getRealUserById`. `getResolvedUserById` now consults the real cache before falling back to `MOCK_USERS`. Means `useResolvedUser(id)` resolves real Supabase users without changes to the 542-line CommentList.
+- Modified `components/auth/useAuth.tsx` — on auth-state change, also calls `setCurrentAuthUidForComments(authId)` + `setSavedCommentIds([...])` (loaded from `saved_comments` where `user_id = authId`). Logout clears both.
+- Rewrote `components/overlay/CommentsColumn.tsx` — uses the new `useComments(item.id)` hook; pushes fetched users into the global `realUserCache` via `setRealUsers(usersById.values())` so existing `useResolvedUser` calls inside CommentList resolve real rows.
+- Rewrote `components/overlay/CommentComposer.tsx` — POSTs to `/api/comments` and dispatches `invalidateComments(itemId)` after success.
+- 7 type-page swaps from earlier in the session: `/agenda`, `/mixes`, `/noticias`, `/reviews`, `/editorial`, `/opinion`, `/articulos` all `await getItems()` from `lib/data/items.ts`. Each marked `dynamic = 'force-dynamic'` because cookies-aware reads can't be statically rendered.
+
+### Patterns worth keeping
+
+- **Optimistic write shape**: `apply locally → API → confirm-or-rollback`. Used twice this session (saves, reactions). The two caches (`savedCommentsCache`, `reactionsCache`) have identical shapes — module-scoped state + listeners + a tick-based React subscription. Re-use this structure for item saves, polls, foro reactions when those land.
+- **Don't clear the optimistic override on API success.** First reaction migration tried `clearReactionOverride(commentId)` on success — UI snapped back to the pre-toggle state for ~1s because `comments` React state was never updated. The override IS the local truth until the next full refetch (which clears all overrides via `clearAllReactionOverrides()` in `load()`). Documented in the toggleReaction comment.
+- **`realUserCache` bridge** — the lowest-touch way to migrate user-display surfaces off mocks. Add a runtime cache to the existing override module; existing `useResolvedUser` consumers automatically pick up real users without prop drilling.
+- **`next/headers` import poisoning** — `lib/supabase/server.ts` calls `cookies()` from `next/headers`, which can't be bundled for the browser. Any module imported by a client component cannot transitively import server.ts. Solution: split `lib/data/*` (server-only reads) from `lib/hooks/*` + the in-component `createClient()` calls (browser reads). Mappers (`rowToComment`, `rowToUser`) get duplicated; small price.
+- **ALTER POLICY syntax**: USING and WITH CHECK are full restatements, not patches. Confirmed when 0006 had to re-state every helper-using policy after moving the auth helpers to `private` schema.
+
+### Open follow-ups (next session pickup, in priority order)
+
+1. **Item saves** (warm-up) — `★` on cards. `user_saves` table already exists from 0001. Symmetric to comment saves: `/api/saves/items/[itemId]`, replace `lib/saves.ts` toggleItemSave/isItemSaved with API + cache + listener. AuthProvider also loads saved item ids alongside saved comments. ~20 min.
+2. **Polls** — `lib/polls.ts` (vote store) → `polls` + `poll_votes` tables. Optimistic with the same cache pattern. ~30 min.
+3. **Tombstones** — comment + foro-reply mod-delete flows. Update existing `tombstoneComment` / `clearCommentDeletion` to call API; mods see the affordance in CommentList already (gated by `canModerate`). ~30 min.
+4. **Drafts CRUD** — `/api/drafts/*`, `lib/data/drafts.ts`. Drafts table already in schema. Each composer in `/dashboard` writes here on every keystroke (debounced). ~1 hr.
+5. **Publishing items** — `/api/items/route.ts` POST, `[id]/route.ts` PATCH/DELETE. Requires guide/admin role — RLS already enforces. Updates the publish-confirmation flow to write through. `HomeFeedWithDrafts` either disappears (drafts no longer in home feed because they're in the drafts table) or stays only for the editor's pending-confirmation preview. ~1 hr.
+6. **Supabase Storage bucket + presigned uploads** — image uploads currently stuff data URLs into sessionStorage (5MB inline strings — embarrassing). Stand up the bucket, RLS, upload route handler with `browser-image-compression` per the [[Backend Plan]] § "Image upload — limits + auto-compression" table. Foundation for many features (foro images, marketplace listings, draft images). ~1-2 hr.
+7. **Foro writes** — threads + replies + bumped_at trigger + 30-day delete sweep prep. The foro catalog is a CLIENT component reading mock state; it'll need server-side prefetch + prop drilling pattern. ~1.5 hr.
+8. **Dashboard view migrations** — `Guardados/Comentarios`, `Drafts list`, `Mi Partner` sections. Mostly straightforward swaps once the underlying tables are wired. ~1 hr.
+9. **Realtime channels** — `comments:item_id=X`, `foro:thread_id=X`, `foro:catalog`. Layered on top of revalidation; doesn't replace router.refresh / event-bus. ~1 hr.
+10. **Chunk 4 — ops layer** — pg_cron jobs (HP rollup, foro 30-day sweep, orphan storage prune), Sentry, `/api/health`, Upstash rate limits, restore drill, `wiki/Runbook.md`. ~2 hr.
+11. **Migration squash** — 11 migrations, several debugging fixups (0003 → 0006 → 0007 → 0008; the dead `private.lookup_email_by_username` from 0009). Squash into a clean linear history before opening the beta. ~1 hr.
+
+**Roughly 12-15 hours of focused work** to take the visual prototype fully off sessionStorage and ready for the 50-person beta. None hard — all patterns established this session — just volume.
+
+### Files
+
+- Created: `supabase/migrations/0011_saved_comments.sql`
+- Created: `lib/data/users.ts`, `lib/data/comments.ts`
+- Created: `lib/hooks/useComments.ts`
+- Created: `lib/savedCommentsCache.ts`, `lib/reactionsCache.ts`
+- Created: `app/api/comments/route.ts`, `app/api/comments/[id]/reactions/route.ts`
+- Created: `app/api/saves/comments/[commentId]/route.ts`
+- Modified: `lib/comments.ts` (toggleReaction async; toggleSavedComment async; isCommentSaved → cache; useIsCommentSaved → cache subscribe; new exports for the auth glue)
+- Modified: `lib/userOverrides.ts` (added realUserCache + setRealUsers; getResolvedUserById prefers real cache)
+- Modified: `components/auth/useAuth.tsx` (loads saved comment ids on auth-state change; sets currentAuthUid for the comments module)
+- Rewrote: `components/overlay/CommentsColumn.tsx`, `components/overlay/CommentComposer.tsx`
+- Modified: `app/page.tsx` and the 7 type-pages (`agenda`, `mixes`, `noticias`, `reviews`, `editorial`, `opinion`, `articulos`) — all async, `await getItems()`, `dynamic = 'force-dynamic'`
+
+---
+
+## 2026-05-03 · INGEST · Backend chunk 2 — Auth + admin shipped (same session as chunk 1)
+
+[[Backend Plan]] chunk 2 — Auth + admin minimum — landed in the same session as chunk 1. Real admin account `@iker` exists, signup + login flow works end-to-end, dev-visibility relaxation tightened, `/admin` invite-code generator running with a partner dropdown.
+
+### Migrations added
+
+| # | Migration | Purpose |
+|---|---|---|
+| 0009 | `auth_trigger` | `handle_new_auth_user` AFTER-INSERT trigger on `auth.users` (validates invite code, applies role/partner metadata to new `public.users` row, marks code used; seed users bypass via `raw_user_meta_data->>'seed' = true`); `private.lookup_email_by_username` function (kept but unused — route handler uses admin API instead); `BOOT-93b83a6f9c323370` admin invite code |
+| 0010 | `tighten_dev_visibility` | Restored `seed=false` filter on `items_public_read` / `comments_public_read` / `foro_threads_public_read`. Anon stops seeing seeded data; admin/guide still see all via `*_staff_read`. Reverses 0005's relaxation now that real auth exists. |
+
+### Frontend additions
+
+- `middleware.ts` + `lib/supabase/middleware.ts` — per-request session cookie refresh
+- `lib/supabase/admin.ts` — service-role client (server-only; powers signup pre-validation + auth admin API calls)
+- `app/api/auth/signup/route.ts` — pre-validates invite code with service-role, then `auth.admin.createUser({ email_confirm: true, user_metadata: { username, invite_code } })`. Trigger applies metadata atomically; if it raises (invalid code, taken username) the auth.users insert rolls back.
+- `app/api/auth/login/route.ts` — accepts `identifier` (username or email — detected via `@` presence). Username path looks up `public.users.id` then `auth.admin.getUserById(id).email`, then `signInWithPassword` via the SSR client to set the session cookie.
+- `app/api/auth/logout/route.ts` — `supabase.auth.signOut()` via SSR client
+- `components/auth/useAuth.tsx` — full rewrite. Replaces the prototype sessionStorage hack with `onAuthStateChange` subscription + `from('users').select('*')` profile fetch. Exposes the same API shape as before so existing consumers (AuthBadge, dashboard chrome, canModerate checks) don't change. `loginAs` retained as a no-op stub for back-compat. `login`/`signup`/`logout` all call `router.refresh()` after the mutation so server components re-render with the new auth state — see "router.refresh pattern" below.
+- `components/auth/LoginOverlay.tsx` — full rewrite. Two-tab UI (`▶ INGRESAR` / `▶ REGISTRARSE`); login takes username-or-email + password; signup takes email + username + password + invite code. Quick-switch UI dropped (impossible without target user's password under real auth).
+- `app/admin/page.tsx` — server-component-gated `/admin` route. `redirect('/')` if no session OR if `users.role !== 'admin'`. Pre-fetches existing invite codes + the partner roster (from `items where type='partner'`).
+- `app/api/admin/invite-codes/route.ts` — GET lists, POST creates. Uses the SSR client (caller's session) so `invite_codes_admin_all` RLS does the gating; explicit role check up front for clean 403s.
+- `components/admin/AdminInviteCodes.tsx` — client form with role select / mod checkbox / partner dropdown (replaces the original text-input UX wart) / partner_admin checkbox (only visible when partner is selected) / expires-in-days; existing-codes table shows partner TITLE not id, with copy buttons.
+
+### Notable decisions / patterns
+
+- **router.refresh() after every mutation.** Iker observed during testing that login succeeded but the home grid stayed empty until a hard reload. Root cause: server components rendered as anon BEFORE the cookie was set; React tree just sat there showing the anon view. Fix: every mutation route in [[useAuth]] (login, signup, logout) calls `router.refresh()` from `next/navigation` after the fetch returns. Server components re-fetch with the new auth cookie. The same pattern will apply to chunk 3 user writes — comment posted → server returns ok → `router.refresh()` → comments column re-renders. Documented in the [[useAuth]] login useCallback comment.
+- **Email confirmation skipped during signup.** `auth.admin.createUser({ email_confirm: true, ... })` from the server-side handler bypasses the email-verification round-trip. Justified for the beta because the invite code itself is the trust signal — anyone presenting a valid unused code is by-definition a known invitee. When opening to public signup we re-enable verification. The route handler still validates the invite code BEFORE creating the auth row to avoid orphan auth.users on bad codes.
+- **Username login via the admin API, not a custom RPC.** Earlier plan (in [[Backend Plan]]) was to add a `lookup_email_by_username` RPC. Built it in 0009 inside `private` schema, then realized PostgREST doesn't expose `private` for RPCs, so it'd require a config change. Pivoted to using `auth.admin.getUserById` instead — the route handler queries `public.users` for the id by username (anon-readable), then asks the admin API for the email. Function in 0009 is now dead code; will be cleaned up in the migration squash. The user-facing flow is unchanged.
+- **Partner dropdown** uses an `export interface PartnerOption` from `app/admin/page.tsx` so the prop surface to the client component stays narrow (no full ContentItem in the bundle). When real partners get added later (admin/partners flow, or chunk 3 dashboard migration), they appear automatically.
+- **Bootstrap admin flow.** Iker signed up with `BOOT-93b83a6f9c323370` carrying `intended_role: 'admin'`. No manual `update users set role='admin'` needed — the trigger applies it on signup. Used `iker` (not `ikerio`) as username because the seed roster has `@ikerio`; the seed twins all get deleted pre-beta anyway so he can reclaim the handle later.
+
+### Files
+
+- Created: `supabase/migrations/0009_auth_trigger.sql`, `0010_tighten_dev_visibility.sql`
+- Created: `middleware.ts`
+- Created: `lib/supabase/{middleware.ts,admin.ts}`
+- Created: `app/api/auth/{signup,login,logout}/route.ts`
+- Created: `app/api/admin/invite-codes/route.ts`
+- Created: `app/admin/page.tsx`
+- Created: `components/admin/AdminInviteCodes.tsx`
+- Rewrote: `components/auth/useAuth.tsx`, `components/auth/LoginOverlay.tsx`
+
+### Open follow-ups (carry to next session)
+
+- **Add-partner UI in `/admin`** — currently the only way to add a partner is direct INSERT into `items`. A small composer (title, partnerKind, partnerUrl, image upload to Supabase Storage when chunk 4 storage policies land) closes this loop. Could pair with the partner dropdown for a tighter UX.
+- **Role / flag editor for existing users in `/admin`** — promote a user from `user → guide`, add `isMod`, etc. without going through Supabase Studio.
+- **Migrate `/foro` + `/marketplace` catalogs off mocks** — chunk 1.5 leftover. Both are client components reading mock state directly. Naturally folds into chunk 3 (foro writes; marketplace listings).
+- **Client-side user lookups still on mocks** — CommentList / PostHeader / etc. import from `lib/mockUsers`. Build `lib/data/users.ts` (`getUserById`, `getUserByUsername`, `listUsers`) reading from Supabase, swap imports.
+- **Migration squash before beta** — 10 migrations now, several of them debugging fixups (0003 → 0006 → 0007 → 0008; the 0009 `lookup_email_by_username` dead code). Pre-beta task in chunk 4.
+- **The dev-server cookie quirk** — Iker observed that restarting the Next.js dev server cleared his session. Repro is non-deterministic; might be a Windows-specific cookie persistence issue or a `@supabase/ssr` middleware interaction. Worth investigating if it bites again under chunk 3 load.
+
+---
+
+## 2026-05-03 · INGEST · Backend chunk 1 — Foundation shipped
+
+[[Backend Plan]] chunk 1 complete: schema + RLS + grants + seed + first server component reading from Supabase. Site renders with full visual parity from the DB — verified live in preview after migration 0008.
+
+### What landed
+
+**8 migrations** in `supabase/migrations/`:
+
+| # | Migration | Purpose |
+|---|---|---|
+| 0001 | `init` | 13 tables + 7 enum types + indexes + FTS tsvector column + RLS-on (no policies yet) |
+| 0002 | `rls` | All RLS policies + 5 auth helper functions (auth_role, auth_is_admin, auth_is_guide_or_admin, auth_is_mod_or_admin, auth_is_authoring_role) |
+| 0003 | `function_hardening` | Revoked EXECUTE on helpers (Supabase advisor recommendation) |
+| 0004 | `grants` | Standard role privileges (anon/authenticated DML, service_role ALL) — needed because we picked "auto-expose new tables OFF" at project creation |
+| 0005 | `dev_visibility` | TEMPORARY: dropped `seed=false` filter from public-read policies on items / comments / foro_threads so anon can see seeded data during dev. **Must tighten before beta.** |
+| 0006 | `private_helpers` | Moved auth helpers to a non-exposed `private` schema + updated all 12 policies to reference `private.X()` instead of `public.X()` |
+| 0007 | `helper_grants_fix` | Re-granted EXECUTE in the new schema |
+| 0008 | `pgrst_reload` | `notify pgrst, 'reload schema'` to flush PostgREST's cached call plan |
+
+**Seeded data** (all `seed=true`):
+- 214 items: 151 eventos (mostly RA-scraped) + 16 mixes + 14 reviews + 11 editorial + 5 noticia + 5 opinion + 4 articulo + 3 listicle + 5 partner
+- 4 polls (extracted from item.poll attachments; mock IDs replaced with fresh UUIDs)
+- 9 users (mock roster) — real `auth.users` rows with placeholder `<username>@gradiente.local` emails + random per-user passwords saved to `.local/seed-credentials.txt` (gitignored)
+- 25 comments + 51 reactions
+- 8 foro threads + 16 replies (UUID maps built per-table to translate mock string ids → real UUIDs while preserving parent / quoted-reply references)
+
+**Frontend**:
+- `lib/supabase/client.ts` + `server.ts` — browser + RSC clients (using `@supabase/ssr`)
+- `lib/supabase/database.types.ts` — generated via MCP `generate_typescript_types`
+- `lib/data/items.ts` — `getItems()` + `getItemBySlug()` + `rowToContentItem` mapping helper (snake_case → camelCase ContentItem)
+- `app/page.tsx` — now `async`, reads from Supabase via `await getItems()`, marked `dynamic = 'force-dynamic'`
+- `next.config.mjs` — removed `output: 'export'` + GH-Pages basePath/assetPrefix/trailingSlash; added `images.ra.co` to remote patterns. Site is now Vercel-targeted (server runtime required for cookies-based auth).
+- `scripts/seed.ts` — idempotent one-shot port from mock files to DB. Run via `npm run seed`.
+
+**Tooling**:
+- `@supabase/supabase-js` + `@supabase/ssr` + `tsx` + `dotenv` installed
+- Supabase CLI linked via `npx supabase link --project-ref dcqbtcpqbqrtxbshhlkd`
+- Supabase MCP added at `--scope project` (`.mcp.json` at repo PARENT — Claude Code is launched from `Gradiente/`, not `espectro-fm-web/`), read-only mode
+- New `seed` npm script
+
+### Diversion box: the function-permission rabbit hole
+
+0003 → 0006 → 0007 → 0008 was a four-iteration walk through "how do RLS policies legally call helper functions in Supabase":
+
+1. **0003**: Advisor said "revoke EXECUTE from anon/authenticated to remove RPC surface". Did that. Result: RLS policies that called these helpers started failing with `permission denied` because Postgres checks EXECUTE before evaluating policy bodies — even for SECURITY DEFINER functions.
+2. **0006**: Right answer is to put helpers in a non-public schema (PostgREST only exposes `public` as RPCs). Created `private`, moved helpers, updated all 12 policies to use qualified names.
+3. **0007**: Grants in 0006 didn't seem to land — verified via `pg_proc.proacl` they were correct on disk, but anon STILL got `permission denied`.
+4. **0008**: PostgREST was caching a pre-move schema plan. `notify pgrst, 'reload schema'` flushed it. Site immediately started rendering content.
+
+The lesson worth keeping: the Supabase advisor's "revoke EXECUTE on SECURITY DEFINER" recommendation is technically incomplete — the right pattern is non-public schema + grant EXECUTE, NOT public schema + revoke EXECUTE. Documented in 0006's header comment.
+
+### Debt flagged for chunk 4 / pre-beta
+
+- **Migration sprawl** — 8 migrations where half are fixups. Pre-beta, squash into a clean linear history (chunk 4 / pre-beta task).
+- **Dev visibility relaxation in 0005** — anon currently sees seeded rows. Must tighten when chunk 2 brings real auth.
+- **Other pages still read mock** — `/agenda`, `/mixes`, `/noticias`, `/reviews`, `/editorial`, `/articulos`, `/foro`, the dashboard, every overlay. They work because `lib/mockData.ts` is still imported, but the migration isn't done. Next session picks this up.
+
+### Files
+
+- Created: `lib/supabase/client.ts`, `lib/supabase/server.ts`, `lib/supabase/database.types.ts`
+- Created: `lib/data/items.ts`
+- Created: `scripts/seed.ts`
+- Created: `supabase/migrations/0001_init.sql` through `0008_pgrst_reload.sql`
+- Modified: `app/page.tsx` (async, Supabase reads, force-dynamic)
+- Modified: `next.config.mjs` (removed static-export config)
+- Modified: `package.json` (deps + `seed` script)
+- Modified: `.gitignore` (`.local/`, `supabase/.temp/`, `supabase/.branches/`)
+- Modified: `.env.local` (gitignored — Supabase URL + anon key + service-role key)
+- Created: `.mcp.json` at repo PARENT (`Gradiente/`)
+
+### Open follow-ups
+
+- Migrate remaining surfaces (mock → DB) using the same `getItems()` / `getItemBySlug()` pattern × ~10 files. Next-up.
+- Build `lib/data/{users,comments,foro}.ts` for the surfaces that need them.
+- Chunk 2: Supabase Auth + invite codes + minimal `/admin`. Removes [[useAuth]] sessionStorage hack and lets real users sign in. After this, we can re-tighten 0005's dev-visibility relaxation.
+- Squash migrations pre-beta.
+
+---
+
+## 2026-05-02 · INGEST · Backend Plan — full consolidated plan written, Supabase project created
+
+After multi-pass design conversation with Iker, wrote [[Backend Plan]] as the consolidated reference for moving Gradiente FM off `sessionStorage` + mock data onto a real backend. Supersedes [[Supabase Migration]] (kept as historical sketch with a header pointer); absorbs Phase 3 of [[Scraper Pipeline]]. [[Admin Dashboard]] stays current and complementary.
+
+### Stack settled
+
+Supabase (Free) for DB + Auth + Realtime + Storage; Vercel Hobby for app; Cloudflare Turnstile for captcha (progressive rollout); Sentry + Axiom for alerting + log drain; Resend for transactional email; GitHub Actions cron for the RA scraper (Python script stays as-is); Upstash Redis for rate limiting. Image storage starts on Supabase Storage; migrate to Cloudflare R2 if egress matters.
+
+### Supabase project created (gradiente-fm)
+
+Region: **East US (North Virginia)** `us-east-1` (lowest latency to CDMX of free-tier regions). Settings chosen for strict-by-default: Data API ON, **auto-expose new tables OFF** (closes the #1 cause of public-Supabase breaches), **automatic RLS ON** (every new table is RLS-enforced from creation). Personal MFA enabled on the dashboard account; org-wide MFA enforcement is paid-only and not necessary at this stage.
+
+### Notable decisions (full detail in [[Backend Plan]])
+
+- **Auth shape**: magic-link for signup + password reset; username/password for routine logins (Supabase keys on email; client resolves username → email via public RPC, then standard auth). Removes the `admin/admin` sessionStorage shortcut in [[useAuth]].
+- **Bootstrap admin**: no template/seeded users in DB. Iker signs up with first invite code, sets `role='admin'` manually in Studio once, all further roles flow through `/admin` invite generator.
+- **Beta gate**: invite codes carrying `intended_role` + `partner_id` + `partner_admin`; pre-generate ~80, single-use, atomic redemption RPC. Single Postgres trigger applies the carried metadata on signup.
+- **Mock data migration**: add `seed boolean default false` to `items` / `comments` / `foro_threads` / `users`; seed all current mock with `seed=true`; RLS hides seed rows from public reads (admins still see them for testing). When real content lands: `delete where seed=true` — one transaction.
+- **Image uploads**: client-side `browser-image-compression` in Web Worker; per-surface raw caps (foro 3 MB, marketplace 4 MB, editorial flyer 6 MB) auto-compressed to ~400 KB / ~700 KB / ~1.2 MB respectively. GIFs allowed in foro under stricter caps (no recompress — breaks animation), 800×800 dim. Server-side fallback via Storage triggers. Presigned URLs only — never through the app server.
+- **Foro retention**: hard delete thread + replies + R2 images **30 days after `bumpedAt`**, regardless of catalog position. The existing 30-thread soft cap on the catalog is preserved; off-cap threads stay URL-accessible until deletion.
+- **RA scraper cadence**: **MWF** (`0 12 * * 1,3,5` UTC = 06:00 CDMX Mon/Wed/Fri). Daily was overkill, weekly too sparse. Field-level UPSERT rules enforced by RPC: scraper can update RA-source-of-truth fields (title, venue, date, etc.) but **cannot touch `vibe`, `editorial`, `pinned`, `elevated`, `hp`** — editor- / curation-owned columns are off-limits. `genres`/`tags` merge: scraper adds, editor never loses additions.
+- **Realtime**: comments + foro thread + foro catalog get Supabase Realtime channels. **Home feed deferred** — too much bandwidth for HP-curated content. Instead, [[FeedHeader]] gets a 5-min countdown chip — `// SISTEMA · ACTUALIZACIÓN EN 04:23 · CURVA HP` — synced with HP rollup pg_cron + Next.js `revalidate=300`. Counter-zero triggers a [[CRT Scanline Sweep]] (first ship of that roadmap idea) + `router.refresh()`. The displayed count stays honest: when it says 04:23, the feed really is unchanged for the next 4:23.
+- **HP write path**: append-only `hp_events` table with view/click/save/comment signals; pg_cron batches into `items.hp` deltas every 5 min; lazy `currentHp(item, now)` from [[curation]] unchanged on reads.
+- **Captcha rollout**: Turnstile on signup only at Phase 0 (don't punish 50 known beta users); add to first-foro-post + first-marketplace-listing at Phase 1; rate-aware comment composer at Phase 2 if abuse appears.
+- **Future-proofing for the achievement system**: backend leaves space for `event_attendances` + `badges` + `user_badges` tables and `users.profile_meta jsonb` (already in initial schema). Verification gesture (QR / NFC / partner-code) stays out of scope until partnership conversations actually start.
+
+### Phasing
+
+Five chunks, ~2.5-3 weeks total focused work, longer if interleaved. Loose timeline — getting it right beats getting it fast.
+
+1. Foundation (~3-4 days): schema + RLS + migrations; mock data seeded; server components read from DB.
+2. Auth + admin (~3 days): Supabase Auth + invite codes + minimal `/admin`. [[useAuth]] sessionStorage hack removed.
+3. User writes (~4 days): comments / saves / polls / foro through Supabase + Realtime + image uploads.
+4. Ops layer (~2 days): pg_cron + Sentry + Axiom + `/api/health` + rate limits + restore drill + runbook.
+5. Scraper productionization (~1-2 days): GH Actions MWF cron.
+6. Beta open: 80 invite codes + k6 load test + send first 50.
+
+### 25-launch-blockers checklist
+
+The full list (no load testing, session in memory, uploads on app server, etc.) gets mapped to architectural decisions in [[Backend Plan]]'s checklist table. Every item has a named answer.
+
+### Files
+
+- Created: `wiki/70-Roadmap/Backend Plan.md`
+- Updated: `wiki/index.md` (added [[Backend Plan]] under 70-Roadmap, demoted [[Supabase Migration]] description to "older, narrower draft superseded")
+- Updated: `wiki/70-Roadmap/Supabase Migration.md` (header pointer to [[Backend Plan]])
+- Updated: `wiki/70-Roadmap/Open Questions.md` (closed "when do we commit to [[Supabase Migration]]")
+
+---
+
 ## 2026-05-02 · INGEST · Agenda — chronological sort + archived-past visual treatment
 
 `/agenda` was displaying events latest-date-first (May 30 at top, May 2 at bottom) — opposite of what users expect from a calendar page. The page even labeled itself `FUTURO → PASADO` while doing the reverse. Iker flagged it: "the sooner the event will appear, the closer to the top."
