@@ -42,7 +42,7 @@ Pick the cleaner one. The rendering side (badgeFor + UserRank type in lib/types.
 
 ### C. Chunk 5 — Scraper Phase 3 (~1-2 hr)
 
-GH Actions cron MWF (`0 12 * * 1,3,5` UTC = 06:00 CDMX). Idempotent `upsert_scraped_events()` RPC with field-level allowlist (scraper can update RA-source-of-truth fields, but **cannot touch `vibe`, `editorial`, `pinned`, `elevated`, `hp`** — editor-owned columns are off-limits). Discord notification on success/failure. Admin review queue surface in `/admin` for newly-ingested events that need human elevation.
+GH Actions cron MWF (`0 12 * * 1,3,5` UTC = 06:00 CDMX). Idempotent `upsert_scraped_events()` RPC with field-level allowlist (scraper can update RA-source-of-truth fields, but **cannot touch `vibe`, `editorial`, `pinned`, `elevated`, `hp`** — editor-owned columns are off-limits). No notification surface needed — success is self-evident from new events in `/admin` review queue + agenda; check Actions tab if expected events don't show. Admin review queue surface in `/admin` for newly-ingested events that need human elevation.
 
 ### D. Smaller items
 

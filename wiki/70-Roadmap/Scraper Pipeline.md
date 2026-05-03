@@ -58,8 +58,8 @@ Cron-driven scraper runs into Supabase, full review queue at `/admin`, notificat
 │  Supabase `items` table (published: false, source: 'ra')   │
 │           │                                                │
 │           ▼                                                │
-│  Editor notification (email/Slack/Discord):                │
-│    "12 new events scraped, 3 high-vibe candidates"         │
+│  (no active notification — visible in /admin queue)        │
+│                                                            │
 │           │                                                │
 │           ▼                                                │
 │  /admin review queue                                       │

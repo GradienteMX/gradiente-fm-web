@@ -210,7 +210,7 @@ When the count hits 0:
 
 - **Cron**: `0 12 * * 1,3,5` UTC = 06:00 CDMX **Mon / Wed / Fri**
 - Workflow: GH Actions → existing `Webscraper/ra_to_gradiente.py` → POST batch UPSERT to Supabase RPC `upsert_scraped_events(events jsonb)` keyed by `external_id`
-- Discord webhook reports `N new · M updated · K unchanged · L removed-from-RA`
+- No active notification — success is self-evident (new events appear in `/admin` review queue + agenda); check the Actions tab if expected events haven't shown up
 - Soft-fail: scraper crash auto-opens a GitHub issue (point 19); site keeps serving last-good event set
 
 ### Field-level UPSERT rules
@@ -278,7 +278,7 @@ Free tier holds far longer than 50 people — Supabase free is 50K MAU. The clif
 | 11 | Unindexed FKs | Every FK gets an index in the migration. `pg_stat_statements` lint after launch |
 | 12 | No rate limiting | Upstash token bucket on every write route + RLS deny patterns |
 | 13 | No compression | Next.js auto br/gzip. R2 serves WebP |
-| 14 | No error alerting | Sentry; Discord webhook for critical-path failures (signup, scraper) |
+| 14 | No error alerting | Sentry for app-side errors; GitHub Actions failure email for scraper |
 | 15 | No transactions | Multi-step writes go through Supabase RPCs (publish, partner team add, invite redeem) |
 | 16 | No health check | `/api/health` does `select 1` against DB; returns 503 if unreachable |
 | 17 | Memory leaks | Vercel serverless = no long-lived processes |
@@ -301,7 +301,7 @@ Five independently-shippable chunks plus the beta-open milestone. Loose timeline
 | 2 | **Auth + admin** | ~3 days | Supabase Auth (magic-link signup + username/password login + reset-via-link); invite codes; minimal `/admin` (review queue + role/flag editor + invite generator). [[useAuth]] sessionStorage hack removed. |
 | 3 | **User writes** | ~4 days | Comments / saves / polls / foro all writing through Supabase with RLS. Realtime channels wired. Image uploads with client compression. Soft-delete + tombstones. |
 | 4 | **Ops layer** | ~2 days | pg_cron jobs (HP rollup, foro hard-delete, orphan storage prune, audit log). Sentry + Axiom + `/api/health` + rate limits. Restore drill. Runbook. |
-| 5 | **Scraper productionization** | ~1-2 days | GH Actions cron MWF; idempotent UPSERT RPC; Discord notification; fallback issue-creation. |
+| 5 | **Scraper productionization** | ~1-2 days | GH Actions cron MWF; idempotent UPSERT RPC; fallback issue-creation on failure. |
 | 6 | **Beta open** | — | Generate 80 invite codes; k6 load test; send to first 50 |
 
 ~2.5-3 weeks of focused work, longer interleaved.
