@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ExplorerSection } from './types'
-import { useSavedItems } from '@/lib/saves'
+import { useSavedItems } from '@/lib/hooks/useSavedItems'
 import { useSavedComments } from '@/lib/hooks/useSavedComments'
 import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles } from '@/lib/permissions'

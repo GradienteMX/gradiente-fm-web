@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles, canCreateContent } from '@/lib/permissions'
 import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
 import { useMyPublishedItems } from '@/lib/hooks/useMyPublishedItems'
-import { useSavedItems } from '@/lib/saves'
+import { useSavedItems } from '@/lib/hooks/useSavedItems'
 import { categoryColor } from '@/lib/utils'
 
 import { ExplorerShell } from '@/components/dashboard/explorer/ExplorerShell'
