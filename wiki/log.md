@@ -8,6 +8,62 @@
 
 ---
 
+## 2026-05-03 · INGEST · Vibe range arc — items.vibe → vibe_min/vibe_max
+
+Items now express a vibe SPAN instead of a single point. Designed at the end of the previous session; full technical scope was sitting in `project_vibe_range_arc` memory. Shipped as commit `c4fff18` (37 files, 577+/404−). Site is live with the new schema.
+
+### Migration
+- `supabase/migrations/0007_items_vibe_range.sql` — adds `vibe_min` + `vibe_max` smallint cols (0-10), backfills both from the old `vibe` value, enforces `vibe_min <= vibe_max`, drops `vibe`. `npx supabase db push` applied cleanly. All 216 existing rows backfilled with `min === max`.
+- Verified via MCP: `vibe` column gone, `vibe_min` + `vibe_max` present + NOT NULL.
+
+### Filter logic
+- `lib/utils.ts` — replaced point-in-range `isInVibeRange(item.vibe, range)` with overlap test `rangesOverlap(item, range)` (`item.vibeMax >= filterMin && item.vibeMin <= filterMax`). Two ranges overlap when neither sits entirely above or below the other.
+- Added helpers: `vibeMid(item)` (single representative number for narrow chrome), `vibeRangeLabel(item)` ("3-7 · CHILL → HOT" or "5 · NEUTRAL"), `vibeBandGradient(item)` (CSS linear-gradient with discrete integer stops, or solid color when point).
+
+### Row mappers
+- 4 places (per chunk-3 server-vs-browser split): `lib/data/items.ts`, `lib/hooks/useMyPublishedItems.ts`, `lib/hooks/useSavedItems.ts`, `lib/hooks/useSavedComments.ts`. Each: `vibe: row.vibe` → `vibeMin: row.vibe_min, vibeMax: row.vibe_max`.
+- Inverse `contentItemToRow` in `lib/data/items.ts` + `itemToRow` in `scripts/seed.ts` swapped same way.
+- `lib/itemsCache.ts` — listed in the planning doc as a 5th mapper but actually has no row-mapping logic (slug-keyed cache only). Plan was wrong about that file. Real count: 4.
+
+### Two-thumb VibeField
+- `components/dashboard/forms/shared/Fields.tsx` — VibeField rewritten as two stacked overlaid `<input type="range">` elements with a gradient track behind them. Each thumb keyboard-accessible independently. Click a bar in the 11-strip to collapse the range to that point; shift+click to extend the nearer edge. Range label "3-7 · CHILL → HOT" vs point "5 · NEUTRAL".
+- CSS in `app/globals.css` — `.vibe-range-thumb` rules to make the input transparent/pointer-none while keeping the thumb pseudo-element grabbable. Standard two-input slider pattern.
+- All 8 dashboard forms (Evento/Mix/Articulo/Editorial/Listicle/Noticia/Opinion/Review) updated: empty draft `vibe: 5` → `vibeMin: 5, vibeMax: 5`, VibeField call swapped to `valueMin/valueMax/onChange(min, max)`.
+- MixForm had a duplicate local VibeField (~50 lines, pre-existing tech debt) — deleted in favor of the shared one. Tracked vibeToColor/vibeToLabel imports also dropped (unused after).
+
+### Card / overlay displays
+- ContentCard top strip + HeroCard left edge: render `vibeBandGradient(item)` instead of single solid color. Point items stay solid (gradient collapses); range items show the band.
+- MixCard top accent stripe + ArticleCard left accent: same gradient treatment.
+- All 6 overlays (Evento/Mix/Articulo/Listicle/Reader/Generic) now show `vibeRangeLabel(item)` in the VIBE chip area instead of `{item.vibe} · {vibeToLabel}`.
+- MixOverlay's 11-bar gauge: bars in `[vibeMin, vibeMax]` light up with their per-integer color (mirrors VibeField). Used to be `i < item.vibe` lighting up bars 0..vibe.
+- EventCard FUEGO-stripe (the hazard pattern on hot items): triggered by `item.vibeMax >= 9` instead of `item.vibe >= 9` — if any part of the range hits FUEGO+, badge shows.
+- Single-color chrome elsewhere (vibeColor used for borders, glows, accent) reads `vibeToColor(vibeMid(item))` — visually identical to the old behavior for point items, mid-color for ranges.
+
+### Admin partners
+- `/api/admin/partners` POST body: `vibe: number` → `vibe_min`/`vibe_max` numbers; validation enforces both 0-10 and `min <= max`; insert writes both columns.
+- AdminPartnersComposer state split into `vibeMin`/`vibeMax`; dropped its inline range input + plugged in the shared VibeField. Default both at 5 (admin slides apart explicitly — no forced wide default).
+
+### Genre/vibe coupling — deferred
+- Open design call from the prior session: should the composer's vibe range and genre multi-select live-couple? Decision (Iker + me at end of last session): **option 2 — independent inputs, no live coupling**. Suggestion-button arc deferred. Field shapes don't need to know about each other; the decision didn't change any code in this slice.
+
+### Files / commits
+- `0007_items_vibe_range.sql` (migration) + `c4fff18 feat(vibe): items.vibe → vibe_min/vibe_max range` (37 files / 577 insertions / 404 deletions).
+
+### Verification
+- `tsc --noEmit` clean.
+- `next lint` — no new warnings (pre-existing `<img>` + hooks warnings only).
+- Dev preview compiles + renders home/admin pages without errors. Cards render new top-strip element with correct color (solid for the current all-point items; gradient logic verified mathematically — would render bands when an admin sets `vibe_min < vibe_max`).
+- Schema verified via MCP: vibe column dropped, vibe_min + vibe_max NOT NULL.
+
+### Things known to be next
+- **A — Chunk 4 ops layer** — beta-open gate. pg_cron (HP rollup, foro 30-day delete, orphan storage prune), `/api/health`, Sentry, Upstash rate limits, restore drill, Runbook.md.
+- **Edit-in-place for partners** — v2 of //PARTNERS tab.
+- **Mobile pass** — desktop locked, mobile untested.
+- **Chunk 5 scraper Phase 3** — GH Actions cron MWF + admin review queue.
+- Remaining smaller items: `Mi Partner` composer migration, `lib/mockData.ts` cleanup, reduced-motion respect.
+
+---
+
 ## 2026-05-03 · INGEST · Production live on gradiente.org + 10 polish slices
 
 Big day. Deployed to production for the first time, fixed a long bug list surfaced by live testing, completed two backend follow-ups left over from chunk 3, and added the role/flag + partners composers to `/admin`.
