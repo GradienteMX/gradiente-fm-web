@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       audit_log: {
@@ -491,8 +466,8 @@ export type Database = {
           updated_at: string
           venue: string | null
           venue_city: string | null
-          vibe_min: number
           vibe_max: number
+          vibe_min: number
         }
         Insert: {
           article_body?: Json
@@ -551,8 +526,8 @@ export type Database = {
           updated_at?: string
           venue?: string | null
           venue_city?: string | null
-          vibe_min: number
           vibe_max: number
+          vibe_min: number
         }
         Update: {
           article_body?: Json
@@ -611,8 +586,8 @@ export type Database = {
           updated_at?: string
           venue?: string | null
           venue_city?: string | null
-          vibe_min?: number
           vibe_max?: number
+          vibe_min?: number
         }
         Relationships: [
           {
@@ -819,7 +794,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_rank_signals: {
+        Row: {
+          prov_count: number | null
+          signal_count: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_author_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
@@ -966,9 +956,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       content_source: ["scraper:ra", "manual:editor", "manual:partner"],

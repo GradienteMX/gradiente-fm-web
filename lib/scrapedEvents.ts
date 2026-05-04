@@ -1,7 +1,18 @@
-// AUTO-GENERATED — do not edit by hand.
-// Regenerate with:  python3 Webscraper/ra_to_gradiente.py
+// AUTO-GENERATED — do not edit by hand (except for in-place editor tweaks
+// to vibe_min/vibe_max/editorial/elevated/pinned/hp on individual rows;
+// those columns are off-limits to the regenerator per chunk 5 spec).
+//
+// Regenerate with:  python3 Webscraper/ra_to_gradiente.py  (TBD — script
+// not yet written; current scrapers ra_scraper.py / ra_scraper_v2.py
+// emit xlsx only. This file was hand-converted for the Phase 1 launch.)
+//
 // Last run: 2026-05-01 20:21:08
 // Items: 128
+//
+// When ra_to_gradiente.py lands (chunk 5 / Scraper Pipeline Phase 3):
+//   - Emit vibe_min === vibe_max === default (currently 5) per row.
+//     Editors widen the range in-place; the regenerator must NOT touch
+//     existing vibe_min/vibe_max on re-scrape (idempotent upsert allowlist).
 //
 // Source: Resident Advisor GraphQL (https://ra.co/graphql).
 // Field mapping + phase strategy: wiki/70-Roadmap/Scraper Pipeline.md

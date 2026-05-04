@@ -19,7 +19,8 @@ User-acquisition is event-listing-driven (see [[Event-listing-first MVP]] in per
 
 - Scraped events appear in the home grid alongside editorial content. HP curation does the sorting; editorial still gets spawn-HP advantage.
 - Ingest is direct: RA GraphQL → script → typed `lib/scrapedEvents.ts` (or equivalent) → imported next to `mockData.ts`. **No Excel intermediate, no Supabase.** The Excel step in the original v1 scraper is being skipped — it was a debugging artifact, not a load-bearing part of the design.
-- Editor review is post-hoc / out-of-band: the team reviews scraped output by reading the generated TS file (or a small admin surface later) and editing `vibe`, `editorial`, etc. in-place.
+- Editor review is post-hoc / out-of-band: the team reviews scraped output by reading the generated TS file (or a small admin surface later) and editing `vibe_min`/`vibe_max`, `editorial`, etc. in-place.
+- **Vibe field shape (post 2026-05-03)**: scraped events are point items by default — emit `vibeMin === vibeMax === default` (currently 5). Editors widen the range in-place. The regenerator MUST treat `vibe_min`/`vibe_max` as editor-owned (off-limits to re-scrape) — same allowlist as `editorial`/`elevated`/`pinned`/`hp`. See [[log]] vibe range arc entry.
 
 ### Phase 2 — Editorial / community matures (PARTIALLY ARRIVED EARLY · 2026-05-01)
 
