@@ -1,7 +1,7 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-03** (Vibe range arc shipped — `items.vibe` → `vibe_min`/`vibe_max`, two-thumb VibeField, gradient bands on cards. Migration 0007 applied. See top entry in [[log]] for the full breakdown. Production live on https://gradiente.org via Vercel + Namecheap DNS.)
+> Last updated: **2026-05-04** (pg_cron landed — migration 0008 added `apply_hp_rollup()` every 5min + `sweep_old_foro_threads()` daily. Both no-ops until the HP writer side ships. Other ops-layer pieces deferred per personal/direct beta posture. See top entry in [[log]]. Production live on https://gradiente.org.)
 
 ## How to start this session
 
@@ -23,14 +23,17 @@
 
 ## What's unblocked right now
 
-### A. Chunk 4 — Ops layer (~2 hr) — beta-open gate
+### A. HP writer side (~30-60 min) — completes the rollup pipeline
 
-Ship before opening beta to 50 people.
-- **pg_cron jobs**: HP rollup (every 5 min, batches `hp_events` → `items.hp` deltas — see [[Backend Plan]] § HP write path), foro 30-day delete sweep (hard-deletes thread + replies + storage objects 30 days after `bumped_at`), orphan storage prune (deletes uploads with no referencing row).
-- **`/api/health`**: returns `{ db: ok, storage: ok, auth: ok }`. Fast (~50ms). Vercel cron + uptime monitor wired to it.
-- **Sentry**: project setup, error boundaries, user context attachment.
-- **Upstash rate limits**: comment posts (10/min/user), foro thread creates (3/hour/user), image uploads (20/hour/user). Auth path doesn't need it (Supabase Auth has its own).
-- **Restore drill**: snapshot the prod DB, restore into a branch project, run a smoke script, document the steps in `wiki/Runbook.md`.
+Migration 0008 shipped `apply_hp_rollup()` running every 5 min, but **nothing currently inserts into `hp_events`** — the rollup is sitting idle. To activate the curation feedback loop:
+
+- Add `lib/hpEvents.ts` with `recordHpEvent(itemId, kind: 'view'|'click'|'save'|'comment', weight: number)` — server-side route handler so the auth context is trusted (and abusers can't hand-craft fake clicks).
+- Wire calls into the relevant client surfaces: ContentCard click → `'click'` (weight 1), overlay open → `'view'` (weight 0.5), save toggle → `'save'` (weight 3), comment post → `'comment'` (weight 5). Weights are placeholder; tune later when there's real signal.
+- The rollup will start firing on the next 5-min boundary after the first event lands. Verify by querying `cron.job_run_details` and watching `items.hp` move on a clicked card.
+
+Without this, the HP curation system is half-built — items keep `hp = null` forever and read-side just uses `spawnHp()` (20 / 50 with editorial flag). Functional but not democratic.
+
+### B. Edit-in-place for partners (~30-60 min)
 
 ### B. Edit-in-place for partners (~30-60 min)
 
@@ -53,6 +56,16 @@ GH Actions cron MWF (`0 12 * * 1,3,5` UTC = 06:00 CDMX). Idempotent `upsert_scra
 ### E. Mobile pass
 
 Desktop locked, mobile still untested. Includes [[EventosRail]] (180px cards, drag-to-scroll) + agenda archive treatment + foro catalog grid + dashboard composer + all overlays + new admin tabs.
+
+### Deferred ops-layer pieces (revisit when traffic grows)
+
+Decided 2026-05-04 that the personal/direct beta posture makes these overkill until users grow. Listed here so they're not forgotten:
+
+- **`/api/health` + external uptime monitor** — endpoint cheap to add anytime; external monitor (BetterStack/UptimeRobot) waits until beta is large enough that Iker can't notice an outage himself.
+- **Sentry** — same reasoning; beta testers report bugs directly to Iker.
+- **Anti-spam (captcha, NOT rate limits)** — when needed, the preferred shape is captcha-after-N-rapid-actions (e.g. 5+ comments in a short window → captcha challenge), NOT hard Upstash rate-limit blocks. See `feedback_captcha_over_rate_limits` memory.
+- **Restore drill** — disaster prep, not pre-beta blocker.
+- **Orphan storage prune** — needs JSONB-aware traversal (image refs in `items.article_body[].src` and `items.marketplace_listings[].images[]`), and current scale (4 storage objects) makes false-positive risk worse than the bloat. Manual sweep in Studio is fine until storage grows.
 
 ## Where we are
 

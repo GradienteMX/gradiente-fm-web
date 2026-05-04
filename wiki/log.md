@@ -8,6 +8,45 @@
 
 ---
 
+## 2026-05-04 · INGEST · pg_cron — HP rollup every 5min + foro 30-day sweep
+
+First piece of the chunk-4 ops layer. Iker's call (2026-05-04): the personal/direct beta posture means external monitoring + error tracking + rate limits are deferred; only pg_cron is in scope today. Captcha-after-N-rapid-actions is the preferred anti-spam path when that becomes necessary (saved as `feedback_captcha_over_rate_limits` memory).
+
+### Migration 0008_pg_cron_jobs.sql
+- `create extension pg_cron` — extension was available, not installed.
+- `apply_hp_rollup()` — security definer plpgsql. Snapshots event IDs upfront (concurrency-safe — inserts arriving DURING rollup land in the next batch). For each item with pending events: decays `items.hp` from `coalesce(hp_last_updated_at, published_at)` using the type's half-life from [[curation]] (port of `ATTENTION_HALF_LIFE_HOURS`), adds Σ weights, re-anchors `hp_last_updated_at = now()`. Event-imminence modulation (slow decay near doors, paused live window) deferred to V2 — read-side rendering still runs the full TS math, so the practical impact is just slight over-decay at rollup time for events near their start.
+- `sweep_old_foro_threads()` — `delete from foro_threads where bumped_at < now() - interval '30 days'`. Replies cascade via the existing `foro_replies_thread_id_fkey ON DELETE CASCADE`.
+- Both functions `security definer set search_path = 'public'` per Supabase advisor recommendation.
+- `cron.schedule('hp-rollup', '*/5 * * * *', …)` and `cron.schedule('foro-30-day-sweep', '0 4 * * *', …)` (04:00 UTC = 22:00 CDMX, low-traffic window). Idempotent — re-running migration overwrites cleanly.
+
+### Orphan storage prune — explicitly deferred
+Image references live in **5 places** including JSONB columns:
+- `items.image_url` (text)
+- `items.article_body` (jsonb — `[].src`)
+- `items.marketplace_listings` (jsonb — `[].images[]`)
+- `foro_threads.image_url`
+- `foro_replies.image_url`
+
+A naive `delete from storage.objects where name not in (select image_url from items)` would delete real images referenced inside JSONB. Doing it right means JSONB-aware traversal in SQL — doable but error-prone. At current scale (4 storage objects) the false-positive risk outweighs the bloat. Revisit when storage actually grows; until then a manual sweep in Studio is fine.
+
+### Verification
+- `pg_extension`: pg_cron 1.6.4 installed.
+- `cron.job`: 2 jobs active with the expected schedules + commands.
+- `pg_proc`: both functions exist with `security_definer=true` and `proconfig=[search_path=public]`.
+- Direct invocation via MCP fails with "read-only transaction" (expected — MCP connection is read-only; cron runs as the postgres role with write rights).
+- First runs scheduled: `hp-rollup` on next 5-min boundary, `foro-30-day-sweep` at 04:00 UTC tonight. Both will be no-ops (0 hp_events, 0 30+ day old foro threads).
+
+### Files / commits
+- `supabase/migrations/0008_pg_cron_jobs.sql` — `62904ce feat(db): pg_cron jobs`
+
+### Things known to be next
+- **HP write path (writer side)** — currently nothing inserts into `hp_events`. Need a small `recordHpEvent(itemId, kind, weight)` API that the home grid + overlay open + save toggle + comment post calls into. Server-side (route handler) so the auth context is trusted. Until this lands the rollup just sits idle.
+- **Edit-in-place for partners** — //PARTNERS tab v2.
+- **Chunk 5 scraper Phase 3** — GH Actions cron MWF + admin review queue + ra_to_gradiente.py emitting vibe_min/vibe_max.
+- Remaining smaller items: mobile pass, `Mi Partner` composer migration, reduced-motion respect, hand-author wide-band item to demo gradient.
+
+---
+
 ## 2026-05-03 · INGEST · Vibe range arc — items.vibe → vibe_min/vibe_max
 
 Items now express a vibe SPAN instead of a single point. Designed at the end of the previous session; full technical scope was sitting in `project_vibe_range_arc` memory. Shipped as commit `c4fff18` (37 files, 577+/404−). Site is live with the new schema.
