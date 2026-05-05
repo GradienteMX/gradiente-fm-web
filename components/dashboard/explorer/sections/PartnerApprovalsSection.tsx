@@ -1,28 +1,61 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Search, ShoppingBag, ToggleLeft, ToggleRight } from 'lucide-react'
-import type { ContentItem } from '@/lib/types'
-import {
-  setMarketplaceEnabled,
-  useResolvedPartners,
-} from '@/lib/partnerOverrides'
 
 // ── PartnerApprovalsSection ────────────────────────────────────────────────
 //
-// Admin-only surface — toggles `marketplaceEnabled` on a per-partner basis.
+// Admin-only surface — toggles `marketplace_enabled` on a per-partner basis.
 // The flag controls whether the partner shows up at `/marketplace` and on
 // the home marketplace rail. Once enabled, the partner's team (users with
-// `partnerId` matching) gain access to the partner-only dashboard section
+// `partner_id` matching) gain access to the partner-only dashboard section
 // where they edit the marketplace card + listings.
 //
-// The list is searchable by partner title. Each row shows the partner's
-// current state (chip) and a single toggle. Live — toggling fires the
-// override write and the row updates without reload.
+// The list is searchable by partner title/slug. Each row shows the partner's
+// current state (chip) and a single toggle. Toggling fires PATCH
+// /api/admin/partners/[id] and refetches so the row reflects DB state.
+//
+// Replaced the prior sessionStorage-backed implementation (useResolvedPartners
+// + setMarketplaceEnabled from lib/partnerOverrides) — that layer simulated
+// edits over MOCK_ITEMS and never reached the live DB. Same pattern as the
+// PermisosSection / MiPartnerSection real-DB conversions earlier in the
+// partners arc.
+
+interface PartnerRow {
+  id: string
+  slug: string
+  title: string
+  partner_kind: string | null
+  image_url: string | null
+  marketplace_enabled: boolean
+  // Approximate count from the jsonb column — null when nothing has been
+  // listed; arrays of any length show as that length.
+  marketplace_listings: unknown[] | null
+}
 
 export function PartnerApprovalsSection() {
-  const partners = useResolvedPartners()
+  const [partners, setPartners] = useState<PartnerRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+
+  const refetch = useCallback(async () => {
+    setError(null)
+    const res = await fetch('/api/admin/partners')
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: 'PARTNERS_FETCH_FAILED' }))
+      setError((body.error ?? 'PARTNERS_FETCH_FAILED').toString().toUpperCase())
+      setLoading(false)
+      return
+    }
+    const json = await res.json()
+    setPartners((json.partners as PartnerRow[]) ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void refetch()
+  }, [refetch])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -34,14 +67,21 @@ export function PartnerApprovalsSection() {
     )
   }, [partners, query])
 
-  const enabledCount = partners.filter((p) => p.marketplaceEnabled).length
+  const enabledCount = partners.filter((p) => p.marketplace_enabled).length
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 border border-dashed border-border bg-elevated/30 px-4 py-8 font-mono text-[11px] text-muted">
+        <span className="tracking-widest">//CARGANDO·PARTNERS…</span>
+        {error && <span className="text-sys-red">{error}</span>}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3">
       <header className="flex items-center justify-between gap-3 font-mono text-[10px] tracking-widest text-muted">
-        <span>
-          //APROBACIONES · MARKETPLACE
-        </span>
+        <span>//APROBACIONES · MARKETPLACE</span>
         <span>
           {enabledCount} / {partners.length} ACTIVOS
         </span>
@@ -55,16 +95,21 @@ export function PartnerApprovalsSection() {
             ningún partner coincide con &quot;{query}&quot;
           </li>
         ) : (
-          filtered.map((p) => <PartnerRow key={p.id} partner={p} />)
+          filtered.map((p) => (
+            <PartnerToggleRow key={p.id} partner={p} onChanged={refetch} />
+          ))
         )}
       </ul>
 
+      {error && (
+        <p className="font-mono text-[10px] text-sys-red">// {error}</p>
+      )}
+
       <p className="font-mono text-[10px] leading-relaxed text-muted">
-        //CAMBIOS·EN·SESIÓN — los overrides viven en sessionStorage. Al
-        habilitar el marketplace de un partner, su equipo (usuarios con{' '}
-        <span className="text-secondary">partnerId</span> coincidente) puede
-        editar el card y las listings desde la sección del partner. El
-        backend real persistirá vía Supabase.
+        //CAMBIOS·EN·VIVO — al habilitar el marketplace de un partner, su equipo
+        (usuarios con <span className="text-secondary">partner_id</span>{' '}
+        coincidente) puede editar el card desde la sección{' '}
+        <span className="text-secondary">Mi partner</span> del dashboard.
       </p>
     </div>
   )
@@ -103,10 +148,31 @@ function SearchBar({
 
 // ── Single row — partner identity + marketplace toggle ────────────────────
 
-function PartnerRow({ partner }: { partner: ContentItem }) {
-  const enabled = !!partner.marketplaceEnabled
-  const listingCount = partner.marketplaceListings?.length ?? 0
-  const onToggle = () => setMarketplaceEnabled(partner.id, !enabled)
+function PartnerToggleRow({
+  partner,
+  onChanged,
+}: {
+  partner: PartnerRow
+  onChanged: () => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const enabled = partner.marketplace_enabled
+  const listingCount = partner.marketplace_listings?.length ?? 0
+
+  const onToggle = async () => {
+    setBusy(true)
+    try {
+      await fetch(`/api/admin/partners/${encodeURIComponent(partner.id)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ marketplace_enabled: !enabled }),
+      })
+      await onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <li className="flex items-center gap-3 border-b border-border/50 px-3 py-2 font-mono text-[11px]">
       <ShoppingBag
@@ -118,7 +184,7 @@ function PartnerRow({ partner }: { partner: ContentItem }) {
         <span className="truncate text-primary">{partner.title}</span>
         <span className="truncate font-mono text-[9px] tracking-widest text-muted">
           /{partner.slug}
-          {partner.partnerKind ? ` · ${partner.partnerKind.toUpperCase()}` : ''}
+          {partner.partner_kind ? ` · ${partner.partner_kind.toUpperCase()}` : ''}
           {enabled ? ` · ${listingCount} LISTING${listingCount === 1 ? '' : 'S'}` : ''}
         </span>
       </div>
@@ -134,8 +200,9 @@ function PartnerRow({ partner }: { partner: ContentItem }) {
       <button
         type="button"
         onClick={onToggle}
+        disabled={busy}
         aria-label={enabled ? 'Desactivar marketplace' : 'Activar marketplace'}
-        className="shrink-0 transition-colors hover:text-sys-orange"
+        className="shrink-0 transition-colors hover:text-sys-orange disabled:opacity-40"
         style={{ color: enabled ? '#4ADE80' : '#9CA3AF' }}
       >
         {enabled ? (

@@ -3,9 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/partners
+// GET  → list every partner row with the fields needed by admin surfaces
+//        (id, slug, title, partner_kind, marketplace_enabled, image_url,
+//         marketplace_listings count). Used by the dashboard's
+//         PartnerApprovalsSection so it can render the marketplace toggle
+//         list without the sessionStorage layer.
 // POST → create a new partner (items row with type='partner').
-// Admin only — RLS gates via items_staff_write but we additionally require
-// 'admin' role here so insiders/guides/curators can't create partners.
+// Admin only on both — RLS gates via items_staff_write but we additionally
+// require 'admin' role here so insiders/guides/curators can't reach this.
 //
 // Partners are organizational/business entities (labels, venues, promoters,
 // sponsors). Mistyped data is harder to clean up than a regular content item,
@@ -24,6 +29,41 @@ const VALID_KINDS: readonly PartnerKind[] = [
   'sponsored',
   'dealer',
 ]
+
+async function gateAdmin(supabase: ReturnType<typeof createClient>) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (profile?.role !== 'admin') {
+    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  }
+  return { user }
+}
+
+export async function GET() {
+  const supabase = createClient()
+  const gate = await gateAdmin(supabase)
+  if ('error' in gate) return gate.error
+
+  const { data, error } = await supabase
+    .from('items')
+    .select(
+      'id, slug, title, partner_kind, image_url, marketplace_enabled, marketplace_listings',
+    )
+    .eq('type', 'partner')
+    .order('title', { ascending: true })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ partners: data ?? [] })
+}
 
 interface CreateBody {
   title: string
