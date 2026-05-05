@@ -207,10 +207,13 @@ export function AdminUsersEditor({
         {searching && <span className="text-sys-green">// BUSCANDO...</span>}
       </div>
 
-      {/* Two-pane layout — list left, editor right. Stacks on mobile. */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_360px]">
+      {/* Two-pane layout — list left, editor right. Side-by-side at lg+;
+          stacks below to keep the list rows from getting squeezed. min-w-0
+          on each column lets long IDs/usernames truncate inside the panes
+          instead of pushing the grid wider than its container. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_360px]">
         {/* LEFT — searchable user list */}
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           {showRecentSection && (
             <>
               <p className="font-mono text-[9px] tracking-widest text-muted">
@@ -252,7 +255,7 @@ export function AdminUsersEditor({
         </div>
 
         {/* RIGHT — editor for the selected user */}
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           {selectedUser ? (
             <UserEditorPanel
               key={selectedUser.id}
@@ -578,9 +581,12 @@ function IdentityBlock({ user }: { user: UserRow }) {
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-baseline gap-2">
+    <div className="flex min-w-0 items-baseline gap-2">
       <span className="w-20 shrink-0 tracking-widest text-secondary/60">{label}</span>
-      <span className={`text-secondary ${mono ? 'truncate' : ''}`} title={mono ? value : undefined}>
+      <span
+        className={`min-w-0 flex-1 text-secondary ${mono ? 'truncate' : ''}`}
+        title={mono ? value : undefined}
+      >
         {value}
       </span>
     </div>

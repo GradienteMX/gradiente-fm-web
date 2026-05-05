@@ -79,11 +79,13 @@ const DASHES: Dash[] = (() => {
 })()
 
 export function VibeSlider() {
-  // Hide on the dashboard — the editor working surface isn't a feed.
-  // /foro IS a feed (threads tagged with 1–5 genres each filter by the
-  // shared vibe range), so the slider stays.
+  // Hide on dashboard + admin surfaces — neither is a content feed and
+  // neither uses vibe filtering. /foro IS a feed (threads tagged with
+  // 1–5 genres each filter by the shared vibe range), so the slider
+  // stays there.
   const pathname = usePathname()
   if (pathname?.startsWith('/dashboard')) return null
+  if (pathname?.startsWith('/admin')) return null
 
   return <VibeSliderImpl />
 }
