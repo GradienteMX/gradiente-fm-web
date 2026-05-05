@@ -38,7 +38,7 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
     return (
       <button
         type="button"
-        onClick={openLogin}
+        onClick={() => openLogin()}
         className="w-full border border-dashed px-3 py-3 text-left font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary"
         style={{ borderColor: '#242424' }}
       >

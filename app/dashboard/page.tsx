@@ -292,7 +292,7 @@ export default function DashboardPage() {
           subsistema. Inicia sesión desde el badge en el header.
         </p>
         <button
-          onClick={openLogin}
+          onClick={() => openLogin()}
           className="mt-2 border px-4 py-2 font-mono text-[11px] tracking-widest transition-colors"
           style={{
             borderColor: '#F97316',

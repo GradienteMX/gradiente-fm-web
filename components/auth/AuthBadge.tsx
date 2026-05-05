@@ -21,7 +21,7 @@ export function AuthBadge() {
         style={{ borderLeft: '1px solid #140B00' }}
       >
         <button
-          onClick={openLogin}
+          onClick={() => openLogin()}
           aria-label="Iniciar sesión"
           className="group flex items-center justify-center gap-2 px-4 transition-colors hover:bg-[#1A0900]"
         >
