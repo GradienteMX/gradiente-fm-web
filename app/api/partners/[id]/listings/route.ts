@@ -161,18 +161,3 @@ export async function POST(
   }
   return NextResponse.json({ listing: data })
 }
-
-// Bump partner_last_updated when listings change so the rail re-orders the
-// edited partner toward the front. Done as a side-effect after writes;
-// failure here is non-fatal so we just log it.
-async function bumpPartnerUpdatedAt(
-  supabase: ReturnType<typeof createClient>,
-  partnerId: string,
-) {
-  await supabase
-    .from('items')
-    .update({ partner_last_updated: new Date().toISOString() })
-    .eq('id', partnerId)
-}
-
-export const _bumpPartnerUpdatedAt = bumpPartnerUpdatedAt
