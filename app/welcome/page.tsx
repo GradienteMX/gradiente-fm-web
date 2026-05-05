@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Code2, UserSquare2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 
@@ -11,7 +12,20 @@ import { useAuth } from '@/components/auth/useAuth'
 // vinyl spinning in the center, and two CTAs that summon the
 // existing LoginOverlay (login mode + signup mode).
 export default function WelcomePage() {
-  const { openLogin } = useAuth()
+  const { openLogin, isAuthed, authResolved } = useAuth()
+  const router = useRouter()
+
+  // Belt-and-suspenders for the "logged in but URL stuck on /welcome"
+  // case. Middleware handles fresh requests, but `useAuth.login` only
+  // calls `router.refresh()` — which re-fetches RSC data without
+  // updating the URL bar, so without this effect the user lands with
+  // /welcome in the URL while the home payload is being served. The
+  // moment auth resolves to a real user, push them to /.
+  useEffect(() => {
+    if (authResolved && isAuthed) {
+      router.replace('/')
+    }
+  }, [authResolved, isAuthed, router])
 
   // Live UTC clock — doubles as a "this is on, this is real" cue.
   const [clock, setClock] = useState('--:--:--')
