@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import { useMarketplaceEnabledPartners } from '@/lib/partnerOverrides'
+import type { ContentItem } from '@/lib/types'
 import { MarketplaceCard } from './MarketplaceCard'
 import { MarketplaceOverlay } from './MarketplaceOverlay'
 
@@ -13,10 +13,13 @@ import { MarketplaceOverlay } from './MarketplaceOverlay'
 //     `?partner=<slug>` which opens the overlay on top).
 //   - The overlay itself, mounted when the URL has the `partner` param.
 //
+// Receives partners from the /marketplace page server prefetch (real DB) so
+// newly approved partners appear on the next render. Previously read from a
+// sessionStorage-backed mock layer that couldn't see admin-created rows.
+//
 // Same idiom as the foro catalog (`?thread=` URL-driven overlay).
 
-export function MarketplaceCatalog() {
-  const partners = useMarketplaceEnabledPartners()
+export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
   const search = useSearchParams()
   const router = useRouter()
   // basePath is auto-prepended by router.replace; usePathname() returns the

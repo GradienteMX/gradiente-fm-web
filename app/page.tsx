@@ -22,8 +22,12 @@ export default async function HomePage() {
   const eventDates = getEventDates(allItems)
   const hero = getPinnedHero(allItems)
 
-  // Partners live in the right rail, never in the main mosaic
+  // Partners live in the right rail, never in the main mosaic. The
+  // marketplace-enabled subset feeds MarketplaceRail directly so the
+  // home page reflects admin approvals on the next request (no
+  // sessionStorage detour).
   const partners = allItems.filter((i) => i.type === 'partner')
+  const marketplacePartners = partners.filter((p) => p.marketplaceEnabled)
 
   // Scraped events not flagged `elevated` go to the EventosRail; everything
   // else (editorial, mixes, noticias, manually-authored events, AND scraped
@@ -73,7 +77,7 @@ export default async function HomePage() {
         <div className="hidden flex-col gap-4 md:flex">
           <PartnersRail items={partners} />
           <div className="w-[260px]">
-            <MarketplaceRail />
+            <MarketplaceRail partners={marketplacePartners} />
           </div>
         </div>
       </div>

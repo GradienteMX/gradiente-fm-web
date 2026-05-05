@@ -1,8 +1,6 @@
-'use client'
-
 import Link from 'next/link'
 import { ArrowRight, ShoppingBag } from 'lucide-react'
-import { useMarketplaceEnabledPartners } from '@/lib/partnerOverrides'
+import type { ContentItem } from '@/lib/types'
 
 // ── MarketplaceRail ────────────────────────────────────────────────────────
 //
@@ -12,12 +10,14 @@ import { useMarketplaceEnabledPartners } from '@/lib/partnerOverrides'
 //   - Up to 3 small partner thumbnails (linking to `?partner=<slug>`)
 //   - "EXPLORAR MARKETPLACE" CTA linking to `/marketplace`
 //
+// Receives partners from the home page server prefetch (real DB) so newly
+// approved partners appear on the next render. Previously read from a
+// sessionStorage-backed mock layer that couldn't see admin-created rows.
 // Per the design call: "Spanish UI but `marketplace` stays as the loanword".
 
 const MAX_RAIL = 3
 
-export function MarketplaceRail() {
-  const partners = useMarketplaceEnabledPartners()
+export function MarketplaceRail({ partners }: { partners: ContentItem[] }) {
   // Render nothing until at least one partner is approved — keeps the home
   // page from showing an empty rail in the bare seed state.
   if (partners.length === 0) return null
