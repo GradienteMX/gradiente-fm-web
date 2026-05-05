@@ -1,16 +1,16 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-04** (pg_cron landed — migration 0008 added `apply_hp_rollup()` every 5min + `sweep_old_foro_threads()` daily. Both no-ops until the HP writer side ships. Other ops-layer pieces deferred per personal/direct beta posture. See top entry in [[log]]. Production live on https://gradiente.org.)
+> Last updated: **2026-05-05** (Partners + admin arc 6/9 commits done. /admin?tab=users now has a real-DB-backed two-pane editor with LECTOR/CURATOR/GUIDE/INSIDER/ADMIN/MOD filter chips + RECIENTES section + dedicated lector prefetch. Mock seed users dropped. PermisosSection retired. `dealer` partner_kind added. VibeSlider hidden on /admin + /dashboard. Three pieces left: marketplace propagation investigation, partner edit/delete in /admin, partner dashboard self-service. See top entry in [[log]]. Production live on https://gradiente.org.)
 
 ## How to start this session
 
-> **Site is live at https://gradiente.org** (Vercel auto-deploys on push to `main`). Reads from Supabase project `gradiente-fm` (ref `dcqbtcpqbqrtxbshhlkd`). Real auth at the LOGIN button. Iker is admin (`@iker`). Migration history is clean — 6 linear files (`0001_init`, `0002_rls`, `0003_storage`, `0004_realtime`, `0005_user_rank_signals`, `0006_user_rank_signals_include_seed`); originals preserved locally in `supabase/migrations.bak/` (untracked).
+> **Site is live at https://gradiente.org** (Vercel auto-deploys on push to `main`). Reads from Supabase project `gradiente-fm` (ref `dcqbtcpqbqrtxbshhlkd`). Real auth at the LOGIN button. Iker is admin (`@iker`). Migration history: 9 linear files (`0001_init` → `0009_partner_kind_dealer`); originals from the pre-squash era preserved locally in `supabase/migrations.bak/` (untracked).
 
-1. Read [[index]] (orientation) and the top entry in [[log]] (the vibe range arc).
+1. Read [[index]] (orientation) and the top entry in [[log]] (the partners + admin arc).
 2. Boot the preview (`.claude/launch.json` → `dev`, port 3003). Log in via the LOGIN button as `iker` + your password. **Session doesn't persist across dev-server restarts (Windows quirk)** — log in fresh each session.
 3. **Vibe-band visual smoke test (worth 30s)** — set one item's `vibe_min`/`vibe_max` to a real range via Studio (e.g. `update items set vibe_min=3, vibe_max=7 where slug='…'`), reload home, and confirm the card top-strip + the overlay's 11-bar gauge render the gradient band. All existing rows backfilled with `min === max` so the gradient code path is currently exercised only by hypothesis.
-4. **`/admin`** is live for admin-role users — three tabs: //INVITACIONES (invite-code generator), //USUARIOS (role/flag editor with search + filter chips), //PARTNERS (onboarding composer; vibe field is now a two-thumb range).
+4. **`/admin`** is live for admin-role users — three tabs: //INVITACIONES (invite-code generator), //USUARIOS (two-pane panel editor with RECIENTES + LECTOR/CURATOR/GUIDE/INSIDER/ADMIN/MOD chips), //PARTNERS (onboarding composer; vibe field is a two-thumb range; create-only — edit/delete pending).
 
 ## Pattern conventions (re-use these — codified in `project_backend_architecture` memory)
 
@@ -23,32 +23,27 @@
 
 ## What's unblocked right now
 
-### A. HP writer side (~30-60 min) — completes the rollup pipeline
+### A. Partners arc — three commits remain (top of mind)
 
-Migration 0008 shipped `apply_hp_rollup()` running every 5 min, but **nothing currently inserts into `hp_events`** — the rollup is sitting idle. To activate the curation feedback loop:
+Six already shipped (see top of [[log]]). Pending:
 
-- Add `lib/hpEvents.ts` with `recordHpEvent(itemId, kind: 'view'|'click'|'save'|'comment', weight: number)` — server-side route handler so the auth context is trusted (and abusers can't hand-craft fake clicks).
-- Wire calls into the relevant client surfaces: ContentCard click → `'click'` (weight 1), overlay open → `'view'` (weight 0.5), save toggle → `'save'` (weight 3), comment post → `'comment'` (weight 5). Weights are placeholder; tune later when there's real signal.
-- The rollup will start firing on the next 5-min boundary after the first event lands. Verify by querying `cron.job_run_details` and watching `items.hp` move on a clicked card.
+- **Marketplace propagation (#6, ~5min–60min)** — Iker reports new partners with `marketplace_enabled=true` aren't showing up at /marketplace. Could be a `router.refresh()` / Realtime miss (small fix) or a missing-feature/SQL-filter issue (bigger). Hasn't been investigated yet — read /marketplace data path first to scope.
+- **Partner edit + delete in /admin //PARTNERS (#8, ~30-60min)** — currently create-only. Add PATCH + DELETE `/api/admin/partners/[id]` mirroring the user-editor pattern. With the vibe range arc landed, edit also surfaces the two-thumb VibeField (most existing partners are wide-band — admin will want to widen them post-onboarding).
+- **Dashboard partner self-service (#5, #7, ~90min)** — partner team can't edit their own partner profile (description, image) from the dashboard. AND assigning a user to a partner via /admin doesn't propagate to the dashboard's partners section because MiPartnerSection still uses `setUserOverride` (sessionStorage, not DB) — same problem PermisosSection had. Needs the same DB-backed treatment we just applied in /admin.
 
-Without this, the HP curation system is half-built — items keep `hp = null` forever and read-side just uses `spawnHp()` (20 / 50 with editorial flag). Functional but not democratic.
-
-### B. Edit-in-place for partners (~30-60 min)
-
-### B. Edit-in-place for partners (~30-60 min)
-
-V1 of the //PARTNERS tab is create-only. If an admin mistypes a partner_kind or wants to flip marketplace_enabled later, they currently have to fix it in Supabase Studio. Add edit + delete affordances to existing-partners chips. PATCH `/api/admin/partners/[id]` mirroring the user-editor pattern. With the vibe range arc landed, edit also surfaces the two-thumb VibeField (most existing partners are wide-band by nature — admin will want to widen them post-onboarding).
-
-### C. Chunk 5 — Scraper Phase 3 (~1-2 hr)
+### B. Chunk 5 — Scraper Phase 3 (~1-2 hr)
 
 GH Actions cron MWF (`0 12 * * 1,3,5` UTC = 06:00 CDMX). Idempotent `upsert_scraped_events()` RPC with field-level allowlist (scraper can update RA-source-of-truth fields, but **cannot touch `vibe_min`/`vibe_max`, `editorial`, `pinned`, `elevated`, `hp`** — editor-owned columns are off-limits). No notification surface needed — success is self-evident from new events in `/admin` review queue + agenda; check Actions tab if expected events don't show. Admin review queue surface in `/admin` for newly-ingested events that need human elevation.
 
+### C. HP writer side — deferred (was Chunk 4 last item)
+
+Migration 0008 shipped `apply_hp_rollup()` running every 5 min, but nothing currently inserts into `hp_events` — the rollup is sitting idle. Deferred per `project_hp_writer_deferred` memory until there's real user traffic to feed it. Don't pitch unless beta is actively generating signals.
+
 ### D. Smaller items
 
-- **`Mi Partner` composer** — marketplace_listings jsonb still on session. Migrate to a `partner-listings` flow (probably: per-partner-row PATCH on `items` for the embedded jsonb, or a separate `marketplace_listings` table).
+- **`Mi Partner` composer** — marketplace_listings jsonb still on session. Migrate to a `partner-listings` flow (probably: per-partner-row PATCH on `items` for the embedded jsonb, or a separate `marketplace_listings` table). Will likely fold into the partner self-service slice (A's third bullet) since they touch the same surface.
 - **Reduced motion respect** — pending-publish glitch + CRT scanline + chip pulse run regardless of `prefers-reduced-motion`. WCAG-relevant.
 - **Skill-tree for ranks** — post-beta only; tier within branches (detonador 1→2→3, etc.). See `project_skill_tree_ranks` memory.
-- **Decide on `PermisosSection.tsx`** in the dashboard — overlapping with /admin?tab=users. Likely deletable now.
 - **`lib/mockData.ts` cleanup deferred** — Iker uses it for testing how content behaves in dev.
 - **Genre/vibe coupling on composer** — left as independent inputs (option 2 from end of last session). When desire arises, add the two suggestion buttons (`←` narrow range to fit selected genres, `→` suggest genres for this range) + yellow inconsistency chip. ~30 min slice; not committed to.
 - **Hand-author a wide-band item to demo gradient** — all 216 existing rows backfilled with `vibe_min === vibe_max`, so the gradient code path renders only as solid color today. Smallest visual demo: pick a label/venue partner and widen its range in Studio.

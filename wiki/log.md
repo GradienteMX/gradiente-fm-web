@@ -8,6 +8,40 @@
 
 ---
 
+## 2026-05-04/05 · INGEST · Partners + admin arc (in progress, 6/9 commits)
+
+Iker brought a list of 8 issues spanning admin / dashboard / partners / marketplace / users. Sized originally as "edit-in-place for partners ~30-60min" — actually a 2-3 session arc. Splitting into focused commits, ordered to ship low-risk data + UI fixes first and save the unknown-scope marketplace investigation + partner self-service for later.
+
+### Shipped so far
+1. **`3fb560c feat(partners): add 'dealer' partner_kind`** — migration 0009 extends the partner_kind enum with `dealer` for record/equipment dealers. Updated PartnerKind type, AdminPartnersComposer label "DEALER · vinilos / equipo / merch" + color #10B981, PartnersRail label, /api/admin/partners VALID_KINDS allowlist, regenerated database.types.ts (also picked up apply_hp_rollup + sweep_old_foro_threads function types missing from the prior hand-edit).
+
+2. **(no commit, data-only)** Mock users deletion via Supabase Studio. Iker confirmed 3 real registered users (`iker`, `datavismo@gmail.com`, `testuser`) and 9 seed users to drop. SQL: `delete from auth.users where id in (select id from public.users where seed = true)` — cascades wiped 9 auth.users + 9 public.users + 25 comments + 51 reactions + 8 foro_threads + 16 foro_replies. Items.created_by + audit_log.actor_id SET NULL preserved (none affected). Site went from "lots of seeded chatter" to fresh empty community.
+
+3. **`582dcf0 feat(admin): surface recent signups in /admin?tab=users`** — newly-registered users (role='user' + no flags) were invisible by design. Added a second prefetch (latest 25 by joined_at desc) + a //RECIENTES section above the //ELEVADOS list. Dedupes by id.
+
+4. **`f930b99 refactor(admin): port PermisosSection panel UX into AdminUsersEditor + delete dashboard duplicate`** — Iker flagged that the dashboard's PermisosSection was showing deleted seed users + missing testuser. Root cause: it read from MOCK_USERS + sessionStorage overrides (visual-MVP era), no DB connection at all. He liked the panel UX better than /admin's compact inline form. Resolution: kept the PermisosSection two-pane layout (list left, editor panel right with IdentityBlock + RoleEditor button row + full-size MOD/OG toggles + PartnerEditor) and rebuilt it inside /admin?tab=users with real DB writes via the existing PATCH /api/admin/users/[id]. Then deleted PermisosSection.tsx + its wiki note + the dashboard's `permisos` section entry (sidebar, types, NuevoSection prompt, lib/types.ts comment). 8 files / +498/-812. Note: lib/userOverrides.ts stays — its read-side `useResolvedUser` is used across foro / comments / dashboard surfaces; the write-side is only used by MiPartnerSection now (same problem, addressed in commit 9).
+
+5. **`5e054df fix(admin): hide VibeSlider on /admin + widen layout for two-pane editor`** — Iker noticed VibeSlider was rendering at the top of /admin (root-layout-mounted) and the editor panel overflowed the section's bounds. Extended the existing `pathname.startsWith('/dashboard')` guard in VibeSlider to also match `/admin`. Widened /admin from max-w-4xl → max-w-5xl. Moved the side-by-side breakpoint from md to lg (was squeezed at 768-1024px). Added min-w-0 to grid columns + IdentityBlock Row's value span so long IDs/usernames truncate inside the panes.
+
+6. **`5a5f709 feat(admin): LECTOR filter chip with dedicated lector prefetch`** — vanilla readers (role='user', no flags) only existed in the TODOS stat — couldn't be filtered to their own list. Added a third prefetch (lectorUsers — newest 50 with role='user' by joined_at desc). LECTOR chip count is the global lector total from roleCounts.user. When the prefetch caps below total, an overflow note appears: "mostrando los N más recientes de M — buscá por @username para encontrar a alguien anterior". Reordered chips by tier: TODOS · LECTOR · CURATOR · GUIDE · INSIDER · ADMIN · MOD.
+
+### Still pending
+- **Marketplace propagation (#6)** — Iker reports new partners with marketplace_enabled=true don't show up at /marketplace. Investigation slice — could be a refresh/Realtime issue (5 min fix) or a missing-feature/SQL-filter issue (30-60 min). Haven't started.
+- **Partner edit + delete in /admin //PARTNERS (#8)** — currently create-only. PATCH + DELETE /api/admin/partners/[id] mirroring the user-editor pattern.
+- **Dashboard partner self-service (#5, #7)** — partner team can't edit their own partner profile (description, image, etc.) from the dashboard, AND assigning a user to a partner via /admin doesn't propagate to the dashboard's partners section because MiPartnerSection still reads/writes via setUserOverride (sessionStorage, not DB). Needs the same DB-backed treatment we just gave PermisosSection.
+
+### Verification
+- DB writes confirmed via MCP after Iker tested: `testuser` row updated to role=curator, is_og=true, partner_id=pa-fascinoma. Full PATCH → router.refresh chain works end-to-end.
+- All 6 commits pass tsc clean. Live preview /admin?tab=users returns 200 in ~450ms.
+- VibeSlider hides on /admin + /dashboard; /foro keeps it (foro feed uses vibe filtering on tagged genres).
+
+### Memory
+- `feedback_captcha_over_rate_limits` (already from pg_cron session) — relevant when this arc circles back to anti-abuse for partners.
+- `project_personal_direct_beta` (already from pg_cron session) — informs the whole "defer external monitoring / Sentry / restore drill" posture that shaped this arc's smaller-scope lens.
+- Updated `project_gradiente_fm` to reference these admin/partner changes.
+
+---
+
 ## 2026-05-04 · INGEST · pg_cron — HP rollup every 5min + foro 30-day sweep
 
 First piece of the chunk-4 ops layer. Iker's call (2026-05-04): the personal/direct beta posture means external monitoring + error tracking + rate limits are deferred; only pg_cron is in scope today. Captcha-after-N-rapid-actions is the preferred anti-spam path when that becomes necessary (saved as `feedback_captcha_over_rate_limits` memory).
