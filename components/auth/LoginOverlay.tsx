@@ -7,7 +7,7 @@ import { useAuth } from './useAuth'
 type Mode = 'login' | 'signup'
 
 export function LoginOverlay() {
-  const { loginOpen, closeLogin, login, signup } = useAuth()
+  const { loginOpen, closeLogin, login, signup, loginInitialMode } = useAuth()
   const [mode, setMode] = useState<Mode>('login')
 
   // Login mode: identifier (username or email) + password.
@@ -26,7 +26,7 @@ export function LoginOverlay() {
 
   useEffect(() => {
     if (loginOpen) {
-      setMode('login')
+      setMode(loginInitialMode)
       setIdentifier('')
       setEmail('')
       setUsername('')
@@ -38,7 +38,7 @@ export function LoginOverlay() {
       const t = setTimeout(() => firstFieldRef.current?.focus(), 50)
       return () => clearTimeout(t)
     }
-  }, [loginOpen])
+  }, [loginOpen, loginInitialMode])
 
   useEffect(() => {
     if (!loginOpen) return

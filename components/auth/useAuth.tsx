@@ -73,7 +73,10 @@ interface AuthContextValue {
   loginAs: (userId: string) => Promise<boolean>   // deprecated; kept for back-compat, returns false
   logout: () => Promise<void>
   loginOpen: boolean
-  openLogin: () => void
+  // Optional mode hint — lets callers open the overlay directly on
+  // 'signup' (e.g. invite-code CTAs). Default is 'login'.
+  openLogin: (mode?: 'login' | 'signup') => void
+  loginInitialMode: 'login' | 'signup'
   closeLogin: () => void
   // Loading until the first auth-state-change settles. Avoids hydration
   // flicker between "logged out" and the resolved user.
@@ -245,7 +248,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.refresh()
   }, [router])
 
-  const openLogin = useCallback(() => setLoginOpen(true), [])
+  const [loginInitialMode, setLoginInitialMode] = useState<'login' | 'signup'>('login')
+  const openLogin = useCallback((mode: 'login' | 'signup' = 'login') => {
+    setLoginInitialMode(mode)
+    setLoginOpen(true)
+  }, [])
   const closeLogin = useCallback(() => setLoginOpen(false), [])
 
   const value: AuthContextValue = {
@@ -258,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     loginOpen,
     openLogin,
+    loginInitialMode,
     closeLogin,
     ready,
     // Resolved when the profile fetch matches the current session id (or

@@ -1,16 +1,19 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-05** (Partners arc fully closed. `lib/partnerOverrides.ts` deleted — MarketplaceOverlay now receives the partner as a prop lifted from MarketplaceCatalog (no fetch, the catalog already had it from `getItems()`); ExplorerSidebar uses an inline `useMyPartnerTitle` hook that fetches `/api/partners/[id]` once. See top entry in [[log]]. Production live on https://gradiente.org.)
+> Last updated: **2026-05-05 · late** — site is now invite-only behind a `/welcome` cockpit (NGE terminal landing with ASCII vinyl). Anonymous → 302 to `/welcome`. Authed → bounces off `/welcome` to `/`. RLS shifted from `seed = false`/public to `auth.uid() is not null`, so beta testers now see seeded mockdata too (the page feels populated before they contribute). Plus owner+admin item delete with typed `BORRAR <title>` confirmation, eventos appear in rail+mosaic when `editorial: true`, and two publish-flow bugs fixed. Migrations 0013 + 0014 applied to remote. See top entry in [[log]] for the full breakdown.
+>
+> **Outstanding visual work**: the welcome page's ASCII vinyl is functional but still off-design vs reference — see "Open" in the log entry for the levers (groove pitch, tilt, ambient hardening).
 
 ## How to start this session
 
 > **Site is live at https://gradiente.org** (Vercel auto-deploys on push to `main`). Reads from Supabase project `gradiente-fm` (ref `dcqbtcpqbqrtxbshhlkd`). Real auth at the LOGIN button. Iker is admin (`@iker`). Migration history: 9 linear files (`0001_init` → `0009_partner_kind_dealer`); originals from the pre-squash era preserved locally in `supabase/migrations.bak/` (untracked).
 
-1. Read [[index]] (orientation) and the top entry in [[log]] (the partners + admin arc).
+1. Read [[index]] (orientation), the top entry in [[log]] (the vibe arc), and [[Vibe Philosophy]] (the spine — every vibe/genre decision should check against the four ideas).
 2. Boot the preview (`.claude/launch.json` → `dev`, port 3003). Log in via the LOGIN button as `iker` + your password. **Session doesn't persist across dev-server restarts (Windows quirk)** — log in fresh each session.
-3. **Vibe-band visual smoke test (worth 30s)** — set one item's `vibe_min`/`vibe_max` to a real range via Studio (e.g. `update items set vibe_min=3, vibe_max=7 where slug='…'`), reload home, and confirm the card top-strip + the overlay's 11-bar gauge render the gradient band. All existing rows backfilled with `min === max` so the gradient code path is currently exercised only by hypothesis.
-4. **`/admin`** is live for admin-role users — three tabs: //INVITACIONES (invite-code generator), //USUARIOS (two-pane panel editor with RECIENTES + LECTOR/CURATOR/GUIDE/INSIDER/ADMIN/MOD chips), //PARTNERS (onboarding composer; vibe field is a two-thumb range; create-only — edit/delete pending).
+3. **Vibe Checks smoke test** — open any review/editorial overlay, click the [[VibeFader]] band, drag, release. Vote should commit (PUT 200). On a second tab the aggregate should update via realtime. The `◇N` count badge becomes `◆N` once `N >= 5`.
+4. **Threshold demo via Studio** — for any item, insert 5+ rows in `vibe_checks` with different `user_id` UUIDs (any from `auth.users`) to push past threshold. Then reload home with the slider narrowed; the item's effective band should be the crowd median, not the author's range. Confirms `filterByVibe`'s eligibility fall-through.
+5. **`/admin`** is live for admin-role users — three tabs: //INVITACIONES (invite-code generator), //USUARIOS (two-pane panel editor with RECIENTES + LECTOR/CURATOR/GUIDE/INSIDER/ADMIN/MOD chips), //PARTNERS (onboarding composer; vibe field is a two-thumb range; create-only — edit/delete pending).
 
 ## Pattern conventions (re-use these — codified in `project_backend_architecture` memory)
 
@@ -37,14 +40,23 @@ GH Actions cron MWF (`0 12 * * 1,3,5` UTC = 06:00 CDMX). Idempotent `upsert_scra
 
 Migration 0008 shipped `apply_hp_rollup()` running every 5 min, but nothing currently inserts into `hp_events` — the rollup is sitting idle. Deferred per `project_hp_writer_deferred` memory until there's real user traffic to feed it. Don't pitch unless beta is actively generating signals.
 
-### D. Smaller items
+### D. Vibe Philosophy follow-ups (the natural next slices)
+
+The vibe arc landed ideas 1, 2, and 4. Idea 3 ("the system learns context") still has open work:
+
+- **Composer prior** — at compose time, pre-fill `vibeMin/vibeMax` from a server-computed prior across the author's past items + the venue's past items + the genre tags' historical vibe distributions. Cleanest implementation: `lib/data/vibePriors.ts` server module + a dashboard hook that hydrates the form. Backed entirely by what's already in the DB (no new schema). Editor can override; the prior is a starting position, not a constraint.
+- **Visual cue for crowd-author divergence** — when crowd median ≠ author band by more than a few slots, surface it (e.g. tiny `Δ` indicator on the author tick marks, or a brief flash). Currently it's only readable as the gap between ghost and lit band. Sit and watch; only build if users ask.
+- **`GENRE_VIBE` deprecation** — replace foro's `genresIntersectVibeRange` with a real per-thread vibe so the stereotype map can finally die. Defer until foro grows.
+- **Hierarchy-aware composer picker** — flat search-with-filter works but a collapsible parent → children view would be cleaner with ~190 entries. Out of scope for the migration slice.
+
+### E. Other smaller items
 
 - **`Mi Partner` composer** — marketplace_listings jsonb still on session. Migrate to a `partner-listings` flow (probably: per-partner-row PATCH on `items` for the embedded jsonb, or a separate `marketplace_listings` table). Will likely fold into the partner self-service slice (A's third bullet) since they touch the same surface.
 - **Reduced motion respect** — pending-publish glitch + CRT scanline + chip pulse run regardless of `prefers-reduced-motion`. WCAG-relevant.
 - **Skill-tree for ranks** — post-beta only; tier within branches (detonador 1→2→3, etc.). See `project_skill_tree_ranks` memory.
 - **`lib/mockData.ts` cleanup deferred** — Iker uses it for testing how content behaves in dev.
-- **Genre/vibe coupling on composer** — left as independent inputs (option 2 from end of last session). When desire arises, add the two suggestion buttons (`←` narrow range to fit selected genres, `→` suggest genres for this range) + yellow inconsistency chip. ~30 min slice; not committed to.
-- **Hand-author a wide-band item to demo gradient** — all 216 existing rows backfilled with `vibe_min === vibe_max`, so the gradient code path renders only as solid color today. Smallest visual demo: pick a label/venue partner and widen its range in Studio.
+- **Duplicate `GenreFieldset`** — exists in both [Fields.tsx](../components/dashboard/forms/shared/Fields.tsx) and [MixForm.tsx](../components/dashboard/forms/MixForm.tsx). Pre-existing smell; both updated in the migration slice for the legacy filter, but worth dedup later.
+- **Hand-author a wide-band item to demo gradient** — most existing rows backfilled with `vibe_min === vibe_max`, so the gradient code path renders only as solid color today. Smallest visual demo: pick a label/venue partner and widen its range in Studio.
 
 ### E. Mobile pass
 
@@ -81,6 +93,8 @@ Decided 2026-05-04 that the personal/direct beta posture makes these overkill un
 | /admin invite codes | invite_codes | `/api/admin/invite-codes` | live (//INVITACIONES tab) |
 | /admin role/flag editor | users (RLS) | `/api/admin/users/[id]` + `/search` | live (//USUARIOS tab) |
 | /admin partners onboarding | items (type='partner') | `/api/admin/partners` | live (//PARTNERS tab, create-only) |
+| **Vibe Checks** | `vibe_checks` + `vibe_check_aggregates` view | `/api/vibe-checks/[itemId]` (PUT/DELETE) | live in every overlay via [[VibeFader]] |
+| **Multi-genre filter** | (read-side: items.genres + rollup via [[genres]]) | (none — pure client filter) | live in [[VibeSlider]] chip strip |
 
 ## Don't forget
 

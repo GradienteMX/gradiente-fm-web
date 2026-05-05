@@ -8,6 +8,130 @@
 
 ---
 
+## 2026-05-05 · INGEST · welcome gate + delete arc + rail/publish polish
+
+Six interlocking slices shipped late-day, all driven by Iker's beta-prep agenda. Pushed across five commits on `main`: `d116bdf`, `7444f85`, `f482a80`, `07cad6e`, `fa65041`. The welcome-gate slice (this session's biggest piece) is in the working tree as a sixth commit, going up next.
+
+### Welcome gate — the site is now invite-only
+
+Anonymous visitors no longer see the home feed. They land on a NGE-themed terminal cockpit at `/welcome` with two CTAs that summon the existing `LoginOverlay` in the right initial mode.
+
+- Middleware: [`lib/supabase/middleware.ts`](../lib/supabase/middleware.ts) gained an auth-gating step after `getUser()`. Anon page request → 302 to `/welcome`. Authed request to `/welcome` → 302 to `/`. API routes pass through (each handler self-401s; redirecting JSON consumers to HTML would corrupt their response).
+- RLS migration: [`0014_auth_gated_reads.sql`](../supabase/migrations/0014_auth_gated_reads.sql) drops the `published = true and seed = false` `*_public_read` policies on `items`, `comments`, `foro_threads`, `foro_replies` and replaces with `auth.uid() is not null and published = true`. Two effects: anonymous reads return zero rows even if the middleware misses (defense in depth), and **authenticated beta testers now see seeded mockdata alongside real content** so the page feels populated before they've contributed anything. Reactions/polls/poll_votes left as `using (true)` — they're JOIN attachments that can't surface without their parent. `*_staff_read` policies stay in place; they cover draft visibility for staff (still needed).
+- Welcome page: [`app/welcome/page.tsx`](../app/welcome/page.tsx) is a single client component. Full-bleed cockpit with a top status strip, left identity column + `ACTIVIDAD RECIENTE` panel, big `GRADIENTE` glitch wordmark, ASCII vinyl renderer in the center (perspective tilt + concentric grooves + top-down ambient + rim sparkle, 30fps cap), right column with `ESTADÍSTICAS DEL ARCHIVO` / `FRECUENCIA PORTADORA` / `SINCRONIZACIÓN`, two CTAs (`INICIAR SESIÓN` → login mode, `INSERTAR CÓDIGO` → signup mode), and a footer strip with `LOGS DEL SISTEMA`, `MENSAJE DEL OPERADOR`, animated spectrum waveform (`SpectrumAscii`, 90×4 block-glyph histogram), and `CANAL DE SALIDA`. Vinyl + spectrum both honor `prefers-reduced-motion` (single static frame).
+- Atmosphere panels are corner-bracketed annotations rather than UI cards — `Brackets` component drops 4 orange `L`-shaped 3×3 spans, no border + no fill, content floats on the dark surface. Matches the cockpit feel of the reference mock.
+- ChromeFrame: [`components/ChromeFrame.tsx`](../components/ChromeFrame.tsx) is a tiny `'use client'` wrapper that hides Navigation / VibeSlider / footer when `usePathname() === '/welcome'`. Avoids refactoring app/layout into a route group.
+- LoginOverlay extension: `useAuth` now exposes `openLogin(mode?: 'login' | 'signup')` + `loginInitialMode`. Welcome's two CTAs route to the right initial tab so the user lands directly in the flow they picked.
+
+### Delete arc — owner + admin hard-delete on items
+
+`fa65041 feat(items): owner + admin hard-delete with typed confirmation`. Two surfaces, same convention as the partner-delete flow.
+
+- Migration [`0013_items_delete_policies.sql`](../supabase/migrations/0013_items_delete_policies.sql) splits `items_staff_write` (which was `for all`) into explicit `items_staff_insert` + `items_staff_update`, then adds `items_owner_delete` (`created_by = auth.uid()`) + `items_admin_delete` (`auth_is_admin()`). Multiple permissive policies OR — owner-or-admin can delete, everyone else 0 rows.
+- API: [`/api/items/[id]` DELETE](../app/api/items/[id]/route.ts). Auth-checks, runs `.delete().select('id')`, disambiguates 0-rows-affected into 404 vs 403 with a follow-up existence probe.
+- "Publicados" surface (owner): tiny `×` corner button on each `DraggableFileGrid` tile when the parent passes `onDelete`. The dashboard wires `onDeletePublished` only for the `publicados` namespace.
+- Overlay (admin): `ELIMINAR` action in `OverlayShell` header chrome, gated on `canAssignRoles(currentUser)` and hidden for session-only items (those still use the existing `SessionItemStrip`).
+- Both surfaces use `typeToConfirm` with `BORRAR <title>` matching the partner-delete convention at [AdminPartnersComposer.tsx:271](../components/admin/AdminPartnersComposer.tsx).
+- State sync: `publishedItemsCache` gained `removePublishedItemLocal(id)` + `useMyPublishedItems` subscribes to cache changes so optimistic eviction shows up in the dashboard before the refetch lands.
+
+### Rail / mosaic placement — one rule for all eventos
+
+Two commits, same arc:
+
+1. `7444f85 feat(home): unify rail predicate — all eventos default to rail`. Dropped the `source === 'scraper:ra'` gate. Editor-authored events from venue partners (e.g. Club Japan, which announces through Instagram only) are listings, not curation — same shape as the RA firehose. They earn rail visibility for the same reason RA events do.
+2. `07cad6e fix(home): editorial eventos appear in rail and mosaic`. The first version made the predicate mutually-exclusive (editorial=true → mosaic only). Iker's intent was additive — editor wants the event in the marquee AND in the curated grid. Final placement matrix on [`app/page.tsx:36`](../app/page.tsx):
+    | | `elevated=false` | `elevated=true` |
+    |---|---|---|
+    | `editorial=false` | rail only | mosaic only |
+    | `editorial=true` | **rail + mosaic** | mosaic only |
+    `editorial` boosts spawn HP and promotes into the mosaic; `elevated` is placement-only.
+
+### Publish-flow fixes
+
+Two small bugs caught during Iker's first manual evento publish (the JUEVES DE JAPAN case):
+
+1. `d116bdf fix(publish): coerce empty timestamp strings to null in row mapper`. `<input type="datetime-local">` returns `''` when blank, and the `??` fallback in `contentItemToRow` only catches null/undefined. Empty strings flowed through to Postgres → `invalid input syntax for type timestamp with time zone: ""`. Tiny `tsOrNull` helper applied to every optional timestamp column. Triple symptom: publish 500s, the optimistic draft eviction in `PublishConfirmOverlay` makes the draft appear to vanish entirely, and there's no UI feedback. Fix is single-mapper.
+2. `f482a80 fix(publish): wipe per-type composer sessionStorage after publish`. After a successful publish the composer's autosave key (`gradiente:dashboard:<type>-draft`) was still hydrating into the form on next "new <type>" navigation, so opening the evento composer to draft a second event showed the previous one's title/dates/venue. Now: on success, drop the matching key. Targeted by `payload.type` so other in-progress composer drafts of unrelated types are preserved.
+
+### Decisions logged
+
+- **Beta posture flip**: pre-today, anonymous visitors saw real (non-seeded) published items so admins could see how a populated site would look. Decided this is wrong for beta — beta testers should also experience the populated feel, not be the source of all population. Hence the `auth.uid() is not null` gate (gives them seed visibility) plus the welcome wall (gives the site invite-only chrome).
+- **`pretext` library**: Iker asked about [chenglou/pretext](https://github.com/chenglou/pretext) for the ASCII vinyl. Investigated — it's a text-measurement library (canvas font metrics, paragraph layout without DOM). Doesn't help with ASCII art / shaders / animated rendering. Math stays in `VinylAscii` / `SpectrumAscii`.
+
+### Verification
+
+- **Anon redirect**: fetch `/`, `/agenda` (deep link), `/welcome` with `credentials: 'omit'` → all final-URL into `/welcome`. `/welcome` itself returns 200, no redirect loop.
+- **CTA → mode mapping**: clicking `INICIAR SESIÓN` opens overlay with `login·terminal` marker visible; `INSERTAR CÓDIGO` opens with `signup·terminal` marker. Both verified via DOM probe.
+- **Vinyl renders**: 150×64 grid, mid-disc sample row at 1280px desktop reads `:::  +++  ***  ##  @@@@@@@@@@  @@·@@·@·@·@@@@  ##  *  ++  +++  :::` — distinct grooves, top-lit gradient, label legible.
+- **Delete API**: `DELETE /api/items/nonexistent-id` returns `401 Unauthorized` without auth (route + handler exist). Full delete flow not exercised end-to-end via UI from Claude side (no admin password).
+- **Migration applied**: Iker confirmed `supabase db push` for both 0013 and 0014 prior to code push.
+
+### Open
+
+- **Welcome polish** — Iker flagged the vinyl still doesn't quite match the reference. Levers: drop `GROOVE_PITCH` to 0.4 (more rings), bump `TILT_Y` to 0.36 (more squash), harden ambient to `cos⁶`. Also: the panels could use even tighter chrome and the CTAs scale further on small screens.
+- **Guest mode** — the welcome reference originally had a third `ENTRAR COMO INVITADO` CTA. We deferred it; the current middleware + RLS architecture is hard-gated, and a real guest mode is a separate slice (new role, RLS exceptions, write-action gates).
+- **Form `elevated` toggle** — the dashboard composer doesn't expose `elevated`. With the new placement model, an editor who wants an event in mosaic-only has to flip the column via Studio. Worth wiring as a small dashboard tweak.
+- **`*_staff_read` redundancy** — after 0014, any authed user already sees published items, so `items_staff_read` is only meaningful for drafts (`published = false`). The other `*_staff_read` policies on comments / foro tables are now strictly redundant. Harmless but worth a follow-up cleanup migration.
+
+---
+
+## 2026-05-05 · INGEST · vibe arc — checks + fader UX + multi-genre filter + taxonomy migration
+
+Five interlocking slices that together land the [[Vibe Philosophy]] model. Shipped as one big push (commit `e7db9fe`) because the changes were tangled across the same files.
+
+### Vibe Checks (new feature)
+- Schema: [`0011_vibe_checks.sql`](../supabase/migrations/0011_vibe_checks.sql) — table `(item_id text, user_id uuid, vibe_min/max smallint)`, PK `(item_id, user_id)`, RLS read-all + self-write, realtime on the table. Plus `vibe_check_aggregates` view (median min + median max + count). Follow-up [`0012_vibe_checks_security.sql`](../supabase/migrations/0012_vibe_checks_security.sql) cleared the security_invoker view + mutable-search_path lints.
+- Cache + hooks: [[vibeChecks]] mirrors [[polls]]'s shape — module cache, listener Set, optimistic write, per-item realtime channel.
+- API: `PUT /api/vibe-checks/[itemId]` upsert + `DELETE` revoke. Range-validated server-side.
+- Display fall-through: at `checkCount >= 5`, the displayed band switches from author's `[vibeMin, vibeMax]` to crowd median. Affects both [[VibeFader]] visual and `filterByVibe` *eligibility* — vibe checks change what shows in the home grid, not just chrome (decided 2026-05-05).
+- Joined into [[mockData|getItems()]] / `getItemBySlug()` so items expose `vibeCheckCount` / `vibeCheckMedianMin` / `vibeCheckMedianMax`.
+- Threshold = 5, median over mean (outlier resistance).
+
+### VibeFader (new component)
+- Replaces the static `swatch + vibeRangeLabel` row in all six overlays ([[ReaderOverlay]], [[EventoOverlay]], [[MixOverlay]], [[ArticuloOverlay]], [[ListicleOverlay]], [[GenericOverlay]]).
+- Five visual layers: faint full-axis backdrop, lit displayed band, user-vote ghost (25%/60%/100% by interaction), thumbs (white view / gold edit), persistent author tick anchors.
+- Drag-to-set commits. Login-gated. Single-point auto-switch fix so leftward drags work from a collapsed range.
+- Layout-shift hardening: `min-w` on label + count slots (so the meta strip's `ml-auto` doesn't shift on label content swap).
+
+### VibeSlider chip strip (full rework)
+- `genreFilter` migrated `string | null` → `string[]` in [[VibeContext]]. New helpers `toggleGenre`, `clearGenres`.
+- Chip strip is now multi-select toggle badges; clicking adds/removes from the active set.
+- **Visibility tied to range state** (not drag/hover): `chipsVisible = !isFullRange || pinned || activeIds.length > 0`. Hidden at full range with no filters; appears as soon as the user narrows.
+- **Chip strip is feed-driven**: chip universe = `roots ∪ visibleGenres ∪ active filters`. `visibleGenres` pushed by [[ContentGrid]] (the union of vibe-filtered items' genres), consumed by [[VibeSlider]]. This is [[Vibe Philosophy]] idea 2 made concrete — chip strip mirrors feed reality, not `GENRE_VIBE` stereotype.
+- Per-chip in-feed test rolls up via `getRollup` so root chips light up when any descendant leaf is in the feed.
+- Smooth `transition-all duration-200` per chip (opacity + max-width + margin) — visible chips cluster tightly because hidden ones collapse `max-w` *and* `margin` together.
+- Stable strip height (169px) across full → narrow → reset cycles. RESET button uses `invisible` instead of conditional unmount; `min-h-[3.5rem]` reserves chip-strip space.
+
+### Genre taxonomy migration (Option B: leaves with parents)
+- Replaced ~38-genre flat catalog with the 18-root + ~175-leaf Gradiente taxonomy from `generos.txt` (curator-authored). See [[genres]].
+- Cross-listed leaves carry multiple parents (e.g. "Industrial Dub" → `[techno, dub-reggae, industrial-ebm]`).
+- 47 legacy ids preserved with `legacy: true` and parented to their closest taxonomy root, so existing DB rows stay resolvable + filterable via parent rollup.
+- New helpers: `getRootGenres`, `getDirectChildren`, `getRollup`, `itemMatchesGenreFilter`. The `Genre` type dropped the 4-bucket `category` enum, added `parents: string[]`.
+- Transversal tag catalog expanded with curator-authored qualities (Greyscale, Ritual, Maximalista, Soundsystem, Diaspórico, etc.) — separate from genres because they cross genre lines.
+- Dashboard composer's [GenreFieldset](../components/dashboard/forms/shared/Fields.tsx) hides legacy entries; both copies (Fields.tsx + MixForm.tsx duplicate) updated.
+- [[ContentGrid]] genre filter now uses `itemMatchesGenreFilter` for rollup matching: filtering by `Techno` matches any item tagged with `techno-hard`, `techno-raw`, `techno-dub`, etc.
+- Foro untouched — `genresIntersectVibeRange` still uses `GENRE_VIBE` (expanded with rough placements for new ids); fall-through semantics keep new genres visible.
+
+### Vibe Philosophy (new doc — the spine)
+- Codified the four ideas Iker laid out: (1) two-axis system, (2) genre alone is a lie, (3) system learns context, (4) grading is the engagement primitive. See [[Vibe Philosophy]].
+- These rule out auto-derived vibes, genre-vibe substitution, one-tap vibe checks, and personalized feeds.
+- Clarified: friction in the fader (drag-to-set vs tap-to-agree) is the design, not a defect.
+
+### Verification
+- Live verified vibe checks round-trip end-to-end on multiple items (PUT 200s in dev logs across review/listicle/articulo/mix items).
+- Chip strip feed-driven behavior verified: at narrow `[0, 4]`, `Techno` parent + `techno-raw` leaf both light up because of items like `FASCINOMA 006 MIX: Itzvan` (vibe `[3, 7]`, genres include `techno-raw`).
+- Layout-shift hardening verified: strip total = 169px through full → narrow → reset cycle (delta = 0).
+- Composer picker verified: 193 chips visible (legacy hidden), search filters work, 13 results for "techno" query.
+
+### Deferred / open
+- **Composer prior** ([[Vibe Philosophy]] idea 3) — at compose time, pre-fill `vibeMin/vibeMax` from author/venue/genre history. Not built.
+- **Visual cue when crowd diverges sharply from author** — currently it's just the gap between ghost and lit band. Defer.
+- **`GENRE_VIBE` deprecation** — replace foro's `genresIntersectVibeRange` with a real per-thread vibe so the stereotype map can finally die. Defer until foro grows.
+- **Hierarchy-aware composer picker** — flat search-with-filter works but a collapsible parent → children view would be cleaner. Out of scope for migration slice.
+- **Duplicate `GenreFieldset` in [MixForm.tsx](../components/dashboard/forms/MixForm.tsx) vs [Fields.tsx](../components/dashboard/forms/shared/Fields.tsx)** — pre-existing smell; both updated for the legacy filter, but worth dedup later.
+
+---
+
 ## 2026-05-05 · INGEST · partnerOverrides cleanup — file deleted
 
 Closing slice on the partners arc. The two remaining `useResolvedPartner` callsites were migrated off the sessionStorage overlay; `lib/partnerOverrides.ts` deleted entirely.
