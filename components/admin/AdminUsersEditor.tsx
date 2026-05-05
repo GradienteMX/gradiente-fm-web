@@ -53,6 +53,7 @@ const FLAG_COLOR = {
 export function AdminUsersEditor({
   elevatedUsers,
   recentUsers,
+  lectorUsers,
   partners,
   selfId,
   totalUsers,
@@ -61,6 +62,7 @@ export function AdminUsersEditor({
 }: {
   elevatedUsers: UserRow[]
   recentUsers: UserRow[]
+  lectorUsers: UserRow[]
   partners: PartnerOption[]
   selfId: string
   totalUsers: number
@@ -109,11 +111,15 @@ export function AdminUsersEditor({
     return () => clearTimeout(t)
   }, [query])
 
+  // LECTOR (role='user') has its own prefetched bucket because vanilla
+  // readers aren't in elevatedUsers by definition; all other role chips
+  // narrow within the elevated set.
   const filteredElevated = useMemo(() => {
     if (!statFilter) return elevatedUsers
     if (statFilter === 'mod') return elevatedUsers.filter((u) => u.is_mod)
+    if (statFilter === 'user') return lectorUsers
     return elevatedUsers.filter((u) => u.role === statFilter)
-  }, [elevatedUsers, statFilter])
+  }, [elevatedUsers, lectorUsers, statFilter])
 
   const elevatedIds = useMemo(
     () => new Set(elevatedUsers.map((u) => u.id)),
@@ -134,14 +140,20 @@ export function AdminUsersEditor({
       searchResults?.find((u) => u.id === selectedId) ??
       elevatedUsers.find((u) => u.id === selectedId) ??
       recentUsers.find((u) => u.id === selectedId) ??
+      lectorUsers.find((u) => u.id === selectedId) ??
       null
     )
-  }, [selectedId, searchResults, elevatedUsers, recentUsers])
+  }, [selectedId, searchResults, elevatedUsers, recentUsers, lectorUsers])
 
   const filterLabel =
     statFilter === 'mod' ? 'MOD' : statFilter ? ROLE_LABEL[statFilter] : null
+  // LECTOR list shows the prefetched 50; older lectors come in via search.
+  const lectorTotal = roleCounts.user ?? 0
+  const lectorOverflow = statFilter === 'user' && lectorTotal > lectorUsers.length
   const listLabel = searchResults
     ? `${searchResults.length} resultado${searchResults.length === 1 ? '' : 's'}`
+    : statFilter === 'user'
+    ? `${lectorUsers.length} de ${lectorTotal} lectores (más recientes primero)`
     : filterLabel
     ? `${filteredElevated.length} con rol/flag ${filterLabel}`
     : `${elevatedUsers.length} con permisos elevados`
@@ -165,15 +177,26 @@ export function AdminUsersEditor({
         </p>
       </header>
 
-      {/* Stats strip — orientation + filter chips. */}
+      {/* Stats strip — orientation + filter chips. Ordered by tier
+          (LECTOR → CURATOR → GUIDE / INSIDER → ADMIN), then MOD flag.
+          LECTOR has its own prefetched bucket of the 50 most recent
+          role='user' rows; chip count is the global lector total from
+          roleCounts. */}
       <div className="flex flex-wrap items-center gap-x-1 gap-y-1 border-y border-border/50 px-1 py-2 font-mono text-[10px] tracking-widest">
         <StatChip label="TODOS" value={totalUsers} color="#888888" active={statFilter === null} onClick={() => setStatFilter(null)} />
-        <StatChip label="ADMIN" value={roleCounts.admin ?? 0} color={ROLE_COLOR.admin} active={statFilter === 'admin'} onClick={() => setStatFilter((s) => (s === 'admin' ? null : 'admin'))} />
-        <StatChip label="GUIDE" value={roleCounts.guide ?? 0} color={ROLE_COLOR.guide} active={statFilter === 'guide'} onClick={() => setStatFilter((s) => (s === 'guide' ? null : 'guide'))} />
+        <StatChip label="LECTOR" value={lectorTotal} color={ROLE_COLOR.user} active={statFilter === 'user'} onClick={() => setStatFilter((s) => (s === 'user' ? null : 'user'))} />
         <StatChip label="CURATOR" value={roleCounts.curator ?? 0} color={ROLE_COLOR.curator} active={statFilter === 'curator'} onClick={() => setStatFilter((s) => (s === 'curator' ? null : 'curator'))} />
+        <StatChip label="GUIDE" value={roleCounts.guide ?? 0} color={ROLE_COLOR.guide} active={statFilter === 'guide'} onClick={() => setStatFilter((s) => (s === 'guide' ? null : 'guide'))} />
         <StatChip label="INSIDER" value={roleCounts.insider ?? 0} color={ROLE_COLOR.insider} active={statFilter === 'insider'} onClick={() => setStatFilter((s) => (s === 'insider' ? null : 'insider'))} />
+        <StatChip label="ADMIN" value={roleCounts.admin ?? 0} color={ROLE_COLOR.admin} active={statFilter === 'admin'} onClick={() => setStatFilter((s) => (s === 'admin' ? null : 'admin'))} />
         <StatChip label="MOD" value={modCount} color="#EF4444" active={statFilter === 'mod'} onClick={() => setStatFilter((s) => (s === 'mod' ? null : 'mod'))} />
       </div>
+
+      {lectorOverflow && (
+        <p className="font-mono text-[9px] tracking-widest text-muted">
+          // mostrando los {lectorUsers.length} más recientes de {lectorTotal} — buscá por @username para encontrar a alguien anterior
+        </p>
+      )}
 
       {searchResults && statFilter && (
         <p className="font-mono text-[9px] tracking-widest text-muted">

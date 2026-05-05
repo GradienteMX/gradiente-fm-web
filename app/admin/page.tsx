@@ -68,6 +68,7 @@ export default async function AdminPage({
   let codes: InviteCodeRow[] = []
   let elevatedUsers: UserRow[] = []
   let recentUsers: UserRow[] = []
+  let lectorUsers: UserRow[] = []
   let totalUsers = 0
   let roleCounts: Partial<Record<string, number>> = {}
   let modCount = 0
@@ -83,13 +84,16 @@ export default async function AdminPage({
     // Partners tab fetches the existing-partners list from `partners`
     // (already prefetched above for the dropdowns) — no extra query.
   } else {
-    // Two prefetches feed the users tab:
-    //   - elevatedUsers — anyone with non-default perms (audit-staff workflow,
-    //     stays bounded ~50 even at scale)
-    //   - recentUsers — newest 25 by joined_at (so newly registered users
-    //     appear immediately without needing to search). At scale this caps
-    //     the prefetch surface at 75 rows total.
-    // For larger lookups, the search bar hits /api/admin/users/search.
+    // Three prefetches feed the users tab:
+    //   - elevatedUsers — anyone with non-default perms (audit-staff
+    //     workflow, stays bounded ~50 even at scale)
+    //   - recentUsers — newest 25 by joined_at (so newly registered
+    //     users appear immediately without needing to search)
+    //   - lectorUsers — newest 50 with role='user' (surfaces vanilla
+    //     readers as their own filterable bucket; the LECTOR stat chip
+    //     switches the list to this set when active)
+    // At scale this caps the prefetch surface at ~125 rows total. For
+    // older lectors, the search bar hits /api/admin/users/search.
     const { data: elevated } = await supabase
       .from('users')
       .select('*')
@@ -103,6 +107,14 @@ export default async function AdminPage({
       .order('joined_at', { ascending: false })
       .limit(25)
     recentUsers = (recent as UserRow[] | null) ?? []
+
+    const { data: lectors } = await supabase
+      .from('users')
+      .select('*')
+      .eq('role', 'user')
+      .order('joined_at', { ascending: false })
+      .limit(50)
+    lectorUsers = (lectors as UserRow[] | null) ?? []
 
     // Stats strip aggregates — three cheap queries.
     const totalRes = await supabase
@@ -154,6 +166,7 @@ export default async function AdminPage({
         <AdminUsersEditor
           elevatedUsers={elevatedUsers}
           recentUsers={recentUsers}
+          lectorUsers={lectorUsers}
           partners={(partners as PartnerOption[] | null) ?? []}
           selfId={user.id}
           totalUsers={totalUsers}
