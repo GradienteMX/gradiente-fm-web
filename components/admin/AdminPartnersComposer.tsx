@@ -15,6 +15,7 @@ const PARTNER_KIND_LABEL: Record<PartnerKind, string> = {
   promoter: 'PROMOTER · evento / colectivo',
   venue: 'VENUE · espacio físico',
   sponsored: 'SPONSORED · patrocinador pagado',
+  dealer: 'DEALER · vinilos / equipo / merch',
 }
 
 const PARTNER_KIND_COLOR: Record<PartnerKind, string> = {
@@ -23,6 +24,7 @@ const PARTNER_KIND_COLOR: Record<PartnerKind, string> = {
   promoter: '#F97316',
   venue: '#FB923C',
   sponsored: '#EAB308',
+  dealer: '#10B981',
 }
 
 interface ExistingPartner {

@@ -812,7 +812,8 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      apply_hp_rollup: { Args: never; Returns: undefined }
+      sweep_old_foro_threads: { Args: never; Returns: undefined }
     }
     Enums: {
       content_source: "scraper:ra" | "manual:editor" | "manual:partner"
@@ -827,7 +828,13 @@ export type Database = {
         | "listicle"
         | "partner"
       mix_status: "disponible" | "exclusivo" | "archivo" | "proximamente"
-      partner_kind: "promo" | "label" | "promoter" | "venue" | "sponsored"
+      partner_kind:
+        | "promo"
+        | "label"
+        | "promoter"
+        | "venue"
+        | "sponsored"
+        | "dealer"
       poll_kind: "from-list" | "from-tracklist" | "attendance" | "freeform"
       reaction_kind: "provocative" | "signal"
       user_role: "user" | "curator" | "guide" | "insider" | "admin"
@@ -971,7 +978,14 @@ export const Constants = {
         "partner",
       ],
       mix_status: ["disponible", "exclusivo", "archivo", "proximamente"],
-      partner_kind: ["promo", "label", "promoter", "venue", "sponsored"],
+      partner_kind: [
+        "promo",
+        "label",
+        "promoter",
+        "venue",
+        "sponsored",
+        "dealer",
+      ],
       poll_kind: ["from-list", "from-tracklist", "attendance", "freeform"],
       reaction_kind: ["provocative", "signal"],
       user_role: ["user", "curator", "guide", "insider", "admin"],

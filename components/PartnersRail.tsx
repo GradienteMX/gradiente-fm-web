@@ -11,6 +11,7 @@ const PARTNER_LABEL: Record<PartnerKind, string> = {
   promoter: 'PROMOTORA',
   venue: 'VENUE',
   sponsored: 'PATROCINIO',
+  dealer: 'DEALER',
 }
 
 function partnerTime(item: ContentItem): number {

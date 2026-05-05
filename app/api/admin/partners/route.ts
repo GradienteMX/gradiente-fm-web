@@ -22,6 +22,7 @@ const VALID_KINDS: readonly PartnerKind[] = [
   'promoter',
   'venue',
   'sponsored',
+  'dealer',
 ]
 
 interface CreateBody {
