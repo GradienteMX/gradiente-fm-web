@@ -67,6 +67,7 @@ export default async function AdminPage({
   // renders. Keeps page weight bounded as more tabs land.
   let codes: InviteCodeRow[] = []
   let elevatedUsers: UserRow[] = []
+  let recentUsers: UserRow[] = []
   let totalUsers = 0
   let roleCounts: Partial<Record<string, number>> = {}
   let modCount = 0
@@ -82,15 +83,26 @@ export default async function AdminPage({
     // Partners tab fetches the existing-partners list from `partners`
     // (already prefetched above for the dropdowns) — no extra query.
   } else {
-    // Pre-fetch ELEVATED users only (anyone with non-default perms). At
-    // scale this set stays small (~50 even at 10k users) — admins audit
-    // staff most often. Plain users come in via /api/admin/users/search.
-    const { data } = await supabase
+    // Two prefetches feed the users tab:
+    //   - elevatedUsers — anyone with non-default perms (audit-staff workflow,
+    //     stays bounded ~50 even at scale)
+    //   - recentUsers — newest 25 by joined_at (so newly registered users
+    //     appear immediately without needing to search). At scale this caps
+    //     the prefetch surface at 75 rows total.
+    // For larger lookups, the search bar hits /api/admin/users/search.
+    const { data: elevated } = await supabase
       .from('users')
       .select('*')
       .or('role.neq.user,is_mod.eq.true,is_og.eq.true,partner_id.not.is.null')
       .order('username', { ascending: true })
-    elevatedUsers = (data as UserRow[] | null) ?? []
+    elevatedUsers = (elevated as UserRow[] | null) ?? []
+
+    const { data: recent } = await supabase
+      .from('users')
+      .select('*')
+      .order('joined_at', { ascending: false })
+      .limit(25)
+    recentUsers = (recent as UserRow[] | null) ?? []
 
     // Stats strip aggregates — three cheap queries.
     const totalRes = await supabase
@@ -141,6 +153,7 @@ export default async function AdminPage({
       {tab === 'users' && (
         <AdminUsersEditor
           elevatedUsers={elevatedUsers}
+          recentUsers={recentUsers}
           partners={(partners as PartnerOption[] | null) ?? []}
           selfId={user.id}
           totalUsers={totalUsers}

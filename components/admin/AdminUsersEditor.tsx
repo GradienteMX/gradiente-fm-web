@@ -41,6 +41,7 @@ const ROLE_COLOR: Record<Role, string> = {
 // + user-managed respectively).
 export function AdminUsersEditor({
   elevatedUsers,
+  recentUsers,
   partners,
   selfId,
   totalUsers,
@@ -48,6 +49,7 @@ export function AdminUsersEditor({
   modCount,
 }: {
   elevatedUsers: UserRow[]
+  recentUsers: UserRow[]
   partners: PartnerOption[]
   selfId: string
   totalUsers: number
@@ -104,6 +106,21 @@ export function AdminUsersEditor({
     if (statFilter === 'mod') return elevatedUsers.filter((u) => u.is_mod)
     return elevatedUsers.filter((u) => u.role === statFilter)
   }, [elevatedUsers, statFilter])
+
+  // Recent signups list — dedupe against the elevated set so a recently-
+  // promoted admin doesn't render twice.
+  const elevatedIds = useMemo(
+    () => new Set(elevatedUsers.map((u) => u.id)),
+    [elevatedUsers],
+  )
+  const recentOnlyUsers = useMemo(
+    () => recentUsers.filter((u) => !elevatedIds.has(u.id)),
+    [recentUsers, elevatedIds],
+  )
+
+  // When a search or stat filter is active, the recent section hides — the
+  // active query takes over the visible surface to avoid mixed signals.
+  const showRecentSection = !searchResults && !statFilter && recentOnlyUsers.length > 0
 
   const visibleUsers = searchResults ?? filteredElevated
   const filterLabel =
@@ -175,6 +192,41 @@ export function AdminUsersEditor({
         <span>// {listLabel}</span>
         {searching && <span className="text-sys-green">// BUSCANDO...</span>}
       </div>
+
+      {showRecentSection && (
+        <>
+          <p className="-mb-2 font-mono text-[9px] tracking-widest text-muted">
+            // recientes ({recentOnlyUsers.length}) — registros más nuevos que aún no tienen rol elevado
+          </p>
+          <ul className="flex flex-col divide-y divide-border/50 border border-border/50">
+            {recentOnlyUsers.map((u) =>
+              editingId === u.id ? (
+                <UserRowEditing
+                  key={u.id}
+                  user={u}
+                  partners={partners}
+                  isSelf={u.id === selfId}
+                  onCancel={() => setEditingId(null)}
+                  onSaved={() => {
+                    setEditingId(null)
+                    router.refresh()
+                  }}
+                />
+              ) : (
+                <UserRowCollapsed
+                  key={u.id}
+                  user={u}
+                  partnerTitle={u.partner_id ? partnerById.get(u.partner_id)?.title ?? null : null}
+                  onEdit={() => setEditingId(u.id)}
+                />
+              ),
+            )}
+          </ul>
+          <p className="-mb-2 mt-2 font-mono text-[9px] tracking-widest text-muted">
+            // elevados ({elevatedUsers.length})
+          </p>
+        </>
+      )}
 
       <ul className="flex flex-col divide-y divide-border/50 border border-border/50">
         {visibleUsers.length === 0 && (
