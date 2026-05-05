@@ -247,8 +247,11 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     marketplaceDescription: row.marketplace_description ?? undefined,
     marketplaceLocation: row.marketplace_location ?? undefined,
     marketplaceCurrency: row.marketplace_currency ?? undefined,
-    marketplaceListings:
-      (row.marketplace_listings as MarketplaceListing[] | null) ?? undefined,
+    // Saved-comments cards don't render marketplace listings (no UI path
+    // through them). The listings come from a separate table since 0010 —
+    // if a consumer ever needs them here, switch the SELECT to embed
+    // marketplace_listings(*) and run them through rowToMarketplaceListing.
+    marketplaceListings: undefined,
     hp: row.hp ?? undefined,
     hpLastUpdatedAt: row.hp_last_updated_at ?? undefined,
   }

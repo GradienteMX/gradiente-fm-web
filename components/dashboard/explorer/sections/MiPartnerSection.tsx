@@ -37,18 +37,15 @@ import type {
 import { SUBCATEGORIES_BY_CATEGORY } from '@/lib/types'
 import { useAuth } from '@/components/auth/useAuth'
 import { compressAndUploadImage } from '@/lib/imageUpload'
-// Listings composer is rendered in read-only mode (canManage=false) — see
-// ListingsReadOnlyBanner for the deferral rationale. The sessionStorage
-// helpers below are imported only because the existing composer/preview
-// code still references them in unreachable code paths; once listings
-// persistence ships, this import goes away.
-import {
-  addMarketplaceListing,
-  newListingId,
-  removeMarketplaceListing,
-  updateMarketplaceListing,
-} from '@/lib/partnerOverrides'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
+
+// Generates a stable, human-readable id for a new listing. Format mirrors
+// the seed convention (`mkl-<short>`) so old URLs stay readable.
+function newListingId(partnerId: string): string {
+  const slug = partnerId.replace(/^pa-/, '').slice(0, 12)
+  const rand = Math.random().toString(36).slice(2, 8)
+  return `mkl-${slug}-${rand}`
+}
 
 // ── MiPartnerSection ───────────────────────────────────────────────────────
 //
@@ -623,40 +620,13 @@ function MarketplaceTab({
         }}
       />
 
-      <ListingsReadOnlyBanner />
-
       <ListingsManager
         partner={partner as unknown as ContentItem}
-        canManage={false}
+        canManage={canManage}
         listings={listings}
+        onChanged={onRefetch}
       />
     </div>
-  )
-}
-
-// ── ListingsReadOnlyBanner ─────────────────────────────────────────────────
-//
-// Listings persistence isn't wired yet — the composer below is rendered
-// in read-only mode (canManage=false) so writes don't silently land in
-// sessionStorage and disappear on refresh. Wiring listings to a real
-// table (or the items.marketplace_listings jsonb with proper ownership
-// gating) is its own slice — see Next Session.md.
-
-function ListingsReadOnlyBanner() {
-  return (
-    <p
-      className="flex items-start gap-2 border border-dashed px-3 py-2 font-mono text-[10px] leading-relaxed"
-      style={{ borderColor: '#FBBF24', color: '#FBBF24', backgroundColor: 'rgba(251,191,36,0.06)' }}
-    >
-      <Lock size={12} strokeWidth={1.5} className="mt-0.5 shrink-0" />
-      <span>
-        //LISTADOS·SOLO·LECTURA — la edición persistente de listados aún no
-        está habilitada. Los listados visibles vienen del backend; el composer
-        de abajo está bloqueado mientras se diseña el flujo definitivo. Mientras
-        tanto, pedile a un admin del sitio que ajuste tus listados desde Studio
-        si lo necesitás.
-      </span>
-    </p>
   )
 }
 
@@ -1009,12 +979,17 @@ function ListingsManager({
   partner,
   canManage,
   listings,
+  onChanged,
 }: {
   partner: ContentItem
   canManage: boolean
   listings: MarketplaceListing[]
+  onChanged: () => Promise<void>
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<MarketplaceListing | null>(null)
+  const [isNew, setIsNew] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('destacada')
   const [page, setPage] = useState(0)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({
@@ -1023,20 +998,30 @@ function ListingsManager({
   })
   const [flash, setFlash] = useState<ComposerFlash>(null)
 
-  // Hot-resolve the editing target each render so the preview pane and
-  // composer reflect partnerOverrides writes in real time.
-  const editing = editingId
-    ? listings.find((l) => l.id === editingId) ?? null
-    : null
-
-  // Drop the selection if the listing was deleted (e.g. via the table action).
+  // Seed the draft from the source listing whenever editingId changes (and
+  // we're editing an existing listing, not creating a new one). Refetch
+  // updates `listings`; if the row currently being edited gets a server-
+  // side change we re-seed, which is acceptable since the partner team
+  // member is the only one editing it.
   useEffect(() => {
-    if (editingId && !editing) setEditingId(null)
-  }, [editingId, editing])
+    if (isNew) return
+    if (editingId) {
+      const found = listings.find((l) => l.id === editingId) ?? null
+      if (found) setDraft({ ...found })
+      else {
+        setDraft(null)
+        setEditingId(null)
+      }
+    } else {
+      setDraft(null)
+    }
+  }, [editingId, isNew, listings])
 
   const onAdd = () => {
     if (!canManage) return
-    const draft: MarketplaceListing = {
+    setIsNew(true)
+    setEditingId(null)
+    setDraft({
       id: newListingId(partner.id),
       title: '',
       category: 'vinyl',
@@ -1045,35 +1030,105 @@ function ListingsManager({
       images: [],
       status: 'available',
       publishedAt: new Date().toISOString(),
-    }
-    addMarketplaceListing(partner.id, draft)
-    setEditingId(draft.id)
+    })
+  }
+
+  const onSelect = (id: string) => {
+    setIsNew(false)
+    setEditingId(id)
   }
 
   const onPatch = (patch: Partial<MarketplaceListing>) => {
-    if (!editingId) return
-    updateMarketplaceListing(partner.id, editingId, patch)
+    setDraft((d) => (d ? { ...d, ...patch } : d))
   }
 
   const onDuplicate = (id: string) => {
     if (!canManage) return
     const source = listings.find((l) => l.id === id)
     if (!source) return
-    const dup: MarketplaceListing = {
+    setIsNew(true)
+    setEditingId(null)
+    setDraft({
       ...source,
       id: newListingId(partner.id),
       title: source.title ? `${source.title} (copia)` : '(copia)',
       status: 'available',
       publishedAt: new Date().toISOString(),
-    }
-    addMarketplaceListing(partner.id, dup)
-    setEditingId(dup.id)
+    })
   }
 
-  const onDelete = (id: string) => {
+  const onDelete = async (id: string) => {
     if (!canManage) return
-    removeMarketplaceListing(partner.id, id)
-    if (editingId === id) setEditingId(null)
+    if (saving) return
+    setSaving(true)
+    try {
+      await fetch(
+        `/api/partners/${encodeURIComponent(partner.id)}/listings/${encodeURIComponent(id)}`,
+        { method: 'DELETE' },
+      )
+      await onChanged()
+      if (editingId === id || draft?.id === id) {
+        setEditingId(null)
+        setIsNew(false)
+        setDraft(null)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Persist the current draft. POST when isNew, otherwise PATCH. fireFlash
+  // closes the composer with a chip flash; the kind is informational —
+  // both paths hit the same DB row, the label difference is a holdover
+  // from the visual MVP draft / publish split.
+  const persistDraft = async (kind: ComposerFlash) => {
+    if (!draft) return
+    if (saving) return
+    if (!draft.title.trim()) {
+      // Soft-fail — the DB CHECK constraint would 400 anyway.
+      return
+    }
+    setSaving(true)
+    try {
+      const body = {
+        id: draft.id,
+        title: draft.title.trim(),
+        category: draft.category,
+        subcategory: draft.subcategory ?? null,
+        price: draft.price,
+        condition: draft.condition,
+        status: draft.status,
+        description: draft.description ?? null,
+        tags: draft.tags ?? [],
+        shipping_mode: draft.shippingMode ?? null,
+        images: draft.images ?? [],
+        embeds: draft.embeds ?? [],
+        published_at: draft.publishedAt,
+      }
+      if (isNew) {
+        await fetch(
+          `/api/partners/${encodeURIComponent(partner.id)}/listings`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          },
+        )
+      } else {
+        await fetch(
+          `/api/partners/${encodeURIComponent(partner.id)}/listings/${encodeURIComponent(draft.id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          },
+        )
+      }
+      await onChanged()
+      fireFlash(kind)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const fireFlash = (kind: ComposerFlash) => {
@@ -1081,16 +1136,20 @@ function ListingsManager({
     setFlash(kind)
     setTimeout(() => setFlash(null), 2500)
     setEditingId(null)
+    setIsNew(false)
+    setDraft(null)
   }
 
   const onPreview = () => {
-    if (!editing) return
+    // Only meaningful for persisted listings — a new draft has no public
+    // URL until it's saved.
+    if (!draft || isNew) return
     if (typeof window !== 'undefined') {
       // window.open bypasses Next's router, so basePath must be applied
       // manually. NEXT_PUBLIC_BASE_PATH is set in next.config.mjs to
       // `/gradiente-fm-web` on GitHub Pages and `''` locally.
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
-      const url = `${basePath}/marketplace/?partner=${partner.slug}&listing=${editing.id}`
+      const url = `${basePath}/marketplace/?partner=${partner.slug}&listing=${draft.id}`
       window.open(url, '_blank', 'noopener')
     }
   }
@@ -1131,17 +1190,17 @@ function ListingsManager({
       {/* Top: composer + preview side by side */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ListingComposer
-          listing={editing}
+          listing={draft}
           partner={partner}
-          canManage={canManage}
+          canManage={canManage && !saving}
           flash={flash}
           onPatch={onPatch}
           onPreview={onPreview}
-          onSaveDraft={() => fireFlash('draft')}
-          onPublish={() => fireFlash('published')}
+          onSaveDraft={() => persistDraft('draft')}
+          onPublish={() => persistDraft('published')}
         />
         <ListingPreviewPane
-          listing={editing}
+          listing={draft}
           partner={partner}
           mode={previewMode}
           onModeChange={setPreviewMode}
@@ -1153,14 +1212,14 @@ function ListingsManager({
         partner={partner}
         rows={pageRows}
         total={sorted.length}
-        editingId={editingId}
+        editingId={editingId ?? (isNew ? draft?.id ?? null : null)}
         canManage={canManage}
         sort={sort}
         onSortChange={setSort}
         page={safePage}
         pageCount={pageCount}
         onPageChange={setPage}
-        onSelect={setEditingId}
+        onSelect={onSelect}
         onAdd={onAdd}
         onDuplicate={onDuplicate}
         onDelete={onDelete}

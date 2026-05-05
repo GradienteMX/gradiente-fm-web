@@ -150,8 +150,12 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     marketplaceDescription: row.marketplace_description ?? undefined,
     marketplaceLocation: row.marketplace_location ?? undefined,
     marketplaceCurrency: row.marketplace_currency ?? undefined,
-    marketplaceListings:
-      (row.marketplace_listings as MarketplaceListing[] | null) ?? undefined,
+    // Saved-items cards don't render marketplace listings (the count chip
+    // sits on MarketplaceCard, not the saved-items grid). Listings live
+    // in their own table since 0010 — if a consumer ever needs them here,
+    // switch the SELECT to embed marketplace_listings(*) + map via
+    // rowToMarketplaceListing.
+    marketplaceListings: undefined,
     hp: row.hp ?? undefined,
     hpLastUpdatedAt: row.hp_last_updated_at ?? undefined,
   }

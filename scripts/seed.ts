@@ -157,7 +157,9 @@ function itemToRow(item: ContentItem): ItemInsert {
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
     marketplace_currency: item.marketplaceCurrency ?? null,
-    marketplace_listings: (item.marketplaceListings ?? []) as unknown as Database['public']['Tables']['items']['Insert']['marketplace_listings'],
+    // marketplace_listings live in their own table since migration 0010.
+    // Seeded listings are inserted in a separate pass — see seed listings
+    // logic below.
     hp: item.hp ?? null,
     hp_last_updated_at: item.hpLastUpdatedAt ?? null,
     published: true,
@@ -200,6 +202,36 @@ async function insertItems() {
     const { error } = await supabase.from('polls').insert(pollRows)
     if (error) throw error
     console.log(`  + ${polls.length} polls`)
+  }
+
+  // Marketplace listings — separate table since migration 0010. Each
+  // partner item carries a `marketplaceListings` array in MOCK_ITEMS;
+  // expand to individual rows.
+  const listings = MOCK_ITEMS.flatMap((item) =>
+    (item.type === 'partner' && item.marketplaceListings)
+      ? item.marketplaceListings.map((l) => ({ partnerId: item.id, listing: l }))
+      : [],
+  )
+  if (listings.length > 0) {
+    const listingRows = listings.map(({ partnerId, listing }) => ({
+      id: listing.id,
+      partner_id: partnerId,
+      title: listing.title,
+      category: listing.category,
+      subcategory: listing.subcategory ?? null,
+      price: listing.price,
+      condition: listing.condition,
+      status: listing.status,
+      description: listing.description ?? null,
+      tags: listing.tags ?? [],
+      shipping_mode: listing.shippingMode ?? null,
+      images: listing.images ?? [],
+      embeds: (listing.embeds ?? []) as unknown as Database['public']['Tables']['marketplace_listings']['Insert']['embeds'],
+      published_at: listing.publishedAt,
+    }))
+    const { error } = await supabase.from('marketplace_listings').insert(listingRows)
+    if (error) throw error
+    console.log(`  + ${listings.length} marketplace listings`)
   }
 }
 

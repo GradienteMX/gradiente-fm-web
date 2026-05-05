@@ -13,13 +13,43 @@ import type {
 
 type ItemRow = Database['public']['Tables']['items']['Row']
 type PollRow = Database['public']['Tables']['polls']['Row']
+type MarketplaceListingRow = Database['public']['Tables']['marketplace_listings']['Row']
 
 // Embedded join shape — `polls.item_id` is unique so PostgREST returns a
-// single object (not an array) for the relation.
-type ItemRowWithPoll = ItemRow & { poll: PollRow | null }
+// single object (not an array) for the relation; marketplace_listings is
+// 1:N keyed on partner_id, returned as an array.
+type ItemRowWithPoll = ItemRow & {
+  poll: PollRow | null
+  marketplace_listings: MarketplaceListingRow[] | null
+}
 
+// Listings are pulled via the same SELECT so consumers don't need a second
+// round-trip. The catalog + overlay both render off this one query.
 const ITEMS_SELECT =
-  '*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at)'
+  '*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at), marketplace_listings(*)'
+
+// Map a marketplace_listings row to the camelCase MarketplaceListing
+// type the rest of the app consumes. Centralized so each row mapper
+// (4 of them — server + 3 hooks) doesn't re-invent it.
+function rowToMarketplaceListing(row: MarketplaceListingRow): MarketplaceListing {
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category as MarketplaceListing['category'],
+    subcategory: row.subcategory ?? undefined,
+    price: Number(row.price),
+    condition: row.condition as MarketplaceListing['condition'],
+    status: row.status as MarketplaceListing['status'],
+    description: row.description ?? undefined,
+    tags: row.tags ?? undefined,
+    shippingMode: (row.shipping_mode as MarketplaceListing['shippingMode']) ?? undefined,
+    images: row.images ?? [],
+    embeds: (row.embeds as unknown as MarketplaceListing['embeds']) ?? undefined,
+    publishedAt: row.published_at,
+  }
+}
+
+export { rowToMarketplaceListing }
 
 function rowToPollAttachment(p: PollRow): PollAttachment {
   return {
@@ -94,7 +124,9 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
     marketplace_currency: item.marketplaceCurrency ?? null,
-    marketplace_listings: (item.marketplaceListings ?? []) as unknown as ItemInsert['marketplace_listings'],
+    // marketplace_listings live in their own table since migration 0010 —
+    // the publish flow inserts the item row first; listings are managed via
+    // /api/partners/[id]/listings endpoints once the partner exists.
     hp: item.hp ?? null,
     hp_last_updated_at: item.hpLastUpdatedAt ?? null,
     published: opts?.published ?? true,
@@ -159,8 +191,9 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     marketplaceDescription: row.marketplace_description ?? undefined,
     marketplaceLocation: row.marketplace_location ?? undefined,
     marketplaceCurrency: row.marketplace_currency ?? undefined,
-    marketplaceListings:
-      (row.marketplace_listings as MarketplaceListing[] | null) ?? undefined,
+    marketplaceListings: row.marketplace_listings
+      ? row.marketplace_listings.map(rowToMarketplaceListing)
+      : undefined,
     hp: row.hp ?? undefined,
     hpLastUpdatedAt: row.hp_last_updated_at ?? undefined,
   }

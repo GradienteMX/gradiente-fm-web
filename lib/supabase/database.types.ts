@@ -436,7 +436,6 @@ export type Database = {
           marketplace_currency: string | null
           marketplace_description: string | null
           marketplace_enabled: boolean
-          marketplace_listings: Json
           marketplace_location: string | null
           mix_format: string | null
           mix_series: string | null
@@ -496,7 +495,6 @@ export type Database = {
           marketplace_currency?: string | null
           marketplace_description?: string | null
           marketplace_enabled?: boolean
-          marketplace_listings?: Json
           marketplace_location?: string | null
           mix_format?: string | null
           mix_series?: string | null
@@ -556,7 +554,6 @@ export type Database = {
           marketplace_currency?: string | null
           marketplace_description?: string | null
           marketplace_enabled?: boolean
-          marketplace_listings?: Json
           marketplace_location?: string | null
           mix_format?: string | null
           mix_series?: string | null
@@ -595,6 +592,68 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_listings: {
+        Row: {
+          category: string
+          condition: string
+          description: string | null
+          embeds: Json
+          id: string
+          images: string[]
+          partner_id: string
+          price: number
+          published_at: string
+          shipping_mode: string | null
+          status: string
+          subcategory: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          condition: string
+          description?: string | null
+          embeds?: Json
+          id: string
+          images?: string[]
+          partner_id: string
+          price?: number
+          published_at?: string
+          shipping_mode?: string | null
+          status?: string
+          subcategory?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          condition?: string
+          description?: string | null
+          embeds?: Json
+          id?: string
+          images?: string[]
+          partner_id?: string
+          price?: number
+          published_at?: string
+          shipping_mode?: string | null
+          status?: string
+          subcategory?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
         ]

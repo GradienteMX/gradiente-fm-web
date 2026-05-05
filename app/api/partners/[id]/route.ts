@@ -58,7 +58,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('items')
     .select(
-      'id, slug, title, partner_kind, partner_url, image_url, vibe_min, vibe_max, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, marketplace_listings, type',
+      'id, slug, title, partner_kind, partner_url, image_url, vibe_min, vibe_max, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, type, marketplace_listings(*)',
     )
     .eq('id', params.id)
     .eq('type', 'partner')

@@ -56,7 +56,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('items')
     .select(
-      'id, slug, title, partner_kind, image_url, marketplace_enabled, marketplace_listings',
+      'id, slug, title, partner_kind, image_url, marketplace_enabled, marketplace_listings(*)',
     )
     .eq('type', 'partner')
     .order('title', { ascending: true })
