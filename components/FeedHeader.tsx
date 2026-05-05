@@ -25,10 +25,16 @@ interface FeedHeaderProps {
 // intro. When either is set, swaps to a terminal-flavored "subsystem focused
 // on X" status with each active filter as its own clearable chip.
 export function FeedHeader({ totalCount }: FeedHeaderProps) {
-  const { categoryFilter, setCategoryFilter, genreFilter, setGenreFilter } =
-    useVibe()
+  const {
+    categoryFilter,
+    setCategoryFilter,
+    genreFilter,
+    clearGenres,
+    toggleGenre,
+  } = useVibe()
 
-  const anyFilterActive = !!categoryFilter || !!genreFilter
+  const genreActive = genreFilter.length > 0
+  const anyFilterActive = !!categoryFilter || genreActive
 
   if (!anyFilterActive) {
     return (
@@ -53,9 +59,10 @@ export function FeedHeader({ totalCount }: FeedHeaderProps) {
   const categoryLabel = categoryFilter
     ? TYPE_LABEL[categoryFilter] ?? categoryFilter.toUpperCase()
     : null
-  const genreLabel = genreFilter
-    ? getGenreById(genreFilter)?.name?.toUpperCase() ?? genreFilter.toUpperCase()
-    : null
+  const genreLabels = genreFilter.map((id) => ({
+    id,
+    name: getGenreById(id)?.name?.toUpperCase() ?? id.toUpperCase(),
+  }))
 
   return (
     <div>
@@ -82,12 +89,12 @@ export function FeedHeader({ totalCount }: FeedHeaderProps) {
             · {categoryLabel}
           </span>
         )}
-        {genreLabel && (
+        {genreLabels.length > 0 && (
           <span
             className="font-mono text-xs tracking-widest"
             style={{ color: headlineColor }}
           >
-            · GÉNERO·{genreLabel}
+            · GÉNERO·{genreLabels.map((g) => g.name).join('+')}
           </span>
         )}
       </div>
@@ -105,15 +112,27 @@ export function FeedHeader({ totalCount }: FeedHeaderProps) {
             </button>
           </>
         )}
-        {genreFilter && (
+        {genreLabels.length === 1 && (
           <>
             <span className="text-muted">·</span>
             <button
               type="button"
-              onClick={() => setGenreFilter(null)}
+              onClick={() => toggleGenre(genreLabels[0].id)}
               className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
             >
               [×] LIMPIAR GÉNERO
+            </button>
+          </>
+        )}
+        {genreLabels.length > 1 && (
+          <>
+            <span className="text-muted">·</span>
+            <button
+              type="button"
+              onClick={clearGenres}
+              className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+            >
+              [×] LIMPIAR {genreLabels.length} GÉNEROS
             </button>
           </>
         )}

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
 import { vibeToColor } from '@/lib/utils'
-import { GENRE_VIBE, getGenreById } from '@/lib/genres'
+import { GENRE_VIBE, getGenreById, getRollup, getRootGenres } from '@/lib/genres'
 
 function clamp(val: number, min: number, max: number) {
   return Math.min(Math.max(val, min), max)
@@ -91,14 +91,17 @@ export function VibeSlider() {
 }
 
 function VibeSliderImpl() {
-  const { vibeRange, setVibeRange } = useVibe()
+  const { vibeRange, setVibeRange, genreFilter, toggleGenre, visibleGenres } = useVibe()
   const trackRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef<'min' | 'max' | null>(null)
   const rangeRef = useRef(vibeRange)
   rangeRef.current = vibeRange
-  // Mobile-only: genre list starts collapsed behind a "+ N GÉNEROS" pill.
-  // Desktop (md+) always shows the list regardless of this state.
-  const [genresOpen, setGenresOpen] = useState(false)
+
+  // The chip strip is hidden when the range is full and there are no
+  // explicit filters — at full range every genre is in range, so showing
+  // them all carries no information. The pin button is the manual override
+  // for users who want to browse the catalog at full range.
+  const [pinned, setPinned] = useState(false)
 
   const [min, max] = vibeRange
 
@@ -121,7 +124,9 @@ function VibeSliderImpl() {
         setVibeRange([curMin, Math.max(val, curMin)])
       }
     }
-    const onUp = () => { draggingRef.current = null }
+    const onUp = () => {
+      draggingRef.current = null
+    }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     return () => {
@@ -154,10 +159,43 @@ function VibeSliderImpl() {
     }
   }
 
-  const genresInRange = Object.entries(GENRE_VIBE)
-    .filter(([, v]) => v >= min && v <= max)
-    .map(([id]) => getGenreById(id)?.name ?? id)
-    .slice(0, 60)
+  // Universe of chips: top-level parent categories (always — for
+  // broad-stroke "show me all techno" filtering) + the genres actually
+  // present in the feed + currently active filters. Active stays in the
+  // set even if outside the feed so the user can clear it.
+  const activeIds = genreFilter
+  // `visibleGenres` is what ContentGrid pushes — the union of genres
+  // across items currently passing the vibe (and category) filter. When
+  // present, it's the source of truth for "is this chip in the feed".
+  // When null (page has no ContentGrid yet — e.g. /foro), fall back to
+  // GENRE_VIBE keys so the slider isn't dead on first paint.
+  const feedSet = visibleGenres !== null ? new Set(visibleGenres) : null
+  const fallbackUniverse = visibleGenres ?? Object.keys(GENRE_VIBE)
+  const allGenreIds = Array.from(
+    new Set([
+      ...getRootGenres().map((g) => g.id),
+      ...fallbackUniverse,
+      ...activeIds,
+    ]),
+  )
+  // Order: active filters first (always visible), then sorted by ascending
+  // default vibe so the chip row roughly mirrors the slider's left→right
+  // gradient when fully expanded.
+  const sortedGenreIds = [
+    ...activeIds.filter((id) => allGenreIds.includes(id)),
+    ...allGenreIds
+      .filter((id) => !activeIds.includes(id))
+      .sort((a, b) => (GENRE_VIBE[a] ?? 5) - (GENRE_VIBE[b] ?? 5)),
+  ]
+
+  // Container visibility — only meaningful when the user has narrowed the
+  // range, pinned the strip open, or has explicit active filters. At full
+  // range with no filters, the chip set carries no information.
+  const chipsVisible = !isFullRange || pinned || activeIds.length > 0
+  // Show pin button only when it would actually change something — at full
+  // range with no filters, it's the only way to reveal chips. Otherwise
+  // it's redundant (chips already shown for another reason).
+  const pinButtonVisible = !chipsVisible || pinned
 
   return (
     <div
@@ -166,19 +204,24 @@ function VibeSliderImpl() {
     >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
 
-        {/* Header: VIBE + RESET — float on stripe band */}
+        {/* Header: VIBE + RESET — float on stripe band. RESET is always
+            rendered (toggling `invisible` instead of conditional mount)
+            so the row's height stays stable when the user narrows or
+            resets the range — otherwise the whole strip jumps ~6px. */}
         <div className="flex items-center justify-between pb-0.5 pt-1 md:pb-1 md:pt-2">
           <span className="font-mono text-[10px] font-bold tracking-widest text-white [text-shadow:0_0_6px_#000,0_0_12px_#000]">
             VIBE
           </span>
-          {!isFullRange ? (
-            <button
-              onClick={() => setVibeRange([0, 10])}
-              className="border border-black bg-black px-2 py-0.5 font-mono text-[10px] tracking-widest text-[#F5C500] transition-colors hover:bg-[#F5C500] hover:text-black"
-            >
-              RESET
-            </button>
-          ) : <span />}
+          <button
+            onClick={() => setVibeRange([0, 10])}
+            aria-hidden={isFullRange}
+            tabIndex={isFullRange ? -1 : 0}
+            className={`border border-black bg-black px-2 py-0.5 font-mono text-[10px] tracking-widest text-[#F5C500] transition-colors hover:bg-[#F5C500] hover:text-black ${
+              isFullRange ? 'pointer-events-none invisible' : ''
+            }`}
+          >
+            RESET
+          </button>
         </div>
 
         {/* Handle names pinned above the track */}
@@ -232,7 +275,10 @@ function VibeSliderImpl() {
           <div
             className="absolute inset-y-0 w-6 -translate-x-1/2 cursor-col-resize"
             style={{ left: `${minPercent}%` }}
-            onPointerDown={(e) => { e.preventDefault(); draggingRef.current = 'min' }}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              draggingRef.current = 'min'
+            }}
           >
             <div className="mx-auto h-full w-[3px] bg-white shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
           </div>
@@ -241,7 +287,10 @@ function VibeSliderImpl() {
           <div
             className="absolute inset-y-0 w-6 -translate-x-1/2 cursor-col-resize"
             style={{ left: `${maxPercent}%` }}
-            onPointerDown={(e) => { e.preventDefault(); draggingRef.current = 'max' }}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              draggingRef.current = 'max'
+            }}
           >
             <div className="mx-auto h-full w-[3px] bg-white shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
           </div>
@@ -249,44 +298,111 @@ function VibeSliderImpl() {
 
       </div>
 
-      {/* ── Black band: genres + ticks ── */}
+      {/* ── Black band: pin + genre chips ──
+          Visibility is tied to the slider's range, not interaction state:
+          - At full range with no filters → chips hidden (no information).
+          - As the user narrows, chips fade in per-genre based on whether
+            their default vibe falls within the current band.
+          - Active filters always visible (so users can clear them).
+          - Pin button forces visibility at full range for "browse all"
+            mode; auto-hides when chips are already showing for another
+            reason. */}
       <div className="bg-black px-4 pb-1 pt-1 md:px-8 md:pb-3 md:pt-2">
         <div className="mx-auto max-w-screen-2xl">
-
-          {genresInRange.length > 0 && (
-            <>
-              {/* Mobile-only pill — toggles the inline genre list.
-                  Hidden on md+ because the list is always visible there. */}
+          {/* Reserve ~2 rows of chip space at minimum so the typical
+              slider-narrowing flow doesn't shift the page below. Pinning
+              at full range may grow further but caps at max-h with
+              vertical scroll. Pin button stays top-aligned via
+              items-start. */}
+          <div className="flex min-h-[3.5rem] items-start gap-2">
+            {/* Pin pill — only rendered when it would actually do
+                something useful (chips hidden by default OR user has
+                pinned and might want to unpin). */}
+            {pinButtonVisible && (
               <button
                 type="button"
-                onClick={() => setGenresOpen((v) => !v)}
-                aria-expanded={genresOpen}
+                onClick={() => setPinned((v) => !v)}
+                aria-expanded={pinned}
                 aria-controls="vibe-genres-panel"
-                className="flex items-center gap-1.5 border border-border/70 bg-black px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-white md:hidden"
+                className="flex shrink-0 items-center gap-1.5 border border-border/70 bg-black px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-white"
               >
                 <ChevronDown
                   size={11}
-                  className={`transition-transform ${genresOpen ? 'rotate-180' : ''}`}
+                  className={`transition-transform ${pinned ? 'rotate-180' : ''}`}
                   aria-hidden
                 />
-                {genresOpen
-                  ? 'OCULTAR'
-                  : `+ ${genresInRange.length} GÉNEROS`}
+                {pinned ? 'OCULTAR' : `+ ${allGenreIds.length} GÉNEROS`}
               </button>
+            )}
 
-              <div
-                id="vibe-genres-panel"
-                className={`${genresOpen ? 'mt-2 flex' : 'hidden'} flex-wrap gap-x-3 gap-y-0.5 md:mt-0 md:flex`}
-              >
-                {genresInRange.map((name) => (
-                  <span key={name} className="font-mono text-[11px] font-bold text-white">
+            {/* Chip flex — multi-row wrap with content-start alignment.
+                Per-chip margins (not container gap) so hidden chips
+                collapse fully without leaving phantom gap-spacing that
+                would spread visible chips apart. max-h caps the row
+                count for very dense states (e.g. pinned at full range
+                on narrow viewports) — overflow scrolls vertically with
+                the scrollbar hidden. */}
+            <div
+              id="vibe-genres-panel"
+              className={`flex max-h-[7rem] min-w-0 flex-1 flex-wrap items-start content-start overflow-y-auto transition-opacity duration-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+                chipsVisible
+                  ? 'opacity-100'
+                  : 'pointer-events-none opacity-0'
+              }`}
+              aria-hidden={!chipsVisible}
+            >
+              {sortedGenreIds.map((id) => {
+                const name = getGenreById(id)?.name ?? id
+                const active = activeIds.includes(id)
+                // Per-chip "in feed" decision. When ContentGrid has
+                // pushed the actual feed genres, use that — but rolled
+                // up: a parent chip ("techno") is in-feed when any
+                // descendant leaf is tagged on a feed item. Without
+                // rollup, root chips would never appear. Otherwise fall
+                // back to the GENRE_VIBE typical-vibe heuristic.
+                const inFeed = feedSet
+                  ? getRollup(id).some((rid) => feedSet.has(rid))
+                  : (() => {
+                      const v = GENRE_VIBE[id] ?? 5
+                      return v >= min && v <= max
+                    })()
+                // Per-chip visibility:
+                //   - pinned (browse-all override) → always visible
+                //   - active filter → always visible (user can clear it)
+                //   - narrowed range AND in feed → fade in
+                // At full range without pin, every genre tends to be
+                // "in feed" — so we suppress the in-feed path there to
+                // keep active filters visually focused.
+                const chipVisible = pinned || active || (!isFullRange && inFeed)
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => toggleGenre(id)}
+                    aria-pressed={active}
+                    aria-hidden={!chipVisible}
+                    tabIndex={chipVisible ? 0 : -1}
+                    title={
+                      active
+                        ? `Quitar filtro: ${name}`
+                        : `Filtrar por ${name}`
+                    }
+                    className={`overflow-hidden whitespace-nowrap border font-mono text-[10px] font-bold tracking-wider transition-all duration-200 md:text-[11px] ${
+                      chipVisible
+                        ? 'mb-1.5 mr-1.5 max-w-[18rem] px-1.5 py-px opacity-100'
+                        : 'pointer-events-none mb-0 mr-0 max-w-0 border-transparent px-0 py-px opacity-0'
+                    } ${
+                      active
+                        ? 'border-[#F5C500] bg-[#F5C500] text-black shadow-[0_0_6px_rgba(245,197,0,0.55)]'
+                        : 'border-border/40 bg-black text-secondary hover:border-white/60 hover:text-white'
+                    }`}
+                  >
                     {name}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>

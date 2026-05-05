@@ -233,7 +233,17 @@ export interface ContentItem {
 export interface Genre {
   id: string
   name: string
-  category: 'electronic' | 'club' | 'organic' | 'experimental'
+  // Parent genre ids. Empty array = top-level category (the 18 Gradiente
+  // roots: techno, house, dub-reggae, …). Non-empty = subgenre with one
+  // or more parent linkages (some subgenres are cross-listed, e.g.
+  // "Dub Techno" parents = ['techno', 'dub-reggae']). See lib/genres.ts.
+  // Items always store leaf ids when possible; parent ids are also valid
+  // tag values (filtering by parent rolls up to all descendants).
+  parents: string[]
+  // Legacy entries from the pre-taxonomy era kept alive so DB rows stay
+  // resolvable. Marked so the dashboard composer can hide them from new
+  // tagging UIs without breaking display of existing items.
+  legacy?: boolean
 }
 
 export interface Tag {

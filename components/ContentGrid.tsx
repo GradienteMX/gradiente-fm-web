@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import type { ContentItem } from '@/lib/types'
 import { useVibe } from '@/context/VibeContext'
 import { filterByVibe } from '@/lib/utils'
+import { itemMatchesGenreFilter } from '@/lib/genres'
 import { rankItems, type CardLayout } from '@/lib/curation'
 import { recordItems } from '@/lib/itemsCache'
 import { ContentCard } from './cards/ContentCard'
@@ -163,7 +164,7 @@ const MosaicItem = forwardRef<
 })
 
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
-  const { vibeRange, selectedDate, categoryFilter, genreFilter } = useVibe()
+  const { vibeRange, selectedDate, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
   const directions = useDirectionTracker()
 
   // Bridge server-rendered items into the slug-keyed client cache so the
@@ -173,6 +174,36 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
     recordItems(items)
   }, [items])
 
+  // Genre union of items passing the vibe filter (and category, when on
+  // home). Pushed up to VibeContext so the slider's chip strip reflects
+  // the actual feed contents — see Vibe Philosophy idea 2: a "techno" item
+  // can be curator-set to vibe 2, which means a `techno` chip should
+  // appear when the slider is at 2 even though GENRE_VIBE['techno'] = 6.
+  // Computed off the same effective band that filterByVibe uses.
+  const feedGenres = useMemo(() => {
+    const vibeFiltered = filterByVibe(items, vibeRange)
+    const scoped =
+      mode === 'home' && categoryFilter
+        ? vibeFiltered.filter((i) => i.type === categoryFilter)
+        : vibeFiltered
+    const set = new Set<string>()
+    for (const item of scoped) {
+      for (const g of item.genres) set.add(g)
+    }
+    return Array.from(set).sort()
+  }, [items, vibeRange, categoryFilter, mode])
+
+  useEffect(() => {
+    setVisibleGenres(feedGenres)
+  }, [feedGenres, setVisibleGenres])
+
+  // On unmount, drop the slider's view back to its GENRE_VIBE fallback so
+  // pages without a ContentGrid (e.g. /about, /equipo) don't see stale
+  // genre data from whichever page the user just left.
+  useEffect(() => {
+    return () => setVisibleGenres(null)
+  }, [setVisibleGenres])
+
   const ranked = useMemo(() => {
     const vibeFiltered = filterByVibe(items, vibeRange)
     // Category + genre filters only apply on the home feed — type-specific
@@ -181,9 +212,13 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
       mode === 'home' && categoryFilter
         ? vibeFiltered.filter((i) => i.type === categoryFilter)
         : vibeFiltered
+    // Use rollup matching: filtering by a parent genre ("techno") matches
+    // every leaf under it. See lib/genres.ts::itemMatchesGenreFilter.
     const genreFiltered =
-      mode === 'home' && genreFilter
-        ? categoryFiltered.filter((i) => i.genres.includes(genreFilter))
+      mode === 'home' && genreFilter.length > 0
+        ? categoryFiltered.filter((i) =>
+            itemMatchesGenreFilter(i.genres, genreFilter),
+          )
         : categoryFiltered
 
     if (mode === 'home') {

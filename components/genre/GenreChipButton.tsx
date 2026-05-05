@@ -38,7 +38,10 @@ export function GenreChipButton({
     // otherwise open an overlay or navigate elsewhere.
     e.stopPropagation()
     e.preventDefault()
-    setGenreFilter(genreId)
+    // Card-chip click is a "jump to filter by this genre" gesture — replace
+    // the active set rather than toggling. The slider chip strip is the
+    // surface for additive multi-select.
+    setGenreFilter([genreId])
     close()
     if (pathname !== '/') router.push('/')
   }

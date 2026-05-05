@@ -432,13 +432,17 @@ function GenreMultiSelect({
 }) {
   const [filter, setFilter] = useState('')
   const selected = new Set(value)
+  // Hide legacy ids from the composer — old DB rows still display them
+  // through the catalog, but new items should pick from the current
+  // Gradiente taxonomy (parents + non-legacy subgenres).
   const filtered = useMemo(
     () =>
       GENRES.filter(
         (g) =>
-          !filter ||
-          g.name.toLowerCase().includes(filter.toLowerCase()) ||
-          g.id.includes(filter.toLowerCase()),
+          !g.legacy &&
+          (!filter ||
+            g.name.toLowerCase().includes(filter.toLowerCase()) ||
+            g.id.includes(filter.toLowerCase())),
       ),
     [filter],
   )
