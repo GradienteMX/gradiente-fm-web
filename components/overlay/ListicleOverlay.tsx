@@ -8,7 +8,6 @@ import {
   fmtDateFull,
   vibeToColor,
   vibeMid,
-  vibeRangeLabel,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { Calendar, User } from 'lucide-react'
@@ -16,6 +15,7 @@ import { ContentCard } from '@/components/cards/ContentCard'
 import { BodyBlocks } from './ArticuloOverlay'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
+import { VibeFader } from '@/components/VibeFader'
 
 interface ListicleOverlayProps {
   item: ContentItem
@@ -132,17 +132,8 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             </div>
           )}
           <div className="ml-auto flex items-center gap-2">
-            <div
-              className="h-2 w-8"
-              style={{ backgroundColor: vibeColor }}
-              aria-hidden
-            />
-            <span
-              className="font-mono text-[11px] tracking-widest"
-              style={{ color: vibeColor }}
-            >
-              VIBE {vibeRangeLabel(item)}
-            </span>
+            <span className="sys-label">VIBE</span>
+            <VibeFader item={item} />
           </div>
         </dl>
       </header>

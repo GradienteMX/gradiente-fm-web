@@ -3,17 +3,12 @@
 import { useEffect, useMemo } from 'react'
 import type { ContentItem } from '@/lib/types'
 import { MOCK_ITEMS } from '@/lib/mockData'
-import {
-  fmtDateFull,
-  vibeToColor,
-  vibeMid,
-  vibeRangeLabel,
-  isEditableTarget,
-} from '@/lib/utils'
+import { fmtDateFull, isEditableTarget } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
+import { VibeFader } from '@/components/VibeFader'
 import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 
@@ -52,7 +47,6 @@ const STATUS_LABEL: Record<NonNullable<ContentItem['mixStatus']>, string> = {
 }
 
 export function MixOverlay({ item }: Props) {
-  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -188,27 +182,7 @@ export function MixOverlay({ item }: Props) {
           )}
           <div className="col-span-full flex items-center gap-3">
             <span className="sys-label">VIBE</span>
-            <div className="flex items-end gap-[3px]">
-              {Array.from({ length: 11 }).map((_, i) => {
-                const inBand = i >= item.vibeMin && i <= item.vibeMax
-                return (
-                  <div
-                    key={i}
-                    className="w-2"
-                    style={{
-                      height: `${6 + i * 1.3}px`,
-                      backgroundColor: inBand ? vibeToColor(i) : '#242424',
-                    }}
-                  />
-                )
-              })}
-            </div>
-            <span
-              className="font-mono text-xs tracking-widest"
-              style={{ color: vibeColor }}
-            >
-              {vibeRangeLabel(item)}
-            </span>
+            <VibeFader item={item} />
           </div>
         </dl>
 

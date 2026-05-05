@@ -1,9 +1,10 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { fmtDateFull, vibeToColor, vibeMid, vibeRangeLabel } from '@/lib/utils'
+import { fmtDateFull, vibeToColor, vibeMid } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { VibeFader } from '@/components/VibeFader'
 
 interface Props {
   item: ContentItem
@@ -80,10 +81,7 @@ export function GenericOverlay({ item }: Props) {
           )}
           <div className="flex items-center gap-2">
             <span className="sys-label">VIBE</span>
-            <div className="h-2 w-8" style={{ backgroundColor: vibeColor }} aria-hidden />
-            <span style={{ color: vibeColor }}>
-              {vibeRangeLabel(item)}
-            </span>
+            <VibeFader item={item} />
           </div>
         </dl>
 

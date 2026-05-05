@@ -199,6 +199,54 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
   }
 }
 
+// ── Vibe-check aggregate join ──────────────────────────────────────────────
+//
+// `vibe_check_aggregates` is a view (no FK), so we can't embed it via the
+// PostgREST select. Pull all aggregate rows in a single follow-up query and
+// merge them per item-id. Only items with at least one check appear in the
+// view, so missing keys → leave the fields undefined (callers fall through
+// to the author band).
+
+type VibeCheckAggregateRow = {
+  item_id: string
+  check_count: number
+  median_min: number
+  median_max: number
+}
+
+async function fetchVibeCheckAggregates(
+  itemIds: string[],
+): Promise<Map<string, VibeCheckAggregateRow>> {
+  const out = new Map<string, VibeCheckAggregateRow>()
+  if (itemIds.length === 0) return out
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('vibe_check_aggregates')
+    .select('item_id, check_count, median_min, median_max')
+    .in('item_id', itemIds)
+  if (error) {
+    console.error('[fetchVibeCheckAggregates] Supabase error:', error)
+    return out
+  }
+  for (const row of (data ?? []) as VibeCheckAggregateRow[]) {
+    out.set(row.item_id, row)
+  }
+  return out
+}
+
+function attachAggregate(
+  item: ContentItem,
+  agg: VibeCheckAggregateRow | undefined,
+): ContentItem {
+  if (!agg) return item
+  return {
+    ...item,
+    vibeCheckCount: agg.check_count,
+    vibeCheckMedianMin: agg.median_min,
+    vibeCheckMedianMax: agg.median_max,
+  }
+}
+
 // ── Public read API ────────────────────────────────────────────────────────
 
 // Fetch every item the calling user can see, in `published_at` desc order.
@@ -220,7 +268,9 @@ export async function getItems(): Promise<ContentItem[]> {
     console.error('[getItems] Supabase error:', error)
     return []
   }
-  return ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+  const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+  const aggregates = await fetchVibeCheckAggregates(items.map((i) => i.id))
+  return items.map((i) => attachAggregate(i, aggregates.get(i.id)))
 }
 
 // Single item by slug — used by overlay deep-links and `/[type]/[slug]` pages.
@@ -236,5 +286,8 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
     console.error(`[getItemBySlug] ${slug}:`, error)
     return null
   }
-  return data ? rowToContentItem(data as unknown as ItemRowWithPoll) : null
+  if (!data) return null
+  const item = rowToContentItem(data as unknown as ItemRowWithPoll)
+  const aggregates = await fetchVibeCheckAggregates([item.id])
+  return attachAggregate(item, aggregates.get(item.id))
 }

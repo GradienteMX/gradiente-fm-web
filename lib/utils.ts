@@ -56,6 +56,36 @@ export function rangesOverlap(
   return a.vibeMax >= range[0] && a.vibeMin <= range[1]
 }
 
+// Threshold above which crowd vibe checks override the author's range as the
+// item's "displayed" / "effective" band. Mirrors VIBE_CHECK_THRESHOLD in
+// lib/vibeChecks.ts — duplicated here so this module stays server-safe (the
+// checks module is `'use client'`).
+export const VIBE_CHECK_THRESHOLD = 5
+
+// What the home grid filters against and the fader displays at rest. Falls
+// through to author until the crowd reaches threshold.
+//
+// See `Vibe Checks` decision (2026-05-05): vibe checks affect eligibility,
+// not just visual chrome — a popular reframing of an item's vibe will move
+// it in/out of the slider's range.
+export function effectiveVibeBand(item: {
+  vibeMin: number
+  vibeMax: number
+  vibeCheckCount?: number
+  vibeCheckMedianMin?: number
+  vibeCheckMedianMax?: number
+}): [number, number] {
+  if (
+    item.vibeCheckCount != null &&
+    item.vibeCheckCount >= VIBE_CHECK_THRESHOLD &&
+    item.vibeCheckMedianMin != null &&
+    item.vibeCheckMedianMax != null
+  ) {
+    return [item.vibeCheckMedianMin, item.vibeCheckMedianMax]
+  }
+  return [item.vibeMin, item.vibeMax]
+}
+
 // Single representative number for the few sites that can't render a band
 // (sort proxies, narrow chrome). Most displays should use the gradient.
 export function vibeMid(item: { vibeMin: number; vibeMax: number }): number {
@@ -122,7 +152,10 @@ export function filterForCategory(items: ContentItem[], type: ContentItem['type'
 }
 
 export function filterByVibe(items: ContentItem[], range: VibeRange): ContentItem[] {
-  return items.filter((i) => rangesOverlap(i, range))
+  return items.filter((i) => {
+    const [min, max] = effectiveVibeBand(i)
+    return max >= range[0] && min <= range[1]
+  })
 }
 
 export function filterByDate(items: ContentItem[], date: Date): ContentItem[] {

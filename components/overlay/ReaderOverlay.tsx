@@ -6,7 +6,6 @@ import {
   fmtDateFull,
   vibeToColor,
   vibeMid,
-  vibeRangeLabel,
   categoryColor,
   isEditableTarget,
 } from '@/lib/utils'
@@ -14,6 +13,7 @@ import { getGenreById, getTagNames } from '@/lib/genres'
 import { Expand, FileImage, User, Calendar, Clock, Activity } from 'lucide-react'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
+import { VibeFader } from '@/components/VibeFader'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -154,14 +154,8 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
             <div className="flex items-center gap-3">
               <Activity size={11} className="text-muted" />
               <dt className="sys-label">VIBE</dt>
-              <dd className="flex items-center gap-2">
-                <div className="h-2 w-8" style={{ backgroundColor: vibeColor }} aria-hidden />
-                <span
-                  className="font-mono text-xs tracking-widest"
-                  style={{ color: vibeColor }}
-                >
-                  {vibeRangeLabel(item)}
-                </span>
+              <dd>
+                <VibeFader item={item} />
               </dd>
             </div>
           </dl>

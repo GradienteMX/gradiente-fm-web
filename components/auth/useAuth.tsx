@@ -27,6 +27,7 @@ import {
 } from '@/lib/draftsCache'
 import { clearPublishedItemsCache } from '@/lib/publishedItemsCache'
 import { clearUserRanksCache } from '@/lib/userRanksCache'
+import { clearAllVibeChecks } from '@/lib/vibeChecksCache'
 import type { DraftItem } from '@/lib/drafts'
 import type { Database } from '@/lib/supabase/database.types'
 import type { User } from '@/lib/types'
@@ -141,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearDraftsCache()
       clearPublishedItemsCache()
       clearUserRanksCache()
+      clearAllVibeChecks()
       setFetchedAuthId(null)  // logged-out resolved state
       return
     }

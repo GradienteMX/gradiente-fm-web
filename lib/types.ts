@@ -142,6 +142,14 @@ export interface ContentItem {
   // See `project_vibe_range_arc` memory + 0007_items_vibe_range migration.
   vibeMin: VibeScore
   vibeMax: VibeScore
+  // Crowd Vibe Check aggregate — joined from `vibe_check_aggregates` view at
+  // read time. Undefined when no checks exist for the item. The "effective"
+  // band used by filterByVibe and the fader display falls through to author
+  // (vibeMin/vibeMax) until vibeCheckCount >= VIBE_CHECK_THRESHOLD (5).
+  // See lib/vibeChecks.ts + 0011_vibe_checks migration.
+  vibeCheckCount?: number
+  vibeCheckMedianMin?: VibeScore
+  vibeCheckMedianMax?: VibeScore
   genres: string[]        // genre ids
   tags: string[]          // tag ids
   imageUrl?: string

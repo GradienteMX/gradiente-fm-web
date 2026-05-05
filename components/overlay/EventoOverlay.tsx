@@ -10,11 +10,11 @@ import {
   fmtTime,
   vibeToColor,
   vibeMid,
-  vibeRangeLabel,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
+import { VibeFader } from '@/components/VibeFader'
 
 interface Props {
   item: ContentItem
@@ -144,18 +144,8 @@ export function EventoOverlay({ item }: Props) {
           )}
 
           <dt className="sys-label">VIBE</dt>
-          <dd className="flex items-center gap-2">
-            <div
-              className="h-2 w-12"
-              style={{ backgroundColor: vibeColor }}
-              aria-hidden
-            />
-            <span
-              className="font-mono text-xs tracking-widest"
-              style={{ color: vibeColor }}
-            >
-              {vibeRangeLabel(item)}
-            </span>
+          <dd>
+            <VibeFader item={item} />
           </dd>
         </dl>
 
