@@ -13,6 +13,8 @@ interface Props {
   stateFilter?: 'draft' | 'published'
   /** Storage namespace for free-form positions — keeps drafts vs. publicados separate. */
   namespace?: string
+  /** When provided, each tile renders a corner ⌧ delete button. */
+  onDelete?: (item: DraftItem) => void
 }
 
 export function DraftsSection({
@@ -22,6 +24,7 @@ export function DraftsSection({
   onOpen,
   stateFilter,
   namespace = 'drafts',
+  onDelete,
 }: Props) {
   const filtered = useMemo(() => {
     if (!stateFilter) return items
@@ -35,6 +38,7 @@ export function DraftsSection({
       selectedId={selectedId}
       onSelect={onSelect}
       onOpen={onOpen}
+      onDelete={onDelete}
     />
   )
 }

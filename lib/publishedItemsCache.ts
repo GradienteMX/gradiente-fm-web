@@ -45,6 +45,16 @@ export function clearPublishedItemsCache() {
   notify()
 }
 
+// Optimistic per-id removal — used by the delete flow so the dashboard's
+// "Publicados" grid drops the tile before the API round-trip completes.
+// router.refresh() refetches `useMyPublishedItems` and primes the cache
+// from server truth shortly after.
+export function removePublishedItemLocal(id: string) {
+  if (!cache.has(id)) return
+  cache.delete(id)
+  notify()
+}
+
 // ── Subscription ───────────────────────────────────────────────────────────
 
 export function subscribePublishedItems(fn: () => void): () => void {

@@ -7,6 +7,8 @@ import { canAssignRoles, canCreateContent } from '@/lib/permissions'
 import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
 import { useMyPublishedItems } from '@/lib/hooks/useMyPublishedItems'
 import { useSavedItems } from '@/lib/hooks/useSavedItems'
+import { removePublishedItemLocal } from '@/lib/publishedItemsCache'
+import { usePrompt } from '@/components/prompt/usePrompt'
 import { categoryColor, vibeRangeLabel } from '@/lib/utils'
 
 import { ExplorerShell } from '@/components/dashboard/explorer/ExplorerShell'
@@ -165,6 +167,41 @@ export default function DashboardPage() {
   const publishedCount = draftItems.filter((i) => i._draftState === 'published').length
   const savedItems = useSavedItems()
   const savedCount = savedItems.length
+
+  // Owner-delete from "Publicados" — typed-confirmation gate (BORRAR <title>),
+  // then DELETE /api/items/:id. RLS allows owner-or-admin. On success we
+  // optimistically drop from the published-items cache (subscribers see the
+  // tile vanish) and refresh server components so the home/type pages
+  // re-fetch without the row.
+  const { typeToConfirm } = usePrompt()
+  const onDeletePublished = useCallback(
+    async (item: DraftItem) => {
+      const title = item.title?.trim() || 'sin título'
+      const required = `BORRAR ${title}`
+      const confirmed = await typeToConfirm({
+        title: `Borrar ${title}`,
+        body:
+          'Esta acción es permanente. Se eliminará el ítem y por cascada de FK también sus comentarios, guardados, polls, vibe-checks y registros de HP.',
+        requiredText: required,
+        placeholder: required,
+        confirmLabel: 'BORRAR PERMANENTE',
+        cancelLabel: 'CANCELAR',
+        destructive: true,
+      })
+      if (!confirmed) return
+      const res = await fetch(`/api/items/${encodeURIComponent(item.id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        console.error('[delete published]', res.status, await res.text())
+        return
+      }
+      removePublishedItemLocal(item.id)
+      setSelectedDraftId((cur) => (cur === item.id ? null : cur))
+      router.refresh()
+    },
+    [typeToConfirm, router],
+  )
 
   // Content-creation gating. Filter the SUPPORTED template list down to the
   // types this user is authorized to create. See lib/permissions.ts
@@ -386,6 +423,7 @@ export default function DashboardPage() {
           onOpenType={(t) => openCompose(t)}
           onSelectDraft={(id) => setSelectedDraftId(id)}
           onOpenDraft={openDraft}
+          onDeletePublished={onDeletePublished}
           navigate={navigateSection}
         />
       </ExplorerWindow>
@@ -408,6 +446,7 @@ function SectionBody({
   onOpenType,
   onSelectDraft,
   onOpenDraft,
+  onDeletePublished,
   navigate,
 }: {
   section: ExplorerSection
@@ -422,6 +461,7 @@ function SectionBody({
   onOpenType: (t: SupportedType) => void
   onSelectDraft: (id: string | null) => void
   onOpenDraft: (item: DraftItem) => void
+  onDeletePublished: (item: DraftItem) => void
   navigate: (s: ExplorerSection) => void
 }) {
   switch (section) {
@@ -467,6 +507,7 @@ function SectionBody({
           onOpen={onOpenDraft}
           stateFilter="published"
           namespace="publicados"
+          onDelete={onDeletePublished}
         />
       )
     case 'profile':

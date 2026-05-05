@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   clearPublishedItemsCache,
+  getPublishedItemSync,
   setAllPublishedItems,
+  subscribePublishedItems,
 } from '@/lib/publishedItemsCache'
 import type { ContentItem } from '@/lib/types'
 
@@ -56,8 +58,16 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
         // empty and a publish mints a NEW row instead of upserting.
         setAllPublishedItems(mapped)
       })
+    // Subscribe to cache changes so optimistic mutations elsewhere
+    // (e.g. removePublishedItemLocal after a delete) keep this hook's
+    // local state in sync without waiting for a full refetch.
+    const unsub = subscribePublishedItems(() => {
+      if (cancelled) return
+      setItems((prev) => prev.filter((it) => getPublishedItemSync(it.id) !== null))
+    })
     return () => {
       cancelled = true
+      unsub()
     }
   }, [userId])
 

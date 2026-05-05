@@ -59,6 +59,8 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onOpen: (item: DraftItem) => void
+  /** When provided, each tile gets a small ⌧ corner button. Owner-delete in Publicados. */
+  onDelete?: (item: DraftItem) => void
 }
 
 export function DraggableFileGrid({
@@ -67,6 +69,7 @@ export function DraggableFileGrid({
   selectedId,
   onSelect,
   onOpen,
+  onDelete,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [positions, setPositions] = useState<Record<string, XY>>({})
@@ -180,6 +183,7 @@ export function DraggableFileGrid({
               onMove={(next) => updatePos(item.id, next)}
               onSelect={() => onSelect(item.id)}
               onOpen={() => onOpen(item)}
+              onDelete={onDelete ? () => onDelete(item) : undefined}
               containerRef={containerRef}
             />
           ))}
@@ -209,6 +213,7 @@ interface TileProps {
   onMove: (next: XY) => void
   onSelect: () => void
   onOpen: () => void
+  onDelete?: () => void
   containerRef: React.MutableRefObject<HTMLDivElement | null>
 }
 
@@ -220,6 +225,7 @@ function DraggableFile({
   onMove,
   onSelect,
   onOpen,
+  onDelete,
   containerRef,
 }: TileProps) {
   const color = categoryColor(item.type)
@@ -321,12 +327,31 @@ function DraggableFile({
     >
       <div
         className={[
-          'flex h-full w-full flex-col items-center gap-1.5 border bg-surface px-2 pt-2 pb-1.5 text-center',
+          'relative flex h-full w-full flex-col items-center gap-1.5 border bg-surface px-2 pt-2 pb-1.5 text-center',
           selected ? '' : 'border-border/40',
           dragging ? 'shadow-[0_8px_24px_rgba(0,0,0,0.5)]' : '',
         ].join(' ')}
         style={selected ? { borderColor: color, backgroundColor: '#0d0d0d' } : undefined}
       >
+        {onDelete && (
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              // Block the parent's pointer-down from initiating a drag.
+              e.stopPropagation()
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            aria-label="Eliminar"
+            title="Eliminar"
+            className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center border border-border/60 bg-base/90 font-mono text-[10px] leading-none text-muted transition-colors hover:border-sys-red hover:text-sys-red"
+          >
+            ×
+          </button>
+        )}
+
         <FileIcon color={color} size={44} type={item.type} />
 
         <span

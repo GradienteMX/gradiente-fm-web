@@ -10,9 +10,13 @@ import { categoryColor } from '@/lib/utils'
 import { useOverlay } from './useOverlay'
 import { ShareButton } from './ShareButton'
 import { removeItem } from '@/lib/drafts'
+import { removePublishedItemLocal } from '@/lib/publishedItemsCache'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { CommentsColumn } from './CommentsColumn'
 import { SaveItemButton } from './SaveItemButton'
+import { useAuth } from '@/components/auth/useAuth'
+import { canAssignRoles } from '@/lib/permissions'
+import { usePrompt } from '@/components/prompt/usePrompt'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -41,6 +45,10 @@ export function OverlayShell({
 }: OverlayShellProps) {
   const { close, originRect } = useOverlay()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { currentUser } = useAuth()
+  const isAdmin = canAssignRoles(currentUser)
+  const { typeToConfirm } = usePrompt()
   // Auto-open the comments column when the URL carries a `comment` param —
   // this is the deep-link shape the dashboard's saved-comments section uses
   // to jump straight to a particular thread.
@@ -49,6 +57,37 @@ export function OverlayShell({
   // default so the overlay reads as a single surface until the reader asks
   // for discussion. Disabled on mobile (split is impractical < sm).
   const [commentsOpen, setCommentsOpen] = useState(focusedCommentId !== null)
+
+  // Admin-only hard-delete from inside the overlay. Hidden for session-only
+  // items (those have their own Trash2 in SessionItemStrip via removeItem).
+  // Typed-confirmation gate matches the Publicados owner-delete pattern.
+  const isSessionOnly = !!item._draftState
+  const canAdminDelete = isAdmin && !isSessionOnly
+  const handleAdminDelete = async () => {
+    const title = item.title?.trim() || 'sin título'
+    const required = `BORRAR ${title}`
+    const confirmed = await typeToConfirm({
+      title: `Borrar ${title}`,
+      body:
+        'Acción de admin. Eliminación permanente. Por cascada de FK también caen los comentarios, guardados, polls, vibe-checks y registros de HP del ítem.',
+      requiredText: required,
+      placeholder: required,
+      confirmLabel: 'BORRAR PERMANENTE',
+      cancelLabel: 'CANCELAR',
+      destructive: true,
+    })
+    if (!confirmed) return
+    const res = await fetch(`/api/items/${encodeURIComponent(item.id)}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) {
+      console.error('[overlay admin delete]', res.status, await res.text())
+      return
+    }
+    removePublishedItemLocal(item.id)
+    close()
+    router.refresh()
+  }
 
   // Compute transform-origin from click rect so the CRT boot-in grows
   // from roughly where the card was.
@@ -138,6 +177,18 @@ export function OverlayShell({
             <div className="flex shrink-0 items-center gap-3">
               <SaveItemButton item={item} />
               <ShareButton item={item} />
+              {canAdminDelete && (
+                <button
+                  type="button"
+                  onClick={handleAdminDelete}
+                  aria-label="Eliminar (admin)"
+                  title="Eliminar (admin)"
+                  className="hidden items-center gap-1.5 border border-border/70 px-2.5 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-red hover:text-sys-red sm:flex"
+                >
+                  <Trash2 size={11} />
+                  ELIMINAR
+                </button>
+              )}
               <span className="sys-label hidden items-center gap-1.5 text-sys-green sm:flex">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
                 ONLINE
