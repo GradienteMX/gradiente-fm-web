@@ -26,7 +26,6 @@ import { ProfileSection } from '@/components/dashboard/explorer/sections/Profile
 import { HomeSection } from '@/components/dashboard/explorer/sections/HomeSection'
 import { GuardadosSection } from '@/components/dashboard/explorer/sections/GuardadosSection'
 import { SavedCommentsSection } from '@/components/dashboard/explorer/sections/SavedCommentsSection'
-import { PermisosSection } from '@/components/dashboard/explorer/sections/PermisosSection'
 import { PartnerApprovalsSection } from '@/components/dashboard/explorer/sections/PartnerApprovalsSection'
 import { MiPartnerSection } from '@/components/dashboard/explorer/sections/MiPartnerSection'
 
@@ -72,7 +71,6 @@ const VALID_SECTIONS: ExplorerSection[] = [
   'guardados-editoriales',
   'guardados-articulos',
   'guardados-comentarios',
-  'permisos',
   'aprobaciones-mkt',
   'mi-partner',
 ]
@@ -98,7 +96,6 @@ const SECTION_LABEL: Record<ExplorerSection, string> = {
   'guardados-editoriales': 'Guardados · Editoriales',
   'guardados-articulos': 'Guardados · Artículos',
   'guardados-comentarios': 'Guardados · Comentarios',
-  permisos: 'Permisos',
   'aprobaciones-mkt': 'Marketplace',
   'mi-partner': 'Mi partner',
 }
@@ -117,7 +114,6 @@ const SECTION_WINDOW_TITLE: Record<ExplorerSection, string> = {
   'guardados-editoriales': 'GUARDADOS · EDITORIALES',
   'guardados-articulos': 'GUARDADOS · ARTÍCULOS',
   'guardados-comentarios': 'GUARDADOS · COMENTARIOS',
-  permisos: 'PERMISOS · ROL & BANDERAS',
   'aprobaciones-mkt': 'MARKETPLACE · APROBACIONES',
   'mi-partner': 'MI PARTNER',
 }
@@ -130,14 +126,12 @@ export default function DashboardPage() {
   const rawSection = search?.get('section') ?? null
   const rawType = search?.get('type') ?? null
   const requestedSection: ExplorerSection = isSection(rawSection) ? rawSection : 'home'
-  // Defense-in-depth: a non-admin URL-typing `?section=permisos` falls back
-  // to home. The sidebar already hides the row, but URL access shouldn't
-  // bypass the gate.
+  // Defense-in-depth: non-admin URL access to admin-only sections falls
+  // back to home. The sidebar already hides the rows, but URL access
+  // shouldn't bypass the gate.
   const isAdmin = canAssignRoles(currentUser)
   const isPartnerTeam = !!currentUser?.partnerId
-  // Admin-only sections fall back to home for non-admins (defense-in-depth;
-  // the sidebar already hides the rows).
-  const adminOnlySections: ExplorerSection[] = ['permisos', 'aprobaciones-mkt']
+  const adminOnlySections: ExplorerSection[] = ['aprobaciones-mkt']
   let section: ExplorerSection = requestedSection
   if (adminOnlySections.includes(section) && !isAdmin) section = 'home'
   // Partner-team-only section — only visible to users with partnerId set.
@@ -344,7 +338,6 @@ export default function DashboardPage() {
       hideDetails={
         section === 'profile' ||
         section === 'home' ||
-        section === 'permisos' ||
         section === 'aprobaciones-mkt' ||
         section === 'mi-partner' ||
         // Empty Nuevo (user-tier with no creation rights) — no template can
@@ -498,8 +491,6 @@ function SectionBody({
       return <GuardadosSection filter={['articulo', 'listicle']} filterKey="articulos" />
     case 'guardados-comentarios':
       return <SavedCommentsSection />
-    case 'permisos':
-      return <PermisosSection />
     case 'aprobaciones-mkt':
       return <PartnerApprovalsSection />
     case 'mi-partner':

@@ -192,7 +192,7 @@ export interface ContentItem {
 
   // Marketplace fields (type === 'partner' only). When `marketplaceEnabled`
   // is true, the partner shows up at `/marketplace` with their card +
-  // listings. Admin sets the flag in [[PermisosSection]]; the partner team
+  // listings. Admin sets the flag in [[AdminUsersEditor]]; the partner team
   // edits the rest of the fields from their dashboard section. See
   // [[Marketplace]] for the full design.
   marketplaceEnabled?: boolean

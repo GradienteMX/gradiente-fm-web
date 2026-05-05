@@ -84,10 +84,10 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
     }
   }, [savedItems, savedComments])
 
-  // Top-level items the user can actually act on today. The `permisos` row
-  // appears only for admins (canAssignRoles); non-admins never see it in the
-  // sidebar. The dashboard page also guards URL-typed access — see
-  // [[Roles and Ranks]].
+  // Top-level items the user can actually act on today. Admin-only sections
+  // appear only when canAssignRoles(currentUser); the dashboard page also
+  // guards URL-typed access — see [[Roles and Ranks]]. Role/flag editing
+  // lives at /admin?tab=users (not in the dashboard) — see [[AdminUsersEditor]].
   const flatItems: SidebarItem[] = useMemo(() => {
     const items: SidebarItem[] = [
       { section: 'home', label: 'Dashboard', Icon: Home },
@@ -97,7 +97,6 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
       { section: 'profile', label: 'Perfil', Icon: User },
     ]
     if (isAdmin) {
-      items.push({ section: 'permisos', label: 'Permisos', Icon: Lock })
       items.push({
         section: 'aprobaciones-mkt',
         label: 'Marketplace',

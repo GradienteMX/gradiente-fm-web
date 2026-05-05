@@ -89,7 +89,7 @@ export function NuevoSection({ supported, selectedType, onSelect, onOpen }: Prop
         </p>
         <p>
           Si crees que deberías tener acceso, pídele a un admin que ajuste tu
-          rol desde <span className="text-secondary">Permisos</span>.
+          rol desde <span className="text-secondary">/admin</span>.
         </p>
       </div>
     )
