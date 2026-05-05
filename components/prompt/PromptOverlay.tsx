@@ -7,12 +7,15 @@ import { usePromptInternal } from './usePrompt'
 // ── PromptOverlay ──────────────────────────────────────────────────────────
 //
 // Mounts once at the layout root. Reads the active prompt state from
-// [[usePrompt]] and renders one of two variants:
+// [[usePrompt]] and renders one of three variants:
 //   - confirm: title + body + CONFIRMAR / CANCELAR buttons
 //   - input:   same chrome plus a single text field
+//   - type-to-confirm: high-friction gate where the confirm button is
+//     disabled until the user types a literal required string (e.g.
+//     "BORRAR <partner name>") for destructive flows
 //
-// ESC + backdrop click resolve as cancel. Enter in input mode confirms.
-// The destructive flag styles confirm in sys-red.
+// ESC + backdrop click resolve as cancel. Enter in input/type-to-confirm
+// mode confirms when valid. The destructive flag styles confirm in sys-red.
 //
 // Visual idiom matches [[PublishConfirmOverlay]] — eva-box + scanlines,
 // black backdrop with blur, NGE title chrome.
@@ -27,12 +30,17 @@ export function PromptOverlay() {
 
   const isOpen = state !== null
   const isInput = state?.kind === 'input'
-  const destructive = !!state?.destructive
+  const isTypeToConfirm = state?.kind === 'type-to-confirm'
+  const hasInputField = isInput || isTypeToConfirm
+  // Type-to-confirm is implicitly destructive (it's the high-friction gate).
+  const destructive = !!state?.destructive || isTypeToConfirm
 
   // Re-seed the input when a new input prompt opens.
   useEffect(() => {
     if (state?.kind === 'input') {
       setInputValue(state.defaultValue ?? '')
+    } else if (state?.kind === 'type-to-confirm') {
+      setInputValue('')
     }
   }, [state])
 
@@ -46,15 +54,16 @@ export function PromptOverlay() {
     }
   }, [isOpen])
 
-  // Focus the safer button on open for confirm; the input for input prompts.
+  // Focus the safer button on open for confirm; the input for input /
+  // type-to-confirm prompts.
   useEffect(() => {
     if (!isOpen) return
     const t = setTimeout(() => {
-      if (isInput) inputRef.current?.select()
+      if (hasInputField) inputRef.current?.select()
       else cancelRef.current?.focus()
     }, 50)
     return () => clearTimeout(t)
-  }, [isOpen, isInput])
+  }, [isOpen, hasInputField])
 
   // ESC closes as cancel.
   useEffect(() => {
@@ -69,13 +78,25 @@ export function PromptOverlay() {
 
   if (!state) return null
 
+  // Type-to-confirm gates the confirm action until the user types the
+  // literal required string — case + whitespace sensitive.
+  const matchOk = state.kind === 'type-to-confirm' ? inputValue === state.requiredText : true
+
   const cancel = () => {
     if (state.kind === 'confirm') resolveConfirm(false)
-    else resolveInput(null)
+    else if (state.kind === 'input') resolveInput(null)
+    else resolveConfirm(false)
   }
   const confirm = () => {
-    if (state.kind === 'confirm') resolveConfirm(true)
-    else resolveInput(inputValue.trim())
+    if (state.kind === 'confirm') {
+      resolveConfirm(true)
+    } else if (state.kind === 'input') {
+      resolveInput(inputValue.trim())
+    } else {
+      // type-to-confirm
+      if (!matchOk) return
+      resolveConfirm(true)
+    }
   }
 
   const onInputKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -111,7 +132,11 @@ export function PromptOverlay() {
               style={{ color: confirmColor }}
             />
             <span id="prompt-title">
-              //{state.kind === 'input' ? 'ENTRADA·REQUERIDA' : 'CONFIRMACIÓN·REQUERIDA'}
+              //{state.kind === 'input'
+                ? 'ENTRADA·REQUERIDA'
+                : state.kind === 'type-to-confirm'
+                  ? 'CONFIRMACIÓN·DESTRUCTIVA'
+                  : 'CONFIRMACIÓN·REQUERIDA'}
             </span>
           </span>
           <button
@@ -151,6 +176,33 @@ export function PromptOverlay() {
               aria-label={state.title}
             />
           )}
+
+          {state.kind === 'type-to-confirm' && (
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-[10px] tracking-widest text-muted">
+                Para confirmar, escribí:{' '}
+                <span
+                  className="border px-1.5 py-0.5 text-primary"
+                  style={{ borderColor: '#E63329', backgroundColor: 'rgba(230,51,41,0.08)' }}
+                >
+                  {state.requiredText}
+                </span>
+              </p>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={onInputKey}
+                placeholder={state.placeholder ?? state.requiredText}
+                autoComplete="off"
+                spellCheck={false}
+                className="w-full border bg-black/40 px-2 py-1.5 font-mono text-[12px] text-primary placeholder:text-muted/40 focus:border-sys-red focus:outline-none"
+                style={{ borderColor: matchOk ? '#22c55e' : '#3a3a3a' }}
+                aria-label={state.title}
+              />
+            </div>
+          )}
         </div>
 
         {/* Action row */}
@@ -166,7 +218,8 @@ export function PromptOverlay() {
           <button
             type="button"
             onClick={confirm}
-            className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors"
+            disabled={!matchOk}
+            className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-30"
             style={{
               borderColor: confirmColor,
               color: confirmColor,

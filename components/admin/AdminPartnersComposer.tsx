@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
+import { usePrompt } from '@/components/prompt/usePrompt'
 import { compressAndUploadImage } from '@/lib/imageUpload'
 import { slugify, VibeField } from '@/components/dashboard/forms/shared/Fields'
 import type { Database } from '@/lib/supabase/database.types'
@@ -36,14 +38,42 @@ interface ExistingPartner {
   partner_kind: string | null
 }
 
+// Detail shape returned by GET /api/admin/partners/[id] — drives the edit
+// form prefill. Wider than ExistingPartner (which only carries enough for
+// the catalog overview).
+interface PartnerDetail {
+  id: string
+  slug: string
+  title: string
+  partner_kind: PartnerKind
+  partner_url: string | null
+  image_url: string
+  vibe_min: number
+  vibe_max: number
+  marketplace_enabled: boolean
+  marketplace_description: string | null
+  marketplace_location: string | null
+  marketplace_currency: string | null
+}
+
 function isPartnerKind(v: string | null): v is PartnerKind {
   return v != null && v in PARTNER_KIND_COLOR
 }
 
-// AdminPartnersComposer — admin-only form for onboarding a new partner.
-// Mints an `items` row with type='partner' via POST /api/admin/partners.
-// Existing partners list above the form serves as a duplicate-check
-// reference; v1 is create-only (no inline edit).
+type Mode = { kind: 'create' } | { kind: 'edit'; partnerId: string }
+
+// AdminPartnersComposer — admin-only form for onboarding a new partner OR
+// editing / deleting an existing one. Tabbed by mode:
+//   - create: blank form, CREAR PARTNER button
+//   - edit:   prefilled from GET /api/admin/partners/[id], GUARDAR + BORRAR
+//             buttons. Borrar opens a typeToConfirm overlay requiring the
+//             admin to type "BORRAR <partner name>" verbatim.
+//
+// Cascades on hard delete (per migration 0001 schema):
+//   comments / user_saves / polls / hp_events on this partner item are
+//   CASCADE deleted; users.partner_id + invite_codes.intended_partner_id
+//   pointing here go to NULL (team members + pending invites lose the
+//   link but their accounts / codes survive).
 export function AdminPartnersComposer({
   existing,
 }: {
@@ -51,6 +81,10 @@ export function AdminPartnersComposer({
 }) {
   const router = useRouter()
   const { currentUser } = useAuth()
+  const { typeToConfirm } = usePrompt()
+
+  const [mode, setMode] = useState<Mode>({ kind: 'create' })
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
@@ -71,16 +105,76 @@ export function AdminPartnersComposer({
   const [marketplaceDescription, setMarketplaceDescription] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [created, setCreated] = useState<{ id: string; title: string } | null>(null)
+  const [flash, setFlash] = useState<{ kind: 'created' | 'updated' | 'deleted'; title: string } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-derive slug from title until the admin manually edits it.
+  // In edit mode the slug is read-only anyway, but keep the gate consistent.
   useEffect(() => {
+    if (mode.kind === 'edit') return
     if (slugManuallyEdited) return
     setSlug(slugify(title))
-  }, [title, slugManuallyEdited])
+  }, [title, slugManuallyEdited, mode.kind])
+
+  const resetForm = () => {
+    setTitle('')
+    setSlug('')
+    setSlugManuallyEdited(false)
+    setPartnerKind('promo')
+    setPartnerUrl('')
+    setImageUrl('')
+    setVibeMin(5)
+    setVibeMax(5)
+    setMarketplaceEnabled(false)
+    setMarketplaceLocation('')
+    setMarketplaceCurrency('MXN')
+    setMarketplaceDescription('')
+    setError(null)
+  }
+
+  const enterCreateMode = () => {
+    setMode({ kind: 'create' })
+    resetForm()
+  }
+
+  const enterEditMode = async (partnerId: string) => {
+    setLoadingDetail(true)
+    setError(null)
+    try {
+      const res = await fetch(
+        `/api/admin/partners/${encodeURIComponent(partnerId)}`,
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'FAILED' }))
+        setError((body.error ?? 'FAILED').toString().toUpperCase())
+        return
+      }
+      const json = await res.json()
+      const p = json.partner as PartnerDetail
+      // Hydrate form state from the detail.
+      setTitle(p.title)
+      setSlug(p.slug)
+      // Slug is read-only in edit mode (changing it would break links).
+      // Set the manual-edit gate so the create-mode auto-derive doesn't fire.
+      setSlugManuallyEdited(true)
+      setPartnerKind(p.partner_kind)
+      setPartnerUrl(p.partner_url ?? '')
+      setImageUrl(p.image_url)
+      setVibeMin(p.vibe_min)
+      setVibeMax(p.vibe_max)
+      setMarketplaceEnabled(p.marketplace_enabled)
+      setMarketplaceLocation(p.marketplace_location ?? '')
+      setMarketplaceCurrency(p.marketplace_currency ?? 'MXN')
+      setMarketplaceDescription(p.marketplace_description ?? '')
+      setMode({ kind: 'edit', partnerId: p.id })
+      setFlash(null)
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
 
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -104,70 +198,132 @@ export function AdminPartnersComposer({
     }
   }
 
-  const reset = () => {
-    setTitle('')
-    setSlug('')
-    setSlugManuallyEdited(false)
-    setPartnerKind('promo')
-    setPartnerUrl('')
-    setImageUrl('')
-    setVibeMin(5)
-    setVibeMax(5)
-    setMarketplaceEnabled(false)
-    setMarketplaceLocation('')
-    setMarketplaceCurrency('MXN')
-    setMarketplaceDescription('')
-    setError(null)
-  }
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setCreated(null)
+    setFlash(null)
     setSubmitting(true)
     try {
-      const res = await fetch('/api/admin/partners', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          slug: slug.trim(),
-          partner_kind: partnerKind,
-          partner_url: partnerUrl.trim() || undefined,
-          image_url: imageUrl,
-          vibe_min: vibeMin,
-          vibe_max: vibeMax,
-          marketplace_enabled: marketplaceEnabled,
-          marketplace_description: marketplaceDescription.trim() || undefined,
-          marketplace_location: marketplaceLocation.trim() || undefined,
-          marketplace_currency: marketplaceCurrency.trim() || undefined,
-        }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'FAILED' }))
-        setError((body.error ?? 'FAILED').toString().toUpperCase())
-        return
+      if (mode.kind === 'create') {
+        const res = await fetch('/api/admin/partners', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            title: title.trim(),
+            slug: slug.trim(),
+            partner_kind: partnerKind,
+            partner_url: partnerUrl.trim() || undefined,
+            image_url: imageUrl,
+            vibe_min: vibeMin,
+            vibe_max: vibeMax,
+            marketplace_enabled: marketplaceEnabled,
+            marketplace_description: marketplaceDescription.trim() || undefined,
+            marketplace_location: marketplaceLocation.trim() || undefined,
+            marketplace_currency: marketplaceCurrency.trim() || undefined,
+          }),
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: 'FAILED' }))
+          setError((body.error ?? 'FAILED').toString().toUpperCase())
+          return
+        }
+        const json = await res.json()
+        setFlash({ kind: 'created', title: json.partner.title })
+        resetForm()
+        router.refresh()
+      } else {
+        const res = await fetch(
+          `/api/admin/partners/${encodeURIComponent(mode.partnerId)}`,
+          {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              title: title.trim(),
+              partner_kind: partnerKind,
+              partner_url: partnerUrl.trim(),
+              image_url: imageUrl,
+              vibe_min: vibeMin,
+              vibe_max: vibeMax,
+              marketplace_enabled: marketplaceEnabled,
+              marketplace_description: marketplaceDescription.trim(),
+              marketplace_location: marketplaceLocation.trim(),
+              marketplace_currency: marketplaceCurrency.trim(),
+            }),
+          },
+        )
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: 'FAILED' }))
+          setError((body.error ?? 'FAILED').toString().toUpperCase())
+          return
+        }
+        const json = await res.json()
+        setFlash({ kind: 'updated', title: json.partner.title })
+        router.refresh()
       }
-      const json = await res.json()
-      setCreated({ id: json.partner.id, title: json.partner.title })
-      reset()
-      router.refresh()
     } finally {
       setSubmitting(false)
     }
   }
 
+  const onDelete = async () => {
+    if (mode.kind !== 'edit') return
+    const partnerTitle = title.trim()
+    const required = `BORRAR ${partnerTitle}`
+    const confirmed = await typeToConfirm({
+      title: `Borrar ${partnerTitle}`,
+      body:
+        `Esta acción es permanente. Se eliminará el registro del partner y por cascada de FK también sus comentarios, guardados, polls y eventos HP. ` +
+        `Los miembros del equipo (users.partner_id) y códigos de invitación pendientes asociados quedarán desvinculados pero conservados.`,
+      requiredText: required,
+      placeholder: required,
+      confirmLabel: 'BORRAR PERMANENTE',
+      cancelLabel: 'CANCELAR',
+      destructive: true,
+    })
+    if (!confirmed) return
+
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(
+        `/api/admin/partners/${encodeURIComponent(mode.partnerId)}`,
+        { method: 'DELETE' },
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'FAILED' }))
+        setError((body.error ?? 'FAILED').toString().toUpperCase())
+        return
+      }
+      setFlash({ kind: 'deleted', title: partnerTitle })
+      enterCreateMode()
+      router.refresh()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <section className="flex flex-col gap-6">
-      {/* Existing partners — duplicate-check reference */}
+      {/* Existing partners — clickable cards. Click loads the partner into
+          edit mode below. */}
       <div className="flex flex-col gap-3 border border-border p-4">
-        <header>
+        <header className="flex items-center justify-between gap-3">
           <span
             className="font-mono text-[10px] tracking-widest"
             style={{ color: '#FB923C' }}
           >
             //PARTNERS EXISTENTES · {existing.length}
           </span>
+          {mode.kind === 'edit' && (
+            <button
+              type="button"
+              onClick={enterCreateMode}
+              className="flex items-center gap-1 border border-border px-2 py-0.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+            >
+              <Plus size={11} strokeWidth={1.5} />
+              NUEVO
+            </button>
+          )}
         </header>
         {existing.length === 0 ? (
           <p className="font-mono text-[11px] text-muted">
@@ -178,26 +334,40 @@ export function AdminPartnersComposer({
             {existing.map((p) => {
               const kind = isPartnerKind(p.partner_kind) ? p.partner_kind : null
               const color = kind ? PARTNER_KIND_COLOR[kind] : '#888888'
+              const isSelected = mode.kind === 'edit' && mode.partnerId === p.id
               return (
-                <li
-                  key={p.id}
-                  className="flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px]"
-                  style={{ borderColor: color }}
-                >
-                  <span className="text-primary">{p.title}</span>
-                  {kind && (
-                    <span style={{ color }} className="tracking-widest">
-                      · {kind.toUpperCase()}
-                    </span>
-                  )}
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => enterEditMode(p.id)}
+                    disabled={loadingDetail || isSelected}
+                    aria-pressed={isSelected}
+                    className="flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] transition-colors hover:bg-white/[0.03] disabled:cursor-default"
+                    style={{
+                      borderColor: color,
+                      backgroundColor: isSelected ? `${color}1a` : 'transparent',
+                    }}
+                  >
+                    <Pencil size={9} strokeWidth={1.5} className="opacity-50" />
+                    <span className="text-primary">{p.title}</span>
+                    {kind && (
+                      <span style={{ color }} className="tracking-widest">
+                        · {kind.toUpperCase()}
+                      </span>
+                    )}
+                  </button>
                 </li>
               )
             })}
           </ul>
         )}
+        {loadingDetail && (
+          <p className="font-mono text-[10px] text-muted">// cargando detalles…</p>
+        )}
       </div>
 
-      {/* Composer */}
+      {/* Composer — same form for create + edit. The mode flag swaps the
+          header copy + the action buttons. */}
       <form
         onSubmit={submit}
         className="flex flex-col gap-4 border border-border p-4"
@@ -207,22 +377,47 @@ export function AdminPartnersComposer({
             className="font-mono text-[10px] tracking-widest"
             style={{ color: '#FB923C' }}
           >
-            //NUEVO PARTNER
+            //{mode.kind === 'create' ? 'NUEVO PARTNER' : `EDITANDO · ${title || '(sin título)'}`}
           </span>
           <h2 className="font-syne text-xl font-bold leading-tight text-primary">
-            Onboarding
+            {mode.kind === 'create' ? 'Onboarding' : 'Editar partner'}
           </h2>
           <p className="font-mono text-[10px] leading-relaxed text-muted">
-            Crea la entrada base. Después podés enlazar usuarios a este
-            partner desde //USUARIOS y publicar listados de marketplace
-            desde el dashboard del propio partner-admin.
+            {mode.kind === 'create' ? (
+              <>
+                Crea la entrada base. Después podés enlazar usuarios a este
+                partner desde //USUARIOS y publicar listados de marketplace
+                desde el dashboard del propio partner-admin.
+              </>
+            ) : (
+              <>
+                Cambios se aplican al guardar. El slug es de solo lectura para
+                no romper enlaces existentes — si necesitás renombrar, borrá y
+                crea uno nuevo.
+              </>
+            )}
           </p>
         </header>
 
-        {created && (
-          <p className="border border-sys-green bg-sys-green/10 px-3 py-2 font-mono text-[10px] text-sys-green">
-            ✓ CREADO — <span className="text-primary">{created.title}</span>{' '}
-            · id <span className="text-primary">{created.id}</span>
+        {flash && (
+          <p
+            className="border px-3 py-2 font-mono text-[10px]"
+            style={{
+              borderColor: flash.kind === 'deleted' ? '#E63329' : '#22c55e',
+              color: flash.kind === 'deleted' ? '#E63329' : '#22c55e',
+              backgroundColor:
+                flash.kind === 'deleted' ? 'rgba(230,51,41,0.08)' : 'rgba(34,197,94,0.08)',
+            }}
+          >
+            {flash.kind === 'created' && (
+              <>✓ CREADO — <span className="text-primary">{flash.title}</span></>
+            )}
+            {flash.kind === 'updated' && (
+              <>✓ ACTUALIZADO — <span className="text-primary">{flash.title}</span></>
+            )}
+            {flash.kind === 'deleted' && (
+              <>⌫ BORRADO — <span className="text-primary">{flash.title}</span></>
+            )}
           </p>
         )}
 
@@ -238,17 +433,27 @@ export function AdminPartnersComposer({
             />
           </Field>
 
-          <Field label="SLUG" required hint="auto desde el title — editable">
+          <Field
+            label="SLUG"
+            required
+            hint={
+              mode.kind === 'create'
+                ? 'auto desde el title — editable'
+                : 'solo lectura — el slug fija el URL'
+            }
+          >
             <input
               type="text"
               value={slug}
               onChange={(e) => {
+                if (mode.kind === 'edit') return
                 setSlugManuallyEdited(true)
                 setSlug(slugify(e.target.value))
               }}
               placeholder="naafi"
               required
-              className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
+              readOnly={mode.kind === 'edit'}
+              className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none read-only:opacity-60"
             />
           </Field>
 
@@ -372,22 +577,54 @@ export function AdminPartnersComposer({
           <p className="font-mono text-[10px] text-sys-red">// {error}</p>
         )}
 
-        <div className="flex items-center gap-2">
-          <button
-            type="submit"
-            disabled={submitting || imageUploading || !imageUrl}
-            className="border border-sys-green px-3 py-1.5 font-mono text-[10px] tracking-widest text-sys-green transition-colors hover:bg-sys-green/10 disabled:opacity-40"
-          >
-            {submitting ? 'CREANDO...' : 'CREAR PARTNER'}
-          </button>
-          <button
-            type="button"
-            onClick={reset}
-            disabled={submitting}
-            className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:opacity-40"
-          >
-            LIMPIAR
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={submitting || imageUploading || !imageUrl || deleting}
+              className="border border-sys-green px-3 py-1.5 font-mono text-[10px] tracking-widest text-sys-green transition-colors hover:bg-sys-green/10 disabled:opacity-40"
+            >
+              {submitting
+                ? mode.kind === 'create' ? 'CREANDO...' : 'GUARDANDO...'
+                : mode.kind === 'create' ? 'CREAR PARTNER' : 'GUARDAR CAMBIOS'}
+            </button>
+            {mode.kind === 'create' ? (
+              <button
+                type="button"
+                onClick={resetForm}
+                disabled={submitting}
+                className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:opacity-40"
+              >
+                LIMPIAR
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={enterCreateMode}
+                disabled={submitting || deleting}
+                className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:opacity-40"
+              >
+                CANCELAR EDICIÓN
+              </button>
+            )}
+          </div>
+
+          {mode.kind === 'edit' && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={submitting || deleting}
+              className="flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:opacity-40"
+              style={{
+                borderColor: '#E63329',
+                color: '#E63329',
+                backgroundColor: 'rgba(230,51,41,0.06)',
+              }}
+            >
+              <Trash2 size={11} strokeWidth={1.5} />
+              {deleting ? 'BORRANDO...' : 'BORRAR PARTNER'}
+            </button>
+          )}
         </div>
       </form>
     </section>

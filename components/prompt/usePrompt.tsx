@@ -43,17 +43,30 @@ export interface InputOptions extends BasePromptOptions {
   defaultValue?: string
 }
 
+export interface TypeToConfirmOptions extends BasePromptOptions {
+  /**
+   * The exact string the user must type for the confirm button to enable.
+   * Case + whitespace sensitive. Renders inside the body as a code chip so
+   * the user sees what to type.
+   */
+  requiredText: string
+  /** Optional placeholder for the input field. */
+  placeholder?: string
+}
+
 // What the overlay reads to render the active prompt. Internal — consumers
-// only see `confirm` / `input` from the hook.
+// only see `confirm` / `input` / `typeToConfirm` from the hook.
 export type PromptState =
   | null
   | ({ kind: 'confirm' } & ConfirmOptions)
   | ({ kind: 'input' } & InputOptions)
+  | ({ kind: 'type-to-confirm' } & TypeToConfirmOptions)
 
 interface PromptContextValue {
   state: PromptState
   confirm: (opts: ConfirmOptions) => Promise<boolean>
   input: (opts: InputOptions) => Promise<string | null>
+  typeToConfirm: (opts: TypeToConfirmOptions) => Promise<boolean>
   // Called by the overlay when user clicks confirm / cancel / presses ESC.
   // The overlay also passes the input value when in input mode.
   resolveConfirm: (ok: boolean) => void
@@ -84,6 +97,20 @@ export function PromptProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Type-to-confirm — used for high-friction destructive actions
+  // (e.g. partner hard-delete). Resolves true only when the user types
+  // the exact required string and clicks confirm; cancel / ESC / mismatch
+  // resolve false.
+  const typeToConfirm = useCallback(
+    (opts: TypeToConfirmOptions): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
+        pending.current = resolve as (value: unknown) => void
+        setState({ kind: 'type-to-confirm', ...opts })
+      })
+    },
+    [],
+  )
+
   const resolveConfirm = useCallback((ok: boolean) => {
     const r = pending.current
     pending.current = null
@@ -102,6 +129,7 @@ export function PromptProvider({ children }: { children: ReactNode }) {
     state,
     confirm,
     input,
+    typeToConfirm,
     resolveConfirm,
     resolveInput,
   }
@@ -112,10 +140,11 @@ export function PromptProvider({ children }: { children: ReactNode }) {
 export function usePrompt(): {
   confirm: (opts: ConfirmOptions) => Promise<boolean>
   input: (opts: InputOptions) => Promise<string | null>
+  typeToConfirm: (opts: TypeToConfirmOptions) => Promise<boolean>
 } {
   const ctx = useContext(Ctx)
   if (!ctx) throw new Error('usePrompt must be used inside <PromptProvider>')
-  return { confirm: ctx.confirm, input: ctx.input }
+  return { confirm: ctx.confirm, input: ctx.input, typeToConfirm: ctx.typeToConfirm }
 }
 
 // Internal — consumed only by [[PromptOverlay]] to read the active state.
