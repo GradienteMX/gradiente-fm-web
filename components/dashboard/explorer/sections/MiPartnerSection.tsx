@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
@@ -10,10 +10,12 @@ import {
   Copy,
   Eye,
   Image as ImageIcon,
+  Lock,
   MapPin,
   Package,
   Pencil,
   Plus,
+  Save,
   ShieldCheck,
   ShoppingBag,
   Star,
@@ -34,21 +36,17 @@ import type {
 } from '@/lib/types'
 import { SUBCATEGORIES_BY_CATEGORY } from '@/lib/types'
 import { useAuth } from '@/components/auth/useAuth'
-import {
-  canManagePartner,
-  canManagePartnerTeam,
-} from '@/lib/permissions'
-import {
-  setUserOverride,
-  useResolvedUsers,
-} from '@/lib/userOverrides'
+import { compressAndUploadImage } from '@/lib/imageUpload'
+// Listings composer is rendered in read-only mode (canManage=false) — see
+// ListingsReadOnlyBanner for the deferral rationale. The sessionStorage
+// helpers below are imported only because the existing composer/preview
+// code still references them in unreachable code paths; once listings
+// persistence ships, this import goes away.
 import {
   addMarketplaceListing,
   newListingId,
   removeMarketplaceListing,
-  setPartnerOverride,
   updateMarketplaceListing,
-  useResolvedPartner,
 } from '@/lib/partnerOverrides'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 
@@ -58,29 +56,128 @@ import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceList
 // when `currentUser.partnerId` is set; the ExplorerSidebar only shows the
 // row in the same case. Two tabs:
 //
-//   EQUIPO       — list of current team members; partnerAdmin (or site
+//   EQUIPO       — list of current team members; partner-admin (or site
 //                  admin) can add/kick members and promote/demote the
 //                  partner-admin flag.
 //   MARKETPLACE  — edit the partner's marketplace card (description /
-//                  location / currency) + CRUD on individual listings.
+//                  location / currency / image / partner_url) + view of
+//                  the per-listing CRUD (writes deferred to a future
+//                  slice — see banner inside the listings table).
 //
-// All edits flow through [[partnerOverrides]] / [[userOverrides]].
-// Anything a regular team member tries that would require partnerAdmin or
-// site admin (kick, promote) is gated server-side via the canX helpers
-// (called every render) and the corresponding affordances are hidden.
+// All edits go through real DB endpoints:
+//   - GET/PATCH /api/partners/[id]            — partner profile
+//   - GET/POST/PATCH/DELETE /api/partners/[id]/team — team membership
+//
+// Both are gated server-side: profile edits require canManagePartner
+// (any team member); team mutations require canManagePartnerTeam
+// (partner-admin or site admin). The UI hides write affordances when
+// the gate would deny anyway.
 
 type Tab = 'equipo' | 'marketplace'
+
+// Shape returned by GET /api/partners/[id] mapped to camelCase (matches
+// the ContentItem field names downstream so the listings composer + card
+// preview don't need to change). Mirrors the columns in the items table
+// minus the fields a partner team can't see (curation internals).
+interface PartnerData {
+  id: string
+  slug: string
+  title: string
+  partnerKind: string | null
+  partnerUrl: string | null
+  imageUrl: string
+  vibeMin: number
+  vibeMax: number
+  marketplaceEnabled: boolean
+  marketplaceDescription: string | null
+  marketplaceLocation: string | null
+  marketplaceCurrency: string | null
+  marketplaceListings: MarketplaceListing[]
+}
+
+interface TeamMember {
+  id: string
+  username: string
+  displayName: string
+  role: string
+  isMod: boolean
+  isOg: boolean
+  partnerAdmin: boolean
+  joinedAt: string
+}
+
+// Snake_case → camelCase mappers for the API responses. Keeping the
+// downstream component tree on camelCase avoids touching the listings
+// composer and the inline ContentItem assumptions deeper in the file.
+function mapPartnerRow(row: Record<string, unknown>): PartnerData {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    title: String(row.title),
+    partnerKind: (row.partner_kind as string | null) ?? null,
+    partnerUrl: (row.partner_url as string | null) ?? null,
+    imageUrl: String(row.image_url ?? ''),
+    vibeMin: Number(row.vibe_min ?? 0),
+    vibeMax: Number(row.vibe_max ?? 0),
+    marketplaceEnabled: !!row.marketplace_enabled,
+    marketplaceDescription: (row.marketplace_description as string | null) ?? null,
+    marketplaceLocation: (row.marketplace_location as string | null) ?? null,
+    marketplaceCurrency: (row.marketplace_currency as string | null) ?? null,
+    marketplaceListings: (row.marketplace_listings as MarketplaceListing[] | null) ?? [],
+  }
+}
+
+function mapTeamMember(row: Record<string, unknown>): TeamMember {
+  return {
+    id: String(row.id),
+    username: String(row.username),
+    displayName: String(row.display_name ?? row.username),
+    role: String(row.role ?? 'user'),
+    isMod: !!row.is_mod,
+    isOg: !!row.is_og,
+    partnerAdmin: !!row.partner_admin,
+    joinedAt: String(row.joined_at ?? ''),
+  }
+}
 
 export function MiPartnerSection() {
   const { currentUser } = useAuth()
   const partnerId = currentUser?.partnerId
-  const partner = useResolvedPartner(partnerId)
   const [tab, setTab] = useState<Tab>('marketplace')
+  const [partner, setPartner] = useState<PartnerData | null>(null)
+  const [team, setTeam] = useState<TeamMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refetch = useCallback(async () => {
+    if (!partnerId) return
+    setError(null)
+    const [pRes, tRes] = await Promise.all([
+      fetch(`/api/partners/${encodeURIComponent(partnerId)}`),
+      fetch(`/api/partners/${encodeURIComponent(partnerId)}/team`),
+    ])
+    if (pRes.ok) {
+      const pJson = await pRes.json()
+      setPartner(mapPartnerRow(pJson.partner))
+    } else {
+      const body = await pRes.json().catch(() => ({ error: 'PARTNER_FETCH_FAILED' }))
+      setError(body.error?.toString().toUpperCase() ?? 'PARTNER_FETCH_FAILED')
+    }
+    if (tRes.ok) {
+      const tJson = await tRes.json()
+      setTeam(((tJson.team as Record<string, unknown>[]) ?? []).map(mapTeamMember))
+    }
+    setLoading(false)
+  }, [partnerId])
+
+  useEffect(() => {
+    void refetch()
+  }, [refetch])
 
   // Defensive — the route guard + sidebar gating should keep this branch
   // unreachable, but keep the empty state in case the user clears their
   // own partnerId mid-session.
-  if (!currentUser || !partnerId || !partner) {
+  if (!currentUser || !partnerId) {
     return (
       <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 px-4 py-8 font-mono text-[11px] text-muted">
         <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
@@ -91,6 +188,24 @@ export function MiPartnerSection() {
     )
   }
 
+  if (loading || !partner) {
+    return (
+      <div className="flex items-center gap-2 border border-dashed border-border bg-elevated/30 px-4 py-8 font-mono text-[11px] text-muted">
+        <span className="tracking-widest">//CARGANDO·PARTNER…</span>
+        {error && <span className="text-sys-red">{error}</span>}
+      </div>
+    )
+  }
+
+  // Permission helpers — site admin always allowed; team-member checks
+  // mirror lib/permissions canManagePartner / canManagePartnerTeam but
+  // run against the locally-fetched partner / currentUser shape.
+  const canManageProfile =
+    currentUser.role === 'admin' || currentUser.partnerId === partner.id
+  const canManageTeam =
+    currentUser.role === 'admin' ||
+    (currentUser.partnerId === partner.id && currentUser.partnerAdmin === true)
+
   return (
     <div className="flex flex-col gap-4">
       <Header partner={partner} />
@@ -98,9 +213,21 @@ export function MiPartnerSection() {
       <TabSwitcher tab={tab} onChange={setTab} />
 
       {tab === 'equipo' ? (
-        <EquipoTab partner={partner} currentUser={currentUser} />
+        <EquipoTab
+          partner={partner}
+          team={team}
+          currentUserId={currentUser.id}
+          canManageTeam={canManageTeam}
+          onRefetch={refetch}
+        />
       ) : (
-        <MarketplaceTab partner={partner} currentUser={currentUser} />
+        <MarketplaceTab
+          partner={partner}
+          canManage={canManageProfile}
+          currentUserId={currentUser.id}
+          onRefetch={refetch}
+          onPartnerPatched={(p) => setPartner(p)}
+        />
       )}
     </div>
   )
@@ -108,7 +235,7 @@ export function MiPartnerSection() {
 
 // ── Header ─────────────────────────────────────────────────────────────────
 
-function Header({ partner }: { partner: ContentItem }) {
+function Header({ partner }: { partner: PartnerData }) {
   return (
     <header className="flex items-start justify-between gap-3 border border-border bg-elevated/30 p-3">
       <div className="flex items-center gap-3">
@@ -189,36 +316,39 @@ function TabButton({
 
 function EquipoTab({
   partner,
-  currentUser,
+  team,
+  currentUserId,
+  canManageTeam,
+  onRefetch,
 }: {
-  partner: ContentItem
-  currentUser: User
+  partner: PartnerData
+  team: TeamMember[]
+  currentUserId: string
+  canManageTeam: boolean
+  onRefetch: () => Promise<void>
 }) {
-  const allUsers = useResolvedUsers()
-  const teamMembers = allUsers.filter((u) => u.partnerId === partner.id)
-  const offTeam = allUsers.filter((u) => u.partnerId !== partner.id)
-  const canManageTeam = canManagePartnerTeam(currentUser, partner.id)
-
   return (
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2">
         <header className="flex items-center justify-between font-mono text-[10px] tracking-widest text-muted">
           <span>//EQUIPO · ACTIVO</span>
-          <span className="tabular-nums">{teamMembers.length} MIEMBROS</span>
+          <span className="tabular-nums">{team.length} MIEMBROS</span>
         </header>
 
         <ul className="flex flex-col border border-border bg-elevated/30">
-          {teamMembers.length === 0 ? (
+          {team.length === 0 ? (
             <li className="px-3 py-6 text-center font-mono text-[11px] text-muted">
               El equipo está vacío.
             </li>
           ) : (
-            teamMembers.map((u) => (
+            team.map((u) => (
               <TeamMemberRow
                 key={u.id}
+                partnerId={partner.id}
                 user={u}
-                isSelf={u.id === currentUser.id}
+                isSelf={u.id === currentUserId}
                 canManage={canManageTeam}
+                onChanged={onRefetch}
               />
             ))
           )}
@@ -226,10 +356,7 @@ function EquipoTab({
       </section>
 
       {canManageTeam && (
-        <AddMemberPicker
-          partnerId={partner.id}
-          offTeam={offTeam}
-        />
+        <AddMemberPicker partnerId={partner.id} onChanged={onRefetch} />
       )}
 
       {!canManageTeam && (
@@ -247,22 +374,51 @@ function EquipoTab({
 }
 
 function TeamMemberRow({
+  partnerId,
   user,
   isSelf,
   canManage,
+  onChanged,
 }: {
-  user: User
+  partnerId: string
+  user: TeamMember
   isSelf: boolean
   canManage: boolean
+  onChanged: () => Promise<void>
 }) {
-  const onTogglePartnerAdmin = () => {
-    setUserOverride(user.id, {
-      partnerAdmin: !user.partnerAdmin || undefined,
-    })
+  const [busy, setBusy] = useState(false)
+
+  const onTogglePartnerAdmin = async () => {
+    setBusy(true)
+    try {
+      await fetch(`/api/partners/${encodeURIComponent(partnerId)}/team`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          partner_admin: !user.partnerAdmin,
+        }),
+      })
+      await onChanged()
+    } finally {
+      setBusy(false)
+    }
   }
-  const onKick = () => {
-    setUserOverride(user.id, { partnerId: null, partnerAdmin: undefined })
+
+  const onKick = async () => {
+    setBusy(true)
+    try {
+      await fetch(`/api/partners/${encodeURIComponent(partnerId)}/team`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id }),
+      })
+      await onChanged()
+    } finally {
+      setBusy(false)
+    }
   }
+
   return (
     <li className="flex items-center gap-2 border-b border-border/50 px-3 py-2 font-mono text-[11px]">
       <span className="truncate text-primary">@{user.username}</span>
@@ -294,7 +450,8 @@ function TeamMemberRow({
             <button
               type="button"
               onClick={onTogglePartnerAdmin}
-              className="border border-border px-1.5 py-px font-mono text-[9px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+              disabled={busy}
+              className="border border-border px-1.5 py-px font-mono text-[9px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange disabled:opacity-40"
               title={user.partnerAdmin ? 'Quitar partner-admin' : 'Hacer partner-admin'}
             >
               {user.partnerAdmin ? '↓ ADMIN' : '↑ ADMIN'}
@@ -302,8 +459,9 @@ function TeamMemberRow({
             <button
               type="button"
               onClick={onKick}
+              disabled={busy}
               aria-label={`Quitar a @${user.username}`}
-              className="flex items-center gap-1 border px-1.5 py-px font-mono text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
+              className="flex items-center gap-1 border px-1.5 py-px font-mono text-[9px] tracking-widest transition-colors hover:bg-white/[0.02] disabled:opacity-40"
               style={{ borderColor: '#E63329', color: '#E63329' }}
               title="Quitar del equipo"
             >
@@ -317,61 +475,103 @@ function TeamMemberRow({
   )
 }
 
+interface SearchedUser {
+  id: string
+  username: string
+  display_name: string
+}
+
 function AddMemberPicker({
   partnerId,
-  offTeam,
+  onChanged,
 }: {
   partnerId: string
-  offTeam: User[]
+  onChanged: () => Promise<void>
 }) {
   const [query, setQuery] = useState('')
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return [] as User[]
-    return offTeam
-      .filter(
-        (u) =>
-          u.username.toLowerCase().includes(q) ||
-          u.displayName.toLowerCase().includes(q),
-      )
-      .slice(0, 6)
-  }, [offTeam, query])
+  const [results, setResults] = useState<SearchedUser[]>([])
+  const [searching, setSearching] = useState(false)
+  const [adding, setAdding] = useState<string | null>(null)
 
-  const onAdd = (id: string) => {
-    setUserOverride(id, { partnerId })
-    setQuery('')
+  // Debounced search against the existing /api/admin/users/search
+  // endpoint. That route is admin-only — partner-admins (non-admin role)
+  // can't reach it. For partner-admin add-member flows we rely on the
+  // user already knowing the username (they ask the new member what theirs
+  // is). At MVP scale this is fine; if user lookup needs to work for
+  // non-admin partner-admins we'd add a narrower search endpoint later.
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) {
+      setResults([])
+      return
+    }
+    setSearching(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/users/search?q=${encodeURIComponent(q)}`,
+        )
+        if (res.ok) {
+          const json = await res.json()
+          setResults((json.users as SearchedUser[]) ?? [])
+        } else {
+          setResults([])
+        }
+      } finally {
+        setSearching(false)
+      }
+    }, 250)
+    return () => clearTimeout(t)
+  }, [query])
+
+  const onAdd = async (id: string) => {
+    setAdding(id)
+    try {
+      await fetch(`/api/partners/${encodeURIComponent(partnerId)}/team`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: id }),
+      })
+      setQuery('')
+      setResults([])
+      await onChanged()
+    } finally {
+      setAdding(null)
+    }
   }
 
   return (
     <section className="flex flex-col gap-2 border border-dashed border-border bg-elevated/20 p-3">
-      <header className="font-mono text-[10px] tracking-widest text-muted">
-        //AGREGAR · MIEMBRO
+      <header className="flex items-center justify-between font-mono text-[10px] tracking-widest text-muted">
+        <span>//AGREGAR · MIEMBRO</span>
+        {searching && <span className="text-sys-green">// BUSCANDO…</span>}
       </header>
       <input
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Buscar @username o nombre…"
+        placeholder="Buscar @username o nombre… (mín. 2 caracteres)"
         className="w-full border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted focus:border-sys-orange focus:outline-none"
       />
-      {query && filtered.length === 0 && (
+      {query.trim().length >= 2 && results.length === 0 && !searching && (
         <p className="font-mono text-[10px] text-muted">
-          Ningún usuario disponible coincide con &quot;{query}&quot;.
+          Ningún usuario coincide con &quot;{query}&quot;.
         </p>
       )}
-      {filtered.length > 0 && (
+      {results.length > 0 && (
         <ul className="flex flex-col border border-border bg-base">
-          {filtered.map((u) => (
+          {results.map((u) => (
             <li key={u.id}>
               <button
                 type="button"
                 onClick={() => onAdd(u.id)}
-                className="flex w-full items-center gap-2 border-b border-border/40 px-2 py-1.5 text-left font-mono text-[11px] text-secondary transition-colors hover:bg-white/[0.02] hover:text-primary"
+                disabled={adding === u.id}
+                className="flex w-full items-center gap-2 border-b border-border/40 px-2 py-1.5 text-left font-mono text-[11px] text-secondary transition-colors hover:bg-white/[0.02] hover:text-primary disabled:opacity-40"
               >
                 <Plus size={11} strokeWidth={1.5} className="text-sys-orange" />
                 <span className="truncate">@{u.username}</span>
                 <span className="ml-auto truncate text-[9px] tracking-widest text-muted">
-                  {u.displayName}
+                  {u.display_name}
                 </span>
               </button>
             </li>
@@ -386,20 +586,18 @@ function AddMemberPicker({
 
 function MarketplaceTab({
   partner,
-  currentUser,
+  canManage,
+  currentUserId,
+  onRefetch,
+  onPartnerPatched,
 }: {
-  partner: ContentItem
-  currentUser: User
+  partner: PartnerData
+  canManage: boolean
+  currentUserId: string
+  onRefetch: () => Promise<void>
+  onPartnerPatched: (next: PartnerData) => void
 }) {
-  const canManage = canManagePartner(currentUser, partner.id)
-  const listings = partner.marketplaceListings ?? []
-
-  const updateMeta = (
-    field: 'marketplaceDescription' | 'marketplaceLocation' | 'marketplaceCurrency',
-    value: string,
-  ) => {
-    setPartnerOverride(partner.id, { [field]: value })
-  }
+  const listings = partner.marketplaceListings
 
   return (
     <div className="flex flex-col gap-4">
@@ -409,42 +607,244 @@ function MarketplaceTab({
           style={{ borderColor: '#3a3a3a', color: '#9CA3AF' }}
         >
           //MARKETPLACE·INACTIVO — el card no aparece en{' '}
-          <span className="text-secondary">/marketplace</span> hasta que un
-          admin del sitio active el partner desde{' '}
-          <span className="text-secondary">Marketplace · Aprobaciones</span>.
-          Mientras tanto puedes preparar el contenido aquí.
+          <span className="text-secondary">/marketplace</span> hasta que el
+          marketplace esté habilitado. Podés activarlo abajo si tenés permisos
+          o pedirle a un admin del sitio que lo haga.
         </p>
       )}
 
-      <CardMetaEditor
+      <ProfileEditor
         partner={partner}
         canManage={canManage}
-        onChange={updateMeta}
+        currentUserId={currentUserId}
+        onSaved={(next) => {
+          onPartnerPatched(next)
+          void onRefetch()
+        }}
       />
 
-      <ListingsManager partner={partner} canManage={canManage} listings={listings} />
+      <ListingsReadOnlyBanner />
+
+      <ListingsManager
+        partner={partner as unknown as ContentItem}
+        canManage={false}
+        listings={listings}
+      />
     </div>
   )
 }
 
-function CardMetaEditor({
+// ── ListingsReadOnlyBanner ─────────────────────────────────────────────────
+//
+// Listings persistence isn't wired yet — the composer below is rendered
+// in read-only mode (canManage=false) so writes don't silently land in
+// sessionStorage and disappear on refresh. Wiring listings to a real
+// table (or the items.marketplace_listings jsonb with proper ownership
+// gating) is its own slice — see Next Session.md.
+
+function ListingsReadOnlyBanner() {
+  return (
+    <p
+      className="flex items-start gap-2 border border-dashed px-3 py-2 font-mono text-[10px] leading-relaxed"
+      style={{ borderColor: '#FBBF24', color: '#FBBF24', backgroundColor: 'rgba(251,191,36,0.06)' }}
+    >
+      <Lock size={12} strokeWidth={1.5} className="mt-0.5 shrink-0" />
+      <span>
+        //LISTADOS·SOLO·LECTURA — la edición persistente de listados aún no
+        está habilitada. Los listados visibles vienen del backend; el composer
+        de abajo está bloqueado mientras se diseña el flujo definitivo. Mientras
+        tanto, pedile a un admin del sitio que ajuste tus listados desde Studio
+        si lo necesitás.
+      </span>
+    </p>
+  )
+}
+
+// ── ProfileEditor — partner card identity + marketplace meta ──────────────
+//
+// Edits flow through a single PATCH /api/partners/[id] when the admin
+// clicks GUARDAR. Whitelist mirrors the API: image_url, partner_url,
+// marketplace_enabled / description / location / currency. Profile-level
+// fields (title, partner_kind, slug) stay admin-only and are surfaced
+// read-only here so partner team members understand what's locked.
+
+function ProfileEditor({
   partner,
   canManage,
-  onChange,
+  currentUserId,
+  onSaved,
 }: {
-  partner: ContentItem
+  partner: PartnerData
   canManage: boolean
-  onChange: (
-    field: 'marketplaceDescription' | 'marketplaceLocation' | 'marketplaceCurrency',
-    value: string,
-  ) => void
+  currentUserId: string
+  onSaved: (next: PartnerData) => void
 }) {
+  const [imageUrl, setImageUrl] = useState(partner.imageUrl)
+  const [partnerUrl, setPartnerUrl] = useState(partner.partnerUrl ?? '')
+  const [description, setDescription] = useState(partner.marketplaceDescription ?? '')
+  const [location, setLocation] = useState(partner.marketplaceLocation ?? '')
+  const [currency, setCurrency] = useState(partner.marketplaceCurrency ?? 'MXN')
+  const [marketplaceEnabled, setMarketplaceEnabled] = useState(partner.marketplaceEnabled)
+
+  const [saving, setSaving] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [savedFlash, setSavedFlash] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Reset local state when the partner prop changes (e.g. after refetch).
+  useEffect(() => {
+    setImageUrl(partner.imageUrl)
+    setPartnerUrl(partner.partnerUrl ?? '')
+    setDescription(partner.marketplaceDescription ?? '')
+    setLocation(partner.marketplaceLocation ?? '')
+    setCurrency(partner.marketplaceCurrency ?? 'MXN')
+    setMarketplaceEnabled(partner.marketplaceEnabled)
+  }, [partner])
+
+  const dirty =
+    imageUrl !== partner.imageUrl ||
+    partnerUrl !== (partner.partnerUrl ?? '') ||
+    description !== (partner.marketplaceDescription ?? '') ||
+    location !== (partner.marketplaceLocation ?? '') ||
+    currency !== (partner.marketplaceCurrency ?? 'MXN') ||
+    marketplaceEnabled !== partner.marketplaceEnabled
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageError(null)
+    setImageUploading(true)
+    try {
+      const res = await compressAndUploadImage(file, currentUserId, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1600,
+      })
+      if (res.ok) setImageUrl(res.url)
+      else setImageError(res.error)
+    } finally {
+      setImageUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const onSave = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(
+        `/api/partners/${encodeURIComponent(partner.id)}`,
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            image_url: imageUrl,
+            partner_url: partnerUrl,
+            marketplace_enabled: marketplaceEnabled,
+            marketplace_description: description,
+            marketplace_location: location,
+            marketplace_currency: currency,
+          }),
+        },
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'FAILED' }))
+        setError((body.error ?? 'FAILED').toString().toUpperCase())
+        return
+      }
+      const json = await res.json()
+      onSaved(mapPartnerRow(json.partner))
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 1500)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <section className="flex flex-col gap-3 border border-border bg-elevated/30 p-3">
-      <header className="font-mono text-[10px] tracking-widest text-muted">
-        //CARD · IDENTIDAD
+      <header className="flex items-center justify-between font-mono text-[10px] tracking-widest text-muted">
+        <span>//PERFIL · MARKETPLACE</span>
+        {!canManage && (
+          <span className="text-muted/60">// solo lectura</span>
+        )}
       </header>
 
+      {/* Read-only identity row — title + slug + partner_kind + admin-locked */}
+      <div className="flex items-center gap-2 border border-border/40 bg-black/20 p-2 font-mono text-[10px] text-muted">
+        <Lock size={10} strokeWidth={1.5} className="shrink-0" />
+        <span className="truncate text-secondary">{partner.title}</span>
+        <span className="text-muted/60">/{partner.slug}</span>
+        {partner.partnerKind && (
+          <span className="text-muted/60">· {partner.partnerKind.toUpperCase()}</span>
+        )}
+        <span className="ml-auto text-muted/60">
+          // título / slug / kind: admin del sitio
+        </span>
+      </div>
+
+      {/* Image */}
+      <label className="flex flex-col gap-1">
+        <span className="font-mono text-[9px] tracking-widest text-muted">
+          IMAGEN · LOGO / PORTADA
+        </span>
+        <div className="flex items-center gap-2">
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt=""
+              className="h-12 w-12 shrink-0 border border-border bg-elevated object-cover"
+            />
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPickFile}
+            disabled={!canManage || imageUploading || saving}
+            className="font-mono text-[10px] text-secondary"
+          />
+          {imageUploading && (
+            <span className="font-mono text-[9px] tracking-widest text-sys-green">
+              SUBIENDO…
+            </span>
+          )}
+        </div>
+        {imageError && (
+          <p className="mt-1 font-mono text-[9px] text-sys-red">// {imageError.toUpperCase()}</p>
+        )}
+      </label>
+
+      {/* External URL */}
+      <label className="flex flex-col gap-1">
+        <span className="font-mono text-[9px] tracking-widest text-muted">
+          PARTNER URL · sitio externo
+        </span>
+        <input
+          type="url"
+          disabled={!canManage}
+          value={partnerUrl}
+          onChange={(e) => setPartnerUrl(e.target.value)}
+          placeholder="https://naafi.bandcamp.com"
+          className="w-full border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none disabled:cursor-default disabled:opacity-60"
+        />
+      </label>
+
+      {/* Marketplace enabled toggle */}
+      <label className="flex items-center gap-2 font-mono text-[11px] text-secondary">
+        <input
+          type="checkbox"
+          disabled={!canManage}
+          checked={marketplaceEnabled}
+          onChange={(e) => setMarketplaceEnabled(e.target.checked)}
+          className="accent-cyan-400"
+        />
+        Habilitar MARKETPLACE para este partner
+      </label>
+
+      {/* Description */}
       <label className="flex flex-col gap-1">
         <span className="font-mono text-[9px] tracking-widest text-muted">
           DESCRIPCIÓN
@@ -452,8 +852,8 @@ function CardMetaEditor({
         <textarea
           rows={3}
           disabled={!canManage}
-          value={partner.marketplaceDescription ?? ''}
-          onChange={(e) => onChange('marketplaceDescription', e.target.value)}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           placeholder="Qué venden, qué política tienen, dónde se entrega…"
           className="w-full resize-none border border-border bg-base px-2 py-1.5 font-mono text-[11px] leading-relaxed text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none disabled:cursor-default disabled:opacity-60"
         />
@@ -467,8 +867,8 @@ function CardMetaEditor({
           <input
             type="text"
             disabled={!canManage}
-            value={partner.marketplaceLocation ?? ''}
-            onChange={(e) => onChange('marketplaceLocation', e.target.value)}
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
             placeholder="CDMX, MX"
             className="w-full border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none disabled:cursor-default disabled:opacity-60"
           />
@@ -480,16 +880,45 @@ function CardMetaEditor({
           <input
             type="text"
             disabled={!canManage}
-            value={partner.marketplaceCurrency ?? ''}
-            onChange={(e) => onChange('marketplaceCurrency', e.target.value)}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
             placeholder="MXN"
+            maxLength={4}
             className="w-full border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none disabled:cursor-default disabled:opacity-60"
           />
         </label>
       </div>
+
+      {error && (
+        <p className="font-mono text-[10px] text-sys-red">// {error}</p>
+      )}
+
+      {canManage && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!dirty || saving || imageUploading}
+            className="flex items-center gap-1.5 border border-sys-green px-3 py-1.5 font-mono text-[10px] tracking-widest text-sys-green transition-colors hover:bg-sys-green/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Save size={10} strokeWidth={1.5} />
+            {saving ? 'GUARDANDO…' : 'GUARDAR PERFIL'}
+          </button>
+          {savedFlash && (
+            <span className="font-mono text-[10px] tracking-widest text-sys-green">
+              ◉ GUARDADO
+            </span>
+          )}
+        </div>
+      )}
     </section>
   )
 }
+
+// CardMetaEditor (v1, sessionStorage-backed) was replaced by ProfileEditor
+// above — same fields plus image + URL, all routed through the real DB
+// PATCH /api/partners/[id]. The legacy component lived here from the
+// pre-Supabase visual MVP era; removed in commit 9.
 
 // ── Listings management (composer + preview + table) ──────────────────────
 //
