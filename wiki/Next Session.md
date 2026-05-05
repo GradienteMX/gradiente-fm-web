@@ -1,7 +1,7 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-05** (Partners arc closed end-to-end. Listings persistence shipped — migration 0010 added a real `marketplace_listings` table with FK + RLS; the dashboard's MiPartnerSection composer now does full CRUD against real DB endpoints. PartnerApprovalsSection migrated off sessionStorage too. The `partnerOverrides` write-side is now dead code; read-side hooks still serve ExplorerSidebar + MarketplaceOverlay (next cleanup target). See top entry in [[log]]. Production live on https://gradiente.org.)
+> Last updated: **2026-05-05** (Partners arc closed end-to-end. Listings persistence shipped — migration 0010 added a real `marketplace_listings` table with FK + RLS; MiPartnerSection composer does full CRUD against real DB endpoints. PartnerApprovalsSection migrated off sessionStorage. The `partnerOverrides` write-side is dead code; read-side hooks still serve ExplorerSidebar + MarketplaceOverlay. **Picked next slice: migrate those two callsites, then delete `lib/partnerOverrides.ts` entirely.** See A below. See top entry in [[log]]. Production live on https://gradiente.org.)
 
 ## How to start this session
 
