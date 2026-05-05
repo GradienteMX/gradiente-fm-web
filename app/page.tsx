@@ -29,12 +29,13 @@ export default async function HomePage() {
   const partners = allItems.filter((i) => i.type === 'partner')
   const marketplacePartners = partners.filter((p) => p.marketplaceEnabled)
 
-  // Scraped events not flagged `elevated` go to the EventosRail; everything
-  // else (editorial, mixes, noticias, manually-authored events, AND scraped
-  // events the editor elevated) competes in the main mosaic via HP. See
-  // wiki/70-Roadmap/Scraper Pipeline.md for the phase strategy this models.
+  // All eventos go in the EventosRail by default — scraped or editor-authored,
+  // no source distinction. Two editor levers pull an event into the main
+  // mosaic instead: `editorial: true` (also boosts spawn HP) is the everyday
+  // promotion flag; `elevated: true` is a placement-only override that
+  // doesn't touch HP. Either one keeps the event out of the rail.
   const isRailEvent = (i: ContentItem) =>
-    i.source === 'scraper:ra' && !i.elevated
+    i.type === 'evento' && !i.editorial && !i.elevated
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>

@@ -161,10 +161,11 @@ export interface ContentItem {
   // and the home-vs-rail filter for scraped events. See Scraper Pipeline.
   source?: ContentSource
   externalId?: string     // upstream id (e.g. RA event id) — dedup key on re-scrape
-  // Editor lever — when true, a scraped event leaves the EventosRail and enters
-  // the main mosaic where it competes with editorial via HP. Default false on
-  // scraper output; an editor flips it for individual events worth featuring.
-  // No-op for non-scraped items (they're never in the rail).
+  // Editor lever — when true, an evento leaves the EventosRail and enters the
+  // main mosaic where it competes with editorial via HP. Applies to all
+  // eventos regardless of source (scraped or editor-authored). Default false;
+  // an editor flips it for individual events worth featuring. No-op for
+  // non-evento items (they're never in the rail).
   elevated?: boolean
   // Event fields
   venue?: string
