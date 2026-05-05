@@ -2,7 +2,7 @@
 type: component
 status: current
 tags: [marketplace, overlay, partner, public]
-updated: 2026-04-30
+updated: 2026-05-05
 ---
 
 # MarketplaceOverlay
@@ -35,24 +35,19 @@ updated: 2026-04-30
 
 ## URL-driven open
 
-The overlay mounts when `?partner=<slug>` is set on `/marketplace`. Slug → seed-id lookup against `MOCK_ITEMS`, then live resolution via `useResolvedPartner(id)` from [[partnerOverrides]] so partner-team edits propagate without reload.
+The overlay mounts when `?partner=<slug>` is set on `/marketplace`. Receives the resolved partner as a `partner: ContentItem | null` prop from [[MarketplaceCatalog]], which looks up the slug in its own server-fetched `partners` array (already includes `marketplace_listings` joined since migration 0010). No client-side fetch.
 
 ESC closes (calls back into [[MarketplaceCatalog]] which strips the param). Click-outside backdrop also closes. Body scroll locked while open.
 
 ## Empty / disabled states
 
-- Partner not found (bad slug) → small error block with `//PARTNER·NO·ENCONTRADO`.
-- Partner exists but `marketplaceEnabled === false` → `//MARKETPLACE·INACTIVO` panel explaining the partner isn't approved yet.
+- Partner not found (bad slug, or disabled and not in catalog) → small error block with `//PARTNER·NO·ENCONTRADO`.
+- Partner exists but `marketplaceEnabled === false` → `//MARKETPLACE·INACTIVO` panel explaining the partner isn't approved yet. (Reachable only if the catalog is ever loosened to include disabled partners.)
 - Partner enabled but `marketplaceListings` empty → `//SIN·LISTINGS` block in the grid area.
-
-## Backend migration
-
-When [[Supabase Migration]] lands, `useResolvedPartner` becomes a Supabase select. Listings might move into a sibling table — same hook signature suffices. The catalog/overlay component stays.
 
 ## Links
 
 - [[Marketplace]] — design decision
-- [[MarketplaceCatalog]] — the parent that mounts this on `?partner=`
+- [[MarketplaceCatalog]] — the parent that mounts this on `?partner=` and supplies the `partner` prop
 - [[MarketplaceListingCard]] — the per-listing tile inside the grid
-- [[partnerOverrides]] — `useResolvedPartner` source
 - [[MiPartnerSection]] — author-side counterpart that produces the data

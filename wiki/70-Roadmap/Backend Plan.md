@@ -54,7 +54,6 @@ State that needs to leave the browser:
 | [`lib/scrapedEvents.ts`](../../lib/scrapedEvents.ts) | `items` rows where `source='scraper:ra'` | scraper UPSERTs by `external_id` |
 | [`lib/mockUsers.ts`](../../lib/mockUsers.ts) | `users` table joined to `auth.users` | role/isMod/isOG/partnerId/partnerAdmin live here |
 | [`lib/userOverrides.ts`](../../lib/userOverrides.ts) | direct UPDATEs on `users` from `/admin` | sessionStorage hack goes away |
-| [`lib/partnerOverrides.ts`](../../lib/partnerOverrides.ts) | direct UPDATEs on `items` (partners are items) | same |
 | [`lib/drafts.ts`](../../lib/drafts.ts) | `drafts` table keyed by `author_id` | survives across devices |
 | [`lib/comments.ts`](../../lib/comments.ts) + [`mockComments.ts`](../../lib/mockComments.ts) | `comments` + `comment_reactions` | tombstone via `deletion_*` cols |
 | [`lib/saves.ts`](../../lib/saves.ts) | `user_saves` | composite unique `(user_id, item_id)` |

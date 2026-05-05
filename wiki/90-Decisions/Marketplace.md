@@ -38,9 +38,11 @@ Three identity layers, four UI surfaces, one dedicated route.
 
 ### Storage model
 
-The marketplace fields live on the existing partner `ContentItem` (extended with `marketplaceEnabled`, `marketplaceDescription`, `marketplaceLocation`, `marketplaceCurrency`, `marketplaceListings`). Edits go through [[partnerOverrides]] — sessionStorage layer mirroring [[userOverrides]]. One marketplace card per partner; many listings inside it.
+The marketplace card fields live on the partner row in the `items` table (`marketplace_enabled`, `marketplace_description`, `marketplace_location`, `marketplace_currency`). Listings live in a sibling `marketplace_listings` table (added in migration 0010, FK CASCADE on partner_id) — chosen over a jsonb array on `items` so per-listing CRUD is race-safe, RLS gates per-row, and orphan-image cleanup has a real FK to traverse. One marketplace card per partner; many listing rows.
 
-User-side fields (`partnerId`, `partnerAdmin`) ride on [[userOverrides]] — admin edits in [[PermisosSection]] propagate via `useResolvedUser` so the dashboard chrome reflects changes without reload.
+Writes flow through `/api/partners/[id]` (card) and `/api/partners/[id]/listings/[lid]` (listings). The historical visual-MVP layer (`lib/partnerOverrides.ts`, sessionStorage) was removed 2026-05-05.
+
+User-side fields (`partnerId`, `partnerAdmin`) live on the `users` table; admin edits in /admin?tab=users PATCH `/api/admin/users/[id]`.
 
 ## Why these calls
 
@@ -134,7 +136,6 @@ A → B → C. Chunk A is foundational (the type extensions block both UI chunks
 
 ## Links
 
-- [[partnerOverrides]] — sessionStorage layer for partner edits
 - [[userOverrides]] — extended for `partnerId` / `partnerAdmin`
 - [[permissions]] — `canApprovePartner` / `canManagePartner` / `canManagePartnerTeam`
 - [[PartnerApprovalsSection]] · [[MiPartnerSection]] · [[MarketplaceOverlay]] · [[MarketplaceCatalog]] · [[MarketplaceCard]] · [[MarketplaceListingCard]] · [[MarketplaceRail]]

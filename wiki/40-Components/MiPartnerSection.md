@@ -2,7 +2,7 @@
 type: component
 status: current
 tags: [dashboard, marketplace, partner, team]
-updated: 2026-04-30
+updated: 2026-05-05
 ---
 
 # MiPartnerSection
@@ -36,12 +36,11 @@ updated: 2026-04-30
 
 ## Live propagation
 
-All writes flow through [[partnerOverrides]] (marketplace fields) or [[userOverrides]] (team membership). Both stores use synchronous-per-render hooks, so the UI updates without reload — the listing the partnerAdmin just kicked vanishes from the team list immediately, and the description the team just edited shows up in the [[MarketplaceOverlay]] without a refresh.
+Marketplace card edits → PATCH `/api/partners/[id]`. Listings → POST/PATCH/DELETE `/api/partners/[id]/listings/[lid]`. Team membership → POST/PATCH/DELETE `/api/partners/[id]/team`. After each mutation the section refetches partner + team via the GET endpoints and re-renders. No sessionStorage layer — the [[MarketplaceOverlay]] sees changes on the next server-component render of `/marketplace`.
 
 ## Links
 
 - [[Marketplace]] — design decision
-- [[partnerOverrides]] · [[userOverrides]] — the writers
 - [[permissions]] — `canManagePartner` / `canManagePartnerTeam`
 - [[PartnerApprovalsSection]] — site-admin counterpart that toggles `marketplaceEnabled`
 - [[MarketplaceOverlay]] — where the team's edits land for the public

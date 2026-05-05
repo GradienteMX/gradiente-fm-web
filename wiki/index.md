@@ -123,7 +123,6 @@
 - [[permissions]] — pure-function role/permission helpers (`hasRole`, `canEditComment`, `canModerateComment`, etc.)
 - [[userOverrides]] — sessionStorage patch layer over MOCK_USERS; backs the [[PermisosSection]] admin surface
 - [[polls]] — vote store + per-type choice resolver for poll attachments on `ContentItem`
-- [[partnerOverrides]] — sessionStorage patch layer over partner ContentItems; backs the marketplace approval + edit surfaces
 - [[foro]] — sessionStorage-backed foro store (threads + replies + bumpOverrides) + listener-pattern hooks
 - [[mockForo]] — 8 seed threads + 16 seed replies (depth-of-conversation hot-spots, multi-quote, role plurality)
 
