@@ -1,7 +1,7 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-05** (Partners + admin arc 6/9 commits done. /admin?tab=users now has a real-DB-backed two-pane editor with LECTOR/CURATOR/GUIDE/INSIDER/ADMIN/MOD filter chips + RECIENTES section + dedicated lector prefetch. Mock seed users dropped. PermisosSection retired. `dealer` partner_kind added. VibeSlider hidden on /admin + /dashboard. Three pieces left: marketplace propagation investigation, partner edit/delete in /admin, partner dashboard self-service. See top entry in [[log]]. Production live on https://gradiente.org.)
+> Last updated: **2026-05-05** (Partners + admin arc complete — 9 commits. /admin?tab=users has a real-DB-backed two-pane editor with LECTOR/CURATOR/GUIDE/INSIDER/ADMIN/MOD chips + RECIENTES section. /admin?tab=partners has clickable existing-partner chips → edit + hard-delete with type-to-confirm gate. /marketplace + home rail read partners from real DB. /dashboard "Mi partner" section is real-DB-backed for profile + team management; listings CRUD is read-only pending the listings persistence design. Mock seed users dropped. PermisosSection retired. `dealer` partner_kind added. VibeSlider hidden on /admin + /dashboard. See top entry in [[log]]. Production live on https://gradiente.org.)
 
 ## How to start this session
 
@@ -23,13 +23,23 @@
 
 ## What's unblocked right now
 
-### A. Partners arc — three commits remain (top of mind)
+### A. Listings persistence — natural follow-up to partners arc (~2-3 hr)
 
-Six already shipped (see top of [[log]]). Pending:
+Closed out the dashboard partner self-service work in commit 9 BUT left listings CRUD read-only behind a yellow banner. To unblock partner team marketplace activity:
 
-- **Marketplace propagation (#6, ~5min–60min)** — Iker reports new partners with `marketplace_enabled=true` aren't showing up at /marketplace. Could be a `router.refresh()` / Realtime miss (small fix) or a missing-feature/SQL-filter issue (bigger). Hasn't been investigated yet — read /marketplace data path first to scope.
-- **Partner edit + delete in /admin //PARTNERS (#8, ~30-60min)** — currently create-only. Add PATCH + DELETE `/api/admin/partners/[id]` mirroring the user-editor pattern. With the vibe range arc landed, edit also surfaces the two-thumb VibeField (most existing partners are wide-band — admin will want to widen them post-onboarding).
-- **Dashboard partner self-service (#5, #7, ~90min)** — partner team can't edit their own partner profile (description, image) from the dashboard. AND assigning a user to a partner via /admin doesn't propagate to the dashboard's partners section because MiPartnerSection still uses `setUserOverride` (sessionStorage, not DB) — same problem PermisosSection had. Needs the same DB-backed treatment we just applied in /admin.
+- Decide schema: jsonb-on-items (current shape) vs separate `marketplace_listings` table. Tradeoffs:
+  - jsonb keeps reads cheap (one items row gives you the whole catalog) but listing-level edits require rewriting the whole array on every change, ownership gating is awkward, and there's no FK from images-in-storage back to a single listing row.
+  - separate table makes listing-level CRUD natural + RLS-friendly + each listing can have its own image FK, at the cost of an extra join on the marketplace catalog read path.
+- Image cleanup: same JSONB traversal problem we deferred for orphan storage prune. If we go separate-table, this gets simpler.
+- Ownership gating on edits: any team member can edit, OR only partner-admin? Mirrors the canManagePartner / canManagePartnerTeam split.
+
+Until this lands, partner teams can VIEW listings but not edit them. The N.A.A.F.I. seed data is still there to demo what it looks like.
+
+### B. PartnerApprovalsSection — last sessionStorage holdout (~30min)
+
+`components/dashboard/explorer/sections/PartnerApprovalsSection.tsx` still uses `useResolvedPartners` (sessionStorage). Same root-cause problem as PermisosSection / MiPartnerSection. Should get the same DB-backed treatment — server-fetch partners, render approval toggle that PATCHes /api/admin/partners/[id] (admin-only). Probably small (~30min).
+
+After this lands, `lib/partnerOverrides.ts` write-side becomes dead code (only the read-side hooks remain — and even those probably collapse since no one will use them). Could delete the file in a follow-up cleanup commit.
 
 ### B. Chunk 5 — Scraper Phase 3 (~1-2 hr)
 
