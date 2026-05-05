@@ -187,7 +187,10 @@ export interface ContentItem {
   // Article fields
   author?: string
   readTime?: number       // minutes
-  editorial?: boolean     // editor seed flag — raises spawn HP (see Curation Model)
+  // Editor lever — raises spawn HP (see Curation Model). For eventos, also
+  // promotes the event into the main mosaic alongside its rail placement,
+  // so editorial-flagged events appear on both surfaces.
+  editorial?: boolean
   pinned?: boolean        // stays at top of home page hero
   bodyPreview?: string    // first paragraph / longer teaser shown in hero
   // Long-form `articulo` fields — structured body + footnotes

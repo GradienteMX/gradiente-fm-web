@@ -29,19 +29,25 @@ export default async function HomePage() {
   const partners = allItems.filter((i) => i.type === 'partner')
   const marketplacePartners = partners.filter((p) => p.marketplaceEnabled)
 
-  // All eventos go in the EventosRail by default — scraped or editor-authored,
-  // no source distinction. Two editor levers pull an event into the main
-  // mosaic instead: `editorial: true` (also boosts spawn HP) is the everyday
-  // promotion flag; `elevated: true` is a placement-only override that
-  // doesn't touch HP. Either one keeps the event out of the rail.
+  // Placement model — eventos can live in the rail, the mosaic, or both:
+  //   - Default (editorial=false, elevated=false): rail only. Listings.
+  //   - editorial=true: rail AND mosaic. The editor wants this event in front
+  //     of users on both surfaces; HP-spawn boost still applies.
+  //   - elevated=true: mosaic only. Removes from the rail (rare — for events
+  //     where marquee placement is wrong).
+  //
+  // Non-evento items always go to the mosaic; partners stay isolated.
   const isRailEvent = (i: ContentItem) =>
-    i.type === 'evento' && !i.editorial && !i.elevated
+    i.type === 'evento' && !i.elevated
+  const isMosaicEvent = (i: ContentItem) =>
+    i.type === 'evento' && (i.editorial === true || i.elevated === true)
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>
       i.type !== 'partner' &&
       (!hero || i.id !== hero.id) &&
-      !isRailEvent(i),
+      // Non-eventos pass through; eventos require editorial or elevated.
+      (i.type !== 'evento' || isMosaicEvent(i)),
   )
 
   return (
