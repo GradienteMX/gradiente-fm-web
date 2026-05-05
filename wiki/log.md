@@ -8,6 +8,31 @@
 
 ---
 
+## 2026-05-05 · INGEST · Listings persistence + PartnerApprovalsSection cleanup
+
+Tail end of the partners arc. Partners arc closed out at 9 commits the day before; this session added the two follow-ups flagged in Next Session: PartnerApprovalsSection migration + listings persistence.
+
+### Shipped
+1. **`eafdb7a feat(dashboard): PartnerApprovalsSection on real DB endpoints`** — last sessionStorage holdout. Was using `useResolvedPartners` + `setMarketplaceEnabled` from `lib/partnerOverrides` (MOCK_ITEMS overlay). Now fetches via new GET `/api/admin/partners` (admin-only; returns id/slug/title/partner_kind/image/marketplace_enabled/listings) + PATCHes `marketplace_enabled` via the existing `/api/admin/partners/[id]`. Refetches after each toggle. After this commit, `partnerOverrides` write-side functions are effectively dead — only imported from MiPartnerSection's listings code path which the next commit replaces.
+
+2. **`075f2c3 feat(marketplace): listings persistence — separate table + full CRUD endpoints`** — schema decision: separate `marketplace_listings` table over jsonb-on-items. Reasoning: per-listing CRUD on a jsonb array isn't race-safe (two team members editing rewrite each other), RLS can't gate per listing, and orphan-image cleanup gets simpler with a real listing→FK target.
+   - **Migration 0010** creates the table (text id, partner_id FK CASCADE, title/category/condition/status with CHECK constraints, price, description, tags text[], shipping_mode, images text[], embeds jsonb, published_at, updated_at). Indexes on (partner_id, published_at desc) for the catalog read path + status. RLS: anon SELECT, INSERT/UPDATE/DELETE gated to admin OR `users.partner_id = listing.partner_id`. Migration data: copied existing items.marketplace_listings jsonb arrays into rows (NAAFI's 6 listings; real partners had 0), then dropped the legacy column. updated_at auto-bump via existing `set_updated_at` trigger.
+   - **API**: POST `/api/partners/[id]/listings` (create), PATCH/DELETE `/api/partners/[id]/listings/[lid]`. Validation on category/condition/status/shipping_mode/price>=0. Partner-existence check on POST so a forged partner_id 404s before hitting FK.
+   - **Read path**: ITEMS_SELECT in `lib/data/items.ts` switched to embed `marketplace_listings(*)`. New `rowToMarketplaceListing` helper centralizes snake→camel mapping. /api/partners/[id] GET + /api/admin/partners GET both use the embedded select. useSavedComments + useSavedItems mappers drop the listings field entirely (their cards don't render listings — comment + commented inline).
+   - **MiPartnerSection composer**: drops the read-only banner from commit 9. Refactors per-keystroke `onPatch` (cheap on sessionStorage) into save-on-explicit-action: composer holds local draft state, GUARDAR BORRADOR + PUBLICAR ITEM both trigger the API write. onAdd/onDuplicate seed a local draft (no API call until save). onDelete fires DELETE + refetch. EditingId in the table also highlights `isNew` drafts so the row visibly maps to the composer.
+   - **scripts/seed.ts**: inserts seeded listings into the new table after items + polls. Mock data unchanged; only the seed-runner needed the new pass.
+
+### Verification
+- Types regenerated via `supabase gen types --project-id ...` byte-identical to the hand-edit. No drift.
+- tsc clean, lint clean (only pre-existing img/hooks warnings).
+- Migration applied cleanly; 6 NAAFI listings copied into new table, 0 lost. Items table no longer has the `marketplace_listings` column.
+
+### Memory + cleanup notes
+- `lib/partnerOverrides.ts` write-side (`setPartnerOverride` / `setMarketplaceEnabled` / `addMarketplaceListing` / `updateMarketplaceListing` / `removeMarketplaceListing` / `clearPartnerOverride` / `newListingId` / `listResolvedPartners` / `listMarketplaceEnabledPartners`) is now dead — no callers. The read-side hooks (`useResolvedPartner` / `useResolvedPartners`) still serve `ExplorerSidebar` (current-user partner display) + `MarketplaceOverlay` (partner lookup by URL slug). Could be collapsed in a separate cleanup pass but not urgent.
+- `MarketplaceOverlay` + `ExplorerSidebar` still read partners via `useResolvedPartner` — they'll show the cached MOCK_ITEMS partner data when the user has a fake partner_id, or stale data when DB partner is freshly created. Migrating those to real-DB hooks is the natural follow-up.
+
+---
+
 ## 2026-05-04/05 · INGEST · Partners + admin arc (9 commits, complete)
 
 Iker brought a list of 8 issues spanning admin / dashboard / partners / marketplace / users. Sized originally as "edit-in-place for partners ~30-60min" — actually a 2-session arc. Split into 9 focused commits, ordered to ship low-risk data + UI fixes first and save the unknown-scope marketplace investigation + partner self-service for the back end.
