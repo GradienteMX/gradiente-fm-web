@@ -73,6 +73,15 @@ function rowToPollAttachment(p: PollRow): PollAttachment {
 //
 // Polls are NOT mapped here — they live in their own table. The route
 // handler upserts the polls row separately after the item lands.
+
+// Form fields for optional timestamps come through as `''` when blank
+// (datetime-local inputs return empty strings, not undefined). `??` only
+// catches null/undefined, so the empty string used to flow to Postgres and
+// fail with `invalid input syntax for type timestamp with time zone: ""`.
+function tsOrNull(v: string | undefined | null): string | null {
+  return v ? v : null
+}
+
 type ItemInsert = Database['public']['Tables']['items']['Insert']
 export function contentItemToRow(item: ContentItem, opts?: { published?: boolean }): ItemInsert {
   return {
@@ -88,9 +97,9 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     tags: item.tags ?? [],
     image_url: item.imageUrl ?? null,
     published_at: item.publishedAt,
-    date: item.date ?? null,
-    end_date: item.endDate ?? null,
-    expires_at: item.expiresAt ?? null,
+    date: tsOrNull(item.date),
+    end_date: tsOrNull(item.endDate),
+    expires_at: tsOrNull(item.expiresAt),
     source: item.source ?? null,
     external_id: item.externalId ?? null,
     elevated: item.elevated ?? false,
@@ -119,7 +128,7 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     hero_caption: item.heroCaption ?? null,
     partner_kind: item.partnerKind ?? null,
     partner_url: item.partnerUrl ?? null,
-    partner_last_updated: item.partnerLastUpdated ?? null,
+    partner_last_updated: tsOrNull(item.partnerLastUpdated),
     marketplace_enabled: item.marketplaceEnabled ?? false,
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
@@ -128,7 +137,7 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     // the publish flow inserts the item row first; listings are managed via
     // /api/partners/[id]/listings endpoints once the partner exists.
     hp: item.hp ?? null,
-    hp_last_updated_at: item.hpLastUpdatedAt ?? null,
+    hp_last_updated_at: tsOrNull(item.hpLastUpdatedAt),
     published: opts?.published ?? true,
     seed: false,
   }
