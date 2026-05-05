@@ -21,13 +21,12 @@ import {
   ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ExplorerSection } from './types'
 import { useSavedItems } from '@/lib/hooks/useSavedItems'
 import { useSavedComments } from '@/lib/hooks/useSavedComments'
 import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles } from '@/lib/permissions'
-import { useResolvedPartner } from '@/lib/partnerOverrides'
 
 type LucideIconType = LucideIcon
 
@@ -60,7 +59,7 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
   const { currentUser } = useAuth()
   const isAdmin = canAssignRoles(currentUser)
   const partnerId = currentUser?.partnerId ?? null
-  const myPartner = useResolvedPartner(partnerId)
+  const myPartner = useMyPartnerTitle(partnerId)
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({
     guardados: true,
   })
@@ -108,7 +107,7 @@ export function ExplorerSidebar({ active, onPick, draftCount, publishedCount }: 
         section: 'mi-partner',
         // Use the partner's title so the sidebar reads as "this is your team"
         // rather than a generic label. Truncated if long.
-        label: myPartner.title,
+        label: myPartner,
         Icon: ShoppingBag,
       })
     }
@@ -249,6 +248,35 @@ function SidebarRow({
       </button>
     </li>
   )
+}
+
+// One-shot fetch of the current user's partner title. The endpoint is
+// gated on canManagePartner, which the user passes by virtue of having
+// `partner_id` set. Edits to the partner happen in MiPartnerSection on
+// the same page; navigating back to the sidebar refresh path remounts
+// this and re-fetches, so no listener bus is needed.
+function useMyPartnerTitle(partnerId: string | null): string | null {
+  const [title, setTitle] = useState<string | null>(null)
+  useEffect(() => {
+    if (!partnerId) {
+      setTitle(null)
+      return
+    }
+    let cancelled = false
+    fetch(`/api/partners/${partnerId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled) return
+        setTitle(json?.partner?.title ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setTitle(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [partnerId])
+  return title
 }
 
 function WindowDots() {

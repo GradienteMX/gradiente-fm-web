@@ -15,11 +15,7 @@ import { Search, ShoppingBag, ToggleLeft, ToggleRight } from 'lucide-react'
 // current state (chip) and a single toggle. Toggling fires PATCH
 // /api/admin/partners/[id] and refetches so the row reflects DB state.
 //
-// Replaced the prior sessionStorage-backed implementation (useResolvedPartners
-// + setMarketplaceEnabled from lib/partnerOverrides) — that layer simulated
-// edits over MOCK_ITEMS and never reached the live DB. Same pattern as the
-// PermisosSection / MiPartnerSection real-DB conversions earlier in the
-// partners arc.
+// Same DB-backed pattern as PermisosSection / MiPartnerSection.
 
 interface PartnerRow {
   id: string

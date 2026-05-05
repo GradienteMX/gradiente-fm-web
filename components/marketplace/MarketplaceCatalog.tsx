@@ -87,6 +87,7 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
       {partnerSlug && (
         <MarketplaceOverlay
           partnerSlug={partnerSlug}
+          partner={sorted.find((p) => p.slug === partnerSlug) ?? null}
           onClose={onCloseOverlay}
         />
       )}

@@ -1,7 +1,7 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-05** (Partners arc closed end-to-end. Listings persistence shipped — migration 0010 added a real `marketplace_listings` table with FK + RLS; MiPartnerSection composer does full CRUD against real DB endpoints. PartnerApprovalsSection migrated off sessionStorage. The `partnerOverrides` write-side is dead code; read-side hooks still serve ExplorerSidebar + MarketplaceOverlay. **Picked next slice: migrate those two callsites, then delete `lib/partnerOverrides.ts` entirely.** See A below. See top entry in [[log]]. Production live on https://gradiente.org.)
+> Last updated: **2026-05-05** (Partners arc fully closed. `lib/partnerOverrides.ts` deleted — MarketplaceOverlay now receives the partner as a prop lifted from MarketplaceCatalog (no fetch, the catalog already had it from `getItems()`); ExplorerSidebar uses an inline `useMyPartnerTitle` hook that fetches `/api/partners/[id]` once. See top entry in [[log]]. Production live on https://gradiente.org.)
 
 ## How to start this session
 
@@ -23,19 +23,13 @@
 
 ## What's unblocked right now
 
-### A. Migrate `useResolvedPartner` callsites (~30-45min)
-
-Two consumers still read partner data via the sessionStorage-overlay hooks:
-- `ExplorerSidebar` uses `useResolvedPartner(partnerId)` to display the current user's partner card in the sidebar. With a real-DB partner_id this resolves to nothing useful (MOCK_ITEMS doesn't have the new partner row).
-- `MarketplaceOverlay` uses `useResolvedPartner(seed?.id)` to look up a partner by URL slug. Same issue — newly-created partners aren't in MOCK_ITEMS, so the overlay shows stale data.
-
-Both should fetch via `/api/partners/[id]` (or a thin client-side cache like `lib/itemsCache`). After this, `lib/partnerOverrides.ts` can be deleted entirely.
-
-### B. Image cleanup for deleted listings (~30min)
+### A. Image cleanup for deleted listings (~30min)
 
 When a listing is deleted, its image rows in `storage.objects` (uploads bucket) become orphans. The orphan-storage-prune we deferred earlier in the chunk-4 ops layer can now traverse the listings table cleanly (FK target was the design blocker), but it's still not built. Wire it in if we hit storage growth, otherwise leave for later.
 
 ### B. Chunk 5 — Scraper Phase 3 (~1-2 hr)
+
+(Section letters above shifted up by one — the prior `A` slice shipped this session.)
 
 GH Actions cron MWF (`0 12 * * 1,3,5` UTC = 06:00 CDMX). Idempotent `upsert_scraped_events()` RPC with field-level allowlist (scraper can update RA-source-of-truth fields, but **cannot touch `vibe_min`/`vibe_max`, `editorial`, `pinned`, `elevated`, `hp`** — editor-owned columns are off-limits). No notification surface needed — success is self-evident from new events in `/admin` review queue + agenda; check Actions tab if expected events don't show. Admin review queue surface in `/admin` for newly-ingested events that need human elevation.
 

@@ -901,10 +901,10 @@ function ProfileEditor({
 //   • BOTTOM — ListingsTable: sortable / paginated (5/page) with edit /
 //              duplicate / delete-red actions
 //
-// All edits flow through partnerOverrides inline writes — there's no draft
-// flag yet, so GUARDAR BORRADOR / PUBLICAR ITEM both close the composer with
-// a flash. A real draft pipeline lives in the v3 follow-up if/when partners
-// need it.
+// All edits flow through inline writes against /api/partners/[id]/listings —
+// there's no draft flag yet, so GUARDAR BORRADOR / PUBLICAR ITEM both close
+// the composer with a flash. A real draft pipeline lives in the v3 follow-up
+// if/when partners need it.
 
 const TITLE_MAX = 80
 const DESC_MAX = 1000

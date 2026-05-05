@@ -4,8 +4,6 @@ import { useEffect, useMemo } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { MapPin, Share2, X } from 'lucide-react'
 import type { ContentItem, MarketplaceListing } from '@/lib/types'
-import { MOCK_ITEMS } from '@/lib/mockData'
-import { useResolvedPartner } from '@/lib/partnerOverrides'
 import { MarketplaceListingCard } from './MarketplaceListingCard'
 import { MarketplaceListingDetail } from './MarketplaceListingDetail'
 
@@ -31,14 +29,11 @@ import { MarketplaceListingDetail } from './MarketplaceListingDetail'
 
 interface Props {
   partnerSlug: string
+  partner: ContentItem | null
   onClose: () => void
 }
 
-export function MarketplaceOverlay({ partnerSlug, onClose }: Props) {
-  // We resolve through the override layer so the partner-team's edits
-  // (description / location / currency / listings) reflect live without a
-  // page reload — same idiom as comments / foro tombstones.
-  const partner = useResolvedPartnerBySlug(partnerSlug)
+export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
   const router = useRouter()
   const search = useSearchParams()
   // usePathname returns the URL without basePath; router.replace re-applies
@@ -48,8 +43,6 @@ export function MarketplaceOverlay({ partnerSlug, onClose }: Props) {
   const pathname = usePathname()
   const listingId = search?.get('listing') ?? null
 
-  // The active listing — sub-overlay reads from this. Resolved off the
-  // partner's listings so partnerOverrides edits propagate live.
   const activeListing = useMemo<
     { listing: MarketplaceListing; index: number } | null
   >(() => {
@@ -363,18 +356,6 @@ function Body({
       </section>
     </div>
   )
-}
-
-// ── Slug-based partner resolver ────────────────────────────────────────────
-//
-// `useResolvedPartner` from [[partnerOverrides]] takes an id; the URL drives
-// a slug. Resolve the slug → seed-id from the immutable MOCK_ITEMS (slug
-// can't be overridden), then hand the id to the override-aware hook so the
-// overlay re-renders when partner-team edits land.
-
-function useResolvedPartnerBySlug(slug: string): ContentItem | undefined {
-  const seed = MOCK_ITEMS.find((i) => i.type === 'partner' && i.slug === slug)
-  return useResolvedPartner(seed?.id ?? null)
 }
 
 // ── Stat row helpers ───────────────────────────────────────────────────────

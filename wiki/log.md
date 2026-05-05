@@ -8,6 +8,28 @@
 
 ---
 
+## 2026-05-05 · INGEST · partnerOverrides cleanup — file deleted
+
+Closing slice on the partners arc. The two remaining `useResolvedPartner` callsites were migrated off the sessionStorage overlay; `lib/partnerOverrides.ts` deleted entirely.
+
+### Shipped
+1. **MarketplaceOverlay** — dropped its slug→id resolver (`useResolvedPartnerBySlug` + the `MOCK_ITEMS.find` lookup) and the `useResolvedPartner` hook. Now accepts `partner: ContentItem | null` as a prop. The catalog already had the resolved partner in its server-fetched `partners` array (with `marketplace_listings(*)` joined since migration 0010), so the lookup just lifts up to `MarketplaceCatalog`: `sorted.find((p) => p.slug === partnerSlug) ?? null`. No new fetches, no new infrastructure.
+2. **ExplorerSidebar** — replaced `useResolvedPartner(partnerId)` with a small inline `useMyPartnerTitle` hook that does a one-shot fetch against the existing `/api/partners/[id]` GET (gated on canManagePartner, which the team-member user passes). Returns `string | null`. The sidebar only needed `myPartner.title` and a truthy check, so no need for a partner-shape return.
+3. **`lib/partnerOverrides.ts` deleted.** No remaining importers (verified by grep). Stale comments referencing it cleaned up in `MiPartnerSection.tsx` and `PartnerApprovalsSection.tsx`.
+
+### Verification
+- Live verified `/marketplace` overlay against melodykrafter (real DB partner): URL `?partner=melodykrafter` mounts overlay, heading reads "MELODYKRAFTER", description / stats panel / location / currency / //SIN·LISTINGS empty state all render from the lifted-down prop.
+- Dashboard returns 200 + ExplorerSidebar compiles cleanly. Live verification of the //Mi partner row label deferred to next login (auth gate).
+
+### Edge case noted
+Deep-link `/marketplace?partner=<slug>` for a *disabled* partner now shows the "PARTNER·NO·ENCONTRADO" panel instead of the prior "MARKETPLACE·INACTIVO" panel. No UI surface produces such a link (catalog only renders enabled partners), so accepted as a regression.
+
+### Stale infra still in place
+- `lib/userOverrides.ts` — read-side `useResolvedUser` is still used across foro / comments / dashboard surfaces; the write-side `setUserOverride` still has 1 caller flagged in older comments. Separate cleanup, not in this slice.
+- PostgREST schema cache for `marketplace_listings(*)` join was intermittently failing at server startup with PGRST200 (FK not found), then recovering. Visible in dev logs but doesn't block traffic — likely needs a `NOTIFY pgrst, 'reload schema'` if it persists in prod.
+
+---
+
 ## 2026-05-05 · INGEST · Listings persistence + PartnerApprovalsSection cleanup
 
 Tail end of the partners arc. Partners arc closed out at 9 commits the day before; this session added the two follow-ups flagged in Next Session: PartnerApprovalsSection migration + listings persistence.
