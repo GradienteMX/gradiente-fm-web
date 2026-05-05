@@ -73,7 +73,17 @@ export function PublishConfirmOverlay() {
     // Await the publish before refreshing server components so the
     // re-fetched home/type-page lists actually include the new row.
     const { ok } = await publishItem(payload)
-    if (ok) router.refresh()
+    if (ok) {
+      // Wipe the per-type composer's autosaved sessionStorage so the next
+      // navigation to "new <type>" starts with an empty form. Without this,
+      // useDraftWorkbench's hydration would re-populate the composer with
+      // the just-published item's data. Key convention is shared across
+      // every dashboard form (see gradiente:dashboard:<type>-draft).
+      try {
+        sessionStorage.removeItem(`gradiente:dashboard:${payload.type}-draft`)
+      } catch {}
+      router.refresh()
+    }
   }
 
   return (
