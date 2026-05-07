@@ -27,27 +27,25 @@ const FRAG = `
 
   void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-    float aspect = u_resolution.x / u_resolution.y;
 
-    // Aspect-corrected centred coords for the tube SDF
-    vec2 p = uv * 2.0 - 1.0;
-    p.x *= aspect;
+    // Horizontal scanlines: 1 dark row per 4-physical-px period (25% duty
+    // cycle). Wider period (2026-05-07) so retina DPR=2 doesn't smear them
+    // into a flat tint. Thinner duty (2026-05-07b) so text reads through
+    // them — at 50% the scanlines obscured ascender strokes on body type.
+    float scanline = step(3.0, mod(gl_FragCoord.y, 4.0)) * u_scanlineIntensity;
 
-    // Horizontal scanlines every 2 physical px
-    float scanline = step(1.0, mod(gl_FragCoord.y, 2.0)) * u_scanlineIntensity;
+    // Rounded-rectangle tube simulation removed 2026-05-07 — the curvature
+    // read as a distracting border ring rather than a CRT feel. The
+    // u_vignetteStrength uniform stays plumbed (callers still pass it) so
+    // we can revisit a softer vignette later, but it's now a no-op. The
+    // visible CRT chrome is just scanlines + grain + flicker + rolling bar.
+    float tube = 0.0;
 
-    // Rounded-rectangle tube mask — fakes CRT curvature by darkening
-    // everything outside a bulged-corner rectangle. Radius controls how
-    // "bubble" the corners look.
-    vec2 halfSize = vec2(aspect - 0.08, 0.92);
-    float cornerRadius = 0.35;
-    vec2 d = abs(p) - halfSize + cornerRadius;
-    float sdf = length(max(d, vec2(0.0))) + min(max(d.x, d.y), 0.0) - cornerRadius;
-    // Inside the tube: lit. Past the edge: darkened through a feather band.
-    float tube = smoothstep(-0.06, 0.22, sdf) * u_vignetteStrength;
-
-    // Temporal grain — quantised so it reads as noise, not static
-    float gTick = u_reducedMotion > 0.5 ? 0.0 : floor(u_time * 24.0) / 24.0;
+    // Temporal grain — quantised so it reads as noise, not static. Tick
+    // rate halved 2026-05-07 (was 24 → 12) so the per-frame "vibration"
+    // pulse is calmer; combined with the lower noiseIntensity default
+    // the grain now reads as ambient texture rather than busy static.
+    float gTick = u_reducedMotion > 0.5 ? 0.0 : floor(u_time * 12.0) / 12.0;
     float grain = (hash(gl_FragCoord.xy + gTick) - 0.5) * u_noiseIntensity;
 
     // Mains flicker — two sine layers to avoid a pure hum rhythm
@@ -101,10 +99,16 @@ export interface CRTShaderProps {
 }
 
 export function CRTShader({
+  // Scanline intensity tuned 2026-05-07 — without the tube vignette,
+  // scanlines are the main "CRT" cue. Settled on 0.55 (was 0.75) so the
+  // lines read clearly without obscuring text ascenders. Grain + mains
+  // flicker dropped (0.10 → 0.04 and 0.04 → 0.015) because at the
+  // previous values the texture "vibrated" enough to read as visual
+  // noise rather than as ambient CRT chrome.
   scanlineIntensity = 0.55,
   vignetteStrength = 1.0,
-  noiseIntensity = 0.10,
-  flickerIntensity = 0.04,
+  noiseIntensity = 0.04,
+  flickerIntensity = 0.015,
   rollingBarIntensity = 0.10,
 }: CRTShaderProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
