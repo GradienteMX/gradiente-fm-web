@@ -162,6 +162,8 @@ Verified: strip total = 169px through full → narrow → narrow further → res
 6 WARM     7 HOT    8 FUEGO   9 BRASA  10 VOLCÁN
 ```
 
+Canonical source: `VIBE_SLOT_NAMES` exported from [utils.ts](../../lib/utils.ts). The slider, [[VibeFader]], composer [[Dashboard Forms|VibeField]], and overlay vibe chips (via `vibeRangeLabel`) all read from this single array, so adjacent slots never share a label.
+
 ## Label overlap handling
 
 When both handles are close (< 14% apart), only the min-handle label shows. Prevents text collision.

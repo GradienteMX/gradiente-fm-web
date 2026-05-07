@@ -36,6 +36,10 @@ body {
   font-family: var(--font-space-grotesk);
   background-color: #000000;
   min-height: 100vh;
+  /* Safety net — prevents any rogue child from producing a horizontal
+     scrollbar at intermediate viewport widths. The header and home layout
+     are responsive but this guarantees the page never scrolls sideways. */
+  overflow-x: hidden;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────── */
@@ -399,36 +403,3 @@ body {
   animation: fresh-chip-flicker 2.8s steps(20, end) infinite;
 }
 
-/* ── VibeField two-thumb slider ──────────────────────────────────────── */
-/* Two range inputs are stacked over the same gradient track so each thumb
-   stays grabbable. The input element itself is transparent and ignores
-   pointer events; only the thumb pseudo-element catches input. */
-.vibe-range-thumb {
-  pointer-events: none;
-}
-.vibe-range-thumb::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  pointer-events: auto;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid currentColor;
-  cursor: grab;
-}
-.vibe-range-thumb::-moz-range-thumb {
-  pointer-events: auto;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid currentColor;
-  cursor: grab;
-}
-.vibe-range-thumb::-webkit-slider-runnable-track {
-  background: transparent;
-}
-.vibe-range-thumb::-moz-range-track {
-  background: transparent;
-}

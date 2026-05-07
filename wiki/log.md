@@ -8,6 +8,107 @@
 
 ---
 
+## 2026-05-07 · INGEST · header trim — MAGI removed, tighter nav, no horizontal overflow at MacBook widths
+
+Beta-feedback fix: Iker reported that on a MacBook the page horizontally overflowed — DASHBOARD button vanished off the right edge, // SECCIÓN rail got cropped on the left, two-finger trackpad scrolling was the only way to reach the right side. Root cause: top nav row (logo + 9 links + 3 MAGI indicators + clock + DASHBOARD + SALIR) had ~1750px of intrinsic width, all `hidden md:flex`, with no responsive collapse below 2xl (1536px).
+
+### MAGI indicators removed entirely
+The CASPAR / BALTHASAR / MELCHIOR cluster in [Navigation.tsx](../components/Navigation.tsx) (the three EVA-themed status pills with green pulses) is gone. Pure NGE chrome, no function — the cheapest ~290px of header space recovered. Iker's call was "remove entirely" rather than just hide responsively, since the indicators were not load-bearing for the brand identity now that the rest of the EVA chrome (logo box, orange glows, scanline ticker) carries the aesthetic.
+
+### Clock pushed to 2xl+ only
+The `T+ 06:24:01 :00500` countdown timer in [Navigation.tsx](../components/Navigation.tsx) is wrapped in `hidden 2xl:flex` — visible only at 1536px+ where the layout has room. Below 2xl it disappears. Decorative; no information loss.
+
+### Nav-link padding permanently tightened
+`px-4` → `px-2.5` on the 9 nav links. Recovers ~135px across all 9. Tried `2xl:px-4` to keep the spacious look at desktop, but at 1600px (just above 2xl=1536), reintroducing the bigger padding clipped SALIR off the right by ~40px under the new `overflow-x: hidden` (silent clip, worst-case UX). Permanent tighter padding is the cleaner choice — internal whitespace, invisible difference at desktop.
+
+### `overflow-x: hidden` on body
+Safety net in [globals.css](../app/globals.css). Prevents any future rogue child component from producing a horizontal scrollbar. Has the side effect of silently clipping anything past the viewport edge — so any genuine overflow needs to be fixed at the source, not hidden by this.
+
+### Verification
+Live verified across viewport widths:
+
+| Width | Model | DASHBOARD | SALIR | Page width |
+|---|---|---|---|---|
+| 1600 | Above 2xl | ✓ | ✓ | 1596 |
+| 1512 | MBP 14" | ✓ | ✓ | 1508 |
+| 1440 | MBA 13" M-series | ✓ | ✓ | 1436 |
+| 1280 | Older Intel MBP 13" | ✗ clipped | ✗ clipped | 1389 |
+
+Path 1 (this slice) covers all current Apple Silicon MacBooks. The 1280px floor still needs the path-2 redesign (hamburger nav drawer + horizontal SECCIÓN strip below VIBE) to fully resolve. Deferred per Iker — sufficient coverage of the common-case fleet.
+
+### CategoryRail scrollbar hidden
+At intermediate viewport widths the //SECCIÓN sidebar showed a vertical scrollbar when SECCIÓN + NowPlayingHud combined exceeded the available height (ViewSlider chips strip eats vertical space dynamically). Iker accepted that the overflow-scroll behavior must stay (don't redesign the rail), but asked to hide the scrollbar.
+
+Applied the same cross-browser hide pattern already in use on [[VibeSlider]]'s chip strip — `[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`. Container stays scrollable via wheel/trackpad, just no visible bar. Verified: `scrollHeight 734 > clientHeight 531` (content overflows) but `visibleScrollbarPx: 0`.
+
+### Stale wiki references (cleanup deferred)
+[[NGE Aesthetic]], [[Voice and Copy]], [[Typography]], [[AuthBadge]], [[Navigation]] all reference the MAGI cluster spatially or as design vocabulary. Not blocking — those notes describe historic state and the AuthBadge spatial reference is moot now (it just sits next to the trimmed status block). Sweep on a future doc-pass.
+
+---
+
+## 2026-05-07 · INGEST · publish gate on body + EXCERPT char cap + punched-up empty state
+
+Beta-feedback fix: writers were filling only the EXCERPT in 02 LEAD and missing the rich block editor in 05 CUERPO entirely, then publishing articles with empty bodies. Iker's diagnosis was right — "we have proper formatting elements but it's not clear to them" — but a publish gate alone is symptom-treating. Shipped three coordinated changes so the layout itself teaches where the body lives.
+
+### Per-type CUERPO gate
+Added a body-presence check to the existing `errors[]` validator in five long-form composers:
+- **ArticuloForm** + **ListicleForm** — `if (blocks.length === 0) errors.push('CUERPO')`. Block editor at section 05.
+- **EditorialForm** + **ReviewForm** + **OpinionForm** — `if (!draft.bodyPreview?.trim()) errors.push('CUERPO')`. Plain textarea at section 02 COPY.
+
+Untouched: `noticia`, `evento`, `mix`, `partner` — those legitimately ship without a body field.
+
+The footer's `⚠ FALTA: …` chip already concatenates errors with `·` so all three (TÍTULO · SLUG · CUERPO) surface together. Both `▣ GUARDAR DRAFT` and `▶ PUBLICAR` disable while errors are present.
+
+### EXCERPT char cap (TextArea component)
+Extended `TextArea` in [shared/Fields.tsx](../components/dashboard/forms/shared/Fields.tsx) with optional `maxLength` prop:
+- Hard-caps input at the limit via the native `maxLength` attribute (browser stops accepting keystrokes past it).
+- Renders a live `123/280` counter inline with the field label, tabular-nums for stable width.
+- Counter goes orange (`#F97316`) at ≥90% of the limit.
+
+All five long-form composers now pass `maxLength={280}` on EXCERPT plus a relabel (`EXCERPT · una o dos oraciones · el cuerpo va en 05` for blocks-based forms; `· el cuerpo va abajo` for the COPY-pair forms). The physical cap is the strongest possible hint without long copy.
+
+### Punched-up CUERPO VACÍO empty state
+Articulo + Listicle had subtle muted-grey "CUERPO VACÍO" panels that vanished into the page chrome. Repainted both:
+- Border: `2px dashed` orange (was 1px dashed border-grey).
+- Background: `rgba(249,115,22,0.06)` orange tint.
+- Heading: `⚠ AÑADE EL CUERPO DEL ARTÍCULO AQUÍ` / `⚠ AÑADE EL CUERPO DE LA LISTA AQUÍ` — bold orange, `text-[12px]`, replaces the muted "CUERPO VACÍO" sys-label.
+- Body copy explicitly contrasts with EXCERPT: "Tu texto principal va en bloques de PÁRRAFO, H2/H3, citas… — no en el EXCERPT de arriba."
+
+The visual weight of the empty panel now exceeds that of the EXCERPT field, so a writer scrolling down lands on it instead of bouncing back up.
+
+### Editorial/Review/Opinion BODY field also marked required
+Added `required` prop to the BODY TextArea in all three so it gets the red-tinted border + `*` asterisk affordance even before the writer hits PUBLICAR.
+
+### Verification
+- Live verified `/dashboard?type=articulo` (logged in @iker, fresh draft): footer chip reads `⚠ FALTA: TÍTULO · SLUG · CUERPO`, empty-state CTA reads `⚠ AÑADE EL CUERPO DEL ARTÍCULO AQUÍ` in orange, EXCERPT counter shows `0/280`.
+- Live verified `/dashboard?type=editorial`: footer chip identical, BODY field carries the required `*`, EXCERPT counter `0/280`.
+- Skipped admin-side retroactive surface per Iker — existing already-published items with empty bodies stay untouched; the gate only blocks new publishes / re-publishes from the composer.
+
+---
+
+## 2026-05-07 · INGEST · composer VibeField rewrite + canonical slot names
+
+Two interlocking fixes touching the dashboard composer's vibe range picker.
+
+### Composer single-point auto-switch
+- `VibeField` in [Fields.tsx](../components/dashboard/forms/shared/Fields.tsx) was the third surface still suffering the "can't slide left from a collapsed range" bug — slider header (fixed prior) and [[VibeFader]] (fixed 2026-05-05) had already gotten the auto-switch treatment, but the composer was still using two stacked native `<input type="range">` elements.
+- Native ranges can't mid-drag-swap which input owns the pointer (the browser owns the drag once mousedown fires), so the small-surgical fix was off the table. Replaced both inputs with a custom pointer-driven track + two thumb buttons mirroring the [[VibeFader]] pattern: window pointermove listener, `draggingRef` mutation for the auto-switch, single-point detection via `curMin === curMax`.
+- Added explicit keyboard nav (Arrow ±1, Home/End for 0/10) since the native `<input type="range">` keyboard support is gone with the inputs.
+- Track click drags the nearer thumb from the click point (mirrors the header VibeSlider).
+- Verified live in `/admin?tab=partners`: starting at single-point=5, grabbing the max thumb and dragging left moves min from 5 → 2 (max stays at 5). Symmetric: starting at single-point=7, grabbing min and dragging right moves max from 7 → 9.
+- Dropped `.vibe-range-thumb` CSS block in [globals.css](../app/globals.css) — no remaining consumers.
+
+### Canonical 11-name slot set
+- Iker flagged that the composer's vibe label said GLACIAL twice for slots 0 and 1, vs the slider's distinct GLACIAL/POLAR. Root cause: two parallel naming schemes. `vibeToLabel` in [utils.ts](../lib/utils.ts) returned only 8 names spanning ranges (0-1 → GLACIAL, 8-9 → FUEGO), while the header [[VibeSlider]] kept its own 11-name `Record<number, string>` inline. Wiki documented the split as deliberate ("different granularities for different UIs"), but in practice the composer reading the 8-name set looked broken next to the slider.
+- Unified on the slider's 11-name set as the single source of truth. `VIBE_SLOT_NAMES` now exported from [utils.ts](../lib/utils.ts); `vibeToLabel(v)` is `VIBE_SLOT_NAMES[round(v)]`. [VibeSlider.tsx](../components/VibeSlider.tsx) drops its local copy and imports from utils.
+- Side effect: every overlay's vibe chip now reads from the 11-name set too via `vibeRangeLabel`. E.g. an item authored at 4-7 used to show `4-7 · COOL → HOT`; now shows `4-7 · FRESH → HOT`. Cosmetic ripple, intentional consistency.
+- Verified live: composer at single-point=5 reads `5 · GROOVE` (was `5 · NEUTRAL`); range 7-9 reads `7 HOT → 9 BRASA` (was `7 HOT → 9 FUEGO`).
+
+### Wiki updates
+- [[Vibe Spectrum]] · [[utils]] notes that documented the 8-vs-11 split as deliberate now describe the single canonical source.
+
+---
+
 ## 2026-05-07 · INGEST · publish-flow restructure + dashboard ConfirmOverlay + content-rendering polish
 
 Beta-tester feedback session. Six interlocking slices, mostly UX-and-rendering polish driven by collaborator reports. All in the working tree, going up as one commit.

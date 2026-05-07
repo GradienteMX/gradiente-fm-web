@@ -132,6 +132,10 @@ export function ArticuloForm() {
   const errors: string[] = []
   if (!draft.title) errors.push('TÍTULO')
   if (!draft.slug) errors.push('SLUG')
+  // Body required — writers were filling only the EXCERPT in 02 LEAD and
+  // missing the rich block editor in 05 CUERPO. Gate publish so the FALTA
+  // chip surfaces what's missing.
+  if (blocks.length === 0) errors.push('CUERPO')
   const canSubmit = errors.length === 0
 
   return (
@@ -187,10 +191,11 @@ export function ArticuloForm() {
 
         <Section label="02" title="LEAD">
           <TextArea
-            label="EXCERPT"
+            label="EXCERPT · una o dos oraciones · el cuerpo va en 05"
             value={draft.excerpt ?? ''}
             onChange={(v) => patch({ excerpt: v })}
             rows={3}
+            maxLength={280}
             placeholder="El lead del artículo — una o dos oraciones que enganchan…"
           />
         </Section>
@@ -285,11 +290,23 @@ function ArticleBlocksEditor({
 
   if (blocks.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 border border-dashed border-border p-6 text-center">
-        <span className="sys-label text-muted">CUERPO VACÍO</span>
-        <p className="font-mono text-[10px] leading-relaxed text-secondary">
-          Empieza con un <span style={{ color: '#F97316' }}>LEDE</span> o un
-          PÁRRAFO. Después construyes secciones con H2/H3, citas, listas, etc.
+      <div
+        className="flex flex-col items-center gap-3 border-2 border-dashed p-8 text-center"
+        style={{
+          borderColor: '#F97316',
+          backgroundColor: 'rgba(249,115,22,0.06)',
+        }}
+      >
+        <span
+          className="font-mono text-[12px] font-bold tracking-widest"
+          style={{ color: '#F97316' }}
+        >
+          ⚠ AÑADE EL CUERPO DEL ARTÍCULO AQUÍ
+        </span>
+        <p className="max-w-md font-mono text-[10px] leading-relaxed text-secondary">
+          Tu texto principal va en bloques de PÁRRAFO, H2/H3, citas, listas e
+          imágenes — no en el EXCERPT de arriba. Empieza con un{' '}
+          <span style={{ color: '#F97316' }}>LEDE</span> o un PÁRRAFO.
         </p>
         <AddBlockChips onPick={addBlock} />
       </div>

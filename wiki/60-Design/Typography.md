@@ -49,7 +49,7 @@ No formal scale file. In practice:
 | `text-xs` | subtitle, meta rows |
 | `text-[10px]` | `sys-label` chrome |
 | `text-[9px]` | genre chips, date-block month/day-name |
-| `text-[8px]` | MAGI labels, data-strip tokens |
+| `text-[8px]` | data-strip tokens, nav timer label |
 | `text-[6px]` | subsystem labels in nav logo |
 
 The very small sizes (<10px) are deliberate — they're "chrome you notice peripherally" that gives the EVA terminal feel without pulling focus.

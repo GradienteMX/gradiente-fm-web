@@ -1,11 +1,12 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-07 · late** — long beta-feedback session covering nine slices. Early: pinned-hero overlay fix, articulo/listicle/reader paragraph-split fix, site-wide `object-top` image cropping, dashboard `ConfirmOverlay` replacing the right-side DETALLES rail (two-column layout everywhere now), publish-flow restructure (composer's `▶ PUBLICAR` opens `PublishConfirmOverlay` in-place → confirm → `/?fresh=<id>` → auto-scroll → 1hr type-coloured `[NUEVO]` glitch chrome on the new card), image hosts allowlist extended. Late: CRT shader retune (tube curvature removed, scanlines widened to 4px period at 25% duty + softer intensity, grain calmed to 12Hz/0.04), CalendarSidebar removed entirely (redundant with date-forward Agenda + EventosRail), event-date labels (MAY/JUE) bolded + whitened to match the day number. See top entry in [[log]] for the full breakdown across all nine slices.
+> Last updated: **2026-05-08** — short beta-feedback follow-up session covering four slices: composer VibeField rewrite (custom pointer-driven, single-point auto-switch, keyboard nav) + canonical 11-name slot set unified across slider/fader/composer/overlay chips; per-type CUERPO publish gate on five long-form composers + EXCERPT char cap (280) + punched-up orange `⚠ AÑADE EL CUERPO …` empty state inside `ArticleBlocksEditor`; header trim — MAGI cluster removed entirely, clock pushed to 2xl+, nav-link padding tightened to `px-2.5`, `overflow-x: hidden` on body — fixes horizontal overflow on MacBook viewports (1440+); CategoryRail scrollbar hidden via the same cross-browser pattern used on VibeSlider chip strip. See top entries in [[log]] for full breakdown.
 >
-> Three commits on `main` for this session: `e05c930` (publish flow + dashboard overlay), `a194e6a` (CRT retune), `1bf80a0` (calendar removal + date labels). Plus `5e4a15f` backfilling the prior session's vibe-arc wiki.
+> Three commits on `main` for this session: see latest `git log --oneline main -5`.
 >
 > **Outstanding visual work**: the welcome page's ASCII vinyl is functional but still off-design vs reference — see 2026-05-05 entry in the log for the levers (groove pitch, tilt, ambient hardening). Still not addressed.
+> **Responsive coverage gap**: viewports ≤1280px (older Intel MacBook 13", iPad landscape) still overflow the header and need the path-2 hamburger drawer + horizontal SECCIÓN strip. Deferred per Iker (tiny demographic, not worth the redesign).
 
 ## How to start this session
 

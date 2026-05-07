@@ -32,15 +32,17 @@ export function vibeToColor(vibe: number): string {
   return '#FF0000'
 }
 
+// Canonical 11-slot vibe names — one per integer from 0 to 10. The slider,
+// fader, composer and overlay chips all read from this single source so
+// adjacent slots never share a label.
+export const VIBE_SLOT_NAMES = [
+  'GLACIAL', 'POLAR', 'CHILL', 'COOL', 'FRESH', 'GROOVE',
+  'WARM', 'HOT', 'FUEGO', 'BRASA', 'VOLCÁN',
+] as const
+
 export function vibeToLabel(vibe: number): string {
-  if (vibe <= 1) return 'GLACIAL'
-  if (vibe <= 3) return 'CHILL'
-  if (vibe <= 4) return 'COOL'
-  if (vibe <= 5) return 'NEUTRAL'
-  if (vibe <= 6) return 'WARM'
-  if (vibe <= 7) return 'HOT'
-  if (vibe <= 9) return 'FUEGO'
-  return 'VOLCÁN'
+  const slot = Math.max(0, Math.min(10, Math.round(vibe)))
+  return VIBE_SLOT_NAMES[slot]
 }
 
 export function vibeToPercent(vibe: number): number {

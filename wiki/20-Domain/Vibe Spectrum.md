@@ -27,7 +27,7 @@ Every `ContentItem` carries a curator-assigned `[vibeMin, vibeMax]` range (singl
 | 9 | BRASA | industrial / noise / deconstructed |
 | 10 | VOLCÁN | psy-trance / hyperpop / gqom |
 
-(Labels from [VibeSlider.tsx:12](../../components/VibeSlider.tsx). An adjacent shorter scale in [utils.ts::vibeToLabel](../../lib/utils.ts) uses 8 slot names for compact badges.)
+(Labels live in `VIBE_SLOT_NAMES` in [utils.ts](../../lib/utils.ts) — single canonical source consumed by the slider, fader, composer, and overlay chips alike.)
 
 ## Why
 

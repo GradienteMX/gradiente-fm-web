@@ -16,8 +16,7 @@ The 1995 Evangelion HUD language made concrete in web components:
 | NGE element | Where it lives in the site |
 |---|---|
 | EVA unit designation box | [[Navigation]] logo box with bar-graph indicator |
-| MAGI system trio indicators | [[Navigation]] top-right: CASPAR / BALTHASAR / MELCHIOR with green OK pulses |
-| Countdown timer `T+HH:MM:SS:frames` | [[Navigation]] right side — live clock + 5-digit frame counter |
+| Countdown timer `T+HH:MM:SS:frames` | [[Navigation]] right side — live clock + 5-digit frame counter (2xl+ only) |
 | Scrolling data-strip tokens | [[Navigation]] bottom band: `A·T·FIELD·STABLE // BIOPATTERN·LOCKED // …` |
 | CRT scanline overlay | `eva-scanlines` class on sticky header |
 | Hazard stripe tape (45° orange/black) | used for vibe ≥ 9 accent, empty-state dividers |
@@ -59,7 +58,7 @@ Invented MAGI-style mashups localized to CDMX. See [[Voice and Copy]].
 
 - **Never apply EVA styling to content text.** Titles stay in Syne display; body stays in Space Grotesk. The EVA vocabulary is for chrome/UI, not editorial prose.
 - **No animated GIFs, no noise bitmaps.** Modern web equivalents only (CSS keyframes, gradients). The aesthetic should feel bespoke, not 2006 retro.
-- **Orange glows are budgeted.** Overuse kills contrast. Reserve for brand moments (logo), active state indicators (MAGI pulses, nav active), and system alerts.
+- **Orange glows are budgeted.** Overuse kills contrast. Reserve for brand moments (logo), active state indicators (nav active link, AuthBadge), and system alerts.
 
 ## Links
 

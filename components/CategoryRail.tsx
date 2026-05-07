@@ -84,7 +84,7 @@ export function CategoryRail({ items }: CategoryRailProps) {
           viewport space. No bg-base / no high z — the rail and chips
           strip live in disjoint vertical bands. */}
       <div
-        className="sticky flex flex-col gap-5 overflow-y-auto"
+        className="sticky flex flex-col gap-5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{
           top: stickyTop,
           maxHeight: `calc(100vh - ${stickyTop + 16}px)`,

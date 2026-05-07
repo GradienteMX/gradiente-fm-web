@@ -4,16 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
-import { vibeToColor } from '@/lib/utils'
+import { VIBE_SLOT_NAMES, vibeToColor } from '@/lib/utils'
 import { GENRE_VIBE, getGenreById, getRollup, getRootGenres } from '@/lib/genres'
 
 function clamp(val: number, min: number, max: number) {
   return Math.min(Math.max(val, min), max)
-}
-
-const VIBE_SLOT_NAMES: Record<number, string> = {
-  0: 'GLACIAL', 1: 'POLAR',  2: 'CHILL',   3: 'COOL',  4: 'FRESH',
-  5: 'GROOVE',  6: 'WARM',   7: 'HOT',      8: 'FUEGO', 9: 'BRASA', 10: 'VOLCÁN',
 }
 
 // GENRE_VIBE moved to lib/genres.ts so the foro catalog can share it for

@@ -20,12 +20,13 @@ updated: 2026-04-22
 ```
 categoryColor(type)    → hex color per ContentType
 vibeToColor(vibe)      → 11-step discrete palette (see [[Vibe Gradient]])
-vibeToLabel(vibe)      → 8-step short label set (GLACIAL/CHILL/COOL/NEUTRAL/WARM/HOT/FUEGO/VOLCÁN)
+VIBE_SLOT_NAMES        → canonical 11-name set (GLACIAL/POLAR/CHILL/COOL/FRESH/GROOVE/WARM/HOT/FUEGO/BRASA/VOLCÁN)
+vibeToLabel(vibe)      → slot-indexed lookup against VIBE_SLOT_NAMES
 vibeToPercent(vibe)    → 0-100 for % positioning
 isInVibeRange(vibe, [min, max])  → boolean
 ```
 
-**Note:** `vibeToLabel` is an **8-label** scale, while [[VibeSlider]] uses an **11-label** slot set inline. Different granularities for different UIs.
+**Note:** `vibeToLabel` reads from `VIBE_SLOT_NAMES` so adjacent slots never share a label. The slider, fader, composer and overlay chips all consume the same source.
 
 ### Date helpers
 

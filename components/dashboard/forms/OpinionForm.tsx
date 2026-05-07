@@ -82,6 +82,7 @@ export function OpinionForm() {
   const errors: string[] = []
   if (!draft.title) errors.push('TÍTULO')
   if (!draft.slug) errors.push('SLUG')
+  if (!draft.bodyPreview?.trim()) errors.push('CUERPO')
   const canSubmit = errors.length === 0
 
   return (
@@ -137,16 +138,18 @@ export function OpinionForm() {
 
         <Section label="02" title="COPY">
           <TextArea
-            label="EXCERPT (lead opinión)"
+            label="EXCERPT · una línea · el argumento va abajo"
             value={draft.excerpt ?? ''}
             onChange={(v) => patch({ excerpt: v })}
             rows={3}
+            maxLength={280}
             placeholder="Una sola línea — el argumento principal..."
           />
           <TextArea
             label="BODY (párrafos separados por línea en blanco)"
             value={draft.bodyPreview ?? ''}
             onChange={(v) => patch({ bodyPreview: v })}
+            required
             rows={12}
             placeholder="Lo primero es lo primero..."
           />

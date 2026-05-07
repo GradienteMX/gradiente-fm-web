@@ -82,6 +82,7 @@ export function ReviewForm() {
   const errors: string[] = []
   if (!draft.title) errors.push('TÍTULO')
   if (!draft.slug) errors.push('SLUG')
+  if (!draft.bodyPreview?.trim()) errors.push('CUERPO')
   const canSubmit = errors.length === 0
 
   return (
@@ -137,16 +138,18 @@ export function ReviewForm() {
 
         <Section label="02" title="COPY">
           <TextArea
-            label="EXCERPT (una línea)"
+            label="EXCERPT · una línea · el cuerpo va abajo"
             value={draft.excerpt ?? ''}
             onChange={(v) => patch({ excerpt: v })}
             rows={2}
+            maxLength={280}
             placeholder="Cinco cortes de puro peso industrial…"
           />
           <TextArea
             label="BODY (párrafos separados por línea en blanco)"
             value={draft.bodyPreview ?? ''}
             onChange={(v) => patch({ bodyPreview: v })}
+            required
             rows={10}
             placeholder="El A1 abre sin piedad…"
           />

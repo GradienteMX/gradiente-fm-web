@@ -38,8 +38,10 @@ The chrome speaks a different language — mono-font, all-caps, `//` tokens, NGE
 | Empty state | `// SIN CONTENIDO EN ESTE RANGO DE VIBE` |
 | Footer | `© 2026 · DESDE ADENTRO DE LA ESCENA MEXICANA` · `● ONLINE` |
 | Nav data strip | `CDMX·UNDERGROUND // MUSICA·ELECTRONICA // FREQ·ACTIVA·128BPM // MAGI·SYSTEM·NOMINAL // A·T·FIELD·STABLE // BIOPATTERN·LOCKED` |
-| MAGI indicators | `CASPAR · OK` / `BALTHASAR · OK` / `MELCHIOR · OK` |
-| Vibe labels | `GLACIAL · POLAR · CHILL · COOL · FRESH · GROOVE · WARM · HOT · FUEGO · BRASA · VOLCÁN` |
+| Vibe labels | `GLACIAL · POLAR · CHILL · COOL · FRESH · GROOVE · WARM · HOT · FUEGO · BRASA · VOLCÁN` (canonical 11-name set in `VIBE_SLOT_NAMES`, [utils.ts](../../lib/utils.ts)) |
+| Composer EXCERPT label | `EXCERPT · una o dos oraciones · el cuerpo va en 05` (or `· el cuerpo va abajo` for COPY-pair forms) |
+| Composer body empty state | `⚠ AÑADE EL CUERPO DEL ARTÍCULO AQUÍ` / `⚠ AÑADE EL CUERPO DE LA LISTA AQUÍ` |
+| Composer publish gate | `⚠ FALTA: TÍTULO · SLUG · CUERPO` |
 
 ## Rules
 

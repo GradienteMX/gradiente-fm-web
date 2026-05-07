@@ -100,6 +100,7 @@ export function TextArea({
   placeholder,
   rows,
   required,
+  maxLength,
 }: {
   label: string
   value: string
@@ -107,17 +108,35 @@ export function TextArea({
   placeholder?: string
   rows?: number
   required?: boolean
+  // When set, the textarea hard-caps input at this length and the field
+  // header shows a `123/280` counter. Used on EXCERPT to physically prevent
+  // writers from filling the body in the lead field.
+  maxLength?: number
 }) {
   const empty = !value
   const showError = required && empty
+  const len = value.length
+  const nearLimit = maxLength != null && len >= maxLength * 0.9
   return (
     <label className="flex flex-col gap-1">
-      <FieldLabel label={label} required={required} />
+      <div className="flex items-center justify-between">
+        <FieldLabel label={label} required={required} />
+        {maxLength != null && (
+          <span
+            className="font-mono text-[9px] tracking-widest tabular-nums"
+            style={{ color: nearLimit ? '#F97316' : '#666' }}
+            aria-live="polite"
+          >
+            {len}/{maxLength}
+          </span>
+        )}
+      </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows ?? 4}
+        maxLength={maxLength}
         aria-required={required || undefined}
         className="border bg-black px-3 py-2 font-grotesk text-sm leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange"
         style={{ borderColor: showError ? '#E6332940' : '#242424' }}
@@ -185,9 +204,11 @@ export function Toggle({
 // ones (a peak-time event at 8-8). See `project_vibe_range_arc` memory.
 //
 // Three input affordances:
-//   - Drag either thumb (mouse + touch + keyboard arrows when focused)
+//   - Drag either thumb (custom pointer handler — mirrors VibeFader so the
+//     single-point auto-switch works from a collapsed range)
 //   - Click a bar in the spectrum strip to collapse the range to that point
 //   - Shift+click a bar to extend the nearer edge to it (quick range expand)
+//   - Keyboard: Arrow keys step ±1, Home/End jump to extremes
 export function VibeField({
   valueMin,
   valueMax,
@@ -203,6 +224,13 @@ export function VibeField({
   const minLabel = vibeToLabel(valueMin)
   const maxLabel = vibeToLabel(valueMax)
 
+  const trackRef = useRef<HTMLDivElement>(null)
+  const draggingRef = useRef<'min' | 'max' | null>(null)
+  // Mirror current values so the window listener always reads fresh values
+  // (closure over props would be stale across drag frames).
+  const valuesRef = useRef({ min: valueMin, max: valueMax })
+  valuesRef.current = { min: valueMin, max: valueMax }
+
   // Background gradient between the two thumbs — fills the active band.
   // 11 stops at every integer keep the discrete bucket colors true; outside
   // [min, max] is muted so the active band reads as the highlight.
@@ -215,14 +243,98 @@ export function VibeField({
     return `linear-gradient(to right, ${stops.join(', ')})`
   })()
 
-  const handleMinDrag = (v: number) => {
-    const next = Math.min(v, valueMax)
-    onChange(next, valueMax)
+  const valueFromX = (clientX: number): number => {
+    const track = trackRef.current
+    if (!track) return 0
+    const rect = track.getBoundingClientRect()
+    const ratio = (clientX - rect.left) / rect.width
+    return Math.max(0, Math.min(10, Math.round(ratio * 10)))
   }
-  const handleMaxDrag = (v: number) => {
-    const next = Math.max(v, valueMin)
-    onChange(valueMin, next)
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!draggingRef.current) return
+      const val = valueFromX(e.clientX)
+      const { min: curMin, max: curMax } = valuesRef.current
+
+      // Single-point auto-switch (mirrors VibeFader): when both thumbs sit
+      // at the same value, leftward drag flips active to 'min', rightward
+      // flips to 'max'. Otherwise the thumb on top of the DOM stack would
+      // clamp away the motion.
+      if (curMin === curMax) {
+        if (val < curMin && draggingRef.current === 'max') {
+          draggingRef.current = 'min'
+        } else if (val > curMax && draggingRef.current === 'min') {
+          draggingRef.current = 'max'
+        }
+      }
+
+      if (draggingRef.current === 'min') {
+        onChange(Math.min(val, curMax), curMax)
+      } else {
+        onChange(curMin, Math.max(val, curMin))
+      }
+    }
+    const onUp = () => {
+      draggingRef.current = null
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [onChange])
+
+  const handleThumbPointerDown =
+    (thumb: 'min' | 'max') => (e: React.PointerEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      draggingRef.current = thumb
+    }
+
+  const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Click on the gradient track (not on a thumb) — start dragging the
+    // nearer thumb from the click point. Mirrors the header VibeSlider's
+    // track-click behavior.
+    e.preventDefault()
+    const val = valueFromX(e.clientX)
+    const distMin = Math.abs(val - valueMin)
+    const distMax = Math.abs(val - valueMax)
+    if (distMin <= distMax) {
+      draggingRef.current = 'min'
+      onChange(Math.min(val, valueMax), valueMax)
+    } else {
+      draggingRef.current = 'max'
+      onChange(valueMin, Math.max(val, valueMin))
+    }
   }
+
+  const handleThumbKeyDown =
+    (thumb: 'min' | 'max') => (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      let delta = 0
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') delta = -1
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') delta = 1
+      else if (e.key === 'Home') {
+        e.preventDefault()
+        if (thumb === 'min') onChange(0, valueMax)
+        else onChange(valueMin, valueMin)
+        return
+      } else if (e.key === 'End') {
+        e.preventDefault()
+        if (thumb === 'min') onChange(valueMax, valueMax)
+        else onChange(valueMin, 10)
+        return
+      } else return
+      e.preventDefault()
+      if (thumb === 'min') {
+        const next = Math.max(0, Math.min(valueMax, valueMin + delta))
+        onChange(next, valueMax)
+      } else {
+        const next = Math.min(10, Math.max(valueMin, valueMax + delta))
+        onChange(valueMin, next)
+      }
+    }
 
   const handleBarClick = (i: number, shift: boolean) => {
     if (!shift) {
@@ -260,37 +372,45 @@ export function VibeField({
         )}
       </div>
 
-      {/* Two-thumb slider. The shared track is rendered behind the inputs;
-          both ranges are absolutely overlaid so each thumb stays grabbable.
-          Pointer-events on the track itself are off; only the thumbs catch
-          input. Browser handles keyboard nav per range. */}
-      <div className="relative h-6">
+      {/* Custom pointer-driven slider. Track catches clicks (drags nearer
+          thumb), thumb buttons catch direct pointer-down (drag that thumb),
+          window pointermove + pointerup own the drag lifecycle. Mirrors
+          VibeFader so the single-point auto-switch works identically. */}
+      <div
+        ref={trackRef}
+        onPointerDown={handleTrackPointerDown}
+        className="relative h-6 cursor-col-resize"
+      >
         <div
           className="pointer-events-none absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2"
           style={{ background: trackBg }}
         />
-        <input
-          type="range"
-          min={0}
-          max={10}
-          step={1}
-          value={valueMin}
-          onChange={(e) => handleMinDrag(Number(e.target.value))}
-          aria-label="vibe mínimo"
-          className="vibe-range-thumb absolute inset-0 h-full w-full appearance-none bg-transparent"
-          style={{ accentColor: minColor }}
-        />
-        <input
-          type="range"
-          min={0}
-          max={10}
-          step={1}
-          value={valueMax}
-          onChange={(e) => handleMaxDrag(Number(e.target.value))}
-          aria-label="vibe máximo"
-          className="vibe-range-thumb absolute inset-0 h-full w-full appearance-none bg-transparent"
-          style={{ accentColor: maxColor }}
-        />
+        <button
+          type="button"
+          onPointerDown={handleThumbPointerDown('min')}
+          onKeyDown={handleThumbKeyDown('min')}
+          aria-label={`vibe mínimo: ${valueMin}`}
+          className="absolute inset-y-0 flex w-4 -translate-x-1/2 cursor-col-resize items-center justify-center bg-transparent focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-orange"
+          style={{ left: `${(valueMin / 10) * 100}%` }}
+        >
+          <span
+            className="block h-4 w-[3px] shadow-[0_0_4px_rgba(255,255,255,0.7)]"
+            style={{ backgroundColor: minColor }}
+          />
+        </button>
+        <button
+          type="button"
+          onPointerDown={handleThumbPointerDown('max')}
+          onKeyDown={handleThumbKeyDown('max')}
+          aria-label={`vibe máximo: ${valueMax}`}
+          className="absolute inset-y-0 flex w-4 -translate-x-1/2 cursor-col-resize items-center justify-center bg-transparent focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-orange"
+          style={{ left: `${(valueMax / 10) * 100}%` }}
+        >
+          <span
+            className="block h-4 w-[3px] shadow-[0_0_4px_rgba(255,255,255,0.7)]"
+            style={{ backgroundColor: maxColor }}
+          />
+        </button>
       </div>
 
       <div className="flex items-end gap-[3px]">

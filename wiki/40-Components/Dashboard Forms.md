@@ -2,12 +2,12 @@
 type: component
 status: current
 tags: [dashboard, forms, type-specific]
-updated: 2026-04-25
+updated: 2026-05-07
 ---
 
 # Dashboard Forms
 
-> Six per-type compose forms used by [[Dashboard]] (`/dashboard?type=…`). Each builds a `ContentItem` of its specific type, autosaves to sessionStorage, and feeds [[LivePreview]] in real time.
+> Eight per-type compose forms used by [[Dashboard]] (`/dashboard?type=…`). Each builds a `ContentItem` of its specific type, autosaves to sessionStorage, and feeds [[LivePreview]] in real time.
 
 ## Per-type files
 
@@ -26,12 +26,25 @@ updated: 2026-04-25
 
 - `Section({ label, title, children })` — numbered card with header + dashed underline + green pulse dot
 - `TextField`, `TextArea`, `Toggle`
-- `VibeField` — interactive slider + 11-bar fuel gauge in vibe colors
+  - `TextArea` accepts optional `maxLength` — hard-caps input + shows live `len/max` counter (turns orange at ≥90%). Used on EXCERPT across all long-form forms (cap 280) so writers can't fill the body in the lead field.
+- `VibeField` — custom pointer-driven two-thumb range over a colored gradient track + 11-bar fuel gauge picker. Single-point auto-switch (mirrors [[VibeFader]]) so leftward drags from a collapsed range work. Keyboard: Arrow ±1, Home/End for 0/10. Reads slot names from `VIBE_SLOT_NAMES` in [utils.ts](../../lib/utils.ts).
 - `GenreMultiSelect` — searchable chip multi-select against `lib/genres`
 - `StringListField` — flat list editor with `PEGAR LISTA` bulk paste; per-row paste also splits multi-line
 - `EmbedList` — multi-source URL editor; live platform detection from URL; smart multi-URL paste
 - `ImageUrlField` — URL input + inline thumbnail preview
-- `SubmitFooter` — sticky bottom bar with success badge + RESETEAR + PUBLICAR DRAFT
+- `SubmitFooter` — sticky bottom bar with `⚠ FALTA: …` chip when `errors[]` is non-empty + RESETEAR + ▣ GUARDAR DRAFT + ▶ PUBLICAR (both disabled while errors present)
+
+## Publish-gate validators (per-type)
+
+Each form computes its own `errors[]` of missing-field labels, joined into the footer's `⚠ FALTA: …` chip:
+
+| Form | Required for publish |
+|---|---|
+| **ArticuloForm** · **ListicleForm** | TÍTULO · SLUG · CUERPO (≥1 block in `articleBody`) |
+| **EditorialForm** · **ReviewForm** · **OpinionForm** | TÍTULO · SLUG · CUERPO (`bodyPreview.trim() !== ''`) |
+| **NoticiaForm** · **EventoForm** · **MixForm** | TÍTULO · SLUG (no body required — these legitimately ship without one) |
+
+The CUERPO gate landed 2026-05-07 because writers were filling only EXCERPT and missing the rich block editor entirely. Articulo + Listicle also got a punched-up empty-state CTA (orange dashed border, `⚠ AÑADE EL CUERPO DEL ARTÍCULO AQUÍ`) inside `ArticleBlocksEditor` when `blocks.length === 0`, since the gate alone doesn't *teach* where the body lives.
 
 Plus helpers: `slugify(title)` and `publishDraft(item)`.
 

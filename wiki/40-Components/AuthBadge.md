@@ -7,7 +7,7 @@ updated: 2026-04-25
 
 # AuthBadge
 
-> Header slot that swaps between LOGIN button and DASHBOARD link + SALIR based on auth state. Slots into [[Navigation]] next to the MAGI cluster. Treated as a primary action region — louder than the surrounding header chrome on purpose.
+> Header slot that swaps between LOGIN button and DASHBOARD link + SALIR based on auth state. Slots into [[Navigation]] at the right edge after the (2xl-only) timer. Treated as a primary action region — louder than the surrounding header chrome on purpose.
 
 ## Source
 
@@ -29,7 +29,7 @@ updated: 2026-04-25
 
 ## Why it stands out
 
-The rest of the header (UNIT chrome, MAGI panel labels, nav captions) sits at 6–8px in near-black colors like `#2A1800`, `#3A2A00`, `#1A1000` — deliberately dim, terminal-esque background ambiance. The auth badge breaks that convention because **login/logout/dashboard are primary actions, not chrome**. Same EVA palette, but bumped:
+The rest of the header (UNIT chrome, nav captions, timer label) sits at 6–8px in near-black colors like `#2A1800`, `#3A2A00`, `#1A1000` — deliberately dim, terminal-esque background ambiance. The auth badge breaks that convention because **login/logout/dashboard are primary actions, not chrome**. Same EVA palette, but bumped:
 
 | | Before | After |
 |---|---|---|

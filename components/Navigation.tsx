@@ -89,7 +89,7 @@ export function Navigation() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="group relative flex flex-col items-center justify-center px-4 transition-colors"
+                className="group relative flex flex-col items-center justify-center px-2.5 transition-colors"
                 style={{
                   borderRight: '1px solid #140B00',
                   backgroundColor: active ? '#0C0500' : 'transparent',
@@ -132,35 +132,10 @@ export function Navigation() {
           })}
         </nav>
 
-        {/* ── Status / MAGI / Timer ── */}
-        <div className="hidden items-stretch md:flex" style={{ borderLeft: '1px solid #140B00' }}>
-
-          {/* MAGI indicators */}
-          {[{ id: '01', name: 'CASPAR' }, { id: '02', name: 'BALTHASAR' }, { id: '03', name: 'MELCHIOR' }].map(({ id, name }) => (
-            <div
-              key={id}
-              className="flex flex-col items-center justify-center gap-[3px] px-3"
-              style={{ borderRight: '1px solid #140B00' }}
-            >
-              <span className="font-mono text-[6px] tracking-wider" style={{ color: '#2A1800' }}>{name}</span>
-              <div
-                className="eva-box flex items-center gap-1 px-1.5 py-[2px]"
-                style={{ borderColor: '#00FF4433' }}
-              >
-                <span
-                  className="h-[5px] w-[5px] rounded-full animate-pulse"
-                  style={{ backgroundColor: '#00FF44', boxShadow: '0 0 5px #00FF44, 0 0 10px #00FF4455' }}
-                />
-                <span
-                  className="font-mono text-[8px] font-bold"
-                  style={{ color: '#00FF44', textShadow: '0 0 6px #00FF44, 0 0 12px #00FF4455' }}
-                >
-                  OK
-                </span>
-              </div>
-              <span className="font-mono text-[6px]" style={{ color: '#1A1000' }}>MAGI·{id}</span>
-            </div>
-          ))}
+        {/* ── Status / Timer ── */}
+        {/* Hidden below 2xl — pure chrome, sacrificed first when the
+            DASHBOARD button needs viewport room at MacBook widths. */}
+        <div className="hidden items-stretch 2xl:flex" style={{ borderLeft: '1px solid #140B00' }}>
 
           {/* Timer — EVA countdown style */}
           <div className="flex flex-col items-center justify-center px-4">

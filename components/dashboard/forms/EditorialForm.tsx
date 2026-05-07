@@ -82,6 +82,7 @@ export function EditorialForm() {
   const errors: string[] = []
   if (!draft.title) errors.push('TÍTULO')
   if (!draft.slug) errors.push('SLUG')
+  if (!draft.bodyPreview?.trim()) errors.push('CUERPO')
   const canSubmit = errors.length === 0
 
   return (
@@ -137,16 +138,18 @@ export function EditorialForm() {
 
         <Section label="02" title="COPY">
           <TextArea
-            label="EXCERPT (lead editorial)"
+            label="EXCERPT · una o dos oraciones · el cuerpo va abajo"
             value={draft.excerpt ?? ''}
             onChange={(v) => patch({ excerpt: v })}
             rows={3}
+            maxLength={280}
             placeholder="La pedagogía de la oscuridad no se enseña…"
           />
           <TextArea
             label="BODY (párrafos separados por línea en blanco)"
             value={draft.bodyPreview ?? ''}
             onChange={(v) => patch({ bodyPreview: v })}
+            required
             rows={14}
             placeholder="Lo primero que se aprende es dejar de buscar con los ojos…"
           />

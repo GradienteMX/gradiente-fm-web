@@ -104,6 +104,7 @@ export function ListicleForm() {
   const errors: string[] = []
   if (!draft.title) errors.push('TÍTULO')
   if (!draft.slug) errors.push('SLUG')
+  if (blocks.length === 0) errors.push('CUERPO')
   const canSubmit = errors.length === 0
 
   return (
@@ -149,10 +150,11 @@ export function ListicleForm() {
 
         <Section label="02" title="LEAD">
           <TextArea
-            label="EXCERPT"
+            label="EXCERPT · una o dos oraciones · el cuerpo va en 05"
             value={draft.excerpt ?? ''}
             onChange={(v) => patch({ excerpt: v })}
             rows={3}
+            maxLength={280}
             placeholder="Un recuento editorial de las piezas que marcaron el año…"
           />
         </Section>
@@ -290,13 +292,24 @@ function BlocksEditor({
   return (
     <div className="flex flex-col gap-2">
       {showEmptyState && (
-        <div className="flex flex-col items-center gap-2 border border-dashed border-border p-6 text-center">
-          <span className="sys-label text-muted">CUERPO VACÍO</span>
-          <p className="font-mono text-[10px] leading-relaxed text-secondary">
-            Empieza con un <span style={{ color: '#F97316' }}>LEDE</span>, o
-            salta directo a los tracks.
+        <div
+          className="flex flex-col items-center gap-3 border-2 border-dashed p-8 text-center"
+          style={{
+            borderColor: '#F97316',
+            backgroundColor: 'rgba(249,115,22,0.06)',
+          }}
+        >
+          <span
+            className="font-mono text-[12px] font-bold tracking-widest"
+            style={{ color: '#F97316' }}
+          >
+            ⚠ AÑADE EL CUERPO DE LA LISTA AQUÍ
+          </span>
+          <p className="max-w-md font-mono text-[10px] leading-relaxed text-secondary">
+            Tu lista va en bloques de TRACK (uno por entrada), más LEDEs y
+            párrafos para contextualizar — no en el EXCERPT de arriba.
           </p>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
             <AddPrimary onClick={() => addBlock('track')} />
             <AddSecondary
               onPick={(k) => addBlock(k)}
