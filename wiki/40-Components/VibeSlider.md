@@ -1,13 +1,13 @@
 ---
 type: component
 status: current
-tags: [component, vibe, filter, slider, phosphor]
-updated: 2026-04-24
+tags: [component, vibe, filter, slider, phosphor, multi-genre]
+updated: 2026-05-05
 ---
 
 # VibeSlider
 
-> Sticky dual-handle range slider across a three-row phosphor tape. Writes to [[VibeContext]].
+> Sticky dual-handle range slider across a three-row phosphor tape, plus a feed-driven multi-genre chip strip below. Writes to [[VibeContext]].
 
 ## Source
 
@@ -15,84 +15,145 @@ updated: 2026-04-24
 
 ## Client component? Yes
 
-Owns pointer drag state via refs, listens on `window` pointer events.
+Owns pointer drag state via refs, listens on `window` pointer events, reads `visibleGenres` from context.
 
-## Hidden on `/dashboard`
+## Hidden on `/dashboard` and `/admin`
 
-The slider is a feed-curation control — it has no meaning in the editor's working surface. The exported `VibeSlider` is a thin wrapper that calls `usePathname()` and returns `null` when the path starts with `/dashboard`; the actual slider renders as `VibeSliderImpl`. Hooks live inside the impl so the conditional return doesn't violate hook rules.
+The slider is a feed-curation control — it has no meaning in editor surfaces. The exported `VibeSlider` is a thin wrapper that calls `usePathname()` and returns `null` when the path starts with `/dashboard` or `/admin`. Hooks live inside `VibeSliderImpl` so the conditional return doesn't violate hook rules.
 
 ## Anatomy
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ VIBE                                       [RESET]   │  ← header row
+│ VIBE                                       [RESET]   │  ← header (RESET always rendered, invisible at full range)
 ├──────────────────────────────────────────────────────┤
 │         GLACIAL ──────────── VOLCÁN                  │  ← handle labels
-│   · ·  ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·    │  ← top row — sparse
-│  ══════════════════════════════════════════════════  │  ← middle row — continuous
-│    · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · · ·    │  ← bottom row — sparse, half-step offset
-│         │                       │                    │  ← handles (2.5px white)
+│   · ·  ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·    │  ← top phosphor row (sparse)
+│  ══════════════════════════════════════════════════  │  ← middle (dense, the baseline)
+│    · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · · ·    │  ← bottom (sparse, half-step offset)
+│         │                       │                    │  ← handles (3px white)
 ├──────────────────────────────────────────────────────┤
-│ Ambient · Lo-Fi · Organic House · Deep House · …     │  ← genre chips in range
+│  + 28 GÉNEROS   Ambient · Lo-fi · Jazz · …           │  ← chip strip (range-driven visibility)
 └──────────────────────────────────────────────────────┘
 ```
 
-Sticks below [[Navigation]] at `top: 76px` so both remain visible while scrolling.
+Sticks below [[Navigation]] at `top: 76px`. Strip total height held constant via stable header height (RESET button uses `invisible` not conditional unmount), `min-h-6` on track row, and `min-h-[3.5rem]` on the chip-strip row. See "Layout-shift hardening" below.
 
-## Interaction model
+## Interaction model — slider band
 
-- **Drag a handle** → updates `vibeRange` to a continuous float (see [Continuous range](#continuous-range) below)
+- **Drag a handle** → updates `vibeRange` continuously
 - **Click on the track** → moves the nearer handle to that position
-- **RESET** button appears when range is not `[0, 10]`, restores full range
+- **RESET button** appears (becomes visible) when range ≠ `[0, 10]`; restores `[0, 10]`. Always rendered so the header height never shifts.
 
-Each handle is a 6px-wide invisible pointer target wrapping a 3px white visible mark. Makes it touchable on mobile without a huge visual footprint.
+Handles are 6px-wide invisible pointer targets wrapping a 3px white visible mark. Touchable on mobile without a heavy footprint.
 
 ## Continuous range
 
-`vibeRange` is stored as `[number, number]` but the numbers are **continuous floats in `[0, 10]`**, not integer slots. Dragging produces positions like `3.73` or `7.19`.
+`vibeRange` is `[number, number]` of **continuous floats in `[0, 10]`**, not integer slots. Dragging produces `3.73` / `7.19`.
 
 Three things snap to integers for legibility, nothing else does:
 
 1. **Handle label** — `VIBE_SLOT_NAMES[Math.round(min)]`. Handle at 3.73 reads as `FRESH` (slot 4).
-2. **Handle label color** — `vibeToColor(Math.round(min))`. Color bumps from one slot color to the next as the nearest-integer crosses.
-3. **Genre chips** — `GENRE_VIBE` entries are integer-keyed, so the `v >= min && v <= max` filter uses float boundaries against integer chip values. Chips appear/disappear smoothly as handles cross half-integer boundaries.
+2. **Handle label color** — `vibeToColor(Math.round(min))`.
+3. **Genre chip in/out** — chips check `feedSet.has(id)` (or `GENRE_VIBE[id]` in fallback), both integer-keyed.
 
 Everything else — handle x-position, dash lit/unlit boundary, content filter — uses the raw float.
 
-The lit boundary inside the phosphor tape moves **pixel-precisely** with the handle: a dash at `vibe=3.75` flips state the instant the handle passes 3.75, without any integer quantization.
-
 ## The phosphor tape
 
-**Three horizontal rows** of short vertical dashes evoking a static waveform display:
+Three horizontal rows of short vertical dashes (~200 total `<div>`s, generated once at module load):
 
 | Row | `bottom` | Count | Dash height | Rhythm |
 |---|---|---|---|---|
-| Top | `68%` | 40 | 3–5 px | sparse, aligned at `t = i/count` |
+| Top | `68%` | 40 | 3–5 px | sparse |
 | Middle | `50%` | 120 | 4–6 px | dense, near-continuous baseline |
-| Bottom | `32%` | 40 | 3–5 px | sparse, **half-step offset** from top → saw alternation |
+| Bottom | `32%` | 40 | 3–5 px | sparse, half-step offset from top |
 
-All dashes are 2.5px wide. Positions are deterministic per-index — a stable, non-reactive waveform print.
+Each dash's color is `interpolateVibeColor(t * 10)` (RGB lerp between two `vibeToColor` anchors). Lit when `dashVibe ∈ [min, max]`, unlit otherwise (opacity 0.08). 120ms transition. See [[Vibe Gradient]] for palette details.
 
-Dashes are generated once at module load via an IIFE, so there's no per-render allocation. ~200 total `<div>` elements in the track.
+Determinism: dash widths use `Math.imul`-based `hash01(seed, salt)` to avoid SSR/client hydration drift.
 
-### Color
+## Chip strip — feed-driven, multi-genre toggle
 
-Each dash's color is computed once at module load as `interpolateVibeColor(t * 10)` where `t` is its x-position `[0, 1]`. `interpolateVibeColor` does linear RGB interpolation between the two nearest integer anchors in [`vibeToColor()`](../../lib/utils.ts) — so the gradient is smooth but perfectly tied to the 11-slot discrete palette (see [[Vibe Gradient]]).
+The strip below the band is the multi-genre filter UI for the home feed. **Major rework 2026-05-05** — see also [[Vibe Philosophy]] idea 2.
 
-### Lit vs unlit
+### Visibility (range-driven, not interaction-driven)
 
 ```ts
-const lit = d.vibe >= min && d.vibe <= max
+chipsVisible = !isFullRange || pinned || activeIds.length > 0
 ```
 
-- **Lit** — `opacity: 1`, `boxShadow: 0 0 3px ${d.color}` (tight halo glow).
-- **Unlit** — `opacity: 0.08`, no shadow. Dashes stay faintly visible so the off-range tape reads as "unlit phosphor" rather than hidden content.
+- At full range with no filters and no pin → strip is hidden (opacity 0). All chips would be "in range" so the set carries no information.
+- As soon as the user narrows the range → strip fades in.
+- Pin button (manual override) keeps it visible at full range.
+- Active filters always keep it visible (so the user can clear them).
 
-120ms linear transition on both properties.
+Removed all the drag/hover/linger machinery from earlier iterations — visibility is purely a function of the slider state, not interaction state. Smoother + more honest.
 
-### Determinism
+### Per-chip visibility
 
-Dash widths use a `Math.imul`-based integer hash (`hash01(seed, salt)`) — bit-exact across JS engines. This avoids SSR/client hydration drift that an earlier `Math.sin`-based hash caused (server and Chrome's V8 produced identical-looking but different-last-digit floats, triggering React hydration warnings).
+Each chip computes:
+
+```ts
+inFeed = feedSet
+  ? getRollup(id).some(rid => feedSet.has(rid))   // rollup-aware
+  : (GENRE_VIBE[id] ?? 5) ∈ [min, max]            // fallback
+chipVisible = pinned || active || (!isFullRange && inFeed)
+```
+
+Rollup is critical: when the user is at a narrowed range and a `techno-raw` item is in the feed, the parent `Techno` chip lights up (because `getRollup('techno')` includes `techno-raw`). Without rollup, parent chips would never appear. See [[genres]] for the rollup definition.
+
+### Chip universe
+
+```ts
+allGenreIds = unique([
+  ...getRootGenres().map(g => g.id),  // 18 root categories — always available
+  ...visibleGenres ?? GENRE_VIBE_keys,  // feed reality (or stereotype fallback)
+  ...activeIds,                          // user's active filters
+])
+```
+
+Feed-driven via `visibleGenres` from [[VibeContext]] (pushed by [[ContentGrid]]). On routes without a `ContentGrid` (e.g. `/foro`), `visibleGenres` is `null` and the strip falls back to `GENRE_VIBE` keys — keeps the slider useful even when no feed has reported in.
+
+### Chip toggle behavior
+
+Each chip is a `<button aria-pressed>`. Click fires `toggleGenre(id)` from [[VibeContext]] — adds if absent, removes if present. Multi-select; multiple genres can be active simultaneously and intersect via OR semantics in [[ContentGrid]]'s `itemMatchesGenreFilter` (which rolls up parent → descendants).
+
+Active chips: gold fill (`bg-[#F5C500] text-black shadow-[0_0_6px_rgba(245,197,0,0.55)]`).
+Inactive chips: outlined (`border-border/40 text-secondary`).
+
+### Smooth fade transitions
+
+Each chip uses `transition-all duration-200`. When falling out of range:
+
+- `opacity` 1 → 0
+- `max-width` 18rem → 0
+- `margin-right` + `margin-bottom` 1.5 → 0
+- `padding-x` 1.5 → 0
+- `border-color` → transparent
+
+Per-chip margins (instead of container `gap`) so hidden chips collapse fully — without this, gap-from-hidden-chip would spread visible chips apart with phantom space.
+
+Verified mid-flight: at 130ms into a fade-out, sample chip was at opacity 0.14, width 41px (from 86px). Smooth.
+
+### Pin button
+
+Auto-hidden when chips are visible for another reason (clean UI). Visible only when:
+
+- Chips would otherwise be hidden (full range, no filters), as the manual reveal
+- OR currently pinned (so the user can unpin)
+
+Label adapts: `+ N GÉNEROS` (closed) / `OCULTAR` (pinned).
+
+## Layout-shift hardening
+
+The user complained about page-below shifting during slider use. Three fixes:
+
+1. **Chip-strip min-h `[3.5rem]`** — covers two rows of chips. Most narrowing flows fit. Pinning at full range may grow further (deliberate user gesture).
+2. **RESET button always rendered** with `invisible` toggle instead of conditional mount. Header row stays the same height across narrow/widen.
+3. **Per-chip margin collapse** (above) so the chip flex's natural height stays predictable.
+
+Verified: strip total = 169px through full → narrow → narrow further → reset cycle (delta = 0).
 
 ## The 11 slot names
 
@@ -101,21 +162,23 @@ Dash widths use a `Math.imul`-based integer hash (`hash01(seed, salt)`) — bit-
 6 WARM     7 HOT    8 FUEGO   9 BRASA  10 VOLCÁN
 ```
 
-Different from the 8-label shorter scale in [utils.ts::vibeToLabel](../../lib/utils.ts) — this one has finer granularity because the slider needs 11 stable positions. See [[Vibe Spectrum]].
-
 ## Label overlap handling
 
 When both handles are close (< 14% apart), only the min-handle label shows. Prevents text collision.
 
-## The genre chip strip
+## Why the chip strip is feed-driven (not GENRE_VIBE-driven)
 
-Below the band, `GENRE_VIBE` (an inline map from genre id → default vibe) is filtered by the current range and rendered as a wrapped chip row. Max 60 genres shown. Gives the user a preview of what's in range.
+The previous version computed which chips to show by checking `GENRE_VIBE[id] ∈ [min, max]` — i.e., "what genres typically live at this vibe." Per [[Vibe Philosophy]] idea 2, that's a stereotype lie. A "techno" item set at vibe 2 should make a `techno` chip appear when the slider is at 2 — and now it does.
 
-**Note:** this `GENRE_VIBE` map is used **only for UI display** — it doesn't drive any item's actual vibe score. Items' vibes are set by the curator in [[mockData]].
+The trade-off: when no `ContentGrid` is mounted (e.g. on `/foro`), there's no feed to read from, so the slider falls back to the `GENRE_VIBE` map. Acceptable — `/foro` has its own filter logic via `genresIntersectVibeRange`.
 
 ## Links
 
-- [[VibeContext]]
+- [[Vibe Philosophy]] — idea 2 explains why feed-driven
+- [[VibeContext]] — `vibeRange`, `genreFilter`, `visibleGenres`
+- [[ContentGrid]] — pushes `visibleGenres`, consumes filters
+- [[genres]] — taxonomy + `getRollup`
+- [[VibeFader]] — sibling component (same color vocab, different concern)
 - [[Vibe Spectrum]]
 - [[Vibe Gradient]]
 - [[Color System]]
