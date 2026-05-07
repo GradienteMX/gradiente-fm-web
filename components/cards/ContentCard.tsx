@@ -169,9 +169,9 @@ function SmCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
 
       {item.type === 'evento' && item.date && (
         <div className="absolute right-2 top-3 flex flex-col items-center border border-white/20 bg-black/70 px-2 py-1 backdrop-blur-sm">
-          <span className="font-mono text-[8px] tracking-widest text-muted">{fmtMonthShort(item.date)}</span>
+          <span className="font-mono text-[8px] font-bold tracking-widest text-white">{fmtMonthShort(item.date)}</span>
           <span className="font-syne text-2xl font-black leading-none text-white">{fmtDayNumber(item.date)}</span>
-          <span className="font-mono text-[8px] tracking-widest text-muted">{fmtDayName(item.date)}</span>
+          <span className="font-mono text-[8px] font-bold tracking-widest text-white">{fmtDayName(item.date)}</span>
         </div>
       )}
 
@@ -227,9 +227,9 @@ function MdCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
 
       {item.type === 'evento' && item.date && (
         <div className="absolute right-2 top-3 flex flex-col items-center border border-white/20 bg-black/70 px-2 py-1.5 backdrop-blur-sm">
-          <span className="font-mono text-[8px] tracking-widest text-muted">{fmtMonthShort(item.date)}</span>
+          <span className="font-mono text-[8px] font-bold tracking-widest text-white">{fmtMonthShort(item.date)}</span>
           <span className="font-syne text-3xl font-black leading-none text-white">{fmtDayNumber(item.date)}</span>
-          <span className="font-mono text-[8px] tracking-widest text-muted">{fmtDayName(item.date)}</span>
+          <span className="font-mono text-[8px] font-bold tracking-widest text-white">{fmtDayName(item.date)}</span>
           {time && <span className="mt-0.5 font-mono text-[9px] text-secondary">{time}</span>}
         </div>
       )}
@@ -311,13 +311,13 @@ function LgCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
       {/* Date block for events — top right inside image */}
       {item.type === 'evento' && item.date && (
         <div className="absolute right-3 top-10 mt-2 flex flex-col items-center border border-white/20 bg-black/70 px-3 py-2 backdrop-blur-sm">
-          <span className="font-mono text-[9px] tracking-widest text-muted">
+          <span className="font-mono text-[9px] font-bold tracking-widest text-white">
             {fmtMonthShort(item.date)}
           </span>
           <span className="font-syne text-4xl font-black leading-none text-white">
             {fmtDayNumber(item.date)}
           </span>
-          <span className="font-mono text-[9px] tracking-widest text-muted">
+          <span className="font-mono text-[9px] font-bold tracking-widest text-white">
             {fmtDayName(item.date)}
           </span>
           {time && (

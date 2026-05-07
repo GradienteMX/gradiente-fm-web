@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useMemo, useRef, useEffect, type CSSProperties } from 'react'
-import { isSameDay, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import { motion } from 'framer-motion'
 import type { ContentItem } from '@/lib/types'
 import { useVibe } from '@/context/VibeContext'
@@ -164,7 +164,7 @@ const MosaicItem = forwardRef<
 })
 
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
-  const { vibeRange, selectedDate, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
+  const { vibeRange, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
   const directions = useDirectionTracker()
 
   // Bridge server-rendered items into the slug-keyed client cache so the
@@ -222,17 +222,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
         : categoryFiltered
 
     if (mode === 'home') {
-      const list = rankItems(genreFiltered)
-      if (selectedDate) {
-        const onDate = list.filter(({ item }) =>
-          isSameDay(parseISO(item.date ?? item.publishedAt), selectedDate),
-        )
-        const rest = list.filter(
-          ({ item }) => !isSameDay(parseISO(item.date ?? item.publishedAt), selectedDate),
-        )
-        return [...onDate, ...rest]
-      }
-      return list
+      return rankItems(genreFiltered)
     }
 
     if (mode === 'agenda') {
@@ -258,7 +248,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
         parseISO(b.item.date ?? b.item.publishedAt).getTime() -
         parseISO(a.item.date ?? a.item.publishedAt).getTime(),
     )
-  }, [items, vibeRange, selectedDate, categoryFilter, genreFilter, mode])
+  }, [items, vibeRange, categoryFilter, genreFilter, mode])
 
   // Snapshot prior spans before rendering new ones — used to choose easing.
   const priorSpans = useMemo(() => {

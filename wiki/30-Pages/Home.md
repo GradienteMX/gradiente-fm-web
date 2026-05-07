@@ -2,12 +2,12 @@
 type: page
 status: current
 tags: [page, home, portada]
-updated: 2026-04-22
+updated: 2026-05-07
 ---
 
 # Home — `/`
 
-> The one page that isn't a category filter. Portada hero + HP-curated mosaic + left category rail + right partners rail + slide-in calendar.
+> The one page that isn't a category filter. Portada hero + HP-curated mosaic + left category rail + scraped-events rail + right partners rail.
 
 ## Source
 
@@ -21,16 +21,14 @@ updated: 2026-04-22
 │ VibeSlider  (from layout.tsx)                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  [◀CalendarSidebar]  — slides in from left, hidden by   │
-│                        default, toggled from top-left   │
-│                                                         │
 │  ┌──CategoryRail──┬──Main column──┬──PartnersRail──┐    │
 │  │  (sticky, lg+) │               │  (hidden, md+) │    │
 │  │                │  HeroCard     │                │    │
 │  │  EVENTO  12    │               │  partner 1     │    │
-│  │  MIX      8    │  "TODO LO QUE │  partner 2     │    │
-│  │  REVIEW   3    │   VIENE"      │  partner 3     │    │
-│  │  …             │               │                │    │
+│  │  MIX      8    │  EventosRail  │  partner 2     │    │
+│  │  REVIEW   3    │  (auto-scroll │  partner 3     │    │
+│  │  …             │   marquee)    │                │    │
+│  │                │               │                │    │
 │  │                │  ContentGrid  │                │    │
 │  │                │  (mosaic)     │                │    │
 │  └────────────────┴───────────────┴────────────────┘    │
@@ -42,27 +40,26 @@ updated: 2026-04-22
 ## Data pipeline
 
 ```ts
-const homeItems  = filterForHome(MOCK_ITEMS, now)  // upcoming only, date ASC
-const eventDates = getEventDates(MOCK_ITEMS)       // for calendar dots
-const hero       = getPinnedHero(MOCK_ITEMS)       // single portada item
+const homeItems  = filterForHome(allItems, now)  // upcoming only, date ASC
+const hero       = getPinnedHero(allItems)       // single portada item
 
-const partners = MOCK_ITEMS.filter(i => i.type === 'partner')
+const partners = allItems.filter(i => i.type === 'partner')
 const gridItems = homeItems.filter(i =>
   i.type !== 'partner' && (!hero || i.id !== hero.id)
 )
 ```
 
 - **`homeItems`** excludes expired events and expired articles.
-- **`hero`** is pulled from the full `MOCK_ITEMS` (pinned items aren't subject to "upcoming" filter).
+- **`hero`** is pulled from the full `allItems` (pinned items aren't subject to "upcoming" filter).
 - **`gridItems`** excludes the hero to prevent double-render.
 - **Partners** are routed to the [[PartnersRail]], never into the grid — see [[Partners Isolation]].
 
 ## Components used
 
-- [[CalendarSidebar]] — date filter via [[VibeContext]]
 - [[CategoryRail]] — shows counts per type, links to category pages
 - [[HeroCard]] — the single pinned item
-- [[ContentGrid]] with `mode="home"` — HP-curated mosaic, groups pinned-date items first when calendar has a selected date
+- [[EventosRail]] — auto-scrolling rail of scraped events under the hero
+- [[ContentGrid]] with `mode="home"` — HP-curated mosaic
 - [[PartnersRail]] — chronological, isolated
 
 ## "TODO LO QUE VIENE"

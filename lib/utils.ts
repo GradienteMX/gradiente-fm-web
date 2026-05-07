@@ -165,12 +165,6 @@ export function filterByDate(items: ContentItem[], date: Date): ContentItem[] {
   })
 }
 
-export function getEventDates(items: ContentItem[]): Date[] {
-  return items
-    .filter((i) => i.type === 'evento' && i.date)
-    .map((i) => parseISO(i.date!))
-}
-
 // Prefers pinned items, falls back to most-recent editorial-flagged non-evento.
 export function getPinnedHero(items: ContentItem[]): ContentItem | null {
   const heroTypes: ContentItem['type'][] = ['editorial', 'review', 'noticia', 'opinion']

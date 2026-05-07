@@ -48,13 +48,13 @@ export function EventoOverlay({ item }: Props) {
         {/* Date block — top right on flyer */}
         {item.date && (
           <div className="absolute right-4 top-4 flex flex-col items-center border border-white/25 bg-black/75 px-3 py-2 backdrop-blur-sm">
-            <span className="font-mono text-[10px] tracking-widest text-muted">
+            <span className="font-mono text-[10px] font-bold tracking-widest text-white">
               {fmtMonthShort(item.date)}
             </span>
             <span className="font-syne text-4xl font-black leading-none text-white">
               {fmtDayNumber(item.date)}
             </span>
-            <span className="font-mono text-[10px] tracking-widest text-muted">
+            <span className="font-mono text-[10px] font-bold tracking-widest text-white">
               {fmtDayName(item.date)}
             </span>
           </div>

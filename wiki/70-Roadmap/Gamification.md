@@ -45,7 +45,7 @@ This is consistent with the site's existing philosophy ([[No Algorithm]]) and le
 
 ## Concrete first experiment
 
-**"HP dashboard"** — a slide-in widget (like [[CalendarSidebar]] but from the right) that shows:
+**"HP dashboard"** — a slide-in widget anchored to the right edge that shows:
 - Top 10 items right now with live HP bars
 - Next 3 events, with countdown + current imminence bonus
 - Last 3 items to fall off the home grid

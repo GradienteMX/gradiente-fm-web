@@ -36,7 +36,6 @@ Every page renders inside this shell. See [app/layout.tsx](../../app/layout.tsx)
 **Client components (`'use client'`):**
 - [[Navigation]] — needs `usePathname`, `useState`, clock interval
 - [[VibeSlider]] — pointer events, refs, state
-- [[CalendarSidebar]] — interactive date picking
 - [[ContentGrid]] — reads context, Framer Motion layout
 - [[ContentFeed]] — reads context (not currently wired to any page)
 - [[PartnersRail]] — uses `useMemo` (could be server, marked client defensively)
@@ -49,22 +48,21 @@ Every page renders inside this shell. See [app/layout.tsx](../../app/layout.tsx)
 Each page file in `app/*/page.tsx` does three things:
 
 1. Export `metadata` (Next.js picks this up for `<title>`).
-2. Filter [`MOCK_ITEMS`](../../lib/mockData.ts) server-side for this page's scope.
-3. Compose the same 2–3 layout primitives ([[ContentGrid]], [[CalendarSidebar]], section header).
+2. Fetch from Supabase server-side via `getItems()` and filter for this page's scope.
+3. Compose the same 2–3 layout primitives ([[ContentGrid]], section header).
 
 Example — [app/agenda/page.tsx](../../app/agenda/page.tsx):
 
 ```tsx
 export const metadata: Metadata = { title: 'Agenda' }
 
-export default function AgendaPage() {
-  const items = filterForCategory(MOCK_ITEMS, 'evento')
-  const eventDates = getEventDates(MOCK_ITEMS)
+export default async function AgendaPage() {
+  const allItems = await getItems()
+  const items = filterForCategory(allItems, 'evento')
   return (
     <>
-      <CalendarSidebar eventDates={eventDates} />
       {/* header ... */}
-      <ContentGrid items={items} mode="category" emptyLabel="..." />
+      <ContentGrid items={items} mode="agenda" emptyLabel="..." />
     </>
   )
 }

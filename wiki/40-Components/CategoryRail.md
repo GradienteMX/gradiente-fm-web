@@ -46,7 +46,7 @@ Visual feedback:
 
 ## Why in-page (since 2026-04-25)
 
-Per [[Contained Single Surface]] — the page is one continuous surface; navigation away breaks the terminal idiom. Filtering in place is the same affordance as the [[VibeSlider]] does for vibe ranges and [[CalendarSidebar]] does for dates: subtractive client-side filters that compose on top of the same grid.
+Per [[Contained Single Surface]] — the page is one continuous surface; navigation away breaks the terminal idiom. Filtering in place is the same affordance as the [[VibeSlider]] does for vibe ranges: a subtractive client-side filter that composes on top of the same grid.
 
 ## How the filter propagates
 

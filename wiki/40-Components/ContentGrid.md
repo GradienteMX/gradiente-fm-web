@@ -78,10 +78,6 @@ Each card sets `--prominence: {0..1}` based on its intra-tier intensity, and use
 
 So a card at the top of its tier is almost imperceptibly larger than one at the bottom. Design nuance you feel without reading.
 
-## Calendar pinning
-
-When `selectedDate` is set in [[VibeContext]], items matching that date are pulled to the front of the ranked list (preserving order within each group). Provides a "show me this day + the rest still visible" mode rather than a hard filter.
-
 ## Empty state
 
 Both the grid and the linear feed show hazard stripes framing `// SIN CONTENIDO EN ESTE RANGO DE VIBE` when filtered to empty. See [[Utility Classes]].

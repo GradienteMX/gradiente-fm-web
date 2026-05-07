@@ -69,7 +69,7 @@ type CanvasWithPaint = HTMLCanvasElement & {
 //
 // For passthrough this is identity (shader samples 1:1), and setting an
 // identity transform would still create a new containing block for fixed
-// descendants (OverlayRouter, CalendarSidebar) — which we don't want yet.
+// descendants (OverlayRouter) — which we don't want yet.
 // So we skip when the matrix is effectively identity. Once barrel distortion
 // lands the shader's inverse-distortion matrix (NOT the API return) will be
 // assigned here instead.

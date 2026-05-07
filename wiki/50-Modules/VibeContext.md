@@ -20,12 +20,6 @@ interface VibeContextValue {
   vibeRange:        [number, number]
   setVibeRange:     (r: [number, number]) => void
 
-  selectedDate:     Date | null
-  setSelectedDate:  (d: Date | null) => void
-
-  calendarOpen:     boolean
-  toggleCalendar:   () => void
-
   categoryFilter:   ContentType | null
   setCategoryFilter: (t: ContentType | null) => void
 
@@ -49,8 +43,6 @@ interface VibeContextValue {
 ## Defaults
 
 - `vibeRange`: `[0, 10]`
-- `selectedDate`: `null`
-- `calendarOpen`: `false`
 - `categoryFilter`: `null`
 - `genreFilter`: `[]`
 - `visibleGenres`: `null`
@@ -60,7 +52,6 @@ interface VibeContextValue {
 | Field | Writer |
 |---|---|
 | `vibeRange` | [[VibeSlider]] handles + RESET |
-| `selectedDate`, `calendarOpen` | [[CalendarSidebar]] |
 | `categoryFilter` | [[CategoryRail]], dashboard form-success handlers |
 | `genreFilter` | [[VibeSlider]] chip strip (toggle), [[GenreChipButton]] (replace), [[FeedHeader]] (clear) |
 | `visibleGenres` | [[ContentGrid]] (pushed via `useEffect` after each filter pass) |
@@ -69,11 +60,10 @@ interface VibeContextValue {
 
 | Reader | Fields used |
 |---|---|
-| [[ContentGrid]] | `vibeRange`, `selectedDate`, `categoryFilter`, `genreFilter` (filter), `setVisibleGenres` (push) |
-| [[ContentFeed]] | `vibeRange`, `selectedDate` |
+| [[ContentGrid]] | `vibeRange`, `categoryFilter`, `genreFilter` (filter), `setVisibleGenres` (push) |
+| [[ContentFeed]] | `vibeRange` |
 | [[VibeSlider]] | `vibeRange`, `setVibeRange`, `genreFilter`, `toggleGenre`, `visibleGenres` |
 | [[VibeFader]] | (none — uses [[useAuth]] + [[vibeChecks]] hooks instead) |
-| [[CalendarSidebar]] | `selectedDate`, `calendarOpen`, `toggleCalendar` |
 | [[CategoryRail]] | `categoryFilter`, `setCategoryFilter` |
 | [[FeedHeader]] | All filters (display + clear actions) |
 | [[GenreChipButton]] | `setGenreFilter` (replace with `[id]`) |

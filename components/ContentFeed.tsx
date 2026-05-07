@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { isSameDay, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ContentItem } from '@/lib/types'
@@ -41,24 +41,12 @@ function renderCard(item: ContentItem) {
 }
 
 export function ContentFeed({ items, mode = 'home', emptyLabel }: ContentFeedProps) {
-  const { vibeRange, selectedDate } = useVibe()
+  const { vibeRange } = useVibe()
 
-  const filtered = useMemo(() => {
-    let result = filterByVibe(items, vibeRange)
-    if (selectedDate) {
-      // Pin items on selected date to top, keep the rest below
-      const onDate = result.filter((i) => {
-        const d = parseISO(i.date ?? i.publishedAt)
-        return isSameDay(d, selectedDate)
-      })
-      const rest = result.filter((i) => {
-        const d = parseISO(i.date ?? i.publishedAt)
-        return !isSameDay(d, selectedDate)
-      })
-      result = [...onDate, ...rest]
-    }
-    return result
-  }, [items, vibeRange, selectedDate])
+  const filtered = useMemo(
+    () => filterByVibe(items, vibeRange),
+    [items, vibeRange],
+  )
 
   if (filtered.length === 0) {
     return (

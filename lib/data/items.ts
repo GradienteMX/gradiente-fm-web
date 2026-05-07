@@ -262,7 +262,7 @@ function attachAggregate(
 // RLS narrows the visible set: anon / unauthenticated → published items only;
 // admin / guide → all items (including unpublished + seeded).
 //
-// Pages still apply their own filters (filterForHome, getEventDates, etc.) on
+// Pages still apply their own filters (filterForHome, etc.) on
 // the result. Centralizing the read here means we're one swap away from
 // adding pagination, FTS, or denormalized aggregates later without touching
 // any pages.

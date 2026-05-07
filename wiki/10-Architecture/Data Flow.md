@@ -54,11 +54,11 @@ See [[HP Curation System]] for the full math. The key transform is [`rankItems`]
 
 ### Client-side filtering (reactive)
 
-[[ContentGrid]] reads `vibeRange` and `selectedDate` from [[VibeContext]], re-computes the ranked list in a `useMemo`, and animates layout changes via Framer Motion.
+[[ContentGrid]] reads `vibeRange`, `categoryFilter`, and `genreFilter` from [[VibeContext]], re-computes the ranked list in a `useMemo`, and animates layout changes via Framer Motion.
 
 ## Invariants
 
-- `filterForHome` runs only on the server. `filterByVibe` + `selectedDate` pinning run only on the client. Don't cross the streams.
+- `filterForHome` runs only on the server. `filterByVibe` runs only on the client. Don't cross the streams.
 - **Partners never flow into the main grid** — filtered out in [app/page.tsx:16](../../app/page.tsx). See [[Partners Isolation]].
 - **Hero is removed from the grid** to avoid double-rendering (same file, `i.id !== hero.id` check).
 

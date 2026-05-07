@@ -52,7 +52,6 @@
 - [[Navigation]] — EVA-themed header, MAGI indicators, data-strip ticker
 - [[VibeSlider]] — dual-handle range over neon stripe band + multi-genre toggle chip strip (feed-driven)
 - [[VibeFader]] — inline draggable fader inside every overlay; drives [[Vibe Checks]]
-- [[CalendarSidebar]] — slide-in month grid, date-based filter
 - [[CategoryRail]] — sticky left rail with counts per type
 - [[ContentGrid]] — HP-driven mosaic with directional layout animations
 - [[EventosRail]] — auto-scrolling horizontal marquee of scraped events under the hero; isolates the RA firehose from the editorial mosaic
@@ -116,7 +115,7 @@
 - [[genres]] — the genre + tag catalogs and lookup helpers
 - [[utils]] — vibe helpers, date helpers, format helpers, filters, `getPinnedHero`
 - [[drafts]] — sessionStorage-backed editor items store (the [[Publish Confirmation Flow]] backbone)
-- [[VibeContext]] — global state: vibeRange, selectedDate, calendarOpen, categoryFilter, multi-genre filter, visibleGenres
+- [[VibeContext]] — global state: vibeRange, categoryFilter, multi-genre filter, visibleGenres
 - [[vibeChecks]] — optimistic cache + hooks for [[Vibe Checks]] (mirrors [[polls]])
 - [[useOverlay]] — overlay context + hook, URL sync via history.replaceState
 - [[Dashboard Explorer]] — file-explorer shell wrapping every dashboard surface (sidebar + window + details), section-routed via `?section=`

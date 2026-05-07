@@ -53,13 +53,13 @@ function EventoRailCard({
 
         {d && (
           <div className="absolute right-2 top-2 border border-white/20 bg-black/70 px-1.5 py-1 text-center font-mono backdrop-blur-sm">
-            <div className="text-[8px] tracking-widest text-muted">
+            <div className="text-[8px] font-bold tracking-widest text-white">
               {format(d, 'MMM', { locale: es }).toUpperCase()}
             </div>
             <div className="text-base font-bold leading-none tabular-nums text-white">
               {format(d, 'd')}
             </div>
-            <div className="text-[7px] tracking-widest text-muted/80">
+            <div className="text-[7px] font-bold tracking-widest text-white">
               {format(d, 'EEE', { locale: es }).toUpperCase()}
             </div>
           </div>

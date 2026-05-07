@@ -21,13 +21,13 @@ export function EventCard({ item }: EventCardProps) {
       {/* Date column */}
       {item.date ? (
         <div className="flex w-16 flex-shrink-0 flex-col items-center justify-center gap-0 border-r border-border py-4 text-center">
-          <span className="font-mono text-[9px] tracking-widest text-muted">
+          <span className="font-mono text-[9px] font-bold tracking-widest text-white">
             {fmtMonthShort(item.date)}
           </span>
           <span className="font-syne text-3xl font-black leading-none text-primary">
             {fmtDayNumber(item.date)}
           </span>
-          <span className="font-mono text-[9px] tracking-widest text-muted">
+          <span className="font-mono text-[9px] font-bold tracking-widest text-white">
             {fmtDayName(item.date)}
           </span>
           {time && (

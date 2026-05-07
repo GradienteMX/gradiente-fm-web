@@ -26,7 +26,6 @@ espectro-fm-web/
 ├── components/       Shared UI. PascalCase filenames.
 │   ├── Navigation.tsx
 │   ├── VibeSlider.tsx
-│   ├── CalendarSidebar.tsx
 │   ├── CategoryRail.tsx
 │   ├── ContentGrid.tsx     (mosaic, used)
 │   ├── ContentFeed.tsx     (linear, unused — see [[Dual Feed Systems]])

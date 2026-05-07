@@ -2,12 +2,12 @@
 type: page
 status: current
 tags: [page, events, agenda]
-updated: 2026-04-22
+updated: 2026-05-07
 ---
 
 # Agenda — `/agenda`
 
-> Events-only view. Date-forward. Keeps the sidebar calendar.
+> Events-only view. Date-forward.
 
 ## Source
 
@@ -15,23 +15,21 @@ updated: 2026-04-22
 
 ## What
 
-Filters `MOCK_ITEMS` to `type === 'evento'` via `filterForCategory`, sorted **descending** by date. Renders via [[ContentGrid]] in `mode="category"`.
+Filters items to `type === 'evento'` via `filterForCategory`, sorted by date. Renders via [[ContentGrid]] in `mode="agenda"` — future events first (soonest at top), then past events.
 
 Unlike the home page, this view:
-- Keeps the [[CalendarSidebar]] (events-only page → calendar is maximally useful here).
 - Drops the category rail and partners rail (cleaner focus).
 - Does **not** get the pinned hero (hero is for editorial content).
 
+The slide-in calendar sidebar that used to live on this page (and Home) was retired 2026-05-07 — date-forward sort + the [[EventosRail]] marquee on home covered the same need without the modal friction.
+
 ## Copy
 
-Header: `AGENDA · EVENTOS · {count} ENTRADAS · HOY → PASADO`
+Header: `AGENDA · EVENTOS · {count} ENTRADAS · PRÓXIMOS · ARCHIVO ABAJO`
 Empty: `// SIN EVENTOS EN ESTE RANGO`
-
-The `HOY → PASADO` tagline is slightly misleading — events are actually sorted descending (newest first at the top). Worth reviewing. See [[Open Questions]].
 
 ## Links
 
 - [[ContentGrid]]
-- [[CalendarSidebar]]
 - [[Content Types]]
 - [[utils]]

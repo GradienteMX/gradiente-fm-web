@@ -1,4 +1,3 @@
-import { CalendarSidebar } from '@/components/CalendarSidebar'
 import { CategoryRail } from '@/components/CategoryRail'
 import { EventosRail } from '@/components/EventosRail'
 import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
@@ -8,7 +7,7 @@ import { PartnersRail } from '@/components/PartnersRail'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
-import { filterForHome, getEventDates, getPinnedHero } from '@/lib/utils'
+import { filterForHome, getPinnedHero } from '@/lib/utils'
 
 // Reads from Supabase via cookies()-aware server client → forces dynamic.
 // Will become `revalidate = 300` once the SYSTEM UPDATE countdown lands
@@ -19,7 +18,6 @@ export default async function HomePage() {
   const now = new Date()
   const allItems = await getItems()
   const homeItems = filterForHome(allItems, now)
-  const eventDates = getEventDates(allItems)
   const hero = getPinnedHero(allItems)
 
   // Partners live in the right rail, never in the main mosaic. The
@@ -52,8 +50,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <CalendarSidebar eventDates={eventDates} />
-
       <div className="flex gap-6">
         {/* Left category rail — desktop only, sticky */}
         <CategoryRail items={gridItems} />

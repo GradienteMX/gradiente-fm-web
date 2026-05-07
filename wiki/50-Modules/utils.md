@@ -42,7 +42,6 @@ filterForHome(items, now)        → upcoming, ASC by date
 filterForCategory(items, type)   → single type, DESC by date
 filterByVibe(items, [min, max])  → items where vibe ∈ [min, max]
 filterByDate(items, date)        → items on a given calendar day
-getEventDates(items)             → dates of all events (for calendar dots)
 ```
 
 ### Format helpers (Spanish locale)

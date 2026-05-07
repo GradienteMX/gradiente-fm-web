@@ -69,7 +69,7 @@ return (
 
 - **Color** — orange (sys chrome) reads as "system action." Should it instead pick up the **active category's color** (cyan for mix, red for evento, etc.), so each filter has its own visual signature? Could be more expressive but might dilute the "system" framing.
 - **Direction** — top-to-bottom feels canonical for CRT. Bottom-to-top might feel more "incoming feed" — a vertical signature for "fresh data arrived." Bias: top-to-bottom unless we want to lean into the radio metaphor.
-- **Trigger scope** — only on category filter changes, or also on vibe slider changes / date filter changes? Probably only category for now (the slider is continuous; firing the sweep on every drag step would be noise). Date filter via [[CalendarSidebar]] could plausibly trigger one too.
+- **Trigger scope** — only on category filter changes, or also on vibe slider changes? Probably only category for now (the slider is continuous; firing the sweep on every drag step would be noise).
 - **Reduced motion** — respect `prefers-reduced-motion` and skip. Same for the existing exit animations — worth a global audit.
 - **Stacking with the existing global [[CRTOverlay]]** — make sure the sweep sits below any global scanline so it doesn't double-flash.
 

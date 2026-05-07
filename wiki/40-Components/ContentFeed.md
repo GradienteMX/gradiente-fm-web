@@ -17,7 +17,6 @@ updated: 2026-04-22
 
 - Takes `ContentItem[]` + `mode: 'home' | 'category'`
 - Filters by vibe range from [[VibeContext]]
-- Pins `selectedDate` items to top
 - In `home` mode, groups by date with a `DateDivider`:
   ```
   // JUEVES 18 DE ABRIL ──────
