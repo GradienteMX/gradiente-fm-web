@@ -82,12 +82,38 @@ While testing, hit `next/image` errors on Substack-CDN and other third-party ima
 - **Fresh chrome**: forced via DOM injection on a feed card with `--glitch-color: #3b82f6`. Border pulse + cover flicker + [NUEVO] chip render correctly. Scanline sampled at 6 timepoints over 2.4s: top% goes -12.9 → 10.3 → 32.8 → 56.0 → 79.2 → 101.7 — full traversal.
 - **Dev server compiled cleanly after each batch of edits**, no console errors at home or dashboard. End-to-end publish round-trip (real DB write → fresh chrome on real card) NOT exercised — requires real auth + the typed-confirmation flow.
 
+### 7 — CRT shader retune (commit a194e6a)
+
+Beta-tester report: tube-edge curvature read as a milky border ring rather than CRT shape, and the grain/flicker texture vibrated enough to feel busy. Iterated a few values:
+
+- **Rounded-rect tube simulation removed.** `float tube = 0.0` — the SDF + smoothstep that darkened past the rectangle is gone. `u_vignetteStrength` uniform stays plumbed for a softer revisit later. The visible CRT chrome is now just scanlines + grain + flicker + rolling bar.
+- **Scanline period widened 2 → 4 physical px.** Retina DPR=2 was smearing 2-px lines into a flat tint. 4-px period (1 dark row of 4, 25% duty cycle) gives crisp lines that text reads through.
+- **Scanline intensity** tuned 0.55 → 0.75 → 0.55. Final value reads cleanly without obscuring body type ascenders.
+- **noiseIntensity** 0.10 → 0.04 and **flickerIntensity** 0.04 → 0.015 so the texture is ambient chrome rather than visual noise.
+- **Grain quantization** 24Hz → 12Hz for a calmer per-second pulse.
+
+### 8 — CalendarSidebar removed (commit 1bf80a0)
+
+Iker's call: the slide-in calendar tab on the left of Home + Agenda was redundant with the date-forward Agenda sort + the [[EventosRail]] marquee. Beta testers ignored it. Stripping it lets the page breathe and removes ~180 lines of state + filter wiring.
+
+- Component + wiki page deleted.
+- Mounts removed from [[Home]] + [[Agenda]] pages.
+- [[VibeContext]] dropped `selectedDate` / `setSelectedDate` / `calendarOpen` / `toggleCalendar`.
+- [[ContentGrid]] + [[ContentFeed]] dropped the `selectedDate` "pin matching dates to top" branch (and the no-longer-used `isSameDay` import).
+- `lib/utils.ts` dropped the orphaned `getEventDates` helper.
+- Wiki references swept across 11 files: [[Home]], [[Agenda]], [[VibeContext]], [[ContentGrid]], [[ContentFeed]], [[CategoryRail]], [[utils]], [[Folder Structure]], [[App Router Patterns]], [[Data Flow]], [[CRT Scanline Sweep]], [[Gamification]] — the last two were passing references in roadmap docs.
+
+### 9 — Event date label readability (commit 1bf80a0)
+
+Beta-tester report: month + day-of-week (e.g. MAY / JUE) in the date block were `text-muted` while the day number was `text-white font-black` — barely visible. Bumped to `text-white font-bold` across all five surfaces that render this block: ContentCard SM + LG, [[EventCard]] (linear), [[EventoOverlay]], [[EventosRail]].
+
 ### Open
 
 - The `_pendingConfirm` field on `ContentItem` and its defensive strip in `Fields.tsx:1140` are now dead code. Cleanup pass in a follow-up.
 - [[ContentCard]].md and [[HomeFeedWithDrafts]].md component pages still describe the old pending flow. Backfill when next touching them.
 - [[EventosRail]] cards for rail-only events likely have the same "missing from itemsCache" bug as the hero originally did, since rail-only events are excluded from `gridItems`. Unreported so far; defer.
 - The fresh-chrome timer is purely client-side — server-rendered cards may briefly mismatch the client computation at the 1hr boundary. Acceptable jitter for now.
+- `u_vignetteStrength` uniform on the CRT shader is plumbed but unused after the tube removal. If we revisit a softer radial vignette, that's where it'd hook back in.
 
 ---
 
