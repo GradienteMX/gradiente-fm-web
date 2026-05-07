@@ -149,7 +149,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             <img
               src={item.imageUrl}
               alt={item.title}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-top"
             />
             <div
               className="absolute bottom-0 left-0 right-0 h-0.5"
@@ -404,7 +404,9 @@ function initials(name: string): string {
 function buildBlocks(item: ContentItem): ArticleBlock[] {
   if (item.articleBody && item.articleBody.length > 0) return item.articleBody
   const raw = item.bodyPreview ?? item.excerpt ?? ''
-  const paras = raw.split('\n\n').map((p) => p.trim()).filter(Boolean)
+  // Match any run of newlines so an Enter-once paragraph break still produces
+  // a paragraph. Mirrors splitParagraphs in ArticuloOverlay.
+  const paras = raw.split(/\n+/).map((p) => p.trim()).filter(Boolean)
   if (paras.length === 0) {
     return [
       {

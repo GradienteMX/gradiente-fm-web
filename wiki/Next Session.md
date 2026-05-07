@@ -1,9 +1,9 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-05 · late** — site is now invite-only behind a `/welcome` cockpit (NGE terminal landing with ASCII vinyl). Anonymous → 302 to `/welcome`. Authed → bounces off `/welcome` to `/`. RLS shifted from `seed = false`/public to `auth.uid() is not null`, so beta testers now see seeded mockdata too (the page feels populated before they contribute). Plus owner+admin item delete with typed `BORRAR <title>` confirmation, eventos appear in rail+mosaic when `editorial: true`, and two publish-flow bugs fixed. Migrations 0013 + 0014 applied to remote. See top entry in [[log]] for the full breakdown.
+> Last updated: **2026-05-07** — beta-tester feedback session. Pinned hero overlay bug fixed (cache-pipe miss). Multi-paragraph rendering in articulo/listicle/reader bodies fixed (split on any newline run, not just blank lines). Image cropping flipped to `object-top` site-wide. Dashboard explorer rebuilt: right-side DETALLES rail replaced by `ConfirmOverlay` that pops on tile click — CRT chrome + exit animation, two-column layout everywhere. Publish flow restructured: composer's `▶ PUBLICAR` opens [[PublishConfirmOverlay]] in-place; confirm publishes + lands on `/?fresh=<id>` which auto-scrolls to the new card; first hour of any editor-composed publish wears type-coloured `[NUEVO]` glitch chrome (border pulse, scanline, cover flicker), expiry via per-card `setTimeout`. Image hosts allowlist extended (substackcdn / Apple Music / Discogs). See top entry in [[log]] for the full breakdown.
 >
-> **Outstanding visual work**: the welcome page's ASCII vinyl is functional but still off-design vs reference — see "Open" in the log entry for the levers (groove pitch, tilt, ambient hardening).
+> **Outstanding visual work**: the welcome page's ASCII vinyl is functional but still off-design vs reference — see 2026-05-05 entry in the log for the levers (groove pitch, tilt, ambient hardening). Still not addressed.
 
 ## How to start this session
 
@@ -52,7 +52,9 @@ The vibe arc landed ideas 1, 2, and 4. Idea 3 ("the system learns context") stil
 ### E. Other smaller items
 
 - **`Mi Partner` composer** — marketplace_listings jsonb still on session. Migrate to a `partner-listings` flow (probably: per-partner-row PATCH on `items` for the embedded jsonb, or a separate `marketplace_listings` table). Will likely fold into the partner self-service slice (A's third bullet) since they touch the same surface.
-- **Reduced motion respect** — pending-publish glitch + CRT scanline + chip pulse run regardless of `prefers-reduced-motion`. WCAG-relevant.
+- **Reduced motion respect** — fresh-publish glitch + CRT scanline + chip pulse run regardless of `prefers-reduced-motion`. WCAG-relevant.
+- **Dead `_pendingConfirm` field** — still on `ContentItem` and stripped defensively in `Fields.tsx:1140` even though no renderer references it after the 2026-05-07 publish-flow restructure. Cleanup pass when next touching the type.
+- **Component-page wiki backfill** — [[ContentCard]].md and [[HomeFeedWithDrafts]].md still describe the retired pending-card flow. Update opportunistically.
 - **Skill-tree for ranks** — post-beta only; tier within branches (detonador 1→2→3, etc.). See `project_skill_tree_ranks` memory.
 - **`lib/mockData.ts` cleanup deferred** — Iker uses it for testing how content behaves in dev.
 - **Duplicate `GenreFieldset`** — exists in both [Fields.tsx](../components/dashboard/forms/shared/Fields.tsx) and [MixForm.tsx](../components/dashboard/forms/MixForm.tsx). Pre-existing smell; both updated in the migration slice for the legacy filter, but worth dedup later.

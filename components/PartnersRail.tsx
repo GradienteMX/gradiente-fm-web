@@ -28,7 +28,7 @@ function PartnerCard({ item }: { item: ContentItem }) {
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
             loading="lazy"
           />
         ) : (

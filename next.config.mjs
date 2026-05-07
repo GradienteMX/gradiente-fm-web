@@ -15,6 +15,12 @@ const nextConfig = {
       // 0013 created the `uploads` public bucket; image-upload composer
       // writes here and references the public URL on items.image_url.
       { protocol: 'https', hostname: '*.supabase.co' },
+      // Common third-party hosts that collaborators paste image URLs from.
+      // Substack CDN wraps S3-backed post images; Apple Music + Discogs
+      // appear in listicle track covers.
+      { protocol: 'https', hostname: 'substackcdn.com' },
+      { protocol: 'https', hostname: 'is1-ssl.mzstatic.com' },
+      { protocol: 'https', hostname: 'i.discogs.com' },
     ],
   },
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
+import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { Plus, Trash2, ClipboardPaste } from 'lucide-react'
 import type {
   ContentItem,
@@ -71,6 +72,7 @@ export function MixForm() {
   const search = useSearchParams()
   const editItemId = search?.get('edit') ?? null
   const { setCategoryFilter } = useVibe()
+  const { openConfirm } = usePublishConfirm()
 
   const workbench = useDraftWorkbench({
     draftKey: DRAFT_KEY,
@@ -85,7 +87,7 @@ export function MixForm() {
     // Clear any active category filter so the editor sees their pending card
     // even if they had the home grid narrowed to a different type.
     setCategoryFilter(null)
-    router.push(`/?pending=${id}`)
+    openConfirm(id)
   }
 
   // Auto-generate slug from title unless user manually edited it.

@@ -6,8 +6,6 @@ import { DraggableFileGrid } from './DraggableFileGrid'
 
 interface Props {
   items: DraftItem[]
-  selectedId: string | null
-  onSelect: (id: string | null) => void
   onOpen: (item: DraftItem) => void
   /** When defined, filters items to a single state. */
   stateFilter?: 'draft' | 'published'
@@ -19,8 +17,6 @@ interface Props {
 
 export function DraftsSection({
   items,
-  selectedId,
-  onSelect,
   onOpen,
   stateFilter,
   namespace = 'drafts',
@@ -35,8 +31,6 @@ export function DraftsSection({
     <DraggableFileGrid
       namespace={namespace}
       items={filtered}
-      selectedId={selectedId}
-      onSelect={onSelect}
       onOpen={onOpen}
       onDelete={onDelete}
     />

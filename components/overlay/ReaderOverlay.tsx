@@ -76,8 +76,11 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [item.imageUrl])
 
+  // Split on any run of newlines so an Enter-once paragraph break in the
+  // composer renders as a paragraph break here too. Without this, a writer
+  // who didn't use blank lines between paragraphs would see one wall of text.
   const paragraphs = item.bodyPreview
-    ? item.bodyPreview.split('\n\n').filter(Boolean)
+    ? item.bodyPreview.split(/\n+/).map((p) => p.trim()).filter(Boolean)
     : item.excerpt
       ? [item.excerpt]
       : []
@@ -217,7 +220,7 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                 <img
                   src={item.imageUrl}
                   alt={item.title}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover object-top"
                 />
                 <div
                   className="absolute bottom-0 left-0 right-0 h-0.5"

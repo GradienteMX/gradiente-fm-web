@@ -28,7 +28,7 @@ export function GenericOverlay({ item }: Props) {
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-top"
           />
           <div
             className="absolute bottom-0 left-0 right-0 h-1"

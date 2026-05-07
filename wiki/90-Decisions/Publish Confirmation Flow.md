@@ -2,115 +2,103 @@
 type: decision
 status: current
 tags: [decision, dashboard, publish, drafts, ux]
-updated: 2026-04-25
+updated: 2026-05-07
 ---
 
 # Publish Confirmation Flow
 
-> Three-state model for editorial publishing in the visual prototype: **draft** (private work-in-progress), **pending** (saved as draft, under publish review), **published** (live in the feed). The transition draft → published always passes through pending — never one-click.
+> Two-state model: **draft** (private work-in-progress, only in dashboard) and **published** (live in the feed). The transition runs through a confirmation overlay that opens **inside the dashboard composer** — never on the public feed. Recently-published items wear a fresh-glitch chrome on the feed for one hour so editors can spot their landing.
 
 ## What
 
-Editor publishing is a three-state machine, not a binary. The states differ in **persistence** (storage state) AND **visibility** (whether they appear in the public feed) AND **chrome** (visual treatment).
+Editor publishing has two persistent states plus one transient confirmation step:
 
-| State | `_draftState` | URL marker | In feed? | Chrome on card |
-|---|---|---|---|---|
-| **draft** | `'draft'` | — | No (private) | n/a (only visible in [[Dashboard Drafts]]) |
-| **pending** | `'draft'` | `?pending=<id>` on home URL | Yes (the one matching the id) | `[PENDIENTE·CONFIRMAR]` chip + glitch border + scanline + cover flicker + corner CONFIRMAR button |
-| **published** | `'published'` | — | Yes | None — looks like real content |
+| State | `_draftState` | Visible to public? | Card chrome on feed |
+|---|---|---|---|
+| **draft** | `'draft'` | No (only [[Dashboard Drafts]]) | n/a |
+| **published** | `'published'` | Yes | None — looks like real content, EXCEPT for the first hour after publish, when the editor's own type-coloured glitch chrome ([NUEVO] chip + border pulse + scanline + cover flicker) marks it as fresh |
 
-Note that **pending is not its own data state** — it's `'draft'` plus a transient URL flag. We chose this so:
-
-- Drafts don't accidentally surface in the feed (the user explicitly pushed back on this when we tried to)
-- Pending state survives reloads naturally via the URL
-- Cancelling pending just clears the URL; the draft stays intact
-- No "stale pending" rows in storage to clean up
-
-## Why three states (not two)
-
-User feedback after the first two-state shipped (draft → published, one-click): publishing felt too dangerous and the distinction between "draft" and "ready to publish" was muddy. Adding a confirmation gate solved both:
-
-- The danger: a misclick can't accidentally make content live
-- The clarity: each state has its own visual identity. Drafts are invisible to the public; pending items are visibly mid-review; published items look indistinguishable from real content.
-
-The pending state also serves a secondary function: it's where the editor sees their content **in feed context** before committing. The card lands where curation will rank it, glitching among real content — letting the editor judge "does this fit here?" before it's live.
+The previous three-state model (draft / pending / published) with a `?pending=<id>` URL flag and a glitching pending card on the feed was retired on 2026-05-07. Beta testers hit a recurring confusion: they would refresh after composing and not realise their item was still in pending limbo, then ask why their content wasn't on the feed. See [[log]] entry of that day for the redesign.
 
 ## How
 
-### Form → Pending
+### Form → Confirm overlay (in dashboard)
 
-1. Editor clicks `▶ PUBLICAR` in any [[Dashboard Forms]] form
+1. Editor clicks `▶ PUBLICAR` in any [[Dashboard Forms]] form.
 2. Form's `onPublish` handler:
-   - Calls `workbench.requestPublish()` which calls `commit('draft')` — saves item with `_draftState: 'draft'`. Returns the stable id.
-   - Calls `setCategoryFilter(null)` to clear any active home-feed filter (otherwise the new card might be filtered out)
-   - Calls `router.push('/?pending=<id>')`
-3. Home page mounts. `HomeFeedWithDrafts` reads URL param, finds matching draft via `useDraftItems()`, stamps with `_pendingConfirm: true`
-4. Filtered into feed: published session items + the one matching `pendingId`. Pure drafts stay hidden.
-5. [[ContentCard]] receives item with `_pendingConfirm` → renders glitch chrome + auto-scrolls into view + shows corner `[✓ CONFIRMAR]` button
+   - `workbench.requestPublish()` saves the item with `_draftState: 'draft'` and returns its stable id.
+   - `setCategoryFilter(null)` clears any active home-feed filter so the card surfaces post-publish.
+   - `usePublishConfirm.openConfirm(id)` opens [[PublishConfirmOverlay]] **in place** — no navigation.
+3. The overlay shows a preview (type badge + slug + title + subtitle) and two buttons: `CANCELAR` and `▶ PUBLICAR DEFINITIVAMENTE`.
 
-### Pending → Published
+### Confirm → Published
 
-6. Editor clicks the corner button (or `[✓ CONFIRMAR]`)
-7. `usePublishConfirm.openConfirm(itemId)` opens [[PublishConfirmOverlay]]
-8. Editor reviews the item preview in the modal, clicks `▶ PUBLICAR DEFINITIVAMENTE`
-9. Modal's confirm handler:
-   - Calls `upsertItem(item, 'published')` — flips state in store
-   - Calls `closeConfirm()`
-   - Calls `router.replace(...)` to clear `?pending` URL param without history bloat
-10. `useDraftItems` notifies subscribers → home grid re-renders → card now has `_draftState: 'published'`, no glitch, no chip, indistinguishable from real content
+4. Editor clicks `▶ PUBLICAR DEFINITIVAMENTE`.
+5. Modal's `handleConfirm`:
+   - Captures the payload locally + closes the modal (so the modal dismisses via its own state, not via the cache mutation pulling `item` out from under the memoized render).
+   - Optimistically drops the row from `draftsCache` so the dashboard drafts list reflects the publish before the API round-trip completes.
+   - Awaits `publishItem(payload)` — the server route flips the row to `published = true`.
+   - On success: wipes `gradiente:dashboard:<type>-draft` so the next "new <type>" navigation starts empty.
+   - Pushes the user to `/?fresh=<id>` so they land on the feed with their card visible.
 
-### Pending → Cancel
+### Auto-scroll to the new card
 
-- Cancel via modal CANCELAR button, ESC key, or backdrop click
-- Modal closes; URL `?pending` param stays
-- The draft remains in storage with `_draftState: 'draft'`
-- Editor can re-trigger from the corner button or navigate away (URL stays in history)
+6. [[HomeFeedWithDrafts]] reads `?fresh=<id>` on mount, queries the DOM for `[data-card-id="<id>"]`, and runs the same double `scrollIntoView` pattern (120ms + 800ms) used previously for pending cards — handles the layout shift from lazy-loaded images above/below.
+7. The URL param is then stripped via `replaceState` so back/forward doesn't re-trigger the scroll.
 
-### Draft → Confirm (from overlay)
+### Confirm → Cancel
 
-- Click `▶ PUBLICAR AHORA` in the orange [[OverlayShell]] strip on any draft overlay
-- `SessionItemStrip.handlePublish` calls `usePublishConfirm.openConfirm(item.id)` — same entry point the pending-card corner button uses
-- Modal opens with the item preview; confirming flips the draft to `published` directly (no intermediate `?pending=` URL state, since the user is already looking at the item)
-- This path skips the pending-card glitch — appropriate because the editor is already reading the item, so the "preview before publish" purpose of the pending state is already served
+- Cancel via `CANCELAR`, `ESC`, or backdrop click.
+- Modal closes. The draft persists in `draftsCache` so the editor can re-trigger from the same form (it autosaves) or from the dashboard drafts list.
 
-### Published → Edit → Pending → Published
+### Draft → Publish (from inside an overlay)
 
-- Click EDITAR in the published item's [[OverlayShell]] strip
-- Routes to `/dashboard?type=<type>&edit=<id>`
-- Form pre-populates via `useDraftWorkbench`'s `editItemId` hydration
-- Editor edits, clicks PUBLICAR
-- Goes through pending flow again (saves as draft → URL param → glitch → confirm)
-- Final upsert with same id → state stays `'published'`, content updated
+- The orange `SessionItemStrip` in [[OverlayShell]] still has `▶ PUBLICAR AHORA` for any open draft.
+- `SessionItemStrip.handlePublish` calls `usePublishConfirm.openConfirm(item.id)` — same entry point the dashboard form uses. Modal opens on top of the overlay; confirm publishes + navigates to `/?fresh=<id>`. The overlay closes naturally when the URL changes.
 
-**Caveat:** during the transient pending step on a re-publish, `_draftState` momentarily becomes `'draft'`. If the editor cancels mid-flow, the previously-published item is now in draft state. Acceptable for prototype; worth deciding for production whether to preserve the published flag during pending re-confirmations.
+### Published → Edit → Confirm again
+
+- Click `EDITAR` in the published item's `SessionItemStrip` chrome.
+- Routes to `/dashboard?type=<type>&edit=<id>`. Form hydrates via `useDraftWorkbench`'s `editItemId`.
+- Editor edits, clicks `▶ PUBLICAR` → same confirm overlay → same `?fresh=<id>` landing.
+- The DB upsert reuses the existing id; `_draftState` stays `'published'` throughout.
+
+## Fresh-published chrome (the [NUEVO] hour)
+
+For the first hour after publish, **editor-composed items only**, the [[ContentCard]] wrapper renders a glitch chrome:
+
+- **Border pulse** — `fresh-border-pulse` keyframe (1.6s loop), color sourced from `--glitch-color` (the type's `categoryColor`).
+- **Scanline sweep** — single thin band, top: -25% → 110% of card (parent-relative) over 2.4s. Earlier version used `transform: translateY(percentage)` which is element-relative and only travelled ~28% of the card; switched to animating `top` so the sweep covers the full card (fixed 2026-05-07).
+- **Cover flicker** — CRT brightness/hue distortion, 3.2s loop with ~5%-of-cycle punches.
+- **[NUEVO] chip** — type-coloured chip next to the type badge, with the `fresh-chip-flicker` opacity pulse.
+
+### Predicate
+
+```ts
+const isEditorComposed = item.source !== 'scraper:ra'
+const ageMs = Date.now() - Date.parse(item.publishedAt)
+const isFresh = isEditorComposed && ageMs >= 0 && ageMs < ONE_HOUR_MS
+```
+
+`source === 'scraper:ra'` excludes the RA Mon/Wed/Fri batches (otherwise 100+ events would all glitch at once on scrape day). Seed data has stale `publishedAt` and naturally never qualifies.
+
+### 1-hour expiry
+
+[[ContentCard]] holds `isFresh` in `useState` and runs a single `setTimeout` for `(publishedAt + 1hr) - now` ms; on fire it flips `isFresh = false` and the chrome disappears. No `setInterval`, one shot per fresh card. If the user keeps the page open past the boundary the timer still fires.
 
 ## Components involved
 
 - [[useDraftWorkbench]] (in [[Dashboard Forms]] / `Fields.tsx`) — `saveDraft()` and `requestPublish()` (returns id, doesn't actually publish)
-- [[ContentCard]] — chip swap, glitch wiring, corner CONFIRMAR button, auto-scroll
-- [[HomeFeedWithDrafts]] — URL param read, `_pendingConfirm` stamping, filter (only published + the one pending)
-- [[PublishConfirmOverlay]] — globally-mounted modal
+- [[ContentCard]] — `isFresh` computation, `--glitch-color` CSS variable, [NUEVO] chip, per-card 1hr `setTimeout`
+- [[HomeFeedWithDrafts]] — `?fresh=<id>` read + double-scroll + URL param cleanup
+- [[PublishConfirmOverlay]] — globally-mounted modal; opens from form `onPublish` and from `SessionItemStrip` publish-now
 - [[usePublishConfirm]] — context for modal open state
-- [globals.css](../../app/globals.css) — `pending-border-pulse`, `pending-scanline-sweep`, `pending-cover-flicker`, `pending-chip-flicker` keyframes
+- [globals.css](../../app/globals.css) — `fresh-border-pulse`, `fresh-scanline-sweep`, `fresh-cover-flicker`, `fresh-chip-flicker` keyframes (parameterized via `--glitch-color`)
 
-## Visual primitives
+## Open
 
-The pending state uses four CSS animations layered on the card:
-- **Border pulse** — alternates red↔orange every 1.6s
-- **Scanline sweep** — vertical gradient line traverses top→bottom every 2.4s
-- **Cover flicker** — CRT-style brightness/hue distortion punches every 3.2s (~5% of the cycle)
-- **Chip flicker** — subtle opacity pulse on the `[PENDIENTE·CONFIRMAR]` chip
-
-All four are CSS-driven. No JS scramble for the title (kept that for the 404 page only — too aggressive on grid cards).
-
-## Backend transition
-
-When [[Supabase Migration]] lands:
-- `lib/drafts.ts` API stays the same (`upsertItem`, `getItemById`, `useDraftItems`) — implementation swaps from sessionStorage to Supabase
-- Drafts persist to `items` table with a `state` column
-- Pending → Published becomes a real DB transition (not just a state field flip)
-- The pending URL param + visual chrome stay exactly as built
-- Editor permission checks on publish: only insiders/admins can confirm
+- The `_pendingConfirm` flag still exists on `ContentItem` but is unused by any rendering code. Worth a follow-up cleanup pass on the type definition + the defensive strip in `Fields.tsx:1140`.
+- The fresh-chrome timer runs entirely client-side. If the user has no `publishedAt` or it's malformed, `freshAgeMs` returns null and the chrome is suppressed — defensive but worth surfacing if it ever triggers in the wild.
 
 ## Links
 

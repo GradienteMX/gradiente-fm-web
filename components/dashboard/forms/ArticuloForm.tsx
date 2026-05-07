@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import type { ArticleBlock, ContentItem, Footnote } from '@/lib/types'
 import { useVibe } from '@/context/VibeContext'
+import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { LivePreview } from '@/components/dashboard/LivePreview'
 import {
   Section,
@@ -93,6 +94,7 @@ export function ArticuloForm() {
   const search = useSearchParams()
   const editItemId = search?.get('edit') ?? null
   const { setCategoryFilter } = useVibe()
+  const { openConfirm } = usePublishConfirm()
 
   const workbench = useDraftWorkbench({
     draftKey: DRAFT_KEY,
@@ -105,7 +107,7 @@ export function ArticuloForm() {
   const onPublish = () => {
     const id = workbench.requestPublish()
     setCategoryFilter(null)
-    router.push(`/?pending=${id}`)
+    openConfirm(id)
   }
 
   useEffect(() => {

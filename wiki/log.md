@@ -8,6 +8,89 @@
 
 ---
 
+## 2026-05-07 · INGEST · publish-flow restructure + dashboard ConfirmOverlay + content-rendering polish
+
+Beta-tester feedback session. Six interlocking slices, mostly UX-and-rendering polish driven by collaborator reports. All in the working tree, going up as one commit.
+
+### 1 — Pinned hero never opened its overlay
+
+Reported by datavismo: clicking the `// EN PORTADA` hero changed the URL to `?item=<slug>` but no overlay mounted. Cause: the hero is excluded from the home `gridItems` so it never enters [[ContentGrid]]'s `recordItems` cache. The [[OverlayRouter]]'s slug resolver looks up via drafts → cache → mockData; with the hero missing from cache, the lookup returns null and the overlay silently no-ops. Fix: [HeroCard.tsx:46](../components/HeroCard.tsx) calls `recordItems([item])` on mount. Same defensive pattern as ContentGrid; the bug likely also bites `EventosRail` cards for rail-only events but unreported so left untouched.
+
+### 2 — Reader/article paragraph splits
+
+Two collaborator reports about content rendering as one wall of text:
+
+- **stephan-mathieu-radioland (review)** — body had `\n\n` separators but [[ReaderOverlay]] split on `\n\n` only; paragraph breaks the writer typed as single Enter (just `\n`) collapsed. Unrelated to the original report, but the bigger issue is that **the review composer doesn't have block features at all** — it only has a plain BODY textarea writing to `bodyPreview`. Reviews/editorials/opinions/noticias all use [[ReaderOverlay]] which only reads `bodyPreview`. No markdown parsing. The reviewer either composed in another tool and pasted, or expected H2/Q&A/QUOTE blocks that don't exist for this type. Documented in conversation; no feature add.
+- **entrevista-con-stephen-hitchell-echospace-intrusion (articulo)** — `articulo` does have block features ([[ArticuloForm]] with H2/H3/QUOTE/Q&A/IMAGE/LIST/footnotes), but the writer pasted the entire 13KB interview into a **single PÁRRAFO block** with `\n` separators. [[ArticuloOverlay]]'s `BodyBlocks` rendered each block as one `<p>`; HTML collapsed `\n` whitespace, producing one massive paragraph.
+
+Both fixed with a defensive split. Touched [BodyBlocks](../components/overlay/ArticuloOverlay.tsx) for `lede` and `p` block kinds, and the legacy paragraph fallback in `buildBlocks` for both [[ArticuloOverlay]] and [[ListicleOverlay]]. Also [[ReaderOverlay]] for `bodyPreview` and [[HeroCard]] preview. New helper `splitParagraphs(text)` in `ArticuloOverlay.tsx` splits on `/\n+/`. Track-block commentaries in listicles also got the multi-paragraph treatment. Collaborator who pastes prose into one block now sees it render as multiple paragraphs.
+
+### 3 — Image cropping favors the top
+
+Reported pattern: card images were cropped to centre, so flyer headers (artist names, festival logos) and album cover titles got sliced. Added `object-top` next to every public-facing `object-cover` so cropping shaves the bottom instead of the centre. Touched: [[ContentCard]], [[HeroCard]], [[EventosRail]], [[PartnersRail]], [[ThreadTile]], [[MarketplaceCard]], [[MarketplaceListingCard]], [[ArticuloOverlay]] hero, [[EventoOverlay]] hero, [[ListicleOverlay]] hero, [[ReaderOverlay]] archival flyer, [[GenericOverlay]] hero. Skipped square album thumbnails (no cropping) and dashboard internals (low priority).
+
+### 4 — Dashboard explorer ConfirmOverlay (replaces ExplorerDetails)
+
+Beta testers couldn't find the right-side `USAR ESTA PLANTILLA` button under `?section=nuevo`. Tried two options visually before settling:
+
+1. **First** ("option 2" in the conversation): tried making the existing `USAR ESTA PLANTILLA` button huge + persistent, plus a per-card `[+ USAR]` chip. Iker rejected — too many affordances, didn't feel right.
+2. **Second** ("option 1" pivot): replaced the entire right-side DETALLES rail with an overlay that pops on tile click. Visual chrome borrowed from [[OverlayShell]] (CRT boot animation, NGE border, hazard-stripe accent above CTA, ESC/X/backdrop close, phosphor flash on mount). Lives in dashboard scope — doesn't touch [[useOverlay]] / [[OverlayRouter]] / URL state.
+
+New component: [ConfirmOverlay.tsx](../components/dashboard/explorer/ConfirmOverlay.tsx). Takes `header`, `selection: SelectionMeta`, `ctaLabel`. Used for both the `?section=nuevo` template picker (header `// SELECCIONANDO PLANTILLA · MIX`, CTA `USAR ESTA PLANTILLA`) and the drafts/publicados sections (header `// ABRIENDO BORRADOR` or `// ABRIENDO PUBLICACIÓN`, CTA `ABRIR EN EDITOR`).
+
+Knock-on changes:
+- [[ExplorerShell]] reduced from 3 columns to 2 — removed `selection`, `detailsCta`, `hideDetails` props and the right-rail render. ~280px more horizontal space everywhere.
+- [[NuevoSection]] dropped its `selectedType` prop + corner-bracket selection state; cards are pure single-click triggers now.
+- [[DraggableFileGrid]] (drafts/publicados) reworked: pointer-down-without-drag triggers `onOpen` (via the pointer-up handler checking `draggingPosRef.current === null`); drag still moves the tile. Old `onSelect` + `selectedId` props removed. Tile no longer has a "selected" visual state.
+- [[Dashboard]] page replaced `selectedTplType` + `selectedDraftId` state with a single discriminated `confirming: { kind: 'tpl', type } | { kind: 'draft', id } | null`. Helper `confirmOverlayContentFor` resolves it to overlay props.
+- Exit animation added to the ConfirmOverlay matching [[OverlayShell]]'s pattern: internal `exiting` state + `pendingRef` tracking close-vs-confirm; on `overlay-backdrop-out` `animationend` we call the right callback.
+
+### 5 — Publish flow restructure (the big one)
+
+Iker's redesign of the three-state model. Beta testers kept refreshing after composing and not understanding why their content wasn't on the feed — the pending state was visually present (glitching card at curation rank) but easily missed amid real content, especially for someone who hadn't been told to look for it.
+
+**New flow:** clicking `▶ PUBLICAR` in any dashboard composer opens [[PublishConfirmOverlay]] **inside the dashboard** — no navigation. Confirming publishes the row directly + pushes to `/?fresh=<id>`. The home page reads the param, scrolls the matching card into view (double-scroll: 120ms + 800ms to handle lazy-image layout shift), then `replaceState`s the param off the URL. See [[Publish Confirmation Flow]] for the rewrite.
+
+**Fresh-published chrome:** any editor-composed item (`source !== 'scraper:ra'`) within 1 hour of `publishedAt` wears the glitch chrome on its [[ContentCard]] — type-colored border pulse, scanline, cover flicker, and a `[NUEVO]` chip. Color is the type's `categoryColor` passed via a per-card `--glitch-color` CSS variable. CSS keyframes renamed `pending-*` → `fresh-*` and rewritten to use the variable via `color-mix(in srgb, var(--glitch-color) X%, transparent)`. Per-card `setTimeout` flips fresh→stale at exactly the 1-hour mark — one shot, no `setInterval` polling. Editor-composed only so the RA Mon/Wed/Fri scrape batches don't all glitch at once.
+
+**Form changes:** all 8 dashboard forms ([[ArticuloForm]] / [[EditorialForm]] / [[EventoForm]] / [[ListicleForm]] / [[MixForm]] / [[NoticiaForm]] / [[OpinionForm]] / [[ReviewForm]]) now `openConfirm(id)` instead of `router.push('/?pending=<id>')`.
+
+**[[PublishConfirmOverlay]] changes:** removed the `[PROTOTIPO VISUAL]` paragraph (we have a backend now), removed the `?pending` URL clearing (no longer present), `router.push('/?fresh=<id>')` after successful publish.
+
+**Pending pipeline retired:** [[HomeFeedWithDrafts]] no longer reads `?pending` or stamps `_pendingConfirm`; just merges `published` drafts into the feed. [[ContentCard]] dropped `_pendingConfirm` chrome, the `[✓ CONFIRMAR]` corner button, the auto-scroll-on-pending. `_pendingConfirm` field still exists on the `ContentItem` type but is unused by any renderer.
+
+**Scanline traversal fix:** the original `pending-scanline-sweep` keyframe used `transform: translateY(percentage)` which is element-relative; with element height 18%, `translateY(130%)` only moved 23% of parent height. Switched to animating `top: -25% → 110%` (parent-relative). Sampled in the preview: line now traverses -13% → 102% of card height, full sweep confirmed.
+
+### 6 — Image hosts allowlist
+
+While testing, hit `next/image` errors on Substack-CDN and other third-party image URLs that beta testers pasted as `imageUrl`. Added `substackcdn.com`, `is1-ssl.mzstatic.com` (Apple Music covers seen in the jazz-espiritual listicle), and `i.discogs.com` to [next.config.mjs](../next.config.mjs) `images.remotePatterns`. Required dev-server restart since Next reads config at boot only.
+
+### Decisions logged
+
+- **Three-state model retired in favor of two-state.** Confirmation gate moves from "after navigation, on the public feed" to "in place, on the dashboard". Same affordance, much more discoverable. Pending was a clever architectural idea (no new storage state, just a URL flag) but the UX consistently confused beta testers.
+- **Fresh chrome is editor-composed only.** Scraped events excluded by `source === 'scraper:ra'`. Seed data falls out naturally via stale `publishedAt`. Reasoning: editors should see their content land, but a Mon/Wed/Fri scrape batch shouldn't paint the whole feed orange.
+- **DETALLES rail removed site-wide.** Was useful as a Windows-Explorer flourish but became dead weight once tiles became single-click triggers. The two-column layout reads cleaner.
+- **One review-composer feature gap NOT closed.** datavismo expected block features in the review composer; we don't have them and intentionally won't add them — [[Reader Terminal Layout]] keeps reviews/editorials/opinions/noticias as prose-only by design. Pieces that need structure (interview, listicle) belong in `articulo`/`listicle`. Communicated to datavismo in conversation.
+
+### Verification
+
+- **Hero overlay**: clicked `200 grandes festivales europeos` hero → URL updates + overlay mounts (was no-op before).
+- **Articulo paragraph split**: `entrevista-con-stephen-hitchell` overlay now renders 79 paragraph elements where there was 1 wall-of-text. First 10 sampled: distinct lines including the embedded pull quote.
+- **Image cropping**: 12 sampled images on home all have `object-position: 50% 0%` — top-anchored.
+- **ConfirmOverlay**: clicking LISTA card pops overlay with `// SELECCIONANDO PLANTILLA · LISTA` header + property table + `USAR ESTA PLANTILLA` CTA. ESC closes via the exit animation (`overlay-backdrop-out` + `overlay-panel-out` classes flip; on `animationend` overlay unmounts and body-scroll is restored).
+- **Publish flow**: filled noticia form, clicked `▶ PUBLICAR` → URL stayed at `/dashboard?type=noticia` and `[role=alertdialog]` modal opened with `¿PUBLICAR EN EL FEED?` title + new (sans-PROTOTIPO-VISUAL) body copy.
+- **Fresh chrome**: forced via DOM injection on a feed card with `--glitch-color: #3b82f6`. Border pulse + cover flicker + [NUEVO] chip render correctly. Scanline sampled at 6 timepoints over 2.4s: top% goes -12.9 → 10.3 → 32.8 → 56.0 → 79.2 → 101.7 — full traversal.
+- **Dev server compiled cleanly after each batch of edits**, no console errors at home or dashboard. End-to-end publish round-trip (real DB write → fresh chrome on real card) NOT exercised — requires real auth + the typed-confirmation flow.
+
+### Open
+
+- The `_pendingConfirm` field on `ContentItem` and its defensive strip in `Fields.tsx:1140` are now dead code. Cleanup pass in a follow-up.
+- [[ContentCard]].md and [[HomeFeedWithDrafts]].md component pages still describe the old pending flow. Backfill when next touching them.
+- [[EventosRail]] cards for rail-only events likely have the same "missing from itemsCache" bug as the hero originally did, since rail-only events are excluded from `gridItems`. Unreported so far; defer.
+- The fresh-chrome timer is purely client-side — server-rendered cards may briefly mismatch the client computation at the 1hr boundary. Acceptable jitter for now.
+
+---
+
 ## 2026-05-05 · INGEST · welcome gate + delete arc + rail/publish polish
 
 Six interlocking slices shipped late-day, all driven by Iker's beta-prep agenda. Pushed across five commits on `main`: `d116bdf`, `7444f85`, `f482a80`, `07cad6e`, `fa65041`. The welcome-gate slice (this session's biggest piece) is in the working tree as a sixth commit, going up next.

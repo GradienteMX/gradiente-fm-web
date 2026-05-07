@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
+import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import {
   Plus,
   Trash2,
@@ -68,6 +69,7 @@ export function ListicleForm() {
   const search = useSearchParams()
   const editItemId = search?.get('edit') ?? null
   const { setCategoryFilter } = useVibe()
+  const { openConfirm } = usePublishConfirm()
   const workbench = useDraftWorkbench({
     draftKey: DRAFT_KEY,
     emptyFn: emptyDraft,
@@ -79,7 +81,7 @@ export function ListicleForm() {
   const onPublish = () => {
     const id = workbench.requestPublish()
     setCategoryFilter(null)
-    router.push(`/?pending=${id}`)
+    openConfirm(id)
   }
 
   useEffect(() => {

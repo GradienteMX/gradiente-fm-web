@@ -147,7 +147,7 @@ function CardBody({
           <img
             src={listing.images[0]}
             alt={listing.title}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-top"
             loading="lazy"
           />
         ) : (

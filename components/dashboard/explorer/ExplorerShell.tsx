@@ -2,10 +2,9 @@
 
 import type { ReactNode } from 'react'
 import { ExplorerSidebar } from './ExplorerSidebar'
-import { ExplorerDetails } from './ExplorerDetails'
 import { ExplorerStorage } from './ExplorerStorage'
 import { ExplorerBreadcrumb, type Crumb } from './ExplorerBreadcrumb'
-import type { ExplorerSection, SelectionMeta } from './types'
+import type { ExplorerSection } from './types'
 
 interface Props {
   active: ExplorerSection
@@ -17,16 +16,15 @@ interface Props {
 
   breadcrumbs: Crumb[]
 
-  selection?: SelectionMeta | null
-  detailsCta?: { label: string; onClick: () => void; color?: string }
-  /** Hide the right-hand details panel for sections that don't need it. */
-  hideDetails?: boolean
   /** Bottom info bar — used in some sections to mirror the mockup. */
   bottomBar?: ReactNode
 
   children: ReactNode
 }
 
+// Two-column explorer layout: sidebar + window. The right-side details panel
+// was removed — clicking any tile now pops a ConfirmOverlay that owns the
+// "review properties + commit" step. See ConfirmOverlay.tsx.
 export function ExplorerShell({
   active,
   onPick,
@@ -35,9 +33,6 @@ export function ExplorerShell({
   savedCount,
   lastEditedAt,
   breadcrumbs,
-  selection = null,
-  detailsCta,
-  hideDetails = false,
   bottomBar,
   children,
 }: Props) {
@@ -51,7 +46,7 @@ export function ExplorerShell({
         <ExplorerBreadcrumb crumbs={breadcrumbs} />
       </div>
 
-      {/* Main 3-column layout — flex-1 takes the remaining vertical space. */}
+      {/* Two-column layout — flex-1 takes the remaining vertical space. */}
       <div className="flex flex-1 flex-col gap-3 md:flex-row">
         {/* LEFT: sidebar + storage stacked */}
         <div className="flex flex-col gap-3 md:w-[240px] md:flex-shrink-0">
@@ -73,11 +68,6 @@ export function ExplorerShell({
 
         {/* CENTER: window */}
         <div className="flex min-w-0 flex-1 flex-col gap-3">{children}</div>
-
-        {/* RIGHT: details */}
-        {!hideDetails && (
-          <ExplorerDetails selection={selection} cta={detailsCta} />
-        )}
       </div>
 
       {bottomBar}

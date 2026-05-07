@@ -7,9 +7,10 @@ import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from '@/components/cards/SavedBadge'
 import { Clock, ArrowRight } from 'lucide-react'
-import { useRef, type KeyboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
+import { recordItems } from '@/lib/itemsCache'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -39,6 +40,13 @@ export function HeroCard({ item }: HeroCardProps) {
   const { categoryFilter } = useVibe()
   const ref = useRef<HTMLElement>(null)
 
+  // The hero is excluded from the main grid (see app/page.tsx), so ContentGrid
+  // never records it. Push it into the slug-keyed cache ourselves so the
+  // OverlayRouter can resolve `?item=<hero-slug>` when the hero is clicked.
+  useEffect(() => {
+    recordItems([item])
+  }, [item])
+
   // When the category filter is active and doesn't match this hero's type,
   // hide it — the rest of the home grid filters in place.
   if (categoryFilter && item.type !== categoryFilter) return null
@@ -60,9 +68,10 @@ export function HeroCard({ item }: HeroCardProps) {
     }
   }
 
-  // Split bodyPreview into paragraphs for rendering
+  // Split bodyPreview into paragraphs for rendering. Match any run of
+  // newlines so a single Enter in the composer also renders as a break.
   const paragraphs = item.bodyPreview
-    ? item.bodyPreview.split('\n\n').filter(Boolean)
+    ? item.bodyPreview.split(/\n+/).map((p) => p.trim()).filter(Boolean)
     : item.excerpt
     ? [item.excerpt]
     : []
@@ -99,7 +108,7 @@ export function HeroCard({ item }: HeroCardProps) {
             <img
               src={item.imageUrl}
               alt={item.title}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-top"
             />
           ) : (
             <div className="absolute inset-0 bg-elevated" />

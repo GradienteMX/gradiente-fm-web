@@ -56,8 +56,7 @@ function defaultPosition(index: number, columns: number): XY {
 interface Props {
   namespace: string
   items: DraftItem[]
-  selectedId: string | null
-  onSelect: (id: string | null) => void
+  /** Single-click callback — opens the ConfirmOverlay in the dashboard. */
   onOpen: (item: DraftItem) => void
   /** When provided, each tile gets a small ⌧ corner button. Owner-delete in Publicados. */
   onDelete?: (item: DraftItem) => void
@@ -66,8 +65,6 @@ interface Props {
 export function DraggableFileGrid({
   namespace,
   items,
-  selectedId,
-  onSelect,
   onOpen,
   onDelete,
 }: Props) {
@@ -160,9 +157,6 @@ export function DraggableFileGrid({
 
       <div
         ref={containerRef}
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) onSelect(null)
-        }}
         className="relative w-full border border-dashed border-border/60 bg-base"
         style={{
           minHeight: 360,
@@ -179,9 +173,7 @@ export function DraggableFileGrid({
               item={item}
               x={pos.x}
               y={pos.y}
-              selected={selectedId === item.id}
               onMove={(next) => updatePos(item.id, next)}
-              onSelect={() => onSelect(item.id)}
               onOpen={() => onOpen(item)}
               onDelete={onDelete ? () => onDelete(item) : undefined}
               containerRef={containerRef}
@@ -209,9 +201,7 @@ interface TileProps {
   item: DraftItem
   x: number
   y: number
-  selected: boolean
   onMove: (next: XY) => void
-  onSelect: () => void
   onOpen: () => void
   onDelete?: () => void
   containerRef: React.MutableRefObject<HTMLDivElement | null>
@@ -221,9 +211,7 @@ function DraggableFile({
   item,
   x,
   y,
-  selected,
   onMove,
-  onSelect,
   onOpen,
   onDelete,
   containerRef,
@@ -245,7 +233,6 @@ function DraggableFile({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
-    onSelect()
     const target = e.currentTarget
     const rect = target.getBoundingClientRect()
     dragRef.current = {
@@ -286,7 +273,14 @@ function DraggableFile({
     const drag = dragRef.current
     if (!drag || drag.pointerId !== e.pointerId) return
     const finalPos = draggingPosRef.current
-    if (finalPos) onMove(finalPos)
+    if (finalPos) {
+      // Drag ended with movement — commit position.
+      onMove(finalPos)
+    } else {
+      // No movement between pointer-down and pointer-up — treat as a click
+      // and open the ConfirmOverlay.
+      onOpen()
+    }
     dragRef.current = null
     draggingPosRef.current = null
     setDraggingPos(null)
@@ -327,11 +321,9 @@ function DraggableFile({
     >
       <div
         className={[
-          'relative flex h-full w-full flex-col items-center gap-1.5 border bg-surface px-2 pt-2 pb-1.5 text-center',
-          selected ? '' : 'border-border/40',
+          'relative flex h-full w-full flex-col items-center gap-1.5 border border-border/40 bg-surface px-2 pt-2 pb-1.5 text-center',
           dragging ? 'shadow-[0_8px_24px_rgba(0,0,0,0.5)]' : '',
         ].join(' ')}
-        style={selected ? { borderColor: color, backgroundColor: '#0d0d0d' } : undefined}
       >
         {onDelete && (
           <button

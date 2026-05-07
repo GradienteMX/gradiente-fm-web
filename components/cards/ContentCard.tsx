@@ -3,14 +3,26 @@
 import type { ContentItem } from '@/lib/types'
 import { vibeToColor, vibeMid, vibeBandGradient, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
-import { Play, Clock, MapPin, Ticket, Check } from 'lucide-react'
-import Image from 'next/image'
-import { useEffect, useRef, type KeyboardEvent } from 'react'
+import { Play, Clock, MapPin, Ticket } from 'lucide-react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
-import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from './SavedBadge'
+
+// ── Fresh-published chrome ─────────────────────────────────────────────────
+//
+// Editor-composed items show a glitch chrome (border pulse, scanline sweep,
+// cover flicker, [NUEVO] chip) for the first hour after publish so the new
+// content is unmistakable in the feed. Excludes scraped events (source ===
+// 'scraper:ra') so the Mon/Wed/Fri scrape batches don't all glitch at once.
+const ONE_HOUR_MS = 60 * 60 * 1000
+function freshAgeMs(item: ContentItem): number | null {
+  if (item.source === 'scraper:ra') return null
+  const ms = Date.parse(item.publishedAt)
+  if (Number.isNaN(ms)) return null
+  return Date.now() - ms
+}
 
 // Card-side helper — keeps ids + names paired for click-to-filter chips.
 function genreEntries(ids: string[], limit: number) {
@@ -40,13 +52,21 @@ interface ContentCardProps {
 }
 
 // ── Shared image layer ────────────────────────────────────────────────────────
-function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
+function CardImage({
+  item,
+  size,
+  isFresh,
+}: {
+  item: ContentItem
+  size: CardSize
+  isFresh: boolean
+}) {
   const vibeColor = vibeToColor(vibeMid(item))
   // For ranges, the top strip becomes a gradient band so the card surfaces
   // the breadth of the item at a glance. Single-point items stay solid.
   const vibeBand = vibeBandGradient(item)
-  const isPending = item._pendingConfirm === true
-  const isDraftOnly = item._draftState === 'draft' && !isPending
+  const isDraftOnly = item._draftState === 'draft'
+  const typeColor = categoryColor(item.type)
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -54,8 +74,8 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
         <img
           src={item.imageUrl}
           alt={item.title}
-          className={`h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${
-            isPending ? 'pending-cover-flicker' : ''
+          className={`h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+            isFresh ? 'fresh-cover-flicker' : ''
           }`}
           loading="lazy"
         />
@@ -78,14 +98,15 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
         <SavedBadge itemId={item.id} />
       </div>
 
-      {/* Pending scanline sweep — single thin line that traverses top→bottom */}
-      {isPending && <div className="pending-scanline" aria-hidden />}
+      {/* Fresh-published scanline sweep — single thin line traversing
+          top→bottom. Inherits the type color via the card-level CSS variable. */}
+      {isFresh && <div className="fresh-scanline" aria-hidden />}
 
       {/* Type badge — top left */}
       <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
         <span
           className="bg-black/70 px-2 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
-          style={{ color: categoryColor(item.type) }}
+          style={{ color: typeColor }}
         >
           //{TYPE_LABEL[item.type]}
         </span>
@@ -94,17 +115,17 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
             ★
           </span>
         )}
-        {isPending && (
+        {isFresh && (
           <span
-            className="pending-chip-flicker border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
+            className="fresh-chip-flicker border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
             style={{
-              borderColor: '#E63329',
-              color: '#E63329',
-              boxShadow: '0 0 8px rgba(230,51,41,0.5)',
+              borderColor: typeColor,
+              color: typeColor,
+              boxShadow: `0 0 8px color-mix(in srgb, ${typeColor} 50%, transparent)`,
             }}
-            title="Pendiente de confirmar — usa el botón [✓ CONFIRMAR] para publicar"
+            title="Recién publicado"
           >
-            [PENDIENTE·CONFIRMAR]
+            [NUEVO]
           </span>
         )}
         {isDraftOnly && (
@@ -138,13 +159,13 @@ function CardImage({ item, size }: { item: ContentItem; size: CardSize }) {
 }
 
 // ── SM card — 1×1 ────────────────────────────────────────────────────────────
-function SmCard({ item }: { item: ContentItem }) {
+function SmCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
   const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 2)
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
-      <CardImage item={item} size="sm" />
+      <CardImage item={item} size="sm" isFresh={isFresh} />
 
       {item.type === 'evento' && item.date && (
         <div className="absolute right-2 top-3 flex flex-col items-center border border-white/20 bg-black/70 px-2 py-1 backdrop-blur-sm">
@@ -193,7 +214,7 @@ function SmCard({ item }: { item: ContentItem }) {
 }
 
 // ── MD card — 2×1 (wide) or 1×2 (tall) ──────────────────────────────────────
-function MdCard({ item }: { item: ContentItem }) {
+function MdCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
   const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 3)
   const tags = getTagNames(item.tags).slice(0, 3)
@@ -202,7 +223,7 @@ function MdCard({ item }: { item: ContentItem }) {
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
-      <CardImage item={item} size="md" />
+      <CardImage item={item} size="md" isFresh={isFresh} />
 
       {item.type === 'evento' && item.date && (
         <div className="absolute right-2 top-3 flex flex-col items-center border border-white/20 bg-black/70 px-2 py-1.5 backdrop-blur-sm">
@@ -277,7 +298,7 @@ function MdCard({ item }: { item: ContentItem }) {
 }
 
 // ── LG card — 2×2 (big featured) ─────────────────────────────────────────────
-function LgCard({ item }: { item: ContentItem }) {
+function LgCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
   const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 4)
   const tags = getTagNames(item.tags).slice(0, 4)
@@ -285,7 +306,7 @@ function LgCard({ item }: { item: ContentItem }) {
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
-      <CardImage item={item} size="lg" />
+      <CardImage item={item} size="lg" isFresh={isFresh} />
 
       {/* Date block for events — top right inside image */}
       {item.type === 'evento' && item.date && (
@@ -403,9 +424,29 @@ function LgCard({ item }: { item: ContentItem }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
   const { open } = useOverlay()
-  const { openConfirm } = usePublishConfirm()
   const ref = useRef<HTMLDivElement>(null)
-  const isPending = item._pendingConfirm === true
+
+  // Compute initial fresh state from the item's age. Editor-composed items
+  // (source !== 'scraper:ra') glitch for the first hour after publish.
+  const initialAge = freshAgeMs(item)
+  const initialFresh =
+    initialAge !== null && initialAge >= 0 && initialAge < ONE_HOUR_MS
+  const [isFresh, setIsFresh] = useState(initialFresh)
+
+  // Per-card timer flips fresh → stale exactly at the 1-hour mark so
+  // long-lived sessions don't keep glitching past the boundary. No
+  // setInterval — one shot at `(publishedAt + 1hr) - now` ms, then we're
+  // done.
+  useEffect(() => {
+    if (!initialFresh || initialAge === null) return
+    const remaining = ONE_HOUR_MS - initialAge
+    if (remaining <= 0) {
+      setIsFresh(false)
+      return
+    }
+    const timer = window.setTimeout(() => setIsFresh(false), remaining)
+    return () => window.clearTimeout(timer)
+  }, [initialFresh, initialAge])
 
   const handleOpen = () => {
     const rect = ref.current?.getBoundingClientRect()
@@ -424,65 +465,29 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
     }
   }
 
-  // Auto-scroll the pending card into view on mount, so editor sees the
-  // glitching card without hunting through the feed.
-  //
-  // Two scrolls: the first lands while lazy-loaded `<img>`s above/below are
-  // still resolving; once they pop in they shift the layout and the card
-  // ends up off-center. The second scroll at 800ms (after the smooth scroll
-  // completes + most lazy images have loaded) corrects that drift.
-  useEffect(() => {
-    if (!isPending || !ref.current) return
-    const card = ref.current
-    const scroll = () =>
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    const t1 = setTimeout(scroll, 120)
-    const t2 = setTimeout(scroll, 800)
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-    }
-  }, [isPending])
-
   const Inner = size === 'lg' ? LgCard : size === 'md' ? MdCard : SmCard
+  // Set the type color as a CSS custom property so the keyframe animations
+  // (border pulse, scanline, chip glow) inherit it without needing a
+  // per-instance class.
+  const wrapperStyle: CSSProperties | undefined = isFresh
+    ? ({ borderWidth: 1, '--glitch-color': categoryColor(item.type) } as CSSProperties)
+    : undefined
 
   return (
     <div
       ref={ref}
+      data-card-id={item.id}
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label={`Abrir ${item.title}`}
       className={`relative h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red ${
-        isPending ? 'pending-glitch border' : ''
+        isFresh ? 'fresh-glitch border' : ''
       }`}
-      style={isPending ? { borderWidth: 1 } : undefined}
+      style={wrapperStyle}
     >
-      <Inner item={item} />
-
-      {isPending && (
-        <button
-          type="button"
-          onClick={(e) => {
-            // Don't bubble — we don't want the card's overlay to open when
-            // the editor is reaching for the confirm button.
-            e.stopPropagation()
-            openConfirm(item.id)
-          }}
-          aria-label="Confirmar publicación"
-          title="Confirmar publicación"
-          className="absolute right-2 top-10 z-30 flex items-center gap-1.5 border bg-black/85 px-2.5 py-1.5 font-mono text-[10px] tracking-widest backdrop-blur-sm transition-colors hover:bg-black"
-          style={{
-            borderColor: '#F97316',
-            color: '#F97316',
-            boxShadow: '0 0 10px rgba(249,115,22,0.55), 0 0 20px rgba(249,115,22,0.25)',
-          }}
-        >
-          <Check size={11} strokeWidth={2.5} />
-          ✓ CONFIRMAR
-        </button>
-      )}
+      <Inner item={item} isFresh={isFresh} />
     </div>
   )
 }

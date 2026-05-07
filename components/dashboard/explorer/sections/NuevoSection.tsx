@@ -65,12 +65,11 @@ export const TYPE_META: Record<string, TypeMeta> = {
 
 interface Props {
   supported: ContentType[]
-  selectedType: ContentType | null
-  onSelect: (type: ContentType) => void
-  onOpen: (type: ContentType) => void
+  /** Single-click callback — opens the ConfirmOverlay in the dashboard. */
+  onPick: (type: ContentType) => void
 }
 
-export function NuevoSection({ supported, selectedType, onSelect, onOpen }: Props) {
+export function NuevoSection({ supported, onPick }: Props) {
   if (supported.length === 0) {
     // Reached when the current role has no creation rights for any type —
     // see lib/permissions.ts canCreateContent. Reads as a permissions
@@ -99,27 +98,16 @@ export function NuevoSection({ supported, selectedType, onSelect, onOpen }: Prop
       {supported.map((t) => {
         const meta = TYPE_META[t]
         const color = categoryColor(t)
-        const selected = selectedType === t
         return (
           <button
             key={t}
             type="button"
-            onClick={() => onSelect(t)}
-            onDoubleClick={() => onOpen(t)}
+            onClick={() => onPick(t)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') onOpen(t)
+              if (e.key === 'Enter') onPick(t)
             }}
-            className={[
-              'group relative flex flex-col gap-2 border bg-surface p-3 text-left transition-colors',
-              selected
-                ? 'bg-elevated'
-                : 'border-border/40 hover:border-border hover:bg-elevated',
-            ].join(' ')}
-            style={selected ? { borderColor: color } : undefined}
+            className="group relative flex flex-col gap-2 border border-border/40 bg-surface p-3 text-left transition-colors hover:border-border hover:bg-elevated"
           >
-            {/* corner brackets when selected */}
-            {selected && <CornerBrackets color={color} />}
-
             <div className="flex items-start justify-center pt-1">
               <FileIcon color={color} size={64} type={t} />
             </div>
@@ -144,18 +132,6 @@ export function NuevoSection({ supported, selectedType, onSelect, onOpen }: Prop
         )
       })}
     </div>
-  )
-}
-
-function CornerBrackets({ color }: { color: string }) {
-  const c: React.CSSProperties = { borderColor: color }
-  return (
-    <>
-      <span className="pointer-events-none absolute -top-px -left-px h-2 w-2 border-t border-l" style={c} />
-      <span className="pointer-events-none absolute -top-px -right-px h-2 w-2 border-t border-r" style={c} />
-      <span className="pointer-events-none absolute -bottom-px -left-px h-2 w-2 border-b border-l" style={c} />
-      <span className="pointer-events-none absolute -bottom-px -right-px h-2 w-2 border-b border-r" style={c} />
-    </>
   )
 }
 

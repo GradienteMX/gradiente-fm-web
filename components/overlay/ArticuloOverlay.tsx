@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
 import { MOCK_ITEMS } from '@/lib/mockData'
 import {
@@ -179,7 +179,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             <img
               src={item.imageUrl}
               alt={item.title}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-top"
             />
             <div
               className="absolute bottom-0 left-0 right-0 h-0.5"
@@ -458,21 +458,40 @@ export function BodyBlocks({
     <div className="flex flex-col gap-5 font-grotesk text-[16px] leading-[1.78] text-primary md:text-[17px] md:leading-[1.82]">
       {blocks.map((b, i) => {
         switch (b.kind) {
-          case 'lede':
+          case 'lede': {
+            // Composers commonly receive multi-paragraph text in a single
+            // block (Enter-as-paragraph-break in the textarea). Split on any
+            // run of newlines so each line becomes its own <p> sibling under
+            // the parent flex container — only the first piece keeps the
+            // drop-cap.
+            const paras = splitParagraphs(b.text)
+            if (paras.length === 0) return null
+            const ledeClass =
+              'font-grotesk text-[19px] leading-[1.6] text-primary first-letter:float-left first-letter:mr-2 first-letter:mt-[0.15em] first-letter:font-syne first-letter:text-[64px] first-letter:font-black first-letter:leading-[0.85]'
             return (
-              <p
-                key={i}
-                className="font-grotesk text-[19px] leading-[1.6] text-primary first-letter:float-left first-letter:mr-2 first-letter:mt-[0.15em] first-letter:font-syne first-letter:text-[64px] first-letter:font-black first-letter:leading-[0.85]"
-              >
-                {renderInline(b.text)}
-              </p>
+              <Fragment key={i}>
+                <p className={ledeClass}>{renderInline(paras[0])}</p>
+                {paras.slice(1).map((p, j) => (
+                  <p key={j} className="text-primary">
+                    {renderInline(p)}
+                  </p>
+                ))}
+              </Fragment>
             )
-          case 'p':
+          }
+          case 'p': {
+            const paras = splitParagraphs(b.text)
+            if (paras.length === 0) return null
             return (
-              <p key={i} className="text-primary">
-                {renderInline(b.text)}
-              </p>
+              <Fragment key={i}>
+                {paras.map((p, j) => (
+                  <p key={j} className="text-primary">
+                    {renderInline(p)}
+                  </p>
+                ))}
+              </Fragment>
             )
+          }
           case 'h2': {
             const id = b.id ?? `sec-${i}`
             return (
@@ -696,11 +715,14 @@ function TrackBlock({
           </div>
         </div>
 
-        {/* Commentary */}
+        {/* Commentary — split on newlines so multi-paragraph commentaries
+            render as separate paragraphs instead of one collapsed block. */}
         {block.commentary && (
-          <p className="font-grotesk text-[14px] leading-[1.6] text-secondary md:text-[15px]">
-            {block.commentary}
-          </p>
+          <div className="flex flex-col gap-3 font-grotesk text-[14px] leading-[1.6] text-secondary md:text-[15px]">
+            {splitParagraphs(block.commentary).map((p, j) => (
+              <p key={j}>{p}</p>
+            ))}
+          </div>
         )}
 
         {/* Source link-outs */}
@@ -724,6 +746,13 @@ function TrackBlock({
       </div>
     </section>
   )
+}
+
+// Split a multi-paragraph block string on any run of newlines, trimming
+// each piece. A user who pastes prose into a single PÁRRAFO block expects
+// each Enter to render as a paragraph break.
+function splitParagraphs(text: string): string[] {
+  return text.split(/\n+/).map((p) => p.trim()).filter(Boolean)
 }
 
 // Render inline with support for footnote refs like [^1] and bold **text**.
@@ -831,7 +860,7 @@ function buildBlocks(item: ContentItem): ArticleBlock[] {
   // Fallback: paragraph-split bodyPreview / excerpt, with first paragraph
   // promoted to a lede.
   const raw = item.bodyPreview ?? item.excerpt ?? ''
-  const paras = raw.split('\n\n').map((p) => p.trim()).filter(Boolean)
+  const paras = splitParagraphs(raw)
   if (paras.length === 0) {
     return [
       {

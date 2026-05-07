@@ -36,7 +36,7 @@ export function ThreadTile({ thread }: ThreadTileProps) {
         <img
           src={thread.imageUrl}
           alt=""
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
         />
 
         {/* Reply count chip — top-left, the only ranking signal allowed */}

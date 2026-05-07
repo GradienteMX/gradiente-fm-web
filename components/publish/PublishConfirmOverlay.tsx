@@ -9,13 +9,15 @@ import { removeDraftLocal } from '@/lib/draftsCache'
 import { categoryColor } from '@/lib/utils'
 
 // Globally-mounted confirmation modal for publishing a draft. Opens when
-// usePublishConfirm.confirmingId is set; closed by ESC, backdrop click, or
-// either of its buttons.
+// usePublishConfirm.confirmingId is set (triggered from the dashboard form's
+// `▶ PUBLICAR` button or from a draft overlay's `▶ PUBLICAR AHORA`). Closed
+// by ESC, backdrop click, or either of its buttons.
 //
-// On confirm: flips the draft's `_draftState` to 'published' (visible cleanly
-// in the feed) and clears the `?pending` URL param.
-// On cancel: just clears the modal state — the draft + pending URL param
-// stay so the editor can come back to it.
+// On confirm: flips the draft's `_draftState` to 'published' AND navigates
+// the user to `/` so they see the new card surface in the feed (with its
+// fresh-published chrome — see ContentCard `isFresh`).
+// On cancel: just clears the modal state — the draft stays in storage so
+// the editor can come back to it from the dashboard.
 export function PublishConfirmOverlay() {
   const { confirmingId, closeConfirm } = usePublishConfirm()
   const router = useRouter()
@@ -56,22 +58,17 @@ export function PublishConfirmOverlay() {
   const color = categoryColor(item.type)
 
   const handleConfirm = async () => {
-    // Close + clear ?pending first so the modal dismisses via its own state
-    // (not via the cache mutation below pulling `item` out from under the
-    // memoized render). Capture the publish payload locally — closure keeps
-    // it alive for the awaited fetch.
+    // Close first so the modal dismisses via its own state (not via the
+    // cache mutation below pulling `item` out from under the memoized
+    // render). Capture the publish payload locally — closure keeps it
+    // alive for the awaited fetch.
     const payload = item
     closeConfirm()
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('pending')
-      router.replace(url.pathname + url.search, { scroll: false })
-    }
     // Optimistic: drop from drafts cache so the dashboard drafts list
     // reflects the publish before the API round-trip completes.
     removeDraftLocal(payload.id)
-    // Await the publish before refreshing server components so the
-    // re-fetched home/type-page lists actually include the new row.
+    // Await the publish before navigating so the home page's server-side
+    // getItems() refetch sees the new row.
     const { ok } = await publishItem(payload)
     if (ok) {
       // Wipe the per-type composer's autosaved sessionStorage so the next
@@ -82,7 +79,11 @@ export function PublishConfirmOverlay() {
       try {
         sessionStorage.removeItem(`gradiente:dashboard:${payload.type}-draft`)
       } catch {}
-      router.refresh()
+      // Land the user on the feed so they see their card live with the
+      // fresh-published chrome. The `?fresh=<id>` param tells
+      // HomeFeedWithDrafts to scroll the matching card into view; the
+      // param is cleared after the scroll lands.
+      router.push(`/?fresh=${encodeURIComponent(payload.id)}`)
     }
   }
 
@@ -156,15 +157,9 @@ export function PublishConfirmOverlay() {
           </div>
 
           <p className="font-mono text-[11px] leading-relaxed text-secondary">
-            Una vez publicado, este ítem entra al feed con prominencia normal y
-            deja de mostrarse como pendiente. Puedes editarlo más tarde desde el
-            dashboard, pero no podrás «deshacer» la publicación silenciosamente.
-          </p>
-
-          <p className="font-mono text-[10px] leading-relaxed text-muted">
-            <span className="text-secondary">[PROTOTIPO VISUAL]</span> en este
-            modo nada se persiste fuera de tu sesión. Cuando llegue el backend,
-            esta acción será definitiva.
+            Una vez publicado, este ítem entra al feed con prominencia normal.
+            Puedes editarlo más tarde desde el dashboard, pero no podrás
+            «deshacer» la publicación silenciosamente.
           </p>
 
           <div className="flex items-center justify-end gap-2 border-t border-border pt-3">

@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles, canCreateContent } from '@/lib/permissions'
-import { useDraftItems, removeItem, type DraftItem } from '@/lib/drafts'
+import { useDraftItems, type DraftItem } from '@/lib/drafts'
 import { useMyPublishedItems } from '@/lib/hooks/useMyPublishedItems'
 import { useSavedItems } from '@/lib/hooks/useSavedItems'
 import { removePublishedItemLocal } from '@/lib/publishedItemsCache'
@@ -18,6 +18,7 @@ import {
   defaultToolbarActions,
 } from '@/components/dashboard/explorer/ExplorerToolbar'
 import { ViewControls, type ViewMode } from '@/components/dashboard/explorer/ViewControls'
+import { ConfirmOverlay } from '@/components/dashboard/explorer/ConfirmOverlay'
 
 import {
   NuevoSection,
@@ -41,7 +42,10 @@ import { ArticuloForm } from '@/components/dashboard/forms/ArticuloForm'
 import { NoticiaForm } from '@/components/dashboard/forms/NoticiaForm'
 
 import type { ContentType } from '@/lib/types'
-import type { ExplorerSection, SelectionMeta } from '@/components/dashboard/explorer/types'
+import type {
+  ExplorerSection,
+  SelectionMeta,
+} from '@/components/dashboard/explorer/types'
 
 type SupportedType = Extract<
   ContentType,
@@ -145,8 +149,13 @@ export default function DashboardPage() {
 
   const [hydrated, setHydrated] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [selectedTplType, setSelectedTplType] = useState<SupportedType | null>(null)
-  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null)
+  // Confirm overlay state — replaces the old selectedTplType / selectedDraftId
+  // pair. Click on a card opens the overlay; confirm runs the actual action.
+  const [confirming, setConfirming] = useState<
+    | { kind: 'tpl'; type: SupportedType }
+    | { kind: 'draft'; id: string }
+    | null
+  >(null)
 
   const dbDrafts = useDraftItems()
   const myPublished = useMyPublishedItems(currentUser?.id ?? null)
@@ -197,7 +206,10 @@ export default function DashboardPage() {
         return
       }
       removePublishedItemLocal(item.id)
-      setSelectedDraftId((cur) => (cur === item.id ? null : cur))
+      // Close the confirm overlay if it was open on this item.
+      setConfirming((cur) =>
+        cur && cur.kind === 'draft' && cur.id === item.id ? null : cur,
+      )
       router.refresh()
     },
     [typeToConfirm, router],
@@ -230,10 +242,9 @@ export default function DashboardPage() {
     if (!isAuthed) openLogin()
   }, [hydrated, authResolved, isAuthed, openLogin])
 
-  // Reset section-local selections when navigating between sections.
+  // Reset confirm overlay when navigating between sections.
   useEffect(() => {
-    setSelectedDraftId(null)
-    setSelectedTplType(null)
+    setConfirming(null)
   }, [section])
 
   // Compose URL guard — bump a non-authorized user back to the picker when
@@ -328,7 +339,6 @@ export default function DashboardPage() {
           },
           { label: composeType.toUpperCase() + (editingId ? ' · EDITAR' : '') },
         ]}
-        hideDetails
       >
         <ExplorerWindow
           title={`COMPONER · ${composeType.toUpperCase()}`}
@@ -349,85 +359,74 @@ export default function DashboardPage() {
   }
 
   // ── Section view ─────────────────────────────────────────────────────────
+  const confirmContent = confirmOverlayContentFor({
+    confirming,
+    draftItems,
+  })
+
   return (
-    <ExplorerShell
-      active={section}
-      onPick={navigateSection}
-      draftCount={draftCount}
-      publishedCount={publishedCount}
-      savedCount={savedCount}
-      lastEditedAt={lastEditedAt}
-      breadcrumbs={breadcrumbsFor({ section, username })}
-      selection={selectionForCurrent({
-        section,
-        selectedTplType,
-        selectedDraftId,
-        draftItems,
-      })}
-      detailsCta={detailsCtaFor({
-        section,
-        selectedTplType,
-        selectedDraftId,
-        draftItems,
-        openCompose,
-        openDraft,
-      })}
-      hideDetails={
-        section === 'profile' ||
-        section === 'home' ||
-        section === 'aprobaciones-mkt' ||
-        section === 'mi-partner' ||
-        // Empty Nuevo (user-tier with no creation rights) — no template can
-        // be selected, so the right details panel has nothing to bind to.
-        (section === 'nuevo' && allowedTypes.length === 0)
-      }
-    >
-      <ExplorerWindow
-        title={SECTION_WINDOW_TITLE[section]}
-        toolbar={
-          <ExplorerToolbar
-            actions={defaultToolbarActions({
-              onNew:
-                section === 'drafts' || section === 'publicados' || section === 'nuevo'
-                  ? () => navigateSection('nuevo')
-                  : undefined,
-              onUp: section !== 'home' ? () => navigateSection('home') : undefined,
-              hasSelection: !!selectedDraftId,
-              onDelete:
-                section === 'drafts' && selectedDraftId
-                  ? () => {
-                      removeItem(selectedDraftId)
-                      setSelectedDraftId(null)
-                    }
-                  : undefined,
-            })}
-          />
-        }
-        countLabel={countLabelFor({ section, draftItems, allowedTypes })}
-        viewControls={
-          shouldShowViewControls(section) ? (
-            <ViewControls mode={viewMode} onChange={setViewMode} />
-          ) : null
-        }
+    <>
+      <ExplorerShell
+        active={section}
+        onPick={navigateSection}
+        draftCount={draftCount}
+        publishedCount={publishedCount}
+        savedCount={savedCount}
+        lastEditedAt={lastEditedAt}
+        breadcrumbs={breadcrumbsFor({ section, username })}
       >
-        <SectionBody
-          section={section}
-          username={username}
-          draftCount={draftCount}
-          publishedCount={publishedCount}
-          draftItems={draftItems}
-          selectedTplType={selectedTplType}
-          selectedDraftId={selectedDraftId}
-          allowedTypes={allowedTypes}
-          onPickType={(t) => setSelectedTplType(t)}
-          onOpenType={(t) => openCompose(t)}
-          onSelectDraft={(id) => setSelectedDraftId(id)}
-          onOpenDraft={openDraft}
-          onDeletePublished={onDeletePublished}
-          navigate={navigateSection}
+        <ExplorerWindow
+          title={SECTION_WINDOW_TITLE[section]}
+          toolbar={
+            <ExplorerToolbar
+              actions={defaultToolbarActions({
+                onNew:
+                  section === 'drafts' || section === 'publicados' || section === 'nuevo'
+                    ? () => navigateSection('nuevo')
+                    : undefined,
+                onUp: section !== 'home' ? () => navigateSection('home') : undefined,
+              })}
+            />
+          }
+          countLabel={countLabelFor({ section, draftItems, allowedTypes })}
+          viewControls={
+            shouldShowViewControls(section) ? (
+              <ViewControls mode={viewMode} onChange={setViewMode} />
+            ) : null
+          }
+        >
+          <SectionBody
+            section={section}
+            username={username}
+            draftCount={draftCount}
+            publishedCount={publishedCount}
+            draftItems={draftItems}
+            allowedTypes={allowedTypes}
+            onPickType={(t) =>
+              setConfirming({ kind: 'tpl', type: t as SupportedType })
+            }
+            onPickDraft={(id) => setConfirming({ kind: 'draft', id })}
+            onDeletePublished={onDeletePublished}
+            navigate={navigateSection}
+          />
+        </ExplorerWindow>
+      </ExplorerShell>
+
+      {/* Confirm overlay — single-click on any tile pops this. */}
+      {confirmContent && (
+        <ConfirmOverlay
+          open
+          header={confirmContent.header}
+          selection={confirmContent.selection}
+          ctaLabel={confirmContent.ctaLabel}
+          onClose={() => setConfirming(null)}
+          onConfirm={() => {
+            confirmContent.onConfirm({ openCompose, openDraft })
+            setConfirming(null)
+          }}
         />
-      </ExplorerWindow>
-    </ExplorerShell>
+      )}
+    </>
   )
 }
 
@@ -439,13 +438,9 @@ function SectionBody({
   draftCount,
   publishedCount,
   draftItems,
-  selectedTplType,
-  selectedDraftId,
   allowedTypes,
   onPickType,
-  onOpenType,
-  onSelectDraft,
-  onOpenDraft,
+  onPickDraft,
   onDeletePublished,
   navigate,
 }: {
@@ -454,13 +449,9 @@ function SectionBody({
   draftCount: number
   publishedCount: number
   draftItems: DraftItem[]
-  selectedTplType: SupportedType | null
-  selectedDraftId: string | null
   allowedTypes: SupportedType[]
-  onPickType: (t: SupportedType) => void
-  onOpenType: (t: SupportedType) => void
-  onSelectDraft: (id: string | null) => void
-  onOpenDraft: (item: DraftItem) => void
+  onPickType: (t: ContentType) => void
+  onPickDraft: (id: string) => void
   onDeletePublished: (item: DraftItem) => void
   navigate: (s: ExplorerSection) => void
 }) {
@@ -476,24 +467,13 @@ function SectionBody({
       )
     case 'nuevo':
       return (
-        <NuevoSection
-          supported={allowedTypes}
-          selectedType={selectedTplType}
-          // NuevoSection's callbacks are typed wider (any ContentType) but
-          // it only ever invokes them with values from `supported`, which is
-          // narrowed to SupportedType. Cast to satisfy contravariant
-          // function-parameter checks under strictFunctionTypes.
-          onSelect={onPickType as (type: ContentType) => void}
-          onOpen={onOpenType as (type: ContentType) => void}
-        />
+        <NuevoSection supported={allowedTypes} onPick={onPickType} />
       )
     case 'drafts':
       return (
         <DraftsSection
           items={draftItems}
-          selectedId={selectedDraftId}
-          onSelect={onSelectDraft}
-          onOpen={onOpenDraft}
+          onOpen={(item) => onPickDraft(item.id)}
           stateFilter="draft"
           namespace="drafts"
         />
@@ -502,9 +482,7 @@ function SectionBody({
       return (
         <DraftsSection
           items={draftItems}
-          selectedId={selectedDraftId}
-          onSelect={onSelectDraft}
-          onOpen={onOpenDraft}
+          onOpen={(item) => onPickDraft(item.id)}
           stateFilter="published"
           namespace="publicados"
           onDelete={onDeletePublished}
@@ -567,26 +545,47 @@ function breadcrumbsFor({
   return [...base, { label: 'Dashboard' }, { label: SECTION_LABEL[section] }]
 }
 
-function selectionForCurrent({
-  section,
-  selectedTplType,
-  selectedDraftId,
+// Resolve confirming state into header/selection/CTA for the ConfirmOverlay,
+// plus an onConfirm closure that runs the actual action. Returns null when
+// the overlay shouldn't be open.
+function confirmOverlayContentFor({
+  confirming,
   draftItems,
 }: {
-  section: ExplorerSection
-  selectedTplType: SupportedType | null
-  selectedDraftId: string | null
+  confirming:
+    | { kind: 'tpl'; type: SupportedType }
+    | { kind: 'draft'; id: string }
+    | null
   draftItems: DraftItem[]
-}): SelectionMeta | null {
-  if (section === 'nuevo' && selectedTplType) {
-    return selectionForType(selectedTplType)
+}): {
+  header: string
+  selection: SelectionMeta
+  ctaLabel: string
+  onConfirm: (h: {
+    openCompose: (t: SupportedType, opts?: { editId?: string }) => void
+    openDraft: (item: DraftItem) => void
+  }) => void
+} | null {
+  if (!confirming) return null
+  if (confirming.kind === 'tpl') {
+    const sel = selectionForType(confirming.type)
+    return {
+      header: `// SELECCIONANDO PLANTILLA · ${sel.label}`,
+      selection: sel,
+      ctaLabel: 'USAR ESTA PLANTILLA',
+      onConfirm: ({ openCompose }) => openCompose(confirming.type),
+    }
   }
-  if ((section === 'drafts' || section === 'publicados') && selectedDraftId) {
-    const item = draftItems.find((i) => i.id === selectedDraftId)
-    if (!item) return null
-    return draftSelection(item)
+  // confirming.kind === 'draft'
+  const item = draftItems.find((i) => i.id === confirming.id)
+  if (!item) return null
+  const isDraft = item._draftState === 'draft'
+  return {
+    header: isDraft ? '// ABRIENDO BORRADOR' : '// ABRIENDO PUBLICACIÓN',
+    selection: draftSelection(item),
+    ctaLabel: 'ABRIR EN EDITOR',
+    onConfirm: ({ openDraft }) => openDraft(item),
   }
-  return null
 }
 
 function draftSelection(item: DraftItem): SelectionMeta {
@@ -636,39 +635,6 @@ function fmtDateTime(iso: string): string {
   } catch {
     return '—'
   }
-}
-
-function detailsCtaFor({
-  section,
-  selectedTplType,
-  selectedDraftId,
-  draftItems,
-  openCompose,
-  openDraft,
-}: {
-  section: ExplorerSection
-  selectedTplType: SupportedType | null
-  selectedDraftId: string | null
-  draftItems: DraftItem[]
-  openCompose: (t: SupportedType) => void
-  openDraft: (item: DraftItem) => void
-}) {
-  if (section === 'nuevo' && selectedTplType) {
-    return {
-      label: 'USAR ESTA PLANTILLA',
-      onClick: () => openCompose(selectedTplType),
-    }
-  }
-  if (selectedDraftId) {
-    const item = draftItems.find((i) => i.id === selectedDraftId)
-    if (item) {
-      return {
-        label: 'ABRIR EN EDITOR',
-        onClick: () => openDraft(item),
-      }
-    }
-  }
-  return undefined
 }
 
 function shouldShowViewControls(section: ExplorerSection): boolean {

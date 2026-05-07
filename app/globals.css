@@ -324,48 +324,57 @@ body {
   animation: comment-focus-flash 2.4s ease-out 1;
 }
 
-/* ── Pending publish — card glitch chrome ────────────────── */
-@keyframes pending-border-pulse {
+/* ── Fresh-published — card glitch chrome ────────────────── */
+/* Applies to editor-composed items for ~1 hour after publish. The
+   `--glitch-color` custom property is set per-card in ContentCard so the
+   pulse adopts the type's color (mix=blue, articulo=yellow, etc.). Falls
+   back to the orange/red palette so the keyframes still look right if the
+   variable is missing. */
+@keyframes fresh-border-pulse {
   0%, 100% {
-    border-color: #E63329;
+    border-color: var(--glitch-color, #E63329);
     box-shadow:
-      0 0 0 1px #E63329,
-      0 0 8px rgba(230, 51, 41, 0.45),
-      inset 0 0 12px rgba(230, 51, 41, 0.18);
+      0 0 0 1px var(--glitch-color, #E63329),
+      0 0 8px color-mix(in srgb, var(--glitch-color, #E63329) 45%, transparent),
+      inset 0 0 12px color-mix(in srgb, var(--glitch-color, #E63329) 18%, transparent);
   }
   50% {
-    border-color: #F97316;
+    border-color: var(--glitch-color, #F97316);
     box-shadow:
-      0 0 0 1px #F97316,
-      0 0 16px rgba(249, 115, 22, 0.55),
-      inset 0 0 18px rgba(249, 115, 22, 0.22);
+      0 0 0 1px var(--glitch-color, #F97316),
+      0 0 16px color-mix(in srgb, var(--glitch-color, #F97316) 55%, transparent),
+      inset 0 0 18px color-mix(in srgb, var(--glitch-color, #F97316) 22%, transparent);
   }
 }
 
-@keyframes pending-scanline-sweep {
-  0%   { transform: translateY(-30%); opacity: 0; }
-  10%  { opacity: 0.95; }
-  90%  { opacity: 0.95; }
-  100% { transform: translateY(130%); opacity: 0; }
+/* Animate `top` (parent-relative) rather than `transform: translateY` —
+   translateY's percentage is relative to the element's OWN height, so a
+   thin scanline only travels ~1/3 of the card. Using top: -25% → 110%
+   makes the line traverse the full card from above to below. */
+@keyframes fresh-scanline-sweep {
+  0%   { top: -25%; opacity: 0; }
+  8%   { opacity: 0.95; }
+  92%  { opacity: 0.95; }
+  100% { top: 110%; opacity: 0; }
 }
 
-@keyframes pending-cover-flicker {
+@keyframes fresh-cover-flicker {
   0%, 92%, 100% { filter: none; }
   93%           { filter: brightness(1.2) contrast(1.15) hue-rotate(-8deg); }
   95%           { filter: brightness(0.85) contrast(0.9) hue-rotate(6deg); }
   97%           { filter: brightness(1.1) saturate(1.4); }
 }
 
-@keyframes pending-chip-flicker {
+@keyframes fresh-chip-flicker {
   0%, 100%       { opacity: 1; }
   4%, 7%         { opacity: 0.45; }
   10%            { opacity: 1; }
 }
 
-.pending-glitch {
-  animation: pending-border-pulse 1.6s ease-in-out infinite;
+.fresh-glitch {
+  animation: fresh-border-pulse 1.6s ease-in-out infinite;
 }
-.pending-scanline {
+.fresh-scanline {
   position: absolute;
   left: 0;
   right: 0;
@@ -375,19 +384,19 @@ body {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(249, 115, 22, 0.0) 5%,
-    rgba(249, 115, 22, 0.45) 50%,
-    rgba(230, 51, 41, 0.0) 95%,
+    color-mix(in srgb, var(--glitch-color, #F97316) 0%, transparent) 5%,
+    color-mix(in srgb, var(--glitch-color, #F97316) 45%, transparent) 50%,
+    color-mix(in srgb, var(--glitch-color, #F97316) 0%, transparent) 95%,
     transparent 100%
   );
   mix-blend-mode: screen;
-  animation: pending-scanline-sweep 2.4s linear infinite;
+  animation: fresh-scanline-sweep 2.4s linear infinite;
 }
-.pending-cover-flicker {
-  animation: pending-cover-flicker 3.2s ease-in-out infinite;
+.fresh-cover-flicker {
+  animation: fresh-cover-flicker 3.2s ease-in-out infinite;
 }
-.pending-chip-flicker {
-  animation: pending-chip-flicker 2.8s steps(20, end) infinite;
+.fresh-chip-flicker {
+  animation: fresh-chip-flicker 2.8s steps(20, end) infinite;
 }
 
 /* ── VibeField two-thumb slider ──────────────────────────────────────── */
