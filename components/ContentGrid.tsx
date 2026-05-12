@@ -126,7 +126,9 @@ const MosaicItem = forwardRef<
           : { duration: 0.6, ease: 'easeInOut' as const }
 
   const style: CSSProperties = {
-    gridColumn: `span ${layout.colSpan} / span ${layout.colSpan}`,
+    gridColumn: layout.colStart
+      ? `${layout.colStart} / span ${layout.colSpan}`
+      : `span ${layout.colSpan} / span ${layout.colSpan}`,
     gridRow: `span ${layout.rowSpan} / span ${layout.rowSpan}`,
     ['--prominence' as any]: layout.intensity.toFixed(3),
     padding: 'calc(var(--prominence) * 0.25rem)',
@@ -309,7 +311,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
             priorArea={priorArea}
             isPast={isPast}
           >
-            <ContentCard item={item} size={layout.tier} />
+            <ContentCard item={item} size={layout.tier === 'xl' ? 'lg' : layout.tier} />
           </MosaicItem>
         )
       })}

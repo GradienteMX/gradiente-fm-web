@@ -2,7 +2,7 @@
 type: domain
 status: current
 tags: [curation, hp, decay, ranking, core-concept]
-updated: 2026-04-22
+updated: 2026-05-11
 ---
 
 # HP Curation System
@@ -123,21 +123,51 @@ prominence = 0.5 · freshness + 0.5 · score + imminenceBonus
 
 ### 8. Size tier from score
 
-`cardLayout(item)` assigns a `{ tier, colSpan, rowSpan, intensity }`:
+`cardLayout(item)` assigns a `{ tier, colSpan, rowSpan, intensity, colStart? }`. Four tiers, threshold-gated:
 
-| Score | Tier | Span |
-|---|---|---|
-| ≥ 1.0 | lg | 2×2 |
-| ≥ 0.5 | md | 2×1 |
-| < 0.5 | sm | 1×1 |
+| Score | Tier | Span | Notes |
+|---|---|---|---|
+| ≥ 1.0 | lg | 2×2 | Top-1 lg-qualifying promoted to `xl` (see § 9). Other lg get anchor alternation. |
+| ≥ 0.5 | md | **per-type** | Text-heavy types → `1×2` tall portrait; visual types → `2×1` wide landscape. |
+| < 0.5 | sm | 1×1 | Squares. |
 
 `intensity` is the intra-tier position (0–1), consumed by [[ContentCard]] as a CSS variable `--prominence` for subtle scale/padding effects.
+
+#### Per-type `md` geometry
+
+Without per-type spans, every `md` and `lg` card was `colSpan: 2` in a 3-col grid — the page collapsed into a wide-left / thin-right monotone. The split:
+
+| Type | `md` geometry | Rationale |
+|---|---|---|
+| review · articulo · listicle · editorial · opinion · noticia | **1×2 tall** | Long-form prose reads better in a portrait card |
+| evento · mix · partner | **2×1 wide** | Flyer / cover art reads better at width |
+
+Tall `1×2` tiles slot into column 3 alongside wide `2×1` neighbors, so the right rail stops being a wall of 1×1 squares.
+
+### 9. Rank-aware tier caps (xl + MAX_LG)
+
+Threshold-only tiering produced 14+ lg cards on a typical feed (every fresh text-heavy item has `score ≥ 1.0` after the multiplier). After sorting by `prominence` descending, `rankItems` walks the array and applies caps:
+
+- **Top-1 lg-qualifying → `xl 3×2`.** Single full-width feature slot at top of feed.
+- **Next `MAX_LG = 3` → keep `lg 2×2`, alternating anchor.** Even index → `colStart: 1` (cols 1–2); odd → `colStart: 2` (cols 2–3). Emphasis distributes across the page instead of stacking left.
+- **Further lg-qualifying → demoted to `md`** (per-type geometry from above). Lg becomes a true accent (~2–3 per page).
+
+The `xl` cell is 3×2 but `ContentCard` receives `size='lg'` — the chrome stays the same, the cell just fills more space ([ContentGrid:314](../../components/ContentGrid.tsx:314)).
+
+### 10. Gradient sm weave + run-breaker
+
+Sort by prominence naturally clusters items of similar size (and similar type, since type multiplier feeds into score). Without a redistribute pass, the feed reads top-to-bottom as: features → tall portraits → wide landscapes → wall of squares. Two-step fix in `rankItems`:
+
+1. **Gradient sm distribution.** After `TOP_KEEP = 4` (xl + lg cluster stays intact), the algorithm picks where to inject each sm via `target_sm_count(p) = ((p+1)/total)^K · sm.length` with `K = 1.5`. K > 1 biases sm toward the end; the curve still sprinkles sm through the middle so the page never ends in a wall of squares.
+2. **Run-breaker pass.** Up to 4 sweeps of local swaps (forward search preferred, backward fallback) to flatten any leftover `mdT mdT mdT` runs inside the big-items zone. Shape key includes `colStart` so the lg-L / lg-R alternation isn't penalized as a run.
+
+Empirical result on the current feed (33 items): longest same-shape run dropped from 11 to 2; the grid now ends with mdW landscape cards instead of a sm cluster.
 
 ## Open questions
 
 - `computePeakByType` uses **current max observed HP** as the denominator — a prototype shortcut. The spec (per code comments) calls for a **rolling 90-day p90**. That needs a real backend. See [[Supabase Migration]].
-- No "HP boost on interaction" exists because interactions aren't tracked. If we ever add "cited by an editorial" or "linked in an event" as a signal, it should raise `hp` and reset `hpLastUpdatedAt`.
-- Tunables (`SPAWN_HP_DEFAULT`, `TYPE_SCORE_MULTIPLIER`, half-lives) are magic numbers in one file. Fine for now; if they drift into the UI for admin tweaking, pull them to a config.
+- HP writer side (`hp_events` inserts) is deferred — see `project_hp_writer_deferred` memory. Migration 0008 shipped the rollup cron, but no surface currently writes events. Today's feed shape is driven by `editorial` flag + decay + per-type multipliers, not by interaction signal.
+- Tunables (`SPAWN_HP_DEFAULT`, `TYPE_SCORE_MULTIPLIER`, `MD_GEOMETRY`, `MAX_LG`, `K`, `MAX_RUN`, `TOP_KEEP`) are magic numbers in one file. Fine for now; if they drift into the UI for admin tweaking, pull them to a config.
 
 ## Links
 

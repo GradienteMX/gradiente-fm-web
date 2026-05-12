@@ -160,14 +160,42 @@ export function prominence(
 
 // ── Size tier from score ─────────────────────────────────────────────────────
 
-export type CardTier = 'sm' | 'md' | 'lg'
+export type CardTier = 'sm' | 'md' | 'lg' | 'xl'
 
 export interface CardLayout {
   tier: CardTier
   colSpan: 1 | 2 | 3
   rowSpan: 1 | 2
+  // Explicit column anchor (1-indexed). When set, the cell is pinned to that
+  // column; when undefined, dense-flow places it. Used by rankItems to
+  // alternate lg cards between left (col 1) and right (col 2) anchors so the
+  // wide emphasis cards don't all gravitate to the same side.
+  colStart?: 1 | 2 | 3
   intensity: number
 }
+
+// Lever 1 — `md` tier gets per-type geometry so the grid stops collapsing to
+// wide-left / thin-right. Text-heavy types render as tall 1×2 portraits;
+// visual types stay as wide 2×1 landscapes.
+const MD_GEOMETRY: Record<ContentItem['type'], { colSpan: 1 | 2; rowSpan: 1 | 2 }> = {
+  // Text-heavy → tall portrait (slots into column 3 alongside wide neighbors)
+  review:    { colSpan: 1, rowSpan: 2 },
+  articulo:  { colSpan: 1, rowSpan: 2 },
+  listicle:  { colSpan: 1, rowSpan: 2 },
+  editorial: { colSpan: 1, rowSpan: 2 },
+  opinion:   { colSpan: 1, rowSpan: 2 },
+  noticia:   { colSpan: 1, rowSpan: 2 },
+  // Visual → wide landscape (flyer / cover art reads better at width)
+  evento:    { colSpan: 2, rowSpan: 1 },
+  mix:       { colSpan: 2, rowSpan: 1 },
+  partner:   { colSpan: 2, rowSpan: 1 },
+}
+
+// Thresholds back to original 1.0 / 0.5 — `rankItems` applies rank-aware caps
+// on top of these (top-1 lg-qualifying item gets promoted to xl 3×2; the next
+// few stay lg with alternating anchors; the rest demote to md).
+const LG_THRESHOLD = 1.0
+const MD_THRESHOLD = 0.5
 
 export function cardLayout(
   item: ContentItem,
@@ -175,9 +203,19 @@ export function cardLayout(
   now: Date = new Date(),
 ): CardLayout {
   const s = score(item, peaks, now)
-  if (s >= 1.0) return { tier: 'lg', colSpan: 2, rowSpan: 2, intensity: Math.min(1, s - 1.0) }
-  if (s >= 0.5) return { tier: 'md', colSpan: 2, rowSpan: 1, intensity: (s - 0.5) / 0.5 }
-  return { tier: 'sm', colSpan: 1, rowSpan: 1, intensity: s / 0.5 }
+  if (s >= LG_THRESHOLD) {
+    return { tier: 'lg', colSpan: 2, rowSpan: 2, intensity: Math.min(1, s - LG_THRESHOLD) }
+  }
+  if (s >= MD_THRESHOLD) {
+    const geom = MD_GEOMETRY[item.type]
+    return {
+      tier: 'md',
+      colSpan: geom.colSpan,
+      rowSpan: geom.rowSpan,
+      intensity: (s - MD_THRESHOLD) / (LG_THRESHOLD - MD_THRESHOLD),
+    }
+  }
+  return { tier: 'sm', colSpan: 1, rowSpan: 1, intensity: s / MD_THRESHOLD }
 }
 
 export function sizeForScore(s: number): CardTier {
@@ -196,12 +234,24 @@ export interface RankedItem {
   layout: CardLayout
 }
 
+// Rank-aware tier caps applied after sorting. Without these, every fresh
+// text-heavy item lands in `lg` (because their type multiplier × observed-max
+// normalization keeps their score above 1.0), producing a tower of 2×2 cards
+// down the left side. Caps:
+//
+//   - Top-1 lg-qualifying item → promoted to xl (3×2 full-width feature).
+//   - Next MAX_LG items → stay lg (2×2), with colStart alternating between
+//     col 1 (left) and col 2 (right) so emphasis distributes across the grid.
+//   - Further lg-qualifying items → demoted to md (per-type geometry from
+//     MD_GEOMETRY: 1×2 tall for text, 2×1 wide for visual).
+const MAX_LG = 3
+
 export function rankItems(
   items: ContentItem[],
   now: Date = new Date(),
 ): RankedItem[] {
   const peaks = computePeakByType(items, now)
-  return items
+  const ranked: RankedItem[] = items
     .map((item) => {
       const s = score(item, peaks, now)
       const layout = cardLayout(item, peaks, now)
@@ -214,4 +264,123 @@ export function rankItems(
       }
     })
     .sort((a, b) => b.prominence - a.prominence)
+
+  let xlAssigned = false
+  let lgAssigned = 0
+  for (const r of ranked) {
+    if (r.layout.tier !== 'lg') continue
+
+    if (!xlAssigned) {
+      r.layout = { tier: 'xl', colSpan: 3, rowSpan: 2, colStart: 1, intensity: 1 }
+      r.tier = 'xl'
+      xlAssigned = true
+      continue
+    }
+
+    if (lgAssigned < MAX_LG) {
+      // Alternate anchor: even index left (col 1), odd index right (col 2).
+      r.layout = { ...r.layout, colStart: lgAssigned % 2 === 0 ? 1 : 2 }
+      lgAssigned++
+      continue
+    }
+
+    // Excess lg → demote to md using per-type geometry.
+    const geom = MD_GEOMETRY[r.item.type]
+    r.layout = {
+      tier: 'md',
+      colSpan: geom.colSpan,
+      rowSpan: geom.rowSpan,
+      intensity: 1,
+    }
+    r.tier = 'md'
+  }
+
+  // Lever — break clustering without losing the macro "big at top, small at
+  // bottom" gradient. Two-step:
+  //
+  //   1. Pull sm cards forward by gradient distribution. The k-th sm of N
+  //      lands at the position where the cumulative sm fraction hits
+  //      ((p+1)/total)^K. K > 1 biases the curve toward the end (more sm
+  //      at the bottom) while still sprinkling sm through the middle, so
+  //      the page never ends in a wall of squares.
+  //   2. After the sm/big weave settles, sweep the big-items zone to break
+  //      runs of same-shape mdT/mdW neighbors via local swaps.
+  //
+  // Shape key includes colStart so lg-left / lg-right alternation counts
+  // as variety (a run of [lg-L, lg-R, lg-L] isn't treated as a run).
+  const shapeKey = (r: RankedItem) =>
+    `${r.layout.colSpan}x${r.layout.rowSpan}-${r.layout.colStart ?? 'flow'}`
+
+  const TOP_KEEP = Math.min(ranked.length, 4) // xl + lg cluster stays intact
+  const top = ranked.slice(0, TOP_KEEP)
+  const rest = ranked.slice(TOP_KEEP)
+  const restBig = rest.filter((r) => r.layout.tier !== 'sm')
+  const restSm = rest.filter((r) => r.layout.tier === 'sm')
+
+  let weaved: RankedItem[]
+  if (restSm.length > 0 && restBig.length > 0) {
+    const restTotal = restBig.length + restSm.length
+    const K = 1.5 // gradient exponent — higher = more end-loaded
+    const targetSmAt = (p: number) =>
+      Math.pow((p + 1) / restTotal, K) * restSm.length
+
+    weaved = []
+    let bigIdx = 0
+    let smIdx = 0
+    for (let p = 0; p < restTotal; p++) {
+      if (smIdx < targetSmAt(p) && smIdx < restSm.length) {
+        weaved.push(restSm[smIdx++])
+      } else if (bigIdx < restBig.length) {
+        weaved.push(restBig[bigIdx++])
+      } else if (smIdx < restSm.length) {
+        weaved.push(restSm[smIdx++])
+      }
+    }
+  } else {
+    weaved = rest
+  }
+
+  const out = [...top, ...weaved]
+
+  // Pass 2 — break mdT/mdW runs inside the big zone. Forward swap with a
+  // small max-pass cap; backward fallback rescues edges.
+  const MAX_RUN = 2
+  const MAX_PASSES = 4
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let changed = false
+    for (let i = MAX_RUN; i < out.length; i++) {
+      const k = shapeKey(out[i])
+      let isRun = true
+      for (let w = 1; w <= MAX_RUN; w++) {
+        if (shapeKey(out[i - w]) !== k) {
+          isRun = false
+          break
+        }
+      }
+      if (!isRun) continue
+      let j = -1
+      for (let f = i + 1; f < out.length; f++) {
+        if (shapeKey(out[f]) !== k) {
+          j = f
+          break
+        }
+      }
+      if (j === -1) {
+        for (let b = i - MAX_RUN - 1; b >= 0; b--) {
+          if (shapeKey(out[b]) !== k) {
+            j = b
+            break
+          }
+        }
+      }
+      if (j === -1) continue
+      const tmp = out[i]
+      out[i] = out[j]
+      out[j] = tmp
+      changed = true
+    }
+    if (!changed) break
+  }
+
+  return out
 }

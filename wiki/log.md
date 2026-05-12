@@ -8,6 +8,84 @@
 
 ---
 
+## 2026-05-11 · INGEST · mosaic restructure — per-type md, xl 3×2 feature, L/R lg anchors, gradient sm weave
+
+Iker flagged that the home mosaic wasn't really mosaicking — the grid felt stuck in two columns: a wide left band of lg/md cards (all `colSpan: 2` in a 3-col grid) and a thin right rail of sm 1×1 tiles. Scrolling down, the right column died entirely because the sm pool ran out before the lg/md tower did. Diagnostic: 28 of 33 cards on the home feed had `colSpan: 2`, and `grid-auto-flow: dense` always anchored them at cols 1–2 (the earliest valid slot). The remaining 5 sm tiles were the only thing column 3 ever saw — and once exhausted, column 3 was empty.
+
+Three landed levers, layered:
+
+### Lever 1 — per-type `md` geometry
+
+Today `md` was `2×1` for every type — a slightly-shorter lg. Replaced with a `MD_GEOMETRY` map in [curation.ts](../lib/curation.ts):
+
+- **Text-heavy** (review · articulo · listicle · editorial · opinion · noticia) → **`1×2` tall portrait**.
+- **Visual** (evento · mix · partner) → **`2×1` wide landscape**.
+
+Rationale: long-form prose reads better in a portrait card; flyers and cover art read better at width. Geometry now encodes type, not just rank. Side effect: tall `1×2` tiles slot into column 3 alongside wide `2×1` neighbors, so the right rail stops being a thin stack of squares.
+
+Initial result was tiny (1 card flipped) because almost all text-heavy items were already promoted past the md tier into lg, so the new geometry never fired. Lever 2 fixed that.
+
+### Lever 2 — `xl 3×2` tier + rank-aware caps with L/R anchor alternation
+
+Threshold-only tiering produced 14+ lg cards on the typical feed (every fresh text-heavy item crossed `score ≥ 1.0` after the 1.3× multiplier). After tightening the threshold to 1.4 to push them down, we went the other way — 0 lg cards. Compromise: keep thresholds at the original 1.0 / 0.5 and apply **rank-aware caps** inside `rankItems`:
+
+- **Top-1 lg-qualifying → promoted to new `xl 3×2`** — a single full-width feature card at the top of the feed.
+- **Next `MAX_LG = 3` lg-qualifying → keep `lg 2×2`** with explicit `colStart` alternating between **1** (cols 1–2) and **2** (cols 2–3). Lg cards now distribute across both sides of the page instead of stacking left.
+- **Further lg-qualifying → demoted to `md`** (per-type geometry from Lever 1). Lg becomes a true accent, ~2–3 per page.
+
+`CardLayout` gained a `colStart?: 1 | 2 | 3` field; [ContentGrid:128](../components/ContentGrid.tsx:128) consumes it as `gridColumn: ${colStart} / span ${colSpan}` when set, else falls back to span-only (dense-flow places). `CardTier` gained `'xl'`; the only consumer ([ContentCard](../components/cards/ContentCard.tsx)) still takes `'sm' | 'md' | 'lg'`, so ContentGrid maps `xl → lg` on the way out — same chrome, bigger cell.
+
+Result: a feed with 1 xl 3×2 + 2 lg-left + 1 lg-right + a mix of mdT/mdW + sm. Both sides of the page carry emphasis.
+
+### Lever 3 — gradient sm weave + run-breaker
+
+After Lever 2 the mid-feed looked mosaic, but the **bottom 13 positions were still all sm** — a wall of squares at the tail. Sort-by-prominence is monotone, so same-tier items naturally cluster.
+
+First attempt was a swap-based run-breaker (forward search preferred, backward fallback). Worked for runs of mdT in the middle but couldn't reach the sm tail — once past position 20, every remaining item is sm and there's nothing left to swap with. Max run stayed at 11.
+
+Replaced with a **gradient distribution**:
+
+1. Preserve `TOP_KEEP = 4` positions (xl + lg cluster) intact.
+2. For the rest, place the k-th sm at the position where the cumulative target `((p+1)/total)^K · sm.length` says it should — with `K = 1.5` biasing the curve toward the end. End-loaded but never bunched.
+3. Follow with a small `MAX_PASSES = 4` run-breaker pass on the big-items zone to flatten leftover mdT/mdW clusters. Shape key includes `colStart` so lg-L / lg-R alternation doesn't count as a run.
+
+Empirical result on the current 33-item feed: longest same-shape run dropped from 11 to 2. The grid ends with mdW landscape cards instead of a sm cluster. Doc height halved (8938px → 5990px) because the lg tower's row-doubling is gone.
+
+### Knobs left exposed
+
+All five tunables live in [curation.ts](../lib/curation.ts) and can be dialed without restructuring:
+
+| Knob | Default | Effect |
+|---|---|---|
+| `MAX_LG` | 3 | How many lg cards after the xl promotion |
+| `TOP_KEEP` | 4 | Positions reserved for pure emphasis before sm injection |
+| `K` | 1.5 | Sm gradient exponent — higher = more end-loaded |
+| `MAX_RUN` | 2 | Max same-shape neighbors before run-breaker triggers |
+| `MAX_PASSES` | 4 | Run-breaker iteration cap |
+
+### What's NOT done
+
+- **HP writer side still deferred.** All these changes operate on `currentHp = spawnHp × decay(age)` because every item still has `hp = NULL`. The only active HP lever is the `editorial: true` flag. Migration 0008's `apply_hp_rollup()` cron runs every 5 min but `hp_events` is empty — has been since the rollup landed. Per the `project_hp_writer_deferred` memory, don't pitch the writer side until ~20+ active users are generating signal.
+- **`computePeakByType` is still observed-max,** not the spec'd rolling-90d p90. Doesn't matter while the feed is small; revisit when items grow past a few hundred.
+- **`xl` doesn't get bespoke chrome.** The 3×2 cell renders with the same `LgCard` internals. If the feature slot needs a different presentation (larger title, secondary line, etc.), that's a [ContentCard] pass.
+
+### Wiki updates
+
+- [[HP Curation System]] §§ 8–10 rewritten to cover per-type md, rank caps, gradient weave.
+- [[curation]] tunables + Ranking pipeline section reflect the new pipeline.
+
+### Verification
+
+Live-verified at 1440×900 in the preview:
+- **Top of grid**: xl `GUIA DE USUARIO | GRADIENTE MX` full-width, lg-left `LA LOGÍA`, sm tiles fill col 3 next to it.
+- **Mid-grid (y≈2500)**: 3 tall portrait md cards side-by-side over a wide landscape — peak mosaic moment.
+- **Lower (y≈4000)**: lg-right `PIXAN / VA` anchored cols 2–3, mdW `IA MIX 998` also right-anchored. Emphasis on both sides.
+- **Bottom (y≈5500)**: ends with `SUBCONSCIOUS / ESPECTRO MIX 010` mdW landscapes, not a sm cluster.
+
+`npm run build` clean.
+
+---
+
 ## 2026-05-07 · INGEST · header trim — MAGI removed, tighter nav, no horizontal overflow at MacBook widths
 
 Beta-feedback fix: Iker reported that on a MacBook the page horizontally overflowed — DASHBOARD button vanished off the right edge, // SECCIÓN rail got cropped on the left, two-finger trackpad scrolling was the only way to reach the right side. Root cause: top nav row (logo + 9 links + 3 MAGI indicators + clock + DASHBOARD + SALIR) had ~1750px of intrinsic width, all `hidden md:flex`, with no responsive collapse below 2xl (1536px).
