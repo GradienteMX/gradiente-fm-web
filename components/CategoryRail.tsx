@@ -7,13 +7,13 @@ import { useVibe } from '@/context/VibeContext'
 import { NowPlayingHud } from './audio/NowPlayingHud'
 
 const CATEGORIES: { type: ContentType; label: string }[] = [
-  { type: 'evento',    label: 'EVENTO' },
+  // { type: 'evento',    label: 'EVENTO' },  // hidden — evento lives in top nav/agenda
   { type: 'mix',       label: 'MIX' },
   { type: 'review',    label: 'REVIEW' },
   { type: 'editorial', label: 'EDITORIAL' },
   { type: 'articulo',  label: 'ARTÍCULO' },
   { type: 'listicle',  label: 'LISTA' },
-  { type: 'noticia',   label: 'NOTICIA' },
+  // { type: 'noticia',   label: 'NOTICIA' },  // hidden until content ready
   { type: 'opinion',   label: 'OPINIÓN' },
 ]
 
