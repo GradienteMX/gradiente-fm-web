@@ -92,13 +92,41 @@ function VibeSliderImpl() {
   const rangeRef = useRef(vibeRange)
   rangeRef.current = vibeRange
 
-  // The chip strip is hidden when the range is full and there are no
-  // explicit filters — at full range every genre is in range, so showing
-  // them all carries no information. The pin button is the manual override
-  // for users who want to browse the catalog at full range.
+  // The chip strip is hidden by default. Two ways to reveal it:
+  //   - Pin button (manual override — stays open until unpinned).
+  //   - Slider interaction (transient — fades back out ~2s after the user
+  //     stops moving the handles). The transient mode replaced an older
+  //     "always visible when narrowed" rule that left the chip strip
+  //     cluttering the surface long after the user had committed to a
+  //     range and moved on to scrolling the feed.
+  // Active filters always keep the strip visible — the user needs a way
+  // to see what they've filtered on and clear it.
   const [pinned, setPinned] = useState(false)
+  const [recentSliderInteraction, setRecentSliderInteraction] = useState(false)
+  const interactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstSliderRender = useRef(true)
 
   const [min, max] = vibeRange
+
+  // Slider-interaction tracker. Each [min, max] change extends the
+  // visibility window — so continuous dragging keeps chips open, and the
+  // 2s countdown only really starts on pointerup. The isFirstSliderRender
+  // guard skips the mount-time pseudo-"change" so chips don't flash open
+  // on page load.
+  useEffect(() => {
+    if (isFirstSliderRender.current) {
+      isFirstSliderRender.current = false
+      return
+    }
+    setRecentSliderInteraction(true)
+    if (interactionTimerRef.current) clearTimeout(interactionTimerRef.current)
+    interactionTimerRef.current = setTimeout(() => {
+      setRecentSliderInteraction(false)
+    }, 2000)
+    return () => {
+      if (interactionTimerRef.current) clearTimeout(interactionTimerRef.current)
+    }
+  }, [min, max])
 
   const getValueFromX = (clientX: number): number => {
     const track = trackRef.current
@@ -183,13 +211,19 @@ function VibeSliderImpl() {
       .sort((a, b) => (GENRE_VIBE[a] ?? 5) - (GENRE_VIBE[b] ?? 5)),
   ]
 
-  // Container visibility — only meaningful when the user has narrowed the
-  // range, pinned the strip open, or has explicit active filters. At full
-  // range with no filters, the chip set carries no information.
-  const chipsVisible = !isFullRange || pinned || activeIds.length > 0
-  // Show pin button only when it would actually change something — at full
-  // range with no filters, it's the only way to reveal chips. Otherwise
-  // it's redundant (chips already shown for another reason).
+  // Container visibility:
+  //   - Pinned → always visible (manual override).
+  //   - Active filters → always visible (user needs to see / clear them).
+  //   - Narrowed range AND recent slider interaction → transiently visible
+  //     (fades back out 2s after the user stops moving the handles).
+  //   - Anything else (incl. full range, or narrowed range gone idle) →
+  //     hidden. Pin button reappears as the way back in.
+  const chipsVisible =
+    pinned ||
+    activeIds.length > 0 ||
+    (!isFullRange && recentSliderInteraction)
+  // Show pin button only when it would actually change something — when
+  // chips are hidden (pin reveals them) or when pinned (pin unpins).
   const pinButtonVisible = !chipsVisible || pinned
 
   return (
@@ -294,22 +328,26 @@ function VibeSliderImpl() {
       </div>
 
       {/* ── Black band: pin + genre chips ──
-          Visibility is tied to the slider's range, not interaction state:
-          - At full range with no filters → chips hidden (no information).
-          - As the user narrows, chips fade in per-genre based on whether
-            their default vibe falls within the current band.
-          - Active filters always visible (so users can clear them).
-          - Pin button forces visibility at full range for "browse all"
-            mode; auto-hides when chips are already showing for another
-            reason. */}
+          Visibility is tied to interaction, not range:
+          - Slider moves → chips fade in, stay open while dragging, fade
+            back out 2s after the last range change (see the
+            recentSliderInteraction effect above).
+          - Active filters → always visible (the user needs to see / clear
+            them).
+          - Pin button → forces them visible indefinitely. Auto-hides when
+            chips are already up for another reason.
+          - Otherwise (full range idle, or narrowed range gone idle) →
+            hidden. */}
       <div className="bg-black px-4 pb-1 pt-1 md:px-8 md:pb-3 md:pt-2">
         <div className="mx-auto max-w-screen-2xl">
-          {/* Reserve ~2 rows of chip space at minimum so the typical
-              slider-narrowing flow doesn't shift the page below. Pinning
-              at full range may grow further but caps at max-h with
-              vertical scroll. Pin button stays top-aligned via
-              items-start. */}
-          <div className="flex min-h-[3.5rem] items-start gap-2">
+          {/* The row's height is content-driven now — when chips are
+              hidden, the row collapses to just the pin button's height
+              (~22px) instead of holding ~56px of dead space. The trade-
+              off: each slider interaction causes a small vertical
+              shift below as chips fade in/out. The chips container
+              animates `max-height` in lockstep with `opacity` (both
+              200ms) so the collapse reads smooth, not janky. */}
+          <div className="flex items-start gap-2">
             {/* Pin pill — only rendered when it would actually do
                 something useful (chips hidden by default OR user has
                 pinned and might want to unpin). */}
@@ -339,10 +377,10 @@ function VibeSliderImpl() {
                 the scrollbar hidden. */}
             <div
               id="vibe-genres-panel"
-              className={`flex max-h-[7rem] min-w-0 flex-1 flex-wrap items-start content-start overflow-y-auto transition-opacity duration-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+              className={`flex min-w-0 flex-1 flex-wrap items-start content-start overflow-y-auto transition-[opacity,max-height] duration-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
                 chipsVisible
-                  ? 'opacity-100'
-                  : 'pointer-events-none opacity-0'
+                  ? 'max-h-[7rem] opacity-100'
+                  : 'pointer-events-none max-h-0 opacity-0'
               }`}
               aria-hidden={!chipsVisible}
             >
