@@ -8,7 +8,7 @@ import { AuthBadge } from '@/components/auth/AuthBadge'
 const NAV_LINKS = [
   { href: '/',           label: 'HOME',       code: '00' },
   { href: '/agenda',     label: 'AGENDA',     code: '01' },
-  { href: '/noticias',   label: 'NOTICIAS',   code: '02' },
+  // { href: '/noticias',   label: 'NOTICIAS',   code: '02' },  // hidden until content ready
   { href: '/reviews',    label: 'REVIEWS',    code: '03' },
   { href: '/mixes',      label: 'MIXES',      code: '04' },
   { href: '/editorial',  label: 'EDITORIAL',  code: '05' },
