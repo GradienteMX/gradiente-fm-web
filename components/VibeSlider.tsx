@@ -94,39 +94,45 @@ function VibeSliderImpl() {
 
   // The chip strip is hidden by default. Two ways to reveal it:
   //   - Pin button (manual override — stays open until unpinned).
-  //   - Slider interaction (transient — fades back out ~2s after the user
-  //     stops moving the handles). The transient mode replaced an older
-  //     "always visible when narrowed" rule that left the chip strip
-  //     cluttering the surface long after the user had committed to a
-  //     range and moved on to scrolling the feed.
-  // Active filters always keep the strip visible — the user needs a way
-  // to see what they've filtered on and clear it.
+  //   - Recent interaction (transient — fades back out ~2s after the user
+  //     stops moving the slider OR toggling chips). The transient mode
+  //     replaced an older "always visible when narrowed" rule that left
+  //     the chip strip cluttering the surface long after the user had
+  //     committed to a range and moved on to scrolling the feed.
+  // Active (yellow) filter chips always stay visible — the user needs a
+  // way to see what they've filtered on and clear it. NON-active chips
+  // are gated by the same interaction window, so once the user has
+  // committed a filter, the surface settles to just the yellow chips and
+  // hides the rest of the candidates.
   const [pinned, setPinned] = useState(false)
-  const [recentSliderInteraction, setRecentSliderInteraction] = useState(false)
+  const [recentInteraction, setRecentInteraction] = useState(false)
   const interactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isFirstSliderRender = useRef(true)
+  const isFirstInteractionRender = useRef(true)
 
   const [min, max] = vibeRange
+  const activeFilterCount = genreFilter.length
 
-  // Slider-interaction tracker. Each [min, max] change extends the
-  // visibility window — so continuous dragging keeps chips open, and the
-  // 2s countdown only really starts on pointerup. The isFirstSliderRender
-  // guard skips the mount-time pseudo-"change" so chips don't flash open
-  // on page load.
+  // Interaction tracker. Each slider [min, max] change OR chip toggle
+  // (activeFilterCount change) extends the visibility window — so
+  // continuous dragging keeps chips open, and clicking a chip resets
+  // the timer so the user can immediately see and pick another one.
+  // The 2s countdown only really starts after the last action. The
+  // isFirstInteractionRender guard skips the mount-time pseudo-"change"
+  // so chips don't flash open on page load.
   useEffect(() => {
-    if (isFirstSliderRender.current) {
-      isFirstSliderRender.current = false
+    if (isFirstInteractionRender.current) {
+      isFirstInteractionRender.current = false
       return
     }
-    setRecentSliderInteraction(true)
+    setRecentInteraction(true)
     if (interactionTimerRef.current) clearTimeout(interactionTimerRef.current)
     interactionTimerRef.current = setTimeout(() => {
-      setRecentSliderInteraction(false)
+      setRecentInteraction(false)
     }, 2000)
     return () => {
       if (interactionTimerRef.current) clearTimeout(interactionTimerRef.current)
     }
-  }, [min, max])
+  }, [min, max, activeFilterCount])
 
   const getValueFromX = (clientX: number): number => {
     const track = trackRef.current
@@ -214,14 +220,14 @@ function VibeSliderImpl() {
   // Container visibility:
   //   - Pinned → always visible (manual override).
   //   - Active filters → always visible (user needs to see / clear them).
-  //   - Narrowed range AND recent slider interaction → transiently visible
-  //     (fades back out 2s after the user stops moving the handles).
+  //   - Narrowed range AND recent interaction → transiently visible
+  //     (fades back out 2s after the user's last slider move or chip toggle).
   //   - Anything else (incl. full range, or narrowed range gone idle) →
   //     hidden. Pin button reappears as the way back in.
   const chipsVisible =
     pinned ||
     activeIds.length > 0 ||
-    (!isFullRange && recentSliderInteraction)
+    (!isFullRange && recentInteraction)
   // Show pin button only when it would actually change something — when
   // chips are hidden (pin reveals them) or when pinned (pin unpins).
   const pinButtonVisible = !chipsVisible || pinned
@@ -401,12 +407,19 @@ function VibeSliderImpl() {
                     })()
                 // Per-chip visibility:
                 //   - pinned (browse-all override) → always visible
-                //   - active filter → always visible (user can clear it)
-                //   - narrowed range AND in feed → fade in
+                //   - active (yellow) filter → always visible (user can clear it)
+                //   - narrowed range AND in feed AND recent interaction →
+                //     transiently visible. Non-active chips follow the same
+                //     2s window as the container, so once the user has
+                //     committed a filter, the strip settles to just the
+                //     yellow chips and hides the rest of the candidates.
                 // At full range without pin, every genre tends to be
                 // "in feed" — so we suppress the in-feed path there to
                 // keep active filters visually focused.
-                const chipVisible = pinned || active || (!isFullRange && inFeed)
+                const chipVisible =
+                  pinned ||
+                  active ||
+                  (!isFullRange && inFeed && recentInteraction)
                 return (
                   <button
                     key={id}
