@@ -5,22 +5,28 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { AuthBadge } from '@/components/auth/AuthBadge'
 
+// Header destinations. Trimmed from 9 → 4 to break the visual equivalence
+// with the SECCIÓN rail (beta testers were ignoring FORO + MARKETPLACE
+// because they read as duplicates of //NOTICIA / //MIX / etc filter rows).
+// Every item renders in NGE orange by default; only the *active* item
+// switches to an orange → red gradient + glow. The differentiation is
+// "selected vs not," not "this item is its own color."
 const NAV_LINKS = [
-  { href: '/',           label: 'HOME',       code: '00' },
-  { href: '/agenda',     label: 'AGENDA',     code: '01' },
-  { href: '/noticias',   label: 'NOTICIAS',   code: '02' },
-  { href: '/reviews',    label: 'REVIEWS',    code: '03' },
-  { href: '/mixes',      label: 'MIXES',      code: '04' },
-  { href: '/editorial',  label: 'EDITORIAL',  code: '05' },
-  { href: '/articulos',  label: 'ARTÍCULOS',  code: '06' },
-  { href: '/foro',       label: 'FORO',       code: '07' },
-  { href: '/marketplace', label: 'MARKETPLACE', code: '08' },
+  { href: '/',            label: 'HOME' },
+  { href: '/agenda',      label: 'AGENDA' },
+  { href: '/foro',        label: 'FORO' },
+  { href: '/marketplace', label: 'MARKETPLACE' },
 ]
+
+// Active-state gradient — matches the header's top accent bar (line ~47)
+// so the "this is where you are" cue is visually rhymed with the brand chrome.
+const ACTIVE_GRADIENT = 'linear-gradient(to right, #FF8800, #E63329)'
+const NAV_ORANGE = '#FF8800'
 
 const DATA_STRIP = [
   'CDMX·UNDERGROUND', '//', 'MUSICA·ELECTRONICA', '//', 'FREQ·ACTIVA·128BPM', '//',
   'UNIT·GRADIENTE·ONLINE', '//', 'PATTERN:CONFIRMED', '//', 'SINCRONIZACION·ACTIVA', '//',
-  'MAGI·SYSTEM·NOMINAL', '//', 'GRADIENTE·FM·SUBSISTEMA·CULTURAL·MX', '//',
+  'MAGI·SYSTEM·NOMINAL', '//', 'GRADIENTE·MX·SUBSISTEMA·CULTURAL', '//',
   'A·T·FIELD·STABLE', '//', 'INSTRUMENTACION·NEURAL·ACTIVA', '//', 'BIOPATTERN·LOCKED', '//',
 ]
 
@@ -71,7 +77,7 @@ export function Navigation() {
               <span
                 className="eva-glow font-syne text-[17px] font-black tracking-tighter leading-none"
               >
-                GRADIENTE<span style={{ color: '#FFB800', textShadow: '0 0 8px #FFB800' }}>·</span>FM
+                GRADIENTE<span style={{ color: '#FFB800', textShadow: '0 0 8px #FFB800' }}>·</span>MX
               </span>
             </div>
 
@@ -81,51 +87,71 @@ export function Navigation() {
           </div>
         </Link>
 
-        {/* ── Desktop nav links ── */}
-        <nav className="hidden flex-1 items-stretch md:flex">
+        {/* ── Desktop nav links ──
+            Inactive = always-visible NGE orange (no dim-until-active —
+            the original complaint was that inactive items vanished).
+            Active = orange → red gradient text + matching bottom bar +
+            subtle tinted bg. The gradient is the only thing that swaps;
+            color identity is consistent, "selected" is what reads. */}
+        <nav className="hidden flex-1 items-stretch justify-center md:flex">
           {NAV_LINKS.map((link) => {
             const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className="group relative flex flex-col items-center justify-center px-2.5 transition-colors"
+                className="group relative flex items-center justify-center px-6 transition-colors"
                 style={{
                   borderRight: '1px solid #140B00',
-                  backgroundColor: active ? '#0C0500' : 'transparent',
+                  // Subtle gradient tint behind the active item — mirrors
+                  // the text gradient at ~6% opacity. Reads as "boxed"
+                  // without dominating.
+                  background: active
+                    ? 'linear-gradient(to right, rgba(255,136,0,0.08), rgba(230,51,41,0.08))'
+                    : 'transparent',
                 }}
               >
-                {/* Code */}
+                {/* Label.
+                    - Inactive: solid NGE orange with a faint glow.
+                    - Active: gradient text via bg-clip. `text-shadow` does
+                      NOT render on bg-clipped text (the underlying glyph
+                      is transparent), so the active glow uses `filter:
+                      drop-shadow()` instead — that works because filter
+                      operates on the rendered pixels, gradient included. */}
                 <span
-                  className="font-mono text-[8px] tabular-nums leading-none"
-                  style={{
-                    color: active ? '#FF8800' : '#2A1C00',
-                    textShadow: active ? '0 0 8px #FF6600' : 'none',
-                  }}
-                >
-                  {link.code}
-                </span>
-                {/* Label */}
-                <span
-                  className="mt-[3px] font-syne text-[11px] font-bold tracking-widest leading-none"
-                  style={{
-                    color: active ? '#FFAA00' : '#3A2A00',
-                    textShadow: active ? '0 0 6px #FF660055, 0 0 14px #FF440033' : 'none',
-                  }}
+                  className="font-syne text-[13px] font-bold tracking-widest leading-none"
+                  style={
+                    active
+                      ? {
+                          background: ACTIVE_GRADIENT,
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          filter: 'drop-shadow(0 0 6px rgba(255,102,0,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
+                        }
+                      : {
+                          color: NAV_ORANGE,
+                          textShadow: '0 0 6px rgba(255,102,0,0.2)',
+                        }
+                  }
                 >
                   {link.label}
                 </span>
-                {/* Active bottom bar */}
+                {/* Active bottom bar — same orange→red gradient as the label */}
                 {active && (
                   <span
                     className="absolute bottom-0 left-0 right-0 h-[2px]"
-                    style={{ background: 'linear-gradient(to right, transparent, #FF6600, transparent)', boxShadow: '0 0 6px #FF6600' }}
+                    style={{
+                      background:
+                        'linear-gradient(to right, transparent, #FF8800, #E63329, transparent)',
+                      boxShadow: '0 0 6px #FF4400',
+                    }}
                   />
                 )}
-                {/* Hover crosshair */}
+                {/* Hover crosshair — NGE orange */}
                 <span
-                  className="absolute right-1 top-1 font-mono text-[9px] opacity-0 transition-opacity group-hover:opacity-20"
-                  style={{ color: '#FF8800' }}
+                  className="absolute right-1 top-1 font-mono text-[9px] opacity-0 transition-opacity group-hover:opacity-30"
+                  style={{ color: NAV_ORANGE }}
                 >+</span>
               </Link>
             )
@@ -247,16 +273,33 @@ export function Navigation() {
                 className="flex items-center gap-3 border-b px-4 py-3"
                 style={{
                   borderColor: '#1C1000',
-                  backgroundColor: active ? '#0C0500' : 'transparent',
+                  background: active
+                    ? 'linear-gradient(to right, rgba(255,136,0,0.08), rgba(230,51,41,0.08))'
+                    : 'transparent',
                 }}
               >
-                <span className="font-mono text-[10px]" style={{ color: '#FF6600', textShadow: active ? '0 0 6px #FF6600' : 'none' }}>
+                <span
+                  className="font-mono text-[10px]"
+                  style={{ color: NAV_ORANGE, textShadow: active ? '0 0 6px #FF6600' : 'none' }}
+                >
                   {active ? '▶' : '·'}
                 </span>
-                <span className="font-mono text-[9px]" style={{ color: '#2A1800' }}>{link.code}</span>
                 <span
                   className="font-syne text-xs font-bold tracking-widest"
-                  style={{ color: active ? '#FF9900' : '#444' }}
+                  style={
+                    active
+                      ? {
+                          background: ACTIVE_GRADIENT,
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                          filter: 'drop-shadow(0 0 6px rgba(255,102,0,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
+                        }
+                      : {
+                          color: NAV_ORANGE,
+                          textShadow: '0 0 6px rgba(255,102,0,0.2)',
+                        }
+                  }
                 >
                   {link.label}
                 </span>
