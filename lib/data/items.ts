@@ -7,6 +7,7 @@ import type {
   MarketplaceListing,
   MixEmbed,
   MixTrack,
+  PartnerKind,
   PollAttachment,
   PollChoice,
 } from '@/lib/types'
@@ -15,16 +16,32 @@ type ItemRow = Database['public']['Tables']['items']['Row']
 type PollRow = Database['public']['Tables']['polls']['Row']
 type MarketplaceListingRow = Database['public']['Tables']['marketplace_listings']['Row']
 
+// Minimal partner shape resolved via a follow-up query (NOT an embedded
+// PostgREST join) when `partner_id` is set. Mirrors the
+// `fetchVibeCheckAggregates` pattern below — two-query merge is more
+// resilient than PostgREST's self-FK embed, which depends on the schema
+// cache being fresh and tends to lag behind migrations. See migration
+// 0015 + wiki/90-Decisions/Partner Authoring.md.
+type EmbeddedPartner = {
+  id: string
+  title: string
+  slug: string
+  partner_kind: string | null
+  marketplace_enabled: boolean
+}
+
 // Embedded join shape — `polls.item_id` is unique so PostgREST returns a
 // single object (not an array) for the relation; marketplace_listings is
-// 1:N keyed on partner_id, returned as an array.
+// 1:N keyed on partner_id, returned as an array. `partner` is resolved
+// by `fetchPartnersByIds` after the main query lands.
 type ItemRowWithPoll = ItemRow & {
   poll: PollRow | null
   marketplace_listings: MarketplaceListingRow[] | null
 }
 
 // Listings are pulled via the same SELECT so consumers don't need a second
-// round-trip. The catalog + overlay both render off this one query.
+// round-trip. The catalog + overlay both render off this one query. Partner
+// attribution is resolved separately — see `attachPartner` below.
 const ITEMS_SELECT =
   '*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at), marketplace_listings(*)'
 
@@ -129,6 +146,9 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     partner_kind: item.partnerKind ?? null,
     partner_url: item.partnerUrl ?? null,
     partner_last_updated: tsOrNull(item.partnerLastUpdated),
+    // partner_id added in migration 0015; cast bypasses stale generated
+    // types until `npx supabase gen types typescript` regenerates.
+    ...(item.partnerId !== undefined ? { partner_id: item.partnerId } : {}),
     marketplace_enabled: item.marketplaceEnabled ?? false,
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
@@ -196,6 +216,11 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     partnerKind: row.partner_kind ?? undefined,
     partnerUrl: row.partner_url ?? undefined,
     partnerLastUpdated: row.partner_last_updated ?? undefined,
+    // partner_id added in migration 0015; cast bypasses stale generated
+    // types until `npx supabase gen types typescript` regenerates.
+    partnerId: (row as { partner_id?: string | null }).partner_id ?? undefined,
+    // partner field is populated by attachPartner() in the consumer fns
+    // below (getItems / getItemBySlug). Leave undefined here.
     marketplaceEnabled: row.marketplace_enabled,
     marketplaceDescription: row.marketplace_description ?? undefined,
     marketplaceLocation: row.marketplace_location ?? undefined,
@@ -256,6 +281,52 @@ function attachAggregate(
   }
 }
 
+// ── Partner attribution merge ──────────────────────────────────────────────
+//
+// Mirrors fetchVibeCheckAggregates: a second query pulls the partner rows
+// referenced by any item's `partner_id`, then `attachPartner` merges the
+// minimal shape onto each item.
+//
+// Done this way instead of a PostgREST self-FK embed because the embed
+// depends on PostgREST's schema cache having seen the FK — which lags
+// behind migrations (PGRST200 errors on first deploy). The two-query
+// approach is cache-agnostic.
+
+async function fetchPartnersByIds(ids: string[]): Promise<Map<string, EmbeddedPartner>> {
+  const out = new Map<string, EmbeddedPartner>()
+  if (ids.length === 0) return out
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('items')
+    .select('id, title, slug, partner_kind, marketplace_enabled')
+    .in('id', ids)
+  if (error) {
+    console.error('[fetchPartnersByIds] Supabase error:', error)
+    return out
+  }
+  for (const row of (data ?? []) as EmbeddedPartner[]) {
+    out.set(row.id, row)
+  }
+  return out
+}
+
+function attachPartner(
+  item: ContentItem,
+  partner: EmbeddedPartner | undefined,
+): ContentItem {
+  if (!partner) return item
+  return {
+    ...item,
+    partner: {
+      id: partner.id,
+      title: partner.title,
+      slug: partner.slug,
+      kind: (partner.partner_kind ?? 'venue') as PartnerKind,
+      marketplaceEnabled: partner.marketplace_enabled,
+    },
+  }
+}
+
 // ── Public read API ────────────────────────────────────────────────────────
 
 // Fetch every item the calling user can see, in `published_at` desc order.
@@ -278,8 +349,18 @@ export async function getItems(): Promise<ContentItem[]> {
     return []
   }
   const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
-  const aggregates = await fetchVibeCheckAggregates(items.map((i) => i.id))
-  return items.map((i) => attachAggregate(i, aggregates.get(i.id)))
+  // Parallel fetches: vibe-check aggregates AND partner-attribution rows.
+  // Both look up by ids drawn from the items array; can run concurrently.
+  const partnerIds = Array.from(
+    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  )
+  const [aggregates, partners] = await Promise.all([
+    fetchVibeCheckAggregates(items.map((i) => i.id)),
+    fetchPartnersByIds(partnerIds),
+  ])
+  return items
+    .map((i) => attachAggregate(i, aggregates.get(i.id)))
+    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
 }
 
 // Single item by slug — used by overlay deep-links and `/[type]/[slug]` pages.
@@ -297,6 +378,10 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   }
   if (!data) return null
   const item = rowToContentItem(data as unknown as ItemRowWithPoll)
-  const aggregates = await fetchVibeCheckAggregates([item.id])
-  return attachAggregate(item, aggregates.get(item.id))
+  const [aggregates, partners] = await Promise.all([
+    fetchVibeCheckAggregates([item.id]),
+    item.partnerId ? fetchPartnersByIds([item.partnerId]) : Promise.resolve(new Map()),
+  ])
+  const withAgg = attachAggregate(item, aggregates.get(item.id))
+  return attachPartner(withAgg, item.partnerId ? partners.get(item.partnerId) : undefined)
 }

@@ -173,6 +173,33 @@ export function OverlayShell({
               <span className="sys-label hidden truncate uppercase text-muted sm:inline">
                 {item.slug}
               </span>
+              {/* Partner attribution byline — renders when item.partner is set
+                  (resolved server-side via the partner_id self-join). Clickable
+                  through to /marketplace when the partner is marketplace-enabled;
+                  static label otherwise. See wiki/90-Decisions/Partner Authoring. */}
+              {item.partner && (
+                <span className="sys-label hidden shrink-0 items-center gap-1.5 sm:inline-flex">
+                  <span className="text-muted">PUBLICADO POR</span>
+                  {item.partner.marketplaceEnabled ? (
+                    <Link
+                      href={`/marketplace?partner=${encodeURIComponent(item.partner.slug)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="transition-opacity hover:opacity-80"
+                      style={{ color: '#FF8800' }}
+                      title={`Ver perfil de ${item.partner.title}`}
+                    >
+                      //{item.partner.title.toUpperCase()}
+                    </Link>
+                  ) : (
+                    <span
+                      style={{ color: '#FF8800' }}
+                      title={`Publicado por ${item.partner.title}`}
+                    >
+                      //{item.partner.title.toUpperCase()}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <SaveItemButton item={item} />

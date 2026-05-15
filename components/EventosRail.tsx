@@ -8,6 +8,7 @@ import type { ContentItem } from '@/lib/types'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
 import { categoryColor } from '@/lib/utils'
+import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 
 const EVENT_RED = categoryColor('evento')
 
@@ -44,12 +45,33 @@ function EventoRailCard({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
 
-        <span
-          className="absolute left-2 top-2 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-          style={{ color: EVENT_RED }}
-        >
-          //EVENTO
-        </span>
+        <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
+          <span
+            className="bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
+            style={{ color: EVENT_RED }}
+          >
+            //EVENTO
+          </span>
+          {/* Partner attribution — same vocabulary as the mosaic chip, smaller
+              scale to fit the 180px rail tile. Skip rendering on partial data
+              (defensive — matches the mosaic chip's guard). Stacked under
+              //EVENTO rather than alongside so neither truncates at this width.
+              Non-clickable here — the whole tile is a button that opens the
+              overlay; the chip just provides at-a-glance attribution. */}
+          {item.partner && item.partner.title && (
+            <span
+              className="bg-black/85 border px-1.5 py-0.5 font-mono text-[8px] tracking-widest backdrop-blur-sm"
+              style={{
+                borderColor: '#FF8800',
+                color: '#FF8800',
+                boxShadow: '0 0 4px rgba(255,136,0,0.35)',
+              }}
+              title={`Publicado por ${item.partner.title}`}
+            >
+              //{partnerAttributionPrefix(item.partner.kind)} · {item.partner.title.toUpperCase()}
+            </span>
+          )}
+        </div>
 
         {d && (
           <div className="absolute right-2 top-2 border border-white/20 bg-black/70 px-1.5 py-1 text-center font-mono backdrop-blur-sm">

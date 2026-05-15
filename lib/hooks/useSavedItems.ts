@@ -146,6 +146,9 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     partnerKind: row.partner_kind ?? undefined,
     partnerUrl: row.partner_url ?? undefined,
     partnerLastUpdated: row.partner_last_updated ?? undefined,
+    // partner_id added in migration 0015; cast bypasses stale generated
+    // types until `npx supabase gen types typescript` regenerates.
+    partnerId: (row as { partner_id?: string | null }).partner_id ?? undefined,
     marketplaceEnabled: row.marketplace_enabled,
     marketplaceDescription: row.marketplace_description ?? undefined,
     marketplaceLocation: row.marketplace_location ?? undefined,

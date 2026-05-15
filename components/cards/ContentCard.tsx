@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import type { ContentItem } from '@/lib/types'
 import { vibeToColor, vibeMid, vibeBandGradient, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
+import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
@@ -49,6 +51,58 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
 interface ContentCardProps {
   item: ContentItem
   size?: CardSize
+}
+
+// ── Partner attribution chip ──────────────────────────────────────────────────
+//
+// Renders //PRESENTA · CLUB JAPAN (or //SELLO · X, //PROMOTORA · X, etc.) on
+// cards whose `partner` field is populated by the server-side self-join. The
+// chip is clickable through to the partner's MarketplaceOverlay when the
+// partner is marketplace-enabled; non-clickable otherwise (the attribution
+// itself does the trust work — the click is a discovery affordance).
+//
+// stopPropagation on click so the chip's navigation doesn't also trigger the
+// card's overlay-open handler.
+//
+// See wiki/90-Decisions/Partner Authoring.md.
+function PartnerAttributionChip({ item }: { item: ContentItem }) {
+  // Defensive on partner.title — server mapper occasionally hands back a
+  // partial shape (e.g. when the embed returned as an array we couldn't
+  // normalize). Skip rendering rather than crash.
+  if (!item.partner || !item.partner.title) return null
+  const { partner } = item
+  const label = `//${partnerAttributionPrefix(partner.kind)} · ${partner.title.toUpperCase()}`
+  const chipStyle: CSSProperties = {
+    borderColor: '#FF8800',
+    color: '#FF8800',
+    boxShadow: '0 0 6px rgba(255,136,0,0.35)',
+  }
+  const baseClass =
+    'border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm'
+
+  if (partner.marketplaceEnabled) {
+    return (
+      <Link
+        href={`/marketplace?partner=${encodeURIComponent(partner.slug)}`}
+        onClick={(e) => e.stopPropagation()}
+        className={`${baseClass} transition-opacity hover:opacity-80`}
+        style={chipStyle}
+        title={`Ver perfil de ${partner.title} en marketplace`}
+      >
+        {label}
+      </Link>
+    )
+  }
+
+  return (
+    <span
+      className={baseClass}
+      style={chipStyle}
+      title={`Publicado por ${partner.title}`}
+    >
+      {label}
+    </span>
+  )
 }
 
 // ── Shared image layer ────────────────────────────────────────────────────────
@@ -140,6 +194,7 @@ function CardImage({
             [DRAFT·SESIÓN]
           </span>
         )}
+        <PartnerAttributionChip item={item} />
       </div>
 
       {/* NGE corner bracket — bottom right */}

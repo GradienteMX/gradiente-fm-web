@@ -202,6 +202,25 @@ export interface ContentItem {
   partnerUrl?: string     // outbound link (site, Instagram, Bandcamp, etc.)
   partnerLastUpdated?: string  // ISO — overrides publishedAt for rail ordering
 
+  // Partner attribution — when set on a NON-partner item, the item was authored
+  // (or scraper-matched) on behalf of that partner organization. Drives the
+  // //PRESENTA · X chip on cards + the PUBLICADO POR //X byline in overlays.
+  // References a partner ContentItem.id (e.g. "pa-club-japan-ppur"). See
+  // [[Partner Authoring]] for the trust-via-attribution model.
+  partnerId?: string
+  // Minimal partner attribution data — resolved server-side via a self-join
+  // when `partnerId` is set. Populated by `rowToContentItem` in lib/data/items.ts.
+  // Cards + overlay read these fields directly so no prop-drilling or context
+  // lookup is needed on the rendering surfaces. Browser-side hooks (useSavedItems,
+  // useMyPublishedItems) leave this undefined — chip simply doesn't render there.
+  partner?: {
+    id: string
+    title: string
+    kind: PartnerKind
+    slug: string
+    marketplaceEnabled: boolean
+  }
+
   // Marketplace fields (type === 'partner' only). When `marketplaceEnabled`
   // is true, the partner shows up at `/marketplace` with their card +
   // listings. Admin sets the flag in [[AdminUsersEditor]]; the partner team
