@@ -160,6 +160,7 @@
 ## 90 — Decisions
 
 - [[Guides Not Gatekeepers]] — the core editorial thesis; editorial content competes with scraped content in the main grid
+- [[Partner Authoring]] — approved partners author `evento` / `mix` / `noticia` into the feed; trust mediated by transparent attribution, not pre-publish review
 - [[Why NGE Aesthetic]] — the founding design call
 - [[Size and Position as Only Signals]] — no stars, likes, or counters
 - [[No Algorithm]] — editorial curation over engagement metrics

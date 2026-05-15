@@ -1,12 +1,12 @@
 # Next Session — start here
 
 > Brief for picking up where the previous session ended.
-> Last updated: **2026-05-11** — home-mosaic restructure session. Three layered levers on top of the existing HP curation pipeline: (1) per-type `md` geometry — text-heavy types render as `1×2` tall portraits, visual types as `2×1` wide landscapes; (2) `xl 3×2` full-width feature tier promoted from the top-1 lg-qualifying item, with the next `MAX_LG=3` lg cards keeping `2×2` but alternating `colStart` between cols 1 and 2 so emphasis distributes across both sides of the page; (3) gradient sm weave (K=1.5 ends-loaded distribution) + run-breaker to kill the wall-of-squares tail. Result: longest same-shape run dropped 11→2, grid height halved (8938→5990), col 3 carries content top-to-bottom. All five tunables (`MAX_LG`, `TOP_KEEP`, `K`, `MAX_RUN`, `MAX_PASSES`) exposed for fine-tuning. See top entry in [[log]] for full breakdown; updated wiki in [[HP Curation System]] §§ 8–10 + [[curation]].
+> Last updated: **2026-05-12** — two beta-feedback rollups landed back-to-back, both about surfaces holding open after the user had already committed. (1) **Header trim + MX rebrand** — nav row 9→4 (`HOME · AGENDA · FORO · MARKETPLACE`); inactive items now solid NGE orange (no more dim-until-active), active state is an orange→red gradient via `bg-clip: text` with `filter: drop-shadow()` for the glow (text-shadow doesn't render on bg-clipped glyphs). Logo + data-strip token rebranded `GRADIENTE·FM → GRADIENTE·MX`. (2) **Vibe chip strip auto-hides on idle** — replaced the range-driven `chipsVisible` rule with a 2s interaction timer; container drops its `min-h-[3.5rem]` and the chips wrapper transitions `max-height` in lockstep with `opacity`. Per-chip visibility uses the same gate, so once a filter is committed the strip settles to just the yellow selections. See top entry in [[log]] for full breakdown; updated [[Navigation]] + [[VibeSlider]].
 >
-> Three commits on `main` for this session: see latest `git log --oneline main -5`.
+> Latest three commits on `main` for this session: `ab9561b` `b106b2e` `668b921` — `git log --oneline main -5` for current state.
 >
 > **Outstanding visual work**: the welcome page's ASCII vinyl is functional but still off-design vs reference — see 2026-05-05 entry in the log for the levers (groove pitch, tilt, ambient hardening). Still not addressed.
-> **Responsive coverage gap**: viewports ≤1280px (older Intel MacBook 13", iPad landscape) still overflow the header and need the path-2 hamburger drawer + horizontal SECCIÓN strip. Deferred per Iker (tiny demographic, not worth the redesign).
+> **Responsive coverage gap**: viewports ≤1280px (older Intel MacBook 13", iPad landscape) previously overflowed the header. The 2026-05-12 trim (9 links → 4) likely resolves this — verify on a 1280px window before declaring it closed. If still tight, the deferred path-2 hamburger drawer + horizontal SECCIÓN strip remains the answer (tiny demographic, may not be worth the redesign per Iker).
 
 ## How to start this session
 

@@ -8,6 +8,131 @@
 
 ---
 
+## 2026-05-14 · INGEST · partner attribution chrome + //PUBLICAR authoring tab
+
+Two layered slices shipping the partner-content pipeline locked in by the design conversation (see [[Partner Authoring]]). End state: any approved partner team can publish scene-voice content (`evento` · `mix` · `noticia` · `opinion` · `listicle`) into the main feed, with the //PRESENTA · X attribution chip rendering on cards + rail tiles + overlay byline so readers can apply their own trust calculus.
+
+### Slice 1 — Attribution chrome (`partner_id` self-FK + chip + byline)
+
+**Data model.** Added `partner_id text` self-FK on `items` ([0015_items_partner_id.sql](../supabase/migrations/0015_items_partner_id.sql), `ON DELETE SET NULL` so deleting a partner orphans attribution but preserves the content). Two new fields on `ContentItem`: `partnerId?: string` (the FK) and `partner?: { id, title, kind, slug, marketplaceEnabled }` (a minimal embedded shape populated server-side at read time).
+
+**The PostgREST detour.** Initial attempt was a PostgREST embedded resource: `partner:items!partner_id(id, title, slug, partner_kind, marketplace_enabled)`. Two failure modes hit back-to-back:
+
+1. After applying the migration, every `getItems()` call returned `PGRST200: Could not find a relationship between 'items' and 'items' in the schema cache` — PostgREST's schema introspection cache hadn't picked up the new FK. The error didn't differentiate between "FK missing" and "FK exists but cache stale," which made the diagnosis slow.
+2. Tried both forms PostgREST documents for self-FK disambiguation — column-name hint (`items!partner_id`) and constraint-name hint (`items!items_partner_id_fkey`). Both failed identically — the schema cache is the bottleneck either way.
+
+Pivoted to a **two-query merge pattern** mirroring the existing `fetchVibeCheckAggregates` in [items.ts](../lib/data/items.ts) — fetch items first, collect distinct `partnerId`s, fetch partner rows by id, attach via an `attachPartner` helper before returning. Schema-cache-agnostic, matches an existing pattern in the file, and survives future schema changes without coupling to PostgREST embed inference. Recommend this approach for all future relational reads where the relation cardinality is low — it's cheaper than the cognitive load of debugging embed inference.
+
+**Rendering chrome.** Three surfaces light up when a non-partner item has `partnerId` set:
+
+- **Mosaic card** — `//PRESENTA · CLUB JAPAN` chip in NGE orange (`#FF8800`), top-left chrome stack alongside `//EVENTO` and other type badges ([ContentCard.tsx](../components/cards/ContentCard.tsx)). Clickable through to `/marketplace?partner=<slug>` only when `partner.marketplaceEnabled` is true (V0 falls back to a static label otherwise — chip-as-label is the trust mechanism; click-through is a discovery affordance that lights up automatically when marketplace approval lands).
+- **Rail tile** — same chip vocabulary on the smaller `EventoRailCard` ([EventosRail.tsx](../components/EventosRail.tsx)). Stacked below `//EVENTO` rather than alongside (180px tile width — alongside truncates).
+- **Overlay byline** — `PUBLICADO POR //CLUB JAPAN` next to the slug in the OverlayShell header ([OverlayShell.tsx](../components/overlay/OverlayShell.tsx)). Same gating: clickable iff marketplace-enabled.
+
+Prefix derives from `partner.partnerKind` — `venue → PRESENTA`, `label → SELLO`, `promoter|promo → PROMOTORA`, `dealer → DEALER`, `sponsored → PRESENTA` (neutral). Helper at [partnerAttribution.ts](../lib/partnerAttribution.ts) is shared across all three surfaces.
+
+**Verification.** Stamped `partner_id = 'pa-club-japan-ppur'` on `ev-ra-2429949` (KØNTROL @ Japan Monterrey) and `editorial = true` (so it appears in both EventosRail AND the main mosaic — see Decision note below). Chip rendered on all three surfaces, click-throughs non-clickable as expected (Club Japan is `marketplace_enabled = false`, which doesn't gate publishing — see slice 2).
+
+### Slice 2 — //PUBLICAR tab + partner-team write path
+
+**The model correction.** Initial Decision note said marketplace approval was the publishing gate. Project lead corrected: publishing approval and marketplace approval are SEPARATE — a venue partner with marketplace off should still publish events / mixes / noticias normally. Marketplace is a commerce capability layered on top; the publishing trust gate is just "is there a partner row" (admin-created at onboarding). [[Partner Authoring]] updated to reflect.
+
+**Permissions (`canCreateContent`).** Extended in [permissions.ts](../lib/permissions.ts) — partner team members (`!!user.partnerId`) gain the 5 scene-voice types (`evento` · `mix` · `noticia` · `opinion` · `listicle`) without needing guide tier. House-voice types (`editorial` · `review` · `articulo`) still require guide+; a partner-team DJ who wants to write a review does so via insider role on their User account, not via partner membership. Exported `PARTNER_PUBLISHABLE_TYPES` as a const so the //PUBLICAR tab picker has a single source of truth.
+
+**Dashboard surface — //PUBLICAR tab.** Third tab in [[MiPartnerSection]] alongside MARKETPLACE + EQUIPO. Renders an orange `//PRESENTA · CLUB JAPAN` header strip (same chrome vocabulary as the public chip — reminds the user which partner they're authoring as), then the existing `NuevoSection` scoped to `PARTNER_PUBLISHABLE_TYPES`. On pick → `router.push('/dashboard?section=nuevo&type=<type>')`, which opens the existing per-type form. No new composer plumbing — the existing dashboard composer flow is reused entirely.
+
+**Server-side stamping ([api/items/route.ts](../app/api/items/route.ts)).** On POST, look up the authenticated user's `partner_id` from the users table. If set AND the item type is in the 5 partner-publishable types, the upsert payload gets `partner_id` (from the user, not the client — single source of truth), `source = 'manual:partner'`, and `editorial = true` (so partner events default to appearing in BOTH the rail and the mosaic — partners ARE the curators of their own events). The client doesn't need to know about partner attribution; the server fills it in based on who's authenticated. Non-partner-team users skip this branch entirely — house-voice publishing path unchanged.
+
+**RLS — [0016_partner_team_authoring.sql](../supabase/migrations/0016_partner_team_authoring.sql).** Two new policies on the items table:
+
+- `items_partner_team_insert` — partner-team member can INSERT a row where `created_by = auth.uid()`, `source = 'manual:partner'`, `type IN (5 scene-voice types)`, AND the auth user's `partner_id` matches the row's `partner_id`. The combined check means the user is publishing for THEIR partner only, scoped to types they're allowed.
+- `items_partner_team_update` — same shape but for UPDATE (covers re-publish on edit). USING + WITH CHECK both gated so a team member can't edit a different partner's row or re-target a row to a partner they don't belong to.
+
+These are additive — the existing `items_staff_insert` / `items_staff_update` policies still cover guide/admin writes. Multiple INSERT policies combine with OR in Postgres, so any row meeting either gate passes.
+
+**Editorial=true default.** Set on partner-stamped items via the API override. Per the Decision note's "rail AND mosaic" placement model (vs `elevated=true` which is mosaic-only), this is the right flag for partner-authored events — they appear on both surfaces. Confirmed during the chip verification: KØNTROL with `editorial=true` rendered in EventosRail AND the main mosaic.
+
+### Wiki touched
+
+- [[Partner Authoring]] — corrected: publishing gate ≠ marketplace gate; scope expanded from 3 to 5 types; default `editorial=true` documented; implementation order updated.
+- [[Navigation]] · [[VibeSlider]] — earlier wiki refresh (alongside the pulled 2026-05-12 commits) captured the trim + MX rebrand + slider auto-hide; included in this commit batch.
+- [[index]] — added [[Partner Authoring]] under §90 Decisions.
+
+### Deferred (do not build pre-emptively)
+
+- **Per-partner curation cap** — knob for fairness (limit one partner from concentrating at top of mosaic). Triggering condition: any partner with 3+ concurrent top-12 items, or sustained >2 items/week.
+- **Scraper auto-claim** — when RA ingests an event whose venue fuzzy-matches a partner's title, route to that partner's pending queue for enrich-or-reject.
+- **Recurring events / residencies** — high-ROI for venues but premature.
+- **Inherited crowd vibe defaults** — partner-published events default their `vibeMin`/`vibeMax` to the median of past Vibe Checks.
+- **Post-event recap nudge** — when an event ends, partner gets a one-click recap-draft.
+- **Earned auto-publish per content type** — after N admin-approved items of a type, that partner unlocks auto-publish (currently auto-publish from day 1 since marketplace-approval is the existing gate; this would tighten if abuse appears).
+- **Chip rendering on draft / saved-items surfaces** — partner attribution is currently only rendered on home / agenda / overlay surfaces (the server-side `attachPartner` only runs in `getItems` / `getItemBySlug`). If we surface partner content in dashboard drafts or saved-items lists later, extend the browser-side hooks to populate `partner`.
+
+### Test setup
+
+Iker assigned to Club Japan via `update public.users set partner_id = 'pa-club-japan-ppur' where username = 'iker'` — gives //PUBLICAR tab visibility. Site admin role still applies; admins-with-partnerId trigger partner stamping (intentional for V0 simplicity — admin-on-team behaves like any team member; can be refined later with a per-publish "publish as" toggle if needed).
+
+---
+
+## 2026-05-12 · INGEST · nav trimmed 9→4 + MX rebrand + vibe chip strip auto-hides on idle
+
+Two beta-testing pain points landed in one session, both the same shape: surfaces that stayed open after the user had already committed to a choice.
+
+### Header trim + MX rebrand — `ab9561b`
+
+Testers were ignoring the header. The 9-item nav row read as a duplicate of the SECCIÓN filter rail — five of nine labels (`NOTICIAS / REVIEWS / MIXES / EDITORIAL / ARTÍCULOS`) matched `//NOTICIA / //REVIEW / //MIX / //EDITORIAL / //ARTÍCULO` content-type filters one-for-one. Worse, the original "dim until active" treatment made inactive items effectively invisible against the black chrome. Net result: **FORO and MARKETPLACE** — the only two destinations that AREN'T in SECCIÓN, and the only real net-new pages — were never discovered.
+
+Trimmed to four: `HOME · AGENDA · FORO · MARKETPLACE`. Two-digit `00–05` route codes dropped along with the trimmed items.
+
+Active treatment swapped:
+
+- **Inactive** — solid NGE orange (`#FF8800`) + faint `text-shadow` glow. No more dim-until-active.
+- **Active** — orange→red gradient (`#FF8800 → #E63329`) text via `bg-clip: text` + matching gradient bottom bar + ~6% opacity gradient bg tint. The differentiation is now "selected vs not," not "this item has its own color."
+
+One gotcha worth recording: `text-shadow` doesn't render on `bg-clip: text` glyphs (the underlying glyph is transparent, so there's nothing to shadow). Routed the active glow through `filter: drop-shadow()` instead, which operates on the rendered pixels after the gradient is applied.
+
+Logo rebranded `GRADIENTE·FM → GRADIENTE·MX`. Data-strip ticker token `GRADIENTE·FM·SUBSISTEMA·CULTURAL → GRADIENTE·MX·SUBSISTEMA·CULTURAL`. The repo folder name (`espectro-fm-web`) is unchanged — already noted in [CLAUDE.md](../CLAUDE.md) as historical.
+
+[Navigation.tsx](../components/Navigation.tsx) · wiki: [[Navigation]]
+
+### Vibe chip strip auto-hides on idle — `b106b2e` · `668b921`
+
+Previously the chip strip was visible whenever `vibeRange ≠ [0, 10]` — it stuck open indefinitely after the user committed to a narrowed range and moved on to scrolling. Worse, the container held `min-h-[3.5rem]` even when chips were faded out, so the feed below was permanently pushed down by reserved-but-empty space.
+
+Two layered fixes, second extends first:
+
+**Container collapses on idle (`b106b2e`).** Replaced the range-driven `chipsVisible` rule with an interaction-gated one:
+
+```ts
+chipsVisible = pinned || activeIds.length > 0 || (!isFullRange && recentInteraction)
+```
+
+A 2-second timer resets on every `[min, max]` or `activeFilterCount` change. Continuous dragging keeps the strip open (each tick resets the timer); on `pointerup` the 2s starts ticking and the strip fades out. An `isFirstInteractionRender` ref skips the mount-time pseudo-change so chips don't flash open on page load.
+
+The chip-strip container also dropped its `min-h-[3.5rem]`. The chips wrapper now transitions `max-height: 0 ↔ 7rem` in lockstep with `opacity: 0 ↔ 1` (both 200ms). When hidden, the row collapses to just the pin button's height (~22px). Trade-off: a small vertical shift below the strip on each interaction — accepted over the permanent dead space.
+
+**Non-active chips inherit the same gate (`668b921`).** After the container change, the committed surface still read wrong — the candidate strip stayed visible whenever any chip was active, so the result was "you've picked three, plus here are 70 more options you might want." Opposite of what the user just did.
+
+Extended the 2s gate to the per-chip level:
+
+```ts
+chipVisible = pinned || active || (!isFullRange && inFeed && recentInteraction)
+```
+
+Active (yellow) chips stay visible always — the user needs to see and clear them. Non-active chips fade out 2s after the last slider move or chip toggle, so once a filter is committed and 2s of idle pass, the strip settles to just the yellow selections. Toggling a chip resets the timer, so adding/removing a filter gives a fresh 2s window to pick another candidate before the strip settles.
+
+Renamed `recentSliderInteraction → recentInteraction` since it now covers chip toggles too.
+
+[VibeSlider.tsx](../components/VibeSlider.tsx) · wiki: [[VibeSlider]]
+
+### Wiki touched
+
+- [[Navigation]] — destinations list, active-state treatment, MX rebrand
+- [[VibeSlider]] — visibility model rewritten; the old "Layout-shift hardening" section retired in favor of an honest "Layout & shift policy" (chip strip is no longer height-stable by design)
+- [[Next Session]] — date stamp + responsive-coverage note softened (the 9→4 trim likely resolved the ≤1280px header overflow; Iker should verify)
+
+---
+
 ## 2026-05-11 · INGEST · mosaic restructure — per-type md, xl 3×2 feature, L/R lg anchors, gradient sm weave
 
 Iker flagged that the home mosaic wasn't really mosaicking — the grid felt stuck in two columns: a wide left band of lg/md cards (all `colSpan: 2` in a 3-col grid) and a thin right rail of sm 1×1 tiles. Scrolling down, the right column died entirely because the sm pool ran out before the lg/md tower did. Diagnostic: 28 of 33 cards on the home feed had `colSpan: 2`, and `grid-auto-flow: dense` always anchored them at cols 1–2 (the earliest valid slot). The remaining 5 sm tiles were the only thing column 3 ever saw — and once exhausted, column 3 was empty.

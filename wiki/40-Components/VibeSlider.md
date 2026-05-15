@@ -2,7 +2,7 @@
 type: component
 status: current
 tags: [component, vibe, filter, slider, phosphor, multi-genre]
-updated: 2026-05-05
+updated: 2026-05-12
 ---
 
 # VibeSlider
@@ -37,7 +37,7 @@ The slider is a feed-curation control — it has no meaning in editor surfaces. 
 └──────────────────────────────────────────────────────┘
 ```
 
-Sticks below [[Navigation]] at `top: 76px`. Strip total height held constant via stable header height (RESET button uses `invisible` not conditional unmount), `min-h-6` on track row, and `min-h-[3.5rem]` on the chip-strip row. See "Layout-shift hardening" below.
+Sticks below [[Navigation]] at `top: 76px`. The chip-strip row is content-driven — collapses to the pin button when chips are hidden (no more `min-h-[3.5rem]` reservation). See "Layout & shift policy" below.
 
 ## Interaction model — slider band
 
@@ -77,18 +77,19 @@ Determinism: dash widths use `Math.imul`-based `hash01(seed, salt)` to avoid SSR
 
 The strip below the band is the multi-genre filter UI for the home feed. **Major rework 2026-05-05** — see also [[Vibe Philosophy]] idea 2.
 
-### Visibility (range-driven, not interaction-driven)
+### Visibility (interaction-gated, idle-collapsing)
 
 ```ts
-chipsVisible = !isFullRange || pinned || activeIds.length > 0
+chipsVisible = pinned || activeIds.length > 0 || (!isFullRange && recentInteraction)
 ```
 
-- At full range with no filters and no pin → strip is hidden (opacity 0). All chips would be "in range" so the set carries no information.
-- As soon as the user narrows the range → strip fades in.
-- Pin button (manual override) keeps it visible at full range.
-- Active filters always keep it visible (so the user can clear them).
+The chip strip is hidden by default. Three ways it appears:
 
-Removed all the drag/hover/linger machinery from earlier iterations — visibility is purely a function of the slider state, not interaction state. Smoother + more honest.
+- **Recent interaction (transient)** — fades in on slider drag or chip toggle, fades back out 2s after the last action. A `setTimeout(setRecentInteraction(false), 2000)` resets on every `[min, max]` or `activeFilterCount` change, so continuous dragging keeps the strip open; the 2s only really starts on `pointerup`. An `isFirstInteractionRender` ref skips the mount-time pseudo-change so chips don't flash open on page load.
+- **Pin button (manual override)** — keeps chips visible indefinitely until unpinned.
+- **Active filters** — always keep the strip visible (the user needs to see / clear them).
+
+This replaced an earlier range-driven rule (`chipsVisible = !isFullRange || pinned || activeIds.length > 0` — see 2026-05-12 in [[log]]). The range-driven version held the strip open indefinitely after the user committed to a narrowed range, even after they'd moved on to scrolling the feed, and the container reserved `min-h-[3.5rem]` of dead space even when chips were faded out.
 
 ### Per-chip visibility
 
@@ -98,8 +99,12 @@ Each chip computes:
 inFeed = feedSet
   ? getRollup(id).some(rid => feedSet.has(rid))   // rollup-aware
   : (GENRE_VIBE[id] ?? 5) ∈ [min, max]            // fallback
-chipVisible = pinned || active || (!isFullRange && inFeed)
+chipVisible = pinned || active || (!isFullRange && inFeed && recentInteraction)
 ```
+
+Active (yellow) chips stay visible **always** — the user needs to see and clear them. Non-active chips inherit the same 2s interaction gate as the container, so once a filter is committed and 2s of idle pass, the strip settles to just the yellow selections. Toggling a chip resets the timer, giving a fresh 2s window to pick another candidate before the strip settles back.
+
+The earlier (pre-2026-05-12) version dropped the `recentInteraction` clause, so committing a filter left the entire 70-chip candidate strip visible indefinitely — the surface read as "you've picked these three, plus also here are 70 more options" — opposite of what the user just did.
 
 Rollup is critical: when the user is at a narrowed range and a `techno-raw` item is in the feed, the parent `Techno` chip lights up (because `getRollup('techno')` includes `techno-raw`). Without rollup, parent chips would never appear. See [[genres]] for the rollup definition.
 
@@ -145,15 +150,16 @@ Auto-hidden when chips are visible for another reason (clean UI). Visible only w
 
 Label adapts: `+ N GÉNEROS` (closed) / `OCULTAR` (pinned).
 
-## Layout-shift hardening
+## Layout & shift policy
 
-The user complained about page-below shifting during slider use. Three fixes:
+The chip-strip row's height is now **content-driven** — it grows when chips fade in and collapses to the pin button (~22px) when they're hidden, with the chips wrapper transitioning `max-height: 0 ↔ 7rem` in lockstep with `opacity: 0 ↔ 1` (both 200ms).
 
-1. **Chip-strip min-h `[3.5rem]`** — covers two rows of chips. Most narrowing flows fit. Pinning at full range may grow further (deliberate user gesture).
-2. **RESET button always rendered** with `invisible` toggle instead of conditional mount. Header row stays the same height across narrow/widen.
-3. **Per-chip margin collapse** (above) so the chip flex's natural height stays predictable.
+Trade-off taken on 2026-05-12: small vertical shift below the strip on each interaction (~50px when chips fade in/out), in exchange for the feed sitting tight against the slider when chips are hidden. The previous `min-h-[3.5rem]` reservation eliminated visible shift but at the cost of permanent dead space pushing the feed down — even after the user committed to a range and moved on. Shift reads smooth because the `max-height` + `opacity` transitions match.
 
-Verified: strip total = 169px through full → narrow → narrow further → reset cycle (delta = 0).
+Two height-stability fixes that *did* survive the rework:
+
+1. **RESET button always rendered** with `invisible` toggle (not conditional mount), so the header row stays the same height when the user narrows / resets.
+2. **Per-chip margin collapse** — hidden chips animate `mr-1.5 mb-1.5 → mr-0 mb-0` instead of using container `gap`, so they leave no phantom gap-spacing that would spread visible chips apart.
 
 ## The 11 slot names
 
