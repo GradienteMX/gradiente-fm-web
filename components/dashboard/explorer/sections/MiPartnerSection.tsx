@@ -35,9 +35,14 @@ import type {
   User,
 } from '@/lib/types'
 import { SUBCATEGORIES_BY_CATEGORY } from '@/lib/types'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
 import { compressAndUploadImage } from '@/lib/imageUpload'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
+import { PARTNER_PUBLISHABLE_TYPES } from '@/lib/permissions'
+import { NuevoSection } from '@/components/dashboard/explorer/sections/NuevoSection'
+import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
+import type { ContentType, PartnerKind } from '@/lib/types'
 
 // Generates a stable, human-readable id for a new listing. Format mirrors
 // the seed convention (`mkl-<short>`) so old URLs stay readable.
@@ -70,7 +75,7 @@ function newListingId(partnerId: string): string {
 // (partner-admin or site admin). The UI hides write affordances when
 // the gate would deny anyway.
 
-type Tab = 'equipo' | 'marketplace'
+type Tab = 'equipo' | 'marketplace' | 'publicar'
 
 // Shape returned by GET /api/partners/[id] mapped to camelCase (matches
 // the ContentItem field names downstream so the listings composer + card
@@ -217,6 +222,8 @@ export function MiPartnerSection() {
           canManageTeam={canManageTeam}
           onRefetch={refetch}
         />
+      ) : tab === 'publicar' ? (
+        <PublicarTab partner={partner} />
       ) : (
         <MarketplaceTab
           partner={partner}
@@ -266,6 +273,12 @@ function TabSwitcher({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }
   return (
     <div className="flex gap-1.5 border-b border-border">
       <TabButton
+        active={tab === 'publicar'}
+        onClick={() => onChange('publicar')}
+        icon={<Plus size={12} strokeWidth={1.5} />}
+        label="PUBLICAR"
+      />
+      <TabButton
         active={tab === 'marketplace'}
         onClick={() => onChange('marketplace')}
         icon={<ShoppingBag size={12} strokeWidth={1.5} />}
@@ -306,6 +319,58 @@ function TabButton({
       {icon}
       {label}
     </button>
+  )
+}
+
+// ── PUBLICAR tab ───────────────────────────────────────────────────────────
+//
+// Partner-team content authoring entry point. Mirrors the //EVENTO / //MIX
+// chrome the public site uses, scoped to the 5 scene-voice content types
+// partner teams can publish (PARTNER_PUBLISHABLE_TYPES from permissions).
+//
+// On type pick: navigate to /dashboard?section=nuevo&type=<type>. The
+// existing composer flow handles the form + publish; the /api/items POST
+// route stamps `source: 'manual:partner'` + `partner_id` + `editorial: true`
+// server-side based on the authenticated user's partnerId — no client-side
+// flag passing needed.
+//
+// See wiki/90-Decisions/Partner Authoring.md.
+
+function PublicarTab({ partner }: { partner: PartnerData }) {
+  const router = useRouter()
+  const kindLabel = partnerAttributionPrefix(
+    (partner.partnerKind ?? 'venue') as PartnerKind,
+  )
+  const handlePick = (type: ContentType) => {
+    const params = new URLSearchParams()
+    params.set('section', 'nuevo')
+    params.set('type', type)
+    router.push(`/dashboard?${params.toString()}`)
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header — reminds the user which partner they're publishing as.
+          Same orange treatment as the public //PRESENTA chip so the user
+          recognizes the attribution surface they're about to write into. */}
+      <div
+        className="flex items-center gap-2 border bg-elevated/30 px-3 py-2 font-mono text-[10px] tracking-widest"
+        style={{ borderColor: '#FF8800', color: '#FF8800' }}
+      >
+        <span>//{kindLabel} · {partner.title.toUpperCase()}</span>
+        <span className="text-muted">
+          · El contenido que publiques aparecerá en el feed con esta atribución.
+        </span>
+      </div>
+
+      {/* Scope-restricted picker — partner teams only get the 5 scene-voice
+          types. The existing NuevoSection already handles the empty state
+          (won't fire here because PARTNER_PUBLISHABLE_TYPES has 5 entries). */}
+      <NuevoSection
+        supported={PARTNER_PUBLISHABLE_TYPES}
+        onPick={handlePick}
+      />
+    </div>
   )
 }
 

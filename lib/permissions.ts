@@ -106,8 +106,15 @@ export function canCreateMix(user: User | null): boolean {
 // `Nuevo` template grid + the URL guard for `?type=…`). Each editable type
 // maps to a creation tier:
 //   listicle               → curator+ (lists are the core curator surface)
-//   mix / opinion / editorial / review / articulo / noticia / evento
-//                          → guide+   (editorial voice or curated event listing)
+//                            OR partner team member (scene-voice list)
+//   mix / opinion / noticia / evento
+//                          → guide+ OR partner team member (scene-voice
+//                            content — see wiki/90-Decisions/Partner Authoring)
+//   editorial / review / articulo
+//                          → guide+ only (house-voice content; partners
+//                            can write these only via the `insider` role
+//                            grant on their User account, not via partner
+//                            team membership)
 //   partner                → admin only (rail, not in the SUPPORTED set)
 //
 // `polls` and `marketplace` aren't ContentTypes yet; their gates live above
@@ -115,21 +122,34 @@ export function canCreateMix(user: User | null): boolean {
 // types are added.
 export function canCreateContent(user: User | null, type: ContentType): boolean {
   if (!user) return false
+  const isPartnerTeam = !!user.partnerId
   switch (type) {
     case 'listicle':
-      return hasRole(user, 'curator')
+      return hasRole(user, 'curator') || isPartnerTeam
     case 'mix':
     case 'opinion':
+    case 'noticia':
+    case 'evento':
+      return hasRole(user, 'guide') || isPartnerTeam
     case 'editorial':
     case 'review':
     case 'articulo':
-    case 'noticia':
-    case 'evento':
       return hasRole(user, 'guide')
     case 'partner':
       return user.role === 'admin'
   }
 }
+
+// The 5 scene-voice types partner teams can publish via the //PUBLICAR tab.
+// Re-derivable from `canCreateContent` by walking ContentType, but exported
+// as a constant so the tab UI can show the picker without iterating types.
+export const PARTNER_PUBLISHABLE_TYPES: ContentType[] = [
+  'evento',
+  'mix',
+  'noticia',
+  'opinion',
+  'listicle',
+]
 
 // ── Content editing (per item) ─────────────────────────────────────────────
 //

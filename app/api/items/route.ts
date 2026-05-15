@@ -41,15 +41,53 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'item.id and item.slug required' }, { status: 400 })
   }
 
+  // Partner-authoring detection — look up the authenticated user's partnerId
+  // from the users table. If set, this is a partner-team member publishing
+  // and the row gets server-stamped with partner attribution fields. See
+  // wiki/90-Decisions/Partner Authoring.md.
+  //
+  // The fields are stamped server-side (not trusted from the client payload)
+  // so a non-team user can't fake a partner attribution by setting partnerId
+  // in their composer state. Single source of truth: who is the auth user.
+  const { data: userRow } = await supabase
+    .from('users')
+    .select('partner_id')
+    .eq('id', user.id)
+    .maybeSingle()
+  const userPartnerId =
+    (userRow as { partner_id?: string | null } | null)?.partner_id ?? null
+
   // 1. Upsert the item row. Stamp `created_by` with the current user so the
   //    dashboard's "Publicados" surface can filter to the editor's own work.
   //    Inline cast bypass for `created_by` — added by migration 0012; remove
   //    after `npx supabase gen types typescript` regenerates database.types.ts.
+  //
+  //    When the user is a partner-team member AND the item is one of the
+  //    scene-voice types (evento/mix/noticia/opinion/listicle), stamp
+  //    partner attribution: partner_id, source='manual:partner', editorial=true.
+  //    The editorial flag makes partner-authored events appear in BOTH the
+  //    EventosRail and the main mosaic by default (see Decision note).
+  //    house-voice types (editorial/review/articulo) skip the partner stamp
+  //    even if the user has partnerId set — those publish as personal
+  //    contributions, gated by insider role (canCreateContent).
+  const PARTNER_STAMPED_TYPES: ContentItem['type'][] = [
+    'evento', 'mix', 'noticia', 'opinion', 'listicle',
+  ]
+  const stampAsPartner =
+    !!userPartnerId && PARTNER_STAMPED_TYPES.includes(item.type)
+
   const row = contentItemToRow(item)
+  const partnerOverrides = stampAsPartner
+    ? {
+        partner_id: userPartnerId,
+        source: 'manual:partner' as const,
+        editorial: true,
+      }
+    : {}
   const { error: itemError } = await supabase
     .from('items')
     .upsert(
-      { ...row, created_by: user.id } as unknown as typeof row,
+      { ...row, created_by: user.id, ...partnerOverrides } as unknown as typeof row,
       { onConflict: 'id' }
     )
   if (itemError) {
