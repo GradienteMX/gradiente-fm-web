@@ -7,7 +7,7 @@ import { PartnersRail } from '@/components/PartnersRail'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
-import { filterForHome, getPinnedHero } from '@/lib/utils'
+import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
 
 // Reads from Supabase via cookies()-aware server client → forces dynamic.
 // Will become `revalidate = 300` once the SYSTEM UPDATE countdown lands
@@ -35,10 +35,17 @@ export default async function HomePage() {
   //     where marquee placement is wrong).
   //
   // Non-evento items always go to the mosaic; partners stay isolated.
+  // Past events appear in the mosaic (filler + archive feel) but NOT in the
+  // rail — the rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO", mixing past in
+  // there muddies the message even with //PASADO badges.
   const isRailEvent = (i: ContentItem) =>
-    i.type === 'evento' && !i.elevated
+    i.type === 'evento' && !i.elevated && isUpcoming(i, now)
+  // Past events bypass the editorial/elevated gate — they fill the mosaic
+  // as historical context, not curation. Upcoming events still need a flag
+  // to leave the rail and enter the mosaic.
   const isMosaicEvent = (i: ContentItem) =>
-    i.type === 'evento' && (i.editorial === true || i.elevated === true)
+    i.type === 'evento' &&
+    (i.editorial === true || i.elevated === true || !isUpcoming(i, now))
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>

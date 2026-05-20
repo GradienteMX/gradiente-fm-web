@@ -1,9 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { parseISO } from 'date-fns'
 import type { ContentItem, PartnerKind } from '@/lib/types'
 import { categoryColor } from '@/lib/utils'
+import { useOverlay } from '@/components/overlay/useOverlay'
+import { recordItems } from '@/lib/itemsCache'
 
 const PARTNER_LABEL: Record<PartnerKind, string> = {
   promo: 'PROMO',
@@ -20,49 +22,61 @@ function partnerTime(item: ContentItem): number {
 
 function PartnerCard({ item }: { item: ContentItem }) {
   const kind = item.partnerKind ?? 'promo'
+  const { open } = useOverlay()
+  const ref = useRef<HTMLButtonElement>(null)
 
-  const body = (
-    <article className="group relative overflow-hidden border border-border bg-elevated transition-colors hover:border-white/30">
-      <div className="relative aspect-[4/3] overflow-hidden">
-        {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
-            alt={item.title}
-            className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="h-full w-full bg-base" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <span
-          className="absolute left-2 top-2 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-          style={{ color: categoryColor('partner') }}
-        >
-          //{PARTNER_LABEL[kind]}
-        </span>
-      </div>
-      <div className="p-2.5">
-        <h3 className="font-syne text-xs font-black leading-tight text-white line-clamp-2">
-          {item.title}
-        </h3>
-        {item.subtitle && (
-          <p className="mt-1 font-mono text-[9px] tracking-wide text-muted line-clamp-1">
-            {item.subtitle}
-          </p>
-        )}
-      </div>
-    </article>
-  )
-
-  if (item.partnerUrl) {
-    return (
-      <a href={item.partnerUrl} target="_blank" rel="noopener noreferrer" className="block">
-        {body}
-      </a>
+  const handleOpen = () => {
+    const rect = ref.current?.getBoundingClientRect()
+    open(
+      item.slug,
+      rect
+        ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+        : undefined,
     )
   }
-  return body
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={handleOpen}
+      className="block w-full text-left"
+      aria-label={`Abrir ${item.title}`}
+    >
+      <article className="group relative overflow-hidden border border-border bg-elevated transition-colors hover:border-white/30">
+        <div className="relative aspect-[4/3] overflow-hidden">
+          {item.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.imageUrl}
+              alt={item.title}
+              className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-full w-full bg-base" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+          <span
+            className="absolute left-2 top-2 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
+            style={{ color: categoryColor('partner') }}
+          >
+            //{PARTNER_LABEL[kind]}
+          </span>
+        </div>
+        <div className="p-2.5">
+          <h3 className="font-syne text-xs font-black leading-tight text-white line-clamp-2">
+            {item.title}
+          </h3>
+          {item.subtitle && (
+            <p className="mt-1 font-mono text-[9px] tracking-wide text-muted line-clamp-1">
+              {item.subtitle}
+            </p>
+          )}
+        </div>
+      </article>
+    </button>
+  )
 }
 
 interface PartnersRailProps {
@@ -77,6 +91,13 @@ export function PartnersRail({ items }: PartnersRailProps) {
         .sort((a, b) => partnerTime(b) - partnerTime(a)),
     [items],
   )
+
+  // Partners must be in the slug-keyed cache so OverlayRouter can resolve
+  // `?item=<slug>` against them. ContentGrid handles non-partner items; this
+  // rail is the only surface that streams partners, so it owns the push.
+  useEffect(() => {
+    if (partners.length > 0) recordItems(partners)
+  }, [partners])
 
   if (partners.length === 0) return null
 

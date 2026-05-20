@@ -150,12 +150,33 @@ function imminenceBonus(item: ContentItem, now: Date = new Date()): number {
   return 0
 }
 
+// Past/upcoming bias for eventos. Two-sided so the home feed reads as
+// "upcoming first, then everything else, then archive" without users seeing
+// review/mix/articulo cards pushed above tonight's party.
+//
+//   - Upcoming eventos get a flat +0.6 lift, putting them above non-event
+//     content (which sits in the 0.5–1.0 prominence band thanks to the
+//     review/articulo/listicle 1.3× type multipliers).
+//   - Past eventos take -1.0 — they live in the mosaic as filler / archive,
+//     but always rank below upcoming items. Recent-past still beats
+//     old-past via HP+freshness, just at the bottom of the page.
+function eventTimingAdjustment(item: ContentItem, now: Date = new Date()): number {
+  if (item.type !== 'evento' || !item.date) return 0
+  const end = item.endDate ? parseISO(item.endDate) : parseISO(item.date)
+  return hoursBetween(end, now) > 0 ? -1.0 : 0.6
+}
+
 export function prominence(
   item: ContentItem,
   peaks: PeakByType,
   now: Date = new Date(),
 ): number {
-  return 0.5 * freshness(item, now) + 0.5 * score(item, peaks, now) + imminenceBonus(item, now)
+  return (
+    0.5 * freshness(item, now) +
+    0.5 * score(item, peaks, now) +
+    imminenceBonus(item, now) +
+    eventTimingAdjustment(item, now)
+  )
 }
 
 // ── Size tier from score ─────────────────────────────────────────────────────
@@ -366,7 +387,14 @@ export function rankItems(
         }
       }
       if (j === -1) {
-        for (let b = i - MAX_RUN - 1; b >= 0; b--) {
+        // Backward fallback — but never below TOP_KEEP, which is the
+        // prominence-anchored top cluster (xl + first few lg/upcoming
+        // events). Without this floor, a long run of same-shape items at
+        // the end of `weaved` would swap with the xl card at idx 0 and
+        // drag the most-prominent item deep into the list. Observed when
+        // the //EVENTO filter shows 1 upcoming + 115 past sm cards: the
+        // upcoming xl got swapped to idx 113.
+        for (let b = i - MAX_RUN - 1; b >= TOP_KEEP; b--) {
           if (shapeKey(out[b]) !== k) {
             j = b
             break

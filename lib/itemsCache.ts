@@ -31,6 +31,15 @@ export function getItemBySlugSync(slug: string): ContentItem | null {
   return cache.get(slug) ?? null
 }
 
+// Snapshot read of every item the client has seen this session. Used by
+// PartnerOverlay to surface a partner's body of //PRESENTA-attributed work
+// without needing a dedicated server fetch — partners draw from whatever the
+// active page already streamed in. Returns a fresh array so callers can
+// filter/sort without mutating shared state.
+export function getAllItemsSync(): ContentItem[] {
+  return Array.from(cache.values())
+}
+
 export function subscribeItems(fn: () => void): () => void {
   listeners.add(fn)
   return () => {

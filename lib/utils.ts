@@ -136,14 +136,44 @@ export function isUpcoming(item: ContentItem, now = new Date()): boolean {
   return !isExpired(item, now)
 }
 
+// True if an evento ended within the last `graceDays` days. Used by the home
+// feed to surface recently-passed events alongside upcoming ones — keeps the
+// page from looking empty in slow weeks and serves as a lightweight archive.
+// Non-eventos return false (their `expiresAt` is an explicit, type-specific
+// signal we don't want to override at the home level).
+export function isRecentlyPast(
+  item: ContentItem,
+  graceDays: number,
+  now = new Date(),
+): boolean {
+  if (item.type !== 'evento') return false
+  const end = item.endDate ?? item.date
+  if (!end) return false
+  const endTime = parseISO(end).getTime()
+  const nowTime = now.getTime()
+  if (endTime >= startOfDay(now).getTime()) return false  // upcoming, not past
+  const cutoff = nowTime - graceDays * 24 * 60 * 60 * 1000
+  return endTime >= cutoff
+}
+
 export function getItemDate(item: ContentItem): Date {
   const raw = item.date ?? item.publishedAt
   return parseISO(raw)
 }
 
-export function filterForHome(items: ContentItem[], now = new Date()): ContentItem[] {
+// Grace window for recently-past eventos. Past events that ended within this
+// many days show up on home + EventosRail with a //PASADO marker. Older
+// events are still in the DB but stay filtered from the live feed — the
+// PartnerOverlay archive surfaces them without a date cap.
+export const HOME_PAST_GRACE_DAYS = 30
+
+export function filterForHome(
+  items: ContentItem[],
+  now = new Date(),
+  graceDays = HOME_PAST_GRACE_DAYS,
+): ContentItem[] {
   return items
-    .filter((i) => isUpcoming(i, now))
+    .filter((i) => isUpcoming(i, now) || isRecentlyPast(i, graceDays, now))
     .sort((a, b) => getItemDate(a).getTime() - getItemDate(b).getTime())
 }
 

@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale'
 import type { ContentItem } from '@/lib/types'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
-import { categoryColor } from '@/lib/utils'
+import { categoryColor, isExpired } from '@/lib/utils'
 import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 
 const EVENT_RED = categoryColor('evento')
@@ -24,6 +24,11 @@ function EventoRailCard({
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   const d = item.date ? parseISO(item.date) : null
+  // Recently-passed events show up in the rail thanks to filterForHome's
+  // grace window — visually demote them so they read as historical, not
+  // upcoming. Same vocabulary as the //PASADO ribbon in PartnerOverlay's
+  // ARCHIVO section.
+  const past = isExpired(item)
 
   return (
     <button
@@ -37,7 +42,9 @@ function EventoRailCard({
           <img
             src={item.imageUrl}
             alt=""
-            className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+            className={`h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+              past ? 'opacity-60 grayscale-[40%]' : ''
+            }`}
             loading="lazy"
           />
         ) : (
@@ -48,10 +55,18 @@ function EventoRailCard({
         <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
           <span
             className="bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-            style={{ color: EVENT_RED }}
+            style={{ color: past ? '#6B7280' : EVENT_RED }}
           >
             //EVENTO
           </span>
+          {past && (
+            <span
+              className="border bg-black/85 px-1.5 py-0.5 font-mono text-[8px] tracking-widest backdrop-blur-sm"
+              style={{ color: '#9CA3AF', borderColor: '#6B7280' }}
+            >
+              //PASADO
+            </span>
+          )}
           {/* Partner attribution — same vocabulary as the mosaic chip, smaller
               scale to fit the 180px rail tile. Skip rendering on partial data
               (defensive — matches the mosaic chip's guard). Stacked under

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor, vibeMid, vibeBandGradient, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime } from '@/lib/utils'
+import { vibeToColor, vibeMid, vibeBandGradient, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime, isExpired } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
@@ -521,6 +521,9 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
   }
 
   const Inner = size === 'lg' ? LgCard : size === 'md' ? MdCard : SmCard
+  // Past evento (within filterForHome's grace window). Visually demoted so
+  // it doesn't compete with upcoming items for the eye.
+  const past = item.type === 'evento' && isExpired(item)
   // Set the type color as a CSS custom property so the keyframe animations
   // (border pulse, scanline, chip glow) inherit it without needing a
   // per-instance class.
@@ -539,10 +542,18 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
       aria-label={`Abrir ${item.title}`}
       className={`relative h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red ${
         isFresh ? 'fresh-glitch border' : ''
-      }`}
+      } ${past ? 'opacity-70 grayscale-[30%]' : ''}`}
       style={wrapperStyle}
     >
       <Inner item={item} isFresh={isFresh} />
+      {past && (
+        <span
+          className="pointer-events-none absolute bottom-3 right-3 z-10 border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
+          style={{ color: '#9CA3AF', borderColor: '#6B7280' }}
+        >
+          //PASADO
+        </span>
+      )}
     </div>
   )
 }

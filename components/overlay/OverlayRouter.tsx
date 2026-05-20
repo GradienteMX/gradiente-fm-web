@@ -13,6 +13,7 @@ import { ReaderOverlay } from './ReaderOverlay'
 import { ArticuloOverlay } from './ArticuloOverlay'
 import { MixOverlay } from './MixOverlay'
 import { ListicleOverlay } from './ListicleOverlay'
+import { PartnerOverlay } from './PartnerOverlay'
 
 export function OverlayRouter() {
   const { openSlug } = useOverlay()
@@ -104,6 +105,8 @@ function renderByType(item: ContentItem) {
       return <MixOverlay item={item} />
     case 'listicle':
       return <ListicleOverlay item={item} />
+    case 'partner':
+      return <PartnerOverlay item={item} />
     case 'editorial':
     case 'review':
     case 'opinion':
