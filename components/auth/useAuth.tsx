@@ -75,8 +75,10 @@ interface AuthContextValue {
   loginOpen: boolean
   // Optional mode hint — lets callers open the overlay directly on
   // 'signup' (e.g. invite-code CTAs). Default is 'login'.
-  openLogin: (mode?: 'login' | 'signup') => void
+  // Optional initialCode pre-fills the invite-code field (e.g. from ?codigo= param).
+  openLogin: (mode?: 'login' | 'signup', initialCode?: string) => void
   loginInitialMode: 'login' | 'signup'
+  loginInitialCode: string
   closeLogin: () => void
   // Loading until the first auth-state-change settles. Avoids hydration
   // flicker between "logged out" and the resolved user.
@@ -249,8 +251,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router])
 
   const [loginInitialMode, setLoginInitialMode] = useState<'login' | 'signup'>('login')
-  const openLogin = useCallback((mode: 'login' | 'signup' = 'login') => {
+  const [loginInitialCode, setLoginInitialCode] = useState('')
+  const openLogin = useCallback((mode: 'login' | 'signup' = 'login', initialCode = '') => {
     setLoginInitialMode(mode)
+    setLoginInitialCode(initialCode)
     setLoginOpen(true)
   }, [])
   const closeLogin = useCallback(() => setLoginOpen(false), [])
@@ -266,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginOpen,
     openLogin,
     loginInitialMode,
+    loginInitialCode,
     closeLogin,
     ready,
     // Resolved when the profile fetch matches the current session id (or
