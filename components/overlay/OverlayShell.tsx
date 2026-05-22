@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { X, Trash2, Send, Pencil, MessageSquare } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { ContentItem } from '@/lib/types'
@@ -17,6 +25,34 @@ import { SaveItemButton } from './SaveItemButton'
 import { useAuth } from '@/components/auth/useAuth'
 import { canAssignRoles } from '@/lib/permissions'
 import { usePrompt } from '@/components/prompt/usePrompt'
+import { useComments } from '@/lib/hooks/useComments'
+import type { Comment, User } from '@/lib/types'
+
+// ── Shell-scoped context ────────────────────────────────────────────────────
+// Lets children rendered inside <OverlayShell> (the per-type overlays —
+// ReaderOverlay, ArticuloOverlay, etc.) read the live comment count and
+// toggle the comments column without prop drilling. The count is sourced
+// from useComments(item.id) at the shell level so it's available before
+// the user opens the column.
+
+interface OverlayShellContextValue {
+  commentsOpen: boolean
+  setCommentsOpen: Dispatch<SetStateAction<boolean>>
+  commentsTotal: number
+  commentsLoading: boolean
+  comments: Comment[]
+  commentsUsersById: Map<string, User>
+}
+
+const OverlayShellContext = createContext<OverlayShellContextValue | null>(null)
+
+export function useOverlayShell() {
+  const ctx = useContext(OverlayShellContext)
+  if (!ctx) {
+    throw new Error('useOverlayShell must be used inside <OverlayShell>')
+  }
+  return ctx
+}
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -57,6 +93,16 @@ export function OverlayShell({
   // default so the overlay reads as a single surface until the reader asks
   // for discussion. Disabled on mobile (split is impractical < sm).
   const [commentsOpen, setCommentsOpen] = useState(focusedCommentId !== null)
+
+  // Lift comment fetching to the shell so the count is available to the rail
+  // button + any child overlay (metadata row, footer legend) before the
+  // column is opened. CommentsColumn still calls useComments itself; the
+  // dedupe is at the supabase realtime layer + cheap enough to keep simple.
+  const shellCommentsHook = useComments(item.id)
+  const commentsTotal = shellCommentsHook.comments.length
+  const commentsLoading = shellCommentsHook.loading
+
+  const [railHover, setRailHover] = useState(false)
 
   // Admin-only hard-delete from inside the overlay. Hidden for session-only
   // items (those have their own Trash2 in SessionItemStrip via removeItem).
@@ -108,20 +154,42 @@ export function OverlayShell({
   }, [])
 
   // ESC: collapse comments first if open, otherwise close the overlay.
+  // [C]: toggle comments column. Ignored when focus is in any editable
+  // field so the user can still type the letter c inside the composer.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (commentsOpen) {
-        setCommentsOpen(false)
-      } else {
-        close()
+      if (e.key === 'Escape') {
+        if (commentsOpen) {
+          setCommentsOpen(false)
+        } else {
+          close()
+        }
+        return
+      }
+      if (e.key === 'c' || e.key === 'C') {
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        const t = e.target as HTMLElement | null
+        const tag = t?.tagName?.toLowerCase()
+        if (tag === 'input' || tag === 'textarea' || t?.isContentEditable) return
+        e.preventDefault()
+        setCommentsOpen((o) => !o)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [close, commentsOpen])
 
+  const shellCtxValue = {
+    commentsOpen,
+    setCommentsOpen,
+    commentsTotal,
+    commentsLoading,
+    comments: shellCommentsHook.comments,
+    commentsUsersById: shellCommentsHook.usersById,
+  }
+
   return (
+    <OverlayShellContext.Provider value={shellCtxValue}>
     <div
       className={
         'fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 ' +
@@ -262,35 +330,68 @@ export function OverlayShell({
           )}
         </div>
 
-        {/* Rail button — vertical chip anchored at the boundary between
-            panel and comments. Sticks out to the right of the panel when
-            comments are closed; sits flush at the 60% mark when open.
-            Hidden on mobile — a separate full-screen comments mode lands later. */}
-        {/* Rail button — pinned to the wrapper's right edge so it always sits
-            on the rightmost surface (panel when closed, comments column when
-            open). The wrapper's max-width animation moves it outward when
-            comments open. No own animation: it tracks the wrapper smoothly. */}
+        {/* Rail button — vertical "terminal tab" anchored to the wrapper's
+            right edge so it always sits on the rightmost surface (panel when
+            closed, comments column when open). Reads as a live system
+            readout: zero-padded count on top, label in the middle, presence
+            dot on bottom when count > 0. Closed-state is orange-on-rest so
+            it carries CTA color at rest rather than only on press.
+            Hidden on mobile — comments are reachable via the in-body
+            DISCUSIÓN entry + footer legend instead. */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
             setCommentsOpen((o) => !o)
           }}
+          onMouseEnter={() => setRailHover(true)}
+          onMouseLeave={() => setRailHover(false)}
           aria-expanded={commentsOpen}
           aria-label={commentsOpen ? 'Ocultar comentarios' : 'Mostrar comentarios'}
-          className="absolute top-1/2 z-30 hidden items-center justify-center gap-2 border bg-base px-2 py-3 font-mono text-[10px] tracking-widest transition-colors duration-300 hover:text-primary sm:flex"
+          className="absolute top-1/2 z-30 hidden items-center justify-center gap-3 border px-3 py-5 font-mono text-[12px] tracking-widest sm:flex"
           style={{
             right: 0,
             writingMode: 'vertical-rl',
-            transform: 'translate(50%, -50%) rotate(180deg)',
-            borderColor: commentsOpen ? '#F97316' : '#3a3a3a',
-            color: commentsOpen ? '#F97316' : '#9CA3AF',
-            backgroundColor: commentsOpen ? 'rgba(249,115,22,0.08)' : '#0a0a0a',
-            minHeight: '120px',
+            transform: `translate(${railHover ? 'calc(50% - 8px)' : '50%'}, -50%) rotate(180deg)`,
+            borderColor: commentsOpen
+              ? '#F97316'
+              : railHover
+              ? '#F97316'
+              : 'rgba(249,115,22,0.55)',
+            color: commentsOpen || railHover ? '#F97316' : '#FF9A33',
+            backgroundColor: commentsOpen
+              ? 'rgba(249,115,22,0.12)'
+              : railHover
+              ? 'rgba(249,115,22,0.08)'
+              : '#0a0a0a',
+            minHeight: '220px',
+            transition:
+              'transform 220ms cubic-bezier(0.22,0.8,0.32,1), border-color 220ms, color 220ms, background-color 220ms',
           }}
         >
-          <MessageSquare size={11} aria-hidden style={{ transform: 'rotate(90deg)' }} />
+          <span
+            className="tabular-nums"
+            style={{ fontSize: 11, opacity: 0.85, letterSpacing: '0.18em' }}
+          >
+            {commentsLoading
+              ? '··'
+              : String(Math.min(commentsTotal, 99)).padStart(2, '0')}
+          </span>
+          <MessageSquare size={14} aria-hidden style={{ transform: 'rotate(90deg)' }} />
           <span>{commentsOpen ? 'OCULTAR' : 'COMENTARIOS'}</span>
+          {commentsTotal > 0 && !commentsLoading && (
+            <span
+              className="inline-flex items-center gap-1.5 tabular-nums"
+              style={{ fontSize: 11, letterSpacing: '0.18em' }}
+              aria-hidden
+            >
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: '#F97316', boxShadow: '0 0 6px #F97316' }}
+              />
+              <span>{commentsTotal}</span>
+            </span>
+          )}
         </button>
 
         {/* Comments column — slides in from the right when commentsOpen.
@@ -329,6 +430,7 @@ export function OverlayShell({
         </AnimatePresence>
       </motion.div>
     </div>
+    </OverlayShellContext.Provider>
   )
 }
 

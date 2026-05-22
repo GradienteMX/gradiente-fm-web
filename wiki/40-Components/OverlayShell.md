@@ -2,7 +2,7 @@
 type: component
 status: current
 tags: [component, overlay, chrome]
-updated: 2026-04-23
+updated: 2026-05-21
 ---
 
 # OverlayShell
@@ -64,12 +64,49 @@ Keyframes live in [app/globals.css](../../app/globals.css):
 
 ## Close affordances
 
-- **ESC** — global `keydown` listener calls `close()` from [[useOverlay]]
+- **ESC** — global `keydown` listener. If the comments column is open, ESC collapses *that* first; second ESC closes the overlay.
 - **X button / `[ESC] CERRAR`** — top-right of the session bar
 - **Click backdrop** — the outer `onClick` fires `close()`; the inner panel uses `stopPropagation` so clicks inside don't bubble
 
 Not implemented (flagged for follow-up):
 - Swipe-down on mobile — skipped for v1 to avoid conflicts with inner scroll.
+
+## Keyboard shortcuts
+
+- **`ESC`** — collapse comments first, else close overlay (see above)
+- **`c` / `C`** — toggle the comments column. Ignored when focus is in any `input` / `textarea` / `contentEditable` so the composer still receives the letter; also ignored with any modifier (`⌘ / Ctrl / Alt`) held to avoid clobbering native bindings.
+
+## Comments rail button + `useOverlayShell()` context
+
+The vertical "terminal tab" anchored to the wrapper's right edge is the primary way to reach the discussion. Visible on `sm+` only — mobile users reach comments via the in-body DISCUSIÓN entry in [[ReaderOverlay]] + the `[C]` keystroke.
+
+At-rest design is a live system readout:
+
+```
+┌─────┐
+│ 00  │  ← zero-padded count (or ·· while loading)
+│  ▢  │  ← MessageSquare icon
+│  C  │
+│  O  │
+│  …  │  ← COMENTARIOS (or OCULTAR when open)
+│ ● N │  ← presence dot + count, only when N > 0
+└─────┘
+```
+
+- Closed-state colors: text `#FF9A33`, border `rgba(249,115,22,0.55)`, bg `#0a0a0a` — orange-on-rest so the button reads as a CTA, not chrome.
+- Open + hover-state: text + border full `#F97316`, bg `rgba(249,115,22,0.08–0.12)`.
+- Hover slides the button 8px inward + brightens.
+- Size: 44×220px minimum, `font-mono text-[12px]`, `MessageSquare size=14`.
+
+The count is live (Supabase realtime via [[useComments]]) and available to children through a shell-scoped React context:
+
+```ts
+const { commentsOpen, setCommentsOpen, commentsTotal, commentsLoading, comments, commentsUsersById } = useOverlayShell()
+```
+
+Why context: the count needs to be visible *before* the user opens the column (rail button + metadata row + footer all show it at rest). Lifting `useComments(item.id)` to the shell makes one subscription serve every consumer. [[CommentsColumn]] reads the comments + users out of this context instead of calling the hook itself — two `useComments` calls for the same itemId would both subscribe to the realtime channel `comments:${itemId}` and the second would crash. The context is the dedupe.
+
+**SWC parser gotcha for context providers.** The shell's `<OverlayShellContext.Provider value={{ ...inline object }}>` was rejected by Next 14's SWC ("Unexpected token X. Expected jsx identifier") despite the same shape working elsewhere in the codebase. The workaround: extract the value into a `const shellCtxValue = { ... }` above the return so the JSX reads `<OverlayShellContext.Provider value={shellCtxValue}>` — a single identifier reference. Apply this shape if you hit the same error on another provider.
 
 ## Body scroll lock
 

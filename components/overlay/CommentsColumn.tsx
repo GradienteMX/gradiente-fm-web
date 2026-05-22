@@ -2,21 +2,19 @@
 
 import { useEffect } from 'react'
 import type { ContentItem } from '@/lib/types'
-import { useComments } from '@/lib/hooks/useComments'
 import { setRealUsers } from '@/lib/userOverrides'
 import { CommentList } from './CommentList'
 import { CommentComposer } from './CommentComposer'
+import { useOverlayShell } from './OverlayShell'
 
 // ── CommentsColumn ──────────────────────────────────────────────────────────
 //
-// Right-rail surface inside the overlay. Fetches comments + author profiles
-// from Supabase via `useComments(item.id)`. Author profiles are pushed into
-// the global `realUserCache` (lib/userOverrides) so the existing
-// `useResolvedUser` calls inside CommentList / Tombstone resolve to real
-// rows without any prop drilling.
-//
-// Reactions, tombstones, and saves are still on the sessionStorage layer
-// (lib/comments) — chunk 3 follow-up turn migrates those.
+// Right-rail surface inside the overlay. Reads the comment list from the
+// shared OverlayShell context (which calls useComments(item.id) at the
+// shell level so the rail button can show a live count). Pushes author
+// profiles into the global `realUserCache` (lib/userOverrides) so the
+// existing `useResolvedUser` calls inside CommentList / Tombstone resolve
+// without prop drilling.
 
 interface CommentsColumnProps {
   item: ContentItem
@@ -31,7 +29,11 @@ export function CommentsColumn({
   onClose,
   focusedCommentId = null,
 }: CommentsColumnProps) {
-  const { comments, usersById, loading } = useComments(item.id)
+  const {
+    comments,
+    commentsUsersById: usersById,
+    commentsLoading: loading,
+  } = useOverlayShell()
   const total = comments.length
 
   // Push fetched users into the global cache so the existing

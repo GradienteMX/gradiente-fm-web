@@ -2,7 +2,7 @@
 type: component
 status: current
 tags: [comments, overlay]
-updated: 2026-04-26
+updated: 2026-05-21
 ---
 
 # CommentsColumn
@@ -22,7 +22,7 @@ Renders the discussion surface for a single article. Three vertical strips insid
 3. **Body** — scrollable [[CommentList]].
 4. **Footer** — pinned root [[CommentComposer]].
 
-Comment data comes from `useComments(item.id)` (see [[comments]]) — merges seed [[mockComments]] with the user's session-added comments and reaction overrides.
+Comment data comes from the shared `useOverlayShell()` context exposed by [[OverlayShell]], not from a direct `useComments(item.id)` call. The shell calls `useComments` once at its level so the rail button + metadata row + footer can all show a live count before the column is mounted; this column reads the same `comments` / `usersById` / `loading` out of context. Refactor reason: two simultaneous `useComments` calls for the same item subscribe to the same Supabase realtime channel (`comments:${itemId}`) and the second crashes — context is the dedupe. See [[OverlayShell]] § "Comments rail button + `useOverlayShell()` context".
 
 ## Props
 

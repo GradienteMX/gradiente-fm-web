@@ -10,10 +10,19 @@ import {
   isEditableTarget,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
-import { Expand, FileImage, User, Calendar, Clock, Activity } from 'lucide-react'
+import {
+  Expand,
+  FileImage,
+  User,
+  Calendar,
+  Clock,
+  Activity,
+  MessageSquare,
+} from 'lucide-react'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
+import { useOverlayShell } from './OverlayShell'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
@@ -40,6 +49,11 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     name: getGenreById(id)?.name ?? id,
   }))
   const tags = getTagNames(item.tags)
+
+  // Comments state from the surrounding shell — drives the in-body
+  // DISCUSIÓN entry + the [C] footer legend.
+  const { commentsTotal, commentsLoading, setCommentsOpen, commentsOpen } =
+    useOverlayShell()
 
   const rootRef = useRef<HTMLDivElement>(null)
   const [scrollPct, setScrollPct] = useState(0)
@@ -159,6 +173,37 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
               <dt className="sys-label">VIBE</dt>
               <dd>
                 <VibeFader item={item} />
+              </dd>
+            </div>
+            {/* DISCUSIÓN — surfaces the comments module inside the reading
+                flow so users encounter it before they reach the right rail.
+                Click opens the comments column via the shell context. */}
+            <div className="flex items-center gap-3">
+              <MessageSquare size={11} className="text-muted" />
+              <dt className="sys-label">DISCUSIÓN</dt>
+              <dd>
+                <button
+                  type="button"
+                  onClick={() => setCommentsOpen((o) => !o)}
+                  aria-expanded={commentsOpen}
+                  className="group inline-flex items-center gap-2 font-mono text-[11px] tracking-widest transition-colors"
+                  style={{ color: '#F97316' }}
+                >
+                  <span className="tabular-nums">
+                    {commentsLoading
+                      ? '··'
+                      : String(Math.min(commentsTotal, 99)).padStart(2, '0')}
+                  </span>
+                  <span>
+                    {commentsTotal === 1 ? 'COMENTARIO' : 'COMENTARIOS'}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="transition-transform group-hover:translate-x-0.5"
+                  >
+                    → ABRIR
+                  </span>
+                </button>
               </dd>
             </div>
           </dl>
@@ -339,6 +384,20 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
               [F] VER FLYER
             </button>
           )}
+          <button
+            onClick={() => setCommentsOpen((o) => !o)}
+            aria-expanded={commentsOpen}
+            className="flex items-center gap-1.5 transition-colors hover:opacity-80"
+            style={{ color: commentsOpen ? '#F97316' : '#FF9A33' }}
+          >
+            <MessageSquare size={11} />
+            [C] COMENTARIOS
+            {commentsTotal > 0 && !commentsLoading && (
+              <span className="tabular-nums" style={{ opacity: 0.85 }}>
+                · {commentsTotal}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 

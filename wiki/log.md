@@ -8,6 +8,38 @@
 
 ---
 
+## 2026-05-21 · INGEST · COMENTARIOS button promoted to a real CTA
+
+Beta feedback rollup: multiple users were missing the comments surface entirely. The vertical rail button on the right edge of every overlay looked like decorative chrome — gray-on-near-black, 10px rotated text, no count, no presence signal. The closed-state color (`#9CA3AF` muted gray) only flipped to orange `#F97316` *after* a click, which is exactly backwards: the invitation to click was inert, the confirmation of having clicked was loud. Four converging changes, all on existing surfaces, no new chrome introduced.
+
+### What landed
+
+- **Rail button — live system readout** ([OverlayShell.tsx](../components/overlay/OverlayShell.tsx)). The vertical chip now reads `00 / COMENTARIOS / ● N` (zero-padded count at top, label in the middle, presence dot + number at bottom when N > 0). Closed-state color is EVA orange-at-rest (`#FF9A33` text, `rgba(249,115,22,0.55)` border, `#0a0a0a` bg) so the button carries CTA color rather than only on-press. Hover slides the chip inward 8px and brightens border + text to full `#F97316`. Sized up significantly: 44×220px (was 33×145), 12px text (was 10), 14px icon (was 11), `px-3 py-5` padding. The button now reads as a substantial drawer handle, not a vestigial strip.
+- **Inline DISCUSIÓN entry in the article metadata `<dl>`** ([ReaderOverlay.tsx](../components/overlay/ReaderOverlay.tsx)). New row alongside PUBLICADO / VIBE: `DISCUSIÓN · 00 COMENTARIOS · → ABRIR` in orange, clickable to toggle the panel. This is the second discovery path: the eye is already inside the metadata row reading the byline, so the comments affordance gets surfaced inside the reading flow rather than asking the user to scan the right margin. Mobile users still get this entry because it's in-body, not in the `hidden sm:flex` rail.
+- **`[C]` keyboard binding** ([OverlayShell.tsx](../components/overlay/OverlayShell.tsx)). Pressing `c` toggles the comments column. Ignored when focus is in `input`/`textarea`/`contentEditable` so the composer still receives the letter. Extends the existing ESC handler (which also collapses comments-first, overlay-second).
+- **Footer legend `[C] COMENTARIOS · N`** ([ReaderOverlay.tsx](../components/overlay/ReaderOverlay.tsx)). New button in the sticky reader footer alongside `[F] VER FLYER`. Functions as both a click target AND the printed legend for the `[C]` keystroke — shipping the keybind without the legend is invisible; shipping the legend without the bind is a lie. They go together.
+
+### Architectural detour worth knowing
+
+The count needs to be live before the user opens the column (for the rail badge + metadata row + footer counter). The naive move — call `useComments(item.id)` once at the shell, once again inside [[CommentsColumn]] — crashed: both subscribed to a Supabase realtime channel named `comments:${itemId}` from the same client and the second subscription's mount threw a notFound boundary trip. Fixed by lifting `useComments` to OverlayShell, exposing the full result (`comments`, `usersById`, `loading`) through a new `OverlayShellContext`, and refactoring [[CommentsColumn]] to read from that context instead of calling the hook itself. The dedupe is now structural, not coincidental — if a future overlay surface needs the same data, it consumes the context.
+
+### SWC parser gotcha
+
+Next 14's SWC choked on `<OverlayShellContext.Provider value={{ inline... }}>` even though the exact same pattern works in [`context/VibeContext.tsx`](../context/VibeContext.tsx). Aliasing the Provider to a const (`const Foo = Ctx.Provider`) didn't help. The workaround that unblocked it: extract `value` into a `const shellCtxValue = { ... }` above the return, then write `value={shellCtxValue}` — a single identifier reference. If we hit "Unexpected token X. Expected jsx identifier" on a context provider elsewhere, this is the shape to reach for.
+
+### Wiki touched
+
+- [[OverlayShell]] — rail button updated, context + `useOverlayShell()` added, `[C]` shortcut added to close affordances section.
+- [[CommentsColumn]] — data source switched from `useComments(item.id)` to `useOverlayShell()` context.
+
+### Deferred / open
+
+- **Onboarding hint (#3 in the proposal)** — the "← abrir discusión" one-shot annotation tied to localStorage was deferred. Ship the four structural fixes first and see if users still miss it. If they do, this is the fallback.
+- **Edge rail (#2) and ghost preview (#9)** — both decorative additions that would solve "looks like chrome" by adding more chrome. Cut deliberately; revisit only if the structural changes underperform.
+- **Other overlay types** — the metadata row + footer legend currently live in [[ReaderOverlay]] only (covers editorial/articulo/review/opinion/noticia). [[MixOverlay]], [[EventoOverlay]], [[ListicleOverlay]], [[GenericOverlay]] still need the same treatment. The rail button + `[C]` shortcut are universal (live in OverlayShell) so all overlay types benefit immediately from those two.
+
+---
+
 ## 2026-05-21 · INGEST · invitation HTML adopted as /about + fifth nav link
 
 The closed-beta invitation deliverable from the sibling [gradiente-ops repo](../../../Gradiente-ops/deliverables/INVITACION_v2.html) (1,564 lines, the GRADIENTE·MX · BETA 150 dossier the team mails per-recipient) was being used by recipients as the de-facto explanation of how the app works — it carries the entire mental model (vibe, HL, roles, content types, the manifesto). The user surfaced the friction directly: as an *invite*, it's over-loaded; as an *about page*, it's exactly right. Move not refactor — the invitation file stays untouched in `gradiente-ops`, we copy its shape here.
