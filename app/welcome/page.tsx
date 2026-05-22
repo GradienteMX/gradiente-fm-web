@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Code2, UserSquare2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 
@@ -14,6 +14,8 @@ import { useAuth } from '@/components/auth/useAuth'
 export default function WelcomePage() {
   const { openLogin, isAuthed, authResolved } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const codigo = searchParams.get('codigo') ?? ''
 
   // Belt-and-suspenders for the "logged in but URL stuck on /welcome"
   // case. Middleware handles fresh requests, but `useAuth.login` only
@@ -26,6 +28,15 @@ export default function WelcomePage() {
       router.replace('/')
     }
   }, [authResolved, isAuthed, router])
+
+  // Deep-link from the invitation HTML: /welcome?codigo=INV-xxx.
+  // Auto-open the signup overlay with the code pre-filled so the
+  // recipient lands one form away from a real account.
+  useEffect(() => {
+    if (authResolved && !isAuthed && codigo) {
+      openLogin('signup', codigo)
+    }
+  }, [authResolved, isAuthed, codigo, openLogin])
 
   // Live UTC clock — doubles as a "this is on, this is real" cue.
   const [clock, setClock] = useState('--:--:--')
@@ -133,7 +144,7 @@ export default function WelcomePage() {
               icon={<Code2 size={26} strokeWidth={1.5} />}
               label="INSERTAR CÓDIGO"
               sublabel="ACCESO POR INVITACIÓN"
-              onClick={() => openLogin('signup')}
+              onClick={() => openLogin('signup', codigo)}
             />
           </div>
 
