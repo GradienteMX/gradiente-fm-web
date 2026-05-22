@@ -136,6 +136,7 @@ function rowToContentItem(row: any): ContentItem {
     partnerUrl: row.partner_url ?? undefined,
     partnerLastUpdated: row.partner_last_updated ?? undefined,
     partnerId: row.partner_id ?? undefined,
+    createdById: row.created_by ?? undefined,
     marketplaceEnabled: row.marketplace_enabled ?? false,
     marketplaceDescription: row.marketplace_description ?? undefined,
     marketplaceLocation: row.marketplace_location ?? undefined,

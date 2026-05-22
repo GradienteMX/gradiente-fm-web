@@ -181,6 +181,11 @@ function rowToUser(row: UserRow): User {
     partnerId: row.partner_id ?? undefined,
     partnerAdmin: row.partner_admin || undefined,
     joinedAt: row.joined_at,
+    // Post-0017 columns; cast to bypass stale generated types.
+    avatarUrl: (row as { avatar_url?: string | null }).avatar_url ?? undefined,
+    bio: (row as { bio?: string | null }).bio ?? undefined,
+    firma: (row as { firma?: string | null }).firma ?? undefined,
+    location: (row as { location?: string | null }).location ?? undefined,
   }
 }
 

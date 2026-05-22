@@ -46,6 +46,13 @@ import type { User } from '@/lib/types'
 type UserRow = Database['public']['Tables']['users']['Row']
 
 function rowToUser(row: UserRow): User {
+  // Post-0017 columns aren't in the generated types until regen; widen.
+  const r = row as unknown as UserRow & {
+    avatar_url: string | null
+    bio: string | null
+    firma: string | null
+    location: string | null
+  }
   return {
     id: row.id,
     username: row.username,
@@ -56,6 +63,10 @@ function rowToUser(row: UserRow): User {
     partnerId: row.partner_id ?? undefined,
     partnerAdmin: row.partner_admin || undefined,
     joinedAt: row.joined_at,
+    avatarUrl: r.avatar_url ?? undefined,
+    bio: r.bio ?? undefined,
+    firma: r.firma ?? undefined,
+    location: r.location ?? undefined,
   }
 }
 
@@ -80,6 +91,11 @@ interface AuthContextValue {
   loginInitialMode: 'login' | 'signup'
   loginInitialCode: string
   closeLogin: () => void
+  // Force a re-fetch of the public.users row for the current session. Use
+  // after self-updates to the profile (e.g. /api/users/me PATCH) so the
+  // global currentUser reflects the new state without a session change.
+  // No-op when logged out.
+  refreshProfile: () => Promise<void>
   // Loading until the first auth-state-change settles. Avoids hydration
   // flicker between "logged out" and the resolved user.
   ready: boolean
@@ -250,6 +266,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.refresh()
   }, [router])
 
+  const refreshProfile = useCallback(async () => {
+    const authId = session?.user?.id
+    if (!authId) return
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authId)
+      .maybeSingle()
+    if (data) setProfile(rowToUser(data))
+  }, [session?.user?.id])
+
   const [loginInitialMode, setLoginInitialMode] = useState<'login' | 'signup'>('login')
   const [loginInitialCode, setLoginInitialCode] = useState('')
   const openLogin = useCallback((mode: 'login' | 'signup' = 'login', initialCode = '') => {
@@ -272,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginInitialMode,
     loginInitialCode,
     closeLogin,
+    refreshProfile,
     ready,
     // Resolved when the profile fetch matches the current session id (or
     // both are null = logged out). Bumped back to false in the brief render

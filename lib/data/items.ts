@@ -30,6 +30,15 @@ type EmbeddedPartner = {
   marketplace_enabled: boolean
 }
 
+// Minimal creator shape — same two-query pattern as EmbeddedPartner. Pulled
+// per-render from items.created_by → users via `fetchCreatorsByIds`.
+type EmbeddedCreator = {
+  id: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+}
+
 // Embedded join shape — `polls.item_id` is unique so PostgREST returns a
 // single object (not an array) for the relation; marketplace_listings is
 // 1:N keyed on partner_id, returned as an array. `partner` is resolved
@@ -219,6 +228,8 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     // partner_id added in migration 0015; cast bypasses stale generated
     // types until `npx supabase gen types typescript` regenerates.
     partnerId: (row as { partner_id?: string | null }).partner_id ?? undefined,
+    // created_by added in migration 0012; same cast story as partner_id.
+    createdById: (row as { created_by?: string | null }).created_by ?? undefined,
     // partner field is populated by attachPartner() in the consumer fns
     // below (getItems / getItemBySlug). Leave undefined here.
     marketplaceEnabled: row.marketplace_enabled,
@@ -349,18 +360,104 @@ export async function getItems(): Promise<ContentItem[]> {
     return []
   }
   const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
-  // Parallel fetches: vibe-check aggregates AND partner-attribution rows.
-  // Both look up by ids drawn from the items array; can run concurrently.
+  // Parallel fetches: vibe-check aggregates, partner-attribution, AND
+  // creator-attribution rows. All three look up by ids drawn from the items
+  // array; can run concurrently.
   const partnerIds = Array.from(
     new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
   )
-  const [aggregates, partners] = await Promise.all([
+  const creatorIds = Array.from(
+    new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
+  )
+  const [aggregates, partners, creators] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
     fetchPartnersByIds(partnerIds),
+    fetchCreatorsByIds(creatorIds),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
     .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
+}
+
+// Items authored by a specific user — drives `/u/[username]`'s PUBLICADOS
+// grid. Mirrors `getItems` minus filters/order tweaks for the profile
+// surface: own published, non-seed items, newest first. RLS lets any
+// logged-in viewer read published rows, so this works for the public
+// profile page without an auth context.
+export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEMS_SELECT)
+    // `created_by` is a post-0012 column; cast to bypass stale generated types.
+    .eq('created_by' as never, userId as never)
+    .eq('published', true)
+    .eq('seed', false)
+    .order('published_at', { ascending: false })
+
+  if (error) {
+    console.error('[getItemsByCreatedBy] Supabase error:', error)
+    return []
+  }
+  const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+  if (items.length === 0) return items
+
+  const partnerIds = Array.from(
+    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  )
+  // All items here share the same creator (`userId`), so resolve once.
+  const [aggregates, partners, creators] = await Promise.all([
+    fetchVibeCheckAggregates(items.map((i) => i.id)),
+    fetchPartnersByIds(partnerIds),
+    fetchCreatorsByIds([userId]),
+  ])
+  return items
+    .map((i) => attachAggregate(i, aggregates.get(i.id)))
+    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
+}
+
+// ── Creator attribution merge ──────────────────────────────────────────────
+//
+// Same shape as fetchPartnersByIds: pull all referenced users in one query,
+// attach to each item. Powers the @username chip + link to /u/[username]
+// rendered by ContentCard / overlays.
+
+async function fetchCreatorsByIds(ids: string[]): Promise<Map<string, EmbeddedCreator>> {
+  const out = new Map<string, EmbeddedCreator>()
+  if (ids.length === 0) return out
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url')
+    .in('id', ids)
+  if (error) {
+    console.error('[fetchCreatorsByIds] Supabase error:', error)
+    return out
+  }
+  // `avatar_url` is a post-0017 column; cast through unknown for the same
+  // stale-generated-types reason as partner / created_by handling.
+  for (const row of (data ?? []) as unknown as EmbeddedCreator[]) {
+    out.set(row.id, row)
+  }
+  return out
+}
+
+function attachCreator(
+  item: ContentItem,
+  creator: EmbeddedCreator | undefined,
+): ContentItem {
+  if (!creator) return item
+  return {
+    ...item,
+    creator: {
+      id: creator.id,
+      username: creator.username,
+      displayName: creator.display_name,
+      avatarUrl: creator.avatar_url ?? undefined,
+    },
+  }
 }
 
 // Single item by slug — used by overlay deep-links and `/[type]/[slug]` pages.
@@ -378,10 +475,12 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   }
   if (!data) return null
   const item = rowToContentItem(data as unknown as ItemRowWithPoll)
-  const [aggregates, partners] = await Promise.all([
+  const [aggregates, partners, creators] = await Promise.all([
     fetchVibeCheckAggregates([item.id]),
     item.partnerId ? fetchPartnersByIds([item.partnerId]) : Promise.resolve(new Map()),
+    item.createdById ? fetchCreatorsByIds([item.createdById]) : Promise.resolve(new Map()),
   ])
   const withAgg = attachAggregate(item, aggregates.get(item.id))
-  return attachPartner(withAgg, item.partnerId ? partners.get(item.partnerId) : undefined)
+  const withPartner = attachPartner(withAgg, item.partnerId ? partners.get(item.partnerId) : undefined)
+  return attachCreator(withPartner, item.createdById ? creators.get(item.createdById) : undefined)
 }

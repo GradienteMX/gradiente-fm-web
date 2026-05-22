@@ -53,6 +53,28 @@ interface ContentCardProps {
   size?: CardSize
 }
 
+// ── Creator chip ──────────────────────────────────────────────────────────
+//
+// Renders @username linked to /u/[username]. stopPropagation so the link
+// doesn't also trigger the card's overlay-open. Kept distinct from the
+// `item.author` byline string — the chip is the actual platform identity,
+// while `author` is editorial free-text ("Redacción Espectro", etc.).
+function CreatorChip({ item, dim = false }: { item: ContentItem; dim?: boolean }) {
+  if (!item.creator) return null
+  return (
+    <Link
+      href={`/u/${item.creator.username}`}
+      onClick={(e) => e.stopPropagation()}
+      className={`font-mono text-[9px] tracking-wide transition-colors hover:text-sys-orange ${
+        dim ? 'text-muted' : 'text-secondary'
+      }`}
+      title={`Perfil de ${item.creator.displayName}`}
+    >
+      @{item.creator.username}
+    </Link>
+  )
+}
+
 // ── Partner attribution chip ──────────────────────────────────────────────────
 //
 // Renders //PRESENTA · CLUB JAPAN (or //SELLO · X, //PROMOTORA · X, etc.) on
@@ -247,6 +269,7 @@ function SmCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
           {item.author && (
             <span className="font-mono text-[9px] text-muted">{item.author}</span>
           )}
+          <CreatorChip item={item} dim />
         </div>
 
         {genres.length > 0 && (
@@ -452,6 +475,8 @@ function LgCard({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
             {item.author && (
               <span className="font-mono text-[10px] text-muted">by {item.author}</span>
             )}
+            <CreatorChip item={item} dim />
+
             {item.readTime && (
               <span className="flex items-center gap-1 font-mono text-[10px] text-muted">
                 <Clock size={10} />

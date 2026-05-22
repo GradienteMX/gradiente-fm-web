@@ -221,6 +221,21 @@ export interface ContentItem {
     marketplaceEnabled: boolean
   }
 
+  // Author attribution — the user (if any) who published this item. References
+  // `items.created_by` on the users table. Populated server-side by
+  // `attachCreator` in lib/data/items.ts (same pattern as `partner` above).
+  // Drives the @username chip on cards and the link to /u/[username]. Stays
+  // distinct from `author` (the free-text byline string) — many editorial
+  // pieces will have both: a curator's username + an explicit author byline
+  // like "Redacción Espectro".
+  createdById?: string
+  creator?: {
+    id: string
+    username: string
+    displayName: string
+    avatarUrl?: string
+  }
+
   // Marketplace fields (type === 'partner' only). When `marketplaceEnabled`
   // is true, the partner shows up at `/marketplace` with their card +
   // listings. Admin sets the flag in [[AdminUsersEditor]]; the partner team
@@ -318,6 +333,11 @@ export interface User {
   partnerId?: string      // references a partner ContentItem.id (e.g. "pa-club-japan")
   partnerAdmin?: boolean  // in-team admin for own partner (kick/add team)
   joinedAt: string        // ISO
+  // Public-profile fields (migration 0017). All optional — null in DB → undefined here.
+  avatarUrl?: string      // public URL from the uploads bucket
+  bio?: string            // free-text bio for /u/[username]
+  firma?: string          // editorial sign-off line
+  location?: string       // user-supplied city / zona
 }
 
 // ── Comments & reactions ────────────────────────────────────────────────────
