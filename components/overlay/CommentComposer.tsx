@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { invalidateComments } from '@/lib/hooks/useComments'
+import { recordHpEvent } from '@/lib/hpEvents'
 
 // ── CommentComposer ────────────────────────────────────────────────────────
 //
@@ -99,6 +100,7 @@ export function CommentComposer({
         setError(json.error?.toString().toUpperCase() ?? 'FAILED')
         return
       }
+      recordHpEvent(itemId, 'comment')
       setBody('')
       invalidateComments(itemId)
       if (variant === 'reply') {

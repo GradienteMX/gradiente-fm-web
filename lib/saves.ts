@@ -16,6 +16,7 @@ import {
   removeSavedItemIdLocal,
   subscribeSavedItems,
 } from './itemSavesCache'
+import { recordHpEvent } from './hpEvents'
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export async function toggleSavedItem(itemId: string) {
     try {
       const res = await fetch(`/api/saves/items/${itemId}`, { method: 'POST' })
       if (!res.ok) removeSavedItemIdLocal(itemId)  // rollback
+      else recordHpEvent(itemId, 'save')
     } catch {
       removeSavedItemIdLocal(itemId)
     }

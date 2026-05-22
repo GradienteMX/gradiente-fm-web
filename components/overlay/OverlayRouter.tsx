@@ -5,6 +5,7 @@ import type { ContentItem } from '@/lib/types'
 import { getItemBySlug } from '@/lib/mockData'
 import { useDraftItems } from '@/lib/drafts'
 import { getItemBySlugSync } from '@/lib/itemsCache'
+import { recordHpEvent } from '@/lib/hpEvents'
 import { useOverlay } from './useOverlay'
 import { OverlayShell } from './OverlayShell'
 import { EventoOverlay } from './EventoOverlay'
@@ -45,14 +46,19 @@ export function OverlayRouter() {
     const next = resolveSlug(openSlug)
 
     if (next && !mounted) {
-      // Opening fresh.
+      // Opening fresh. Fire an 'open' engagement event — distinct from
+      // 'click' (card-driven) because URL deep-links land here without a
+      // card click. Weighted higher than click since "viewed the overlay"
+      // beats "clicked through to it".
+      recordHpEvent(next.id, 'open')
       setMounted(next)
       setExiting(false)
       return
     }
 
     if (next && mounted && next.slug !== mounted.slug) {
-      // Switching to a different item — play exit, then swap.
+      // Switching to a different item — play exit, then swap. The 'open'
+      // event for `next` fires in onExited (where it actually mounts).
       setExiting(true)
       return
     }
@@ -82,6 +88,7 @@ export function OverlayRouter() {
         const next = resolveSlug(openSlug)
         if (next && next.slug !== mounted.slug) {
           // Swap in the new item after old one finished exiting.
+          recordHpEvent(next.id, 'open')
           setMounted(next)
           setExiting(false)
         } else {

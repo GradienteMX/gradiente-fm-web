@@ -8,6 +8,7 @@ import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
+import { recordHpEvent } from '@/lib/hpEvents'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from './SavedBadge'
@@ -530,6 +531,9 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
 
   const handleOpen = () => {
     const rect = ref.current?.getBoundingClientRect()
+    // Fire-and-forget engagement event. Server gates on auth.uid() — anon
+    // clicks 401 silently. See lib/hpEvents.ts + lib/curation.ts.
+    recordHpEvent(item.id, 'click')
     open(
       item.slug,
       rect
