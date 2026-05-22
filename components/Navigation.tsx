@@ -5,9 +5,11 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { AuthBadge } from '@/components/auth/AuthBadge'
 
-// Header destinations. Trimmed from 9 → 4 to break the visual equivalence
-// with the SECCIÓN rail (beta testers were ignoring FORO + MARKETPLACE
-// because they read as duplicates of //NOTICIA / //MIX / etc filter rows).
+// Header destinations. Trimmed from 9 → 4 on 2026-05-12 to break the visual
+// equivalence with the SECCIÓN rail (beta testers were ignoring FORO +
+// MARKETPLACE because they read as duplicates of //NOTICIA / //MIX / etc
+// filter rows). QUÉ ES GRADIENTE added 2026-05-21 to surface the
+// invitation-as-about page that now lives at /about.
 // Every item renders in NGE orange by default; only the *active* item
 // switches to an orange → red gradient + glow. The differentiation is
 // "selected vs not," not "this item is its own color."
@@ -16,6 +18,7 @@ const NAV_LINKS = [
   { href: '/agenda',      label: 'AGENDA' },
   { href: '/foro',        label: 'FORO' },
   { href: '/marketplace', label: 'MARKETPLACE' },
+  { href: '/about',       label: 'QUÉ ES GRADIENTE' },
 ]
 
 // Active-state gradient — matches the header's top accent bar (line ~47)

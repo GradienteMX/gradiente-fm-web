@@ -8,6 +8,36 @@
 
 ---
 
+## 2026-05-21 · INGEST · invitation HTML adopted as /about + fifth nav link
+
+The closed-beta invitation deliverable from the sibling [gradiente-ops repo](../../../Gradiente-ops/deliverables/INVITACION_v2.html) (1,564 lines, the GRADIENTE·MX · BETA 150 dossier the team mails per-recipient) was being used by recipients as the de-facto explanation of how the app works — it carries the entire mental model (vibe, HL, roles, content types, the manifesto). The user surfaced the friction directly: as an *invite*, it's over-loaded; as an *about page*, it's exactly right. Move not refactor — the invitation file stays untouched in `gradiente-ops`, we copy its shape here.
+
+### What landed
+
+- **[app/about/page.tsx](../app/about/page.tsx)** — the prior `BrandPageShell`-based /about (subsystem/title/lead + three short sections — see git for the deleted content) was replaced by the invitation inlined as a `'use client'` page. All CSS scoped under `.qe-root` (~640 lines), keyframes renamed `qe-*` to avoid clashing with Tailwind's `blink`. Fonts (Rajdhani + IBM Plex Mono + Space Grotesk) loaded via Google Fonts `<link>` tags inline — direct port from the invitation, no migration to `next/font/google`. Scripts (UTC clock, scroll progress, TOC IntersectionObserver, phosphor-tape vibe-fader build) hoisted into a single `useEffect` with proper cleanup. Manifesto gate ported to React state (`useState locked`) which drives a `data-locked` attribute the existing CSS selector reads — no DOM mutation in event handlers. Password is `centro`, case-insensitive compare, lives as a module constant.
+- **Two intentional divergences from the invitation source:**
+  1. **Welcome-section activation copy stripped** — the four paragraphs explaining "para activar tu cuenta necesitas dos cosas" + the "si ya tienes un proyecto o colectivo" onboarding block + the `accessCodeInput` + ENTRAR button are gone. A visitor who navigated here from the nav doesn't need the redeem flow. What survives: the greeting, the "si llegó esto a tus manos" + "te invitamos a la beta cerrada" + "más sobre la plataforma en las secciones siguientes" + the "el archivo no tiene dueños" closing line. (Note: the "si llegó esto a tus manos" copy still reads as if the user is opening private mail — flag for editorial revision if it bites.)
+  2. **Internal `.topbar` and `.progress` de-stickied** — the original used `position: sticky; top: 0` for both, which conflicts with the site's own sticky `<Navigation>`. Now `position: relative` — they preserve the chrome on first paint but scroll away after the first viewport. TOC sticky top bumped 4rem → 6rem so it clears the site nav. Dossier-section `scroll-margin-top` bumped 4.5rem → 7rem for anchor-jump alignment.
+- **[components/Navigation.tsx](../components/Navigation.tsx)** — fifth nav link `QUÉ ES GRADIENTE → /about` added after MARKETPLACE. Longest label in the row by 5 chars; at MacBook widths the row will tighten. Padding stays at `px-6` for now; if it crowds the timer/badge slot, drop to `px-4` (noted in updated [[Navigation]]).
+- **Layout escape** — the new about page uses `-mx-4 -mt-4 -mb-24 md:-mx-8` on the wrapper to negate the root layout's `<main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">` padding so the invitation's topbar and footer can reach the viewport edges as designed.
+
+### Why the copy-don't-share approach
+
+The invitation file is a deliverable: it ships per-recipient via email with a code, gets opened standalone, has hard requirements (lowercase normalization before redirect to `/welcome?codigo=`, the `accessCodeInput` flow). The about page is a public surface inside a Next.js app: it has React state, a wrapping layout, a different audience. Sharing source would force one to bend to the other — the invitation would have to learn JSX, or the about page would have to keep an unused redirect flow. Two truths, one short — copy now, dedup later if the divergence becomes painful.
+
+### Wiki touched
+
+- [[Navigation]] — 4 → 5 destinations + the `QÉ ES GRADIENTE` note + tighter-row caveat.
+- [[About]] — still no standalone wiki file (same as [[Manifesto]] and [[Equipo]] — the index references them but they were never written). Skipped for now; if the about page grows complexity, write one.
+
+### Deferred / open
+
+- **The "si llegó esto a tus manos" greeting** is invitation-framing on a public page. The user explicitly opted to keep it; flagging here as an editorial revisit candidate.
+- **`BrandPageShell`** still backs `/manifesto` and `/equipo`. Not orphaned. Leave alone until those pages get redesigned.
+- **Stacking sticky chrome** — site Nav (~76px) + VibeSlider live above the about page content. The about page's TOC sticky-top is set to `6rem` which clears site Nav only. If VibeSlider gets taller or the TOC starts disappearing under it, bump TOC top.
+
+---
+
 ## 2026-05-14 · INGEST · partner attribution chrome + //PUBLICAR authoring tab
 
 Two layered slices shipping the partner-content pipeline locked in by the design conversation (see [[Partner Authoring]]). End state: any approved partner team can publish scene-voice content (`evento` · `mix` · `noticia` · `opinion` · `listicle`) into the main feed, with the //PRESENTA · X attribution chip rendering on cards + rail tiles + overlay byline so readers can apply their own trust calculus.
