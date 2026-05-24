@@ -60,6 +60,8 @@ interface Props {
   onOpen: (item: DraftItem) => void
   /** When provided, each tile gets a small ⌧ corner button. Owner-delete in Publicados. */
   onDelete?: (item: DraftItem) => void
+  /** When provided, published tiles get a wax-seal harvest affordance. Caller (dashboard page) opens the HarvestConfirmModal for the picked item. */
+  onHarvest?: (item: DraftItem) => void
 }
 
 export function DraggableFileGrid({
@@ -67,6 +69,7 @@ export function DraggableFileGrid({
   items,
   onOpen,
   onDelete,
+  onHarvest,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [positions, setPositions] = useState<Record<string, XY>>({})
@@ -174,6 +177,7 @@ export function DraggableFileGrid({
               x={pos.x}
               y={pos.y}
               onMove={(next) => updatePos(item.id, next)}
+              onHarvest={onHarvest ? () => onHarvest(item) : undefined}
               onOpen={() => onOpen(item)}
               onDelete={onDelete ? () => onDelete(item) : undefined}
               containerRef={containerRef}
@@ -204,6 +208,7 @@ interface TileProps {
   onMove: (next: XY) => void
   onOpen: () => void
   onDelete?: () => void
+  onHarvest?: () => void
   containerRef: React.MutableRefObject<HTMLDivElement | null>
 }
 
@@ -214,6 +219,7 @@ function DraggableFile({
   onMove,
   onOpen,
   onDelete,
+  onHarvest,
   containerRef,
 }: TileProps) {
   const color = categoryColor(item.type)
@@ -357,7 +363,7 @@ function DraggableFile({
           {item.title || <span className="text-muted">[sin título]</span>}
         </span>
 
-        <div className="mt-auto flex w-full items-center justify-center">
+        <div className="mt-auto flex w-full items-center justify-center gap-1.5">
           <span
             className="inline-flex items-center gap-1 font-mono text-[8px] tracking-widest"
             style={{ color: stateColor }}
@@ -368,6 +374,31 @@ function DraggableFile({
             />
             {isDraft ? 'DRAFT' : 'PUB'}
           </span>
+          {/* Harvest seal — only on published items the caller has marked
+              as harvestable (publisher viewing own publicados). Shows the
+              "broken seal" stamp post-harvest. */}
+          {onHarvest && !isDraft && item.harvestedAt ? (
+            <span
+              className="inline-flex items-center gap-1 border border-border/60 px-1 font-mono text-[8px] tracking-widest text-muted"
+              title="Ya cosechado — sello roto"
+            >
+              ⛓ COSECHADO
+            </span>
+          ) : onHarvest && !isDraft ? (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onHarvest()
+              }}
+              aria-label="Cosechar publicación"
+              title="COSECHAR — convierte HL en presencia"
+              className="inline-flex items-center gap-1 border border-sys-orange/60 bg-sys-orange/5 px-1 font-mono text-[8px] tracking-widest text-sys-orange transition-colors hover:bg-sys-orange/15"
+            >
+              ◉ COSECHAR
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

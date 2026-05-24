@@ -19,6 +19,7 @@ import {
 } from '@/components/dashboard/explorer/ExplorerToolbar'
 import { ViewControls, type ViewMode } from '@/components/dashboard/explorer/ViewControls'
 import { ConfirmOverlay } from '@/components/dashboard/explorer/ConfirmOverlay'
+import { HarvestConfirmModal } from '@/components/dashboard/HarvestConfirmModal'
 
 import {
   NuevoSection,
@@ -215,6 +216,19 @@ export default function DashboardPage() {
     [typeToConfirm, router],
   )
 
+  // ── Harvest state ─────────────────────────────────────────────────────────
+  // Track which item the user clicked "COSECHAR" on. When non-null the
+  // HarvestConfirmModal renders against it; close + success both clear.
+  const [harvestingItem, setHarvestingItem] = useState<DraftItem | null>(null)
+  const onHarvestPublished = useCallback((item: DraftItem) => {
+    setHarvestingItem(item)
+  }, [])
+  const onHarvestComplete = useCallback(() => {
+    // Refresh server components so the new harvested_at/decay state
+    // propagates everywhere the item appears.
+    router.refresh()
+  }, [router])
+
   // Content-creation gating. Filter the SUPPORTED template list down to the
   // types this user is authorized to create. See lib/permissions.ts
   // canCreateContent for the per-type tier map. The compose URL is also
@@ -407,6 +421,7 @@ export default function DashboardPage() {
             }
             onPickDraft={(id) => setConfirming({ kind: 'draft', id })}
             onDeletePublished={onDeletePublished}
+            onHarvestPublished={onHarvestPublished}
             navigate={navigateSection}
           />
         </ExplorerWindow>
@@ -426,6 +441,18 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      {/* Harvest confirm — opens when user clicks the ◉ COSECHAR seal on
+          a published tile. Modal handles its own POST + success state;
+          we just provide the item and a close handler. */}
+      {harvestingItem && (
+        <HarvestConfirmModal
+          item={harvestingItem}
+          open
+          onClose={() => setHarvestingItem(null)}
+          onHarvested={onHarvestComplete}
+        />
+      )}
     </>
   )
 }
@@ -442,6 +469,7 @@ function SectionBody({
   onPickType,
   onPickDraft,
   onDeletePublished,
+  onHarvestPublished,
   navigate,
 }: {
   section: ExplorerSection
@@ -453,6 +481,7 @@ function SectionBody({
   onPickType: (t: ContentType) => void
   onPickDraft: (id: string) => void
   onDeletePublished: (item: DraftItem) => void
+  onHarvestPublished: (item: DraftItem) => void
   navigate: (s: ExplorerSection) => void
 }) {
   switch (section) {
@@ -486,6 +515,7 @@ function SectionBody({
           stateFilter="published"
           namespace="publicados"
           onDelete={onDeletePublished}
+          onHarvest={onHarvestPublished}
         />
       )
     case 'profile':

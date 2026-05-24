@@ -13,6 +13,8 @@ interface Props {
   namespace?: string
   /** When provided, each tile renders a corner ⌧ delete button. */
   onDelete?: (item: DraftItem) => void
+  /** When provided, published tiles get the COSECHAR seal affordance. */
+  onHarvest?: (item: DraftItem) => void
 }
 
 export function DraftsSection({
@@ -21,6 +23,7 @@ export function DraftsSection({
   stateFilter,
   namespace = 'drafts',
   onDelete,
+  onHarvest,
 }: Props) {
   const filtered = useMemo(() => {
     if (!stateFilter) return items
@@ -33,6 +36,7 @@ export function DraftsSection({
       items={filtered}
       onOpen={onOpen}
       onDelete={onDelete}
+      onHarvest={onHarvest}
     />
   )
 }

@@ -144,5 +144,8 @@ function rowToContentItem(row: any): ContentItem {
     marketplaceListings: row.marketplace_listings ?? undefined,
     hp: row.hp ?? undefined,
     hpLastUpdatedAt: row.hp_last_updated_at ?? undefined,
+    harvestedAt: row.harvested_at ?? undefined,
+    harvestedAmount: row.harvested_amount ?? undefined,
+    hpDecayMultiplier: row.hp_decay_multiplier ?? undefined,
   }
 }

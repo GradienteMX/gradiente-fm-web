@@ -241,6 +241,14 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
       : undefined,
     hp: row.hp ?? undefined,
     hpLastUpdatedAt: row.hp_last_updated_at ?? undefined,
+    // Harvest fields — post-0022, not in generated types until regen.
+    harvestedAt:
+      (row as { harvested_at?: string | null }).harvested_at ?? undefined,
+    harvestedAmount:
+      (row as { harvested_amount?: number | null }).harvested_amount ?? undefined,
+    hpDecayMultiplier:
+      (row as { hp_decay_multiplier?: number | null }).hp_decay_multiplier ??
+      undefined,
   }
 }
 

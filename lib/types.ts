@@ -236,6 +236,15 @@ export interface ContentItem {
     avatarUrl?: string
   }
 
+  // Harvest mechanic (migration 0022). One-shot per item: publisher
+  // performs the COSECHAR gesture once, transferring 40% of the item's
+  // current HL into their engagement_hp. The item's decay then runs
+  // at 1.7x normal speed. All three fields are nullable; harvestedAt is
+  // the sentinel ("has this been harvested yet?").
+  harvestedAt?: string          // ISO when harvested, NULL = not yet
+  harvestedAmount?: number      // how much HL flowed to the user
+  hpDecayMultiplier?: number    // default 1.0; 1.7 after harvest
+
   // Marketplace fields (type === 'partner' only). When `marketplaceEnabled`
   // is true, the partner shows up at `/marketplace` with their card +
   // listings. Admin sets the flag in [[AdminUsersEditor]]; the partner team

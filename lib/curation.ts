@@ -87,7 +87,11 @@ export function currentHp(item: ContentItem, now: Date = new Date()): number {
   const lastUpdated = parseISO(item.hpLastUpdatedAt ?? item.publishedAt)
   const Δt = Math.max(0, hoursBetween(lastUpdated, now))
   if (Δt === 0) return hp0
-  const λ = decayLambda(item, now)
+  // Per-item decay multiplier — set to 1.7 on harvested items so they fade
+  // faster than non-harvested peers. Mirrored in apply_hp_rollup() (0022)
+  // so the cron tick and the read-side stay in sync.
+  const multiplier = item.hpDecayMultiplier ?? 1.0
+  const λ = decayLambda(item, now) * multiplier
   return hp0 * Math.exp(-λ * Δt)
 }
 
