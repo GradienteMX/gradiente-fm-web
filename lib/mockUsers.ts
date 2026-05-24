@@ -166,6 +166,33 @@ export const RANK_COLOR: Record<UserRank, string> = {
   espectro: '#F0ABFC',   // magenta-pink — full-spectrum
 }
 
+// Avatar frame styling — earned progression marker per
+// [[project_user_hp_visibility]]. Frames apply only to user-tier accounts;
+// staff carry their role chip as their identity marker and don't need
+// the additional frame. NORMIE has no frame (no progression yet).
+//
+// Returns inline-style props (border + boxShadow) — callers spread them
+// onto the avatar container element. Tailwind can't generate dynamic
+// colors per render, so inline is the cleanest path.
+export interface AvatarFrameStyle {
+  borderColor?: string
+  borderWidth?: string
+  boxShadow?: string
+}
+
+export function avatarFrameStyle(user: User, rank: UserRank): AvatarFrameStyle {
+  // Staff roles: no frame. Their role chip carries the identity.
+  if (user.role !== 'user') return {}
+  // Normie: no frame either (no earned progression yet).
+  if (rank === 'normie') return {}
+  const color = RANK_COLOR[rank]
+  return {
+    borderColor: color,
+    borderWidth: '2px',
+    boxShadow: `0 0 10px color-mix(in srgb, ${color} 30%, transparent)`,
+  }
+}
+
 export type FlagKind = 'mod' | 'og'
 
 export const FLAG_LABEL: Record<FlagKind, string> = {

@@ -10,6 +10,7 @@ import {
   flagsFor,
   FLAG_COLOR,
   FLAG_LABEL,
+  avatarFrameStyle,
 } from '@/lib/mockUsers'
 import { compressAndUploadImage } from '@/lib/imageUpload'
 import { EngagementWidget } from './EngagementWidget'
@@ -44,6 +45,7 @@ export function ProfileSection() {
     ? badgeFor(currentUser, rank)
     : { label: '—', color: '#9CA3AF' }
   const flags = currentUser ? flagsFor(currentUser) : []
+  const frameStyle = currentUser ? avatarFrameStyle(currentUser, rank) : {}
   const joinedAt = currentUser?.joinedAt
   const altaDate = joinedAt ? joinedAt.slice(0, 10) : '—'
 
@@ -153,6 +155,7 @@ export function ProfileSection() {
       <div className="flex flex-col gap-3 border border-border bg-surface p-4">
         <div
           className="relative flex aspect-square w-full items-center justify-center border border-dashed border-border/60 bg-base"
+          style={frameStyle}
           onDragOver={(e) => {
             e.preventDefault()
             e.dataTransfer.dropEffect = 'copy'

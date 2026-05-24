@@ -74,6 +74,12 @@ function rowToReply(row: ReplyRow): ForoReply {
 }
 
 function rowToUser(row: UserRow): User {
+  const r = row as unknown as UserRow & {
+    avatar_url: string | null
+    bio: string | null
+    firma: string | null
+    location: string | null
+  }
   return {
     id: row.id,
     username: row.username,
@@ -84,6 +90,10 @@ function rowToUser(row: UserRow): User {
     partnerId: row.partner_id ?? undefined,
     partnerAdmin: row.partner_admin || undefined,
     joinedAt: row.joined_at,
+    avatarUrl: r.avatar_url ?? undefined,
+    bio: r.bio ?? undefined,
+    firma: r.firma ?? undefined,
+    location: r.location ?? undefined,
   }
 }
 

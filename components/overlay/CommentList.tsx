@@ -12,6 +12,7 @@ import {
   FLAG_LABEL,
 } from '@/lib/mockUsers'
 import { descendantCount, engagementScore } from '@/lib/mockComments'
+import { CommentBody } from './CommentBody'
 import {
   clearCommentDeletion,
   tombstoneComment,
@@ -271,6 +272,15 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
         )}
       </header>
 
+      {/* Author firma — small italic mono line under the chip. Only renders
+          when the author has set one (Bundle A profile field). Treat as
+          decoration; doesn't ship if the user opted out by leaving it blank. */}
+      {author?.firma && (
+        <p className="font-mono text-[10px] italic leading-tight text-muted/70">
+          — {author.firma}
+        </p>
+      )}
+
       {/* Body — tombstone or text */}
       {isTombstone ? (
         <Tombstone
@@ -286,9 +296,7 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
           onRevert={() => clearCommentDeletion(node.id)}
         />
       ) : (
-        <p className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-secondary">
-          {node.body}
-        </p>
+        <CommentBody body={node.body} />
       )}
 
       {/* Reactions strip + reply count + reply trigger */}

@@ -4,6 +4,8 @@ import { useRef, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { invalidateComments } from '@/lib/hooks/useComments'
 import { recordHpEvent } from '@/lib/hpEvents'
+import { useMyTrophies } from '@/lib/hooks/useMyTrophies'
+import { unlockedEmojisFor } from '@/lib/trophies'
 
 // ── CommentComposer ────────────────────────────────────────────────────────
 //
@@ -153,6 +155,27 @@ export function CommentComposer({
         style={{ borderColor: '#242424' }}
       />
 
+      <EmojiAffordance
+        onInsert={(token) => {
+          // Insert at the current cursor position; fall back to append.
+          const el = textareaRef.current
+          if (!el) {
+            setBody((prev) => prev + token)
+            return
+          }
+          const start = el.selectionStart ?? body.length
+          const end = el.selectionEnd ?? body.length
+          const next = body.slice(0, start) + token + body.slice(end)
+          setBody(next)
+          // Restore focus + cursor after the inserted token.
+          requestAnimationFrame(() => {
+            el.focus()
+            const newPos = start + token.length
+            el.setSelectionRange(newPos, newPos)
+          })
+        }}
+      />
+
       {error && (
         <div
           className="border px-2 py-1 font-mono text-[10px] tracking-widest"
@@ -191,6 +214,43 @@ export function CommentComposer({
           {submitting ? '▶ ENVIANDO…' : '▶ ENVIAR'}
         </button>
       </div>
+    </div>
+  )
+}
+
+// ── EmojiAffordance ────────────────────────────────────────────────────────
+//
+// Row of inline-emoji insert buttons. Only renders when the current user
+// has earned at least one trophy with an associated unlockable emoji
+// (e.g. signal_caster → :detonador:). Click inserts the token at the
+// textarea cursor; the body renderer (CommentBody) swaps tokens for the
+// styled glyph on read. The button list silently shrinks/expands as the
+// user earns more trophies.
+function EmojiAffordance({ onInsert }: { onInsert: (token: string) => void }) {
+  const earnedKeys = useMyTrophies()
+  const unlocked = unlockedEmojisFor(earnedKeys).filter(
+    (e): e is NonNullable<typeof e> => !!e,
+  )
+  if (unlocked.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="font-mono text-[9px] tracking-widest text-muted">
+        DESBLOQUEADOS:
+      </span>
+      {unlocked.map((emoji) => (
+        <button
+          key={emoji.token}
+          type="button"
+          onClick={() => onInsert(emoji.token)}
+          className="flex items-center gap-1 border px-1.5 py-px font-mono text-[10px] tracking-widest transition-opacity hover:opacity-80"
+          style={{ borderColor: emoji.color, color: emoji.color }}
+          title={`Insertar ${emoji.token}`}
+        >
+          <span className="font-syne font-black">{emoji.glyph}</span>
+          <span className="text-[9px]">{emoji.token}</span>
+        </button>
+      ))}
     </div>
   )
 }

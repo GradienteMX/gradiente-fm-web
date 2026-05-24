@@ -12,6 +12,7 @@ import {
   FLAG_LABEL,
   FLAG_COLOR,
   flagsFor,
+  avatarFrameStyle,
 } from '@/lib/mockUsers'
 
 export const dynamic = 'force-dynamic'
@@ -53,13 +54,17 @@ export default async function UserProfilePage({ params }: PageProps) {
   const flags = flagsFor(user)
 
   const altaDate = user.joinedAt.slice(0, 10)
+  const frameStyle = avatarFrameStyle(user, rank)
 
   return (
     <div className="flex flex-col gap-6">
       <header className="border border-border bg-surface p-4 lg:p-6">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[120px_minmax(0,1fr)]">
-          {/* Avatar */}
-          <div className="aspect-square w-full max-w-[120px] overflow-hidden border border-border bg-base">
+          {/* Avatar — frame styled by rank when user-tier earned progression */}
+          <div
+            className="aspect-square w-full max-w-[120px] overflow-hidden border border-border bg-base"
+            style={frameStyle}
+          >
             {user.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

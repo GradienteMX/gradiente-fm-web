@@ -28,6 +28,15 @@ export interface TrophyMeta {
   sigil: string         // 1-2 char glyph
   color: string         // hex; matches the NGE palette
   family: 'craft' | 'reception' | 'community' | 'presence'
+  // Optional inline-text emoji unlocked along with the trophy. Insertable
+  // into comment bodies via the composer affordance; rendered as a styled
+  // glyph on read. NOT a third reaction kind (the `!`/`?` palette stays
+  // locked per [[Roles and Ranks]]) — these decorate the message text.
+  unlockableEmoji?: {
+    token: string  // e.g. ':detonador:' — what gets written into body text
+    glyph: string  // what renders on screen
+    color: string  // hex
+  }
 }
 
 // Single source of truth — order matters for the trophy grid render order.
@@ -58,6 +67,7 @@ export const TROPHY_CATALOG: readonly TrophyMeta[] = [
     sigil: '!',
     color: '#F87171',  // red-400 — matches detonador rank
     family: 'reception',
+    unlockableEmoji: { token: ':detonador:', glyph: '!', color: '#F87171' },
   },
   {
     key: 'question_caster',
@@ -66,6 +76,7 @@ export const TROPHY_CATALOG: readonly TrophyMeta[] = [
     sigil: '?',
     color: '#A78BFA',  // soft violet — matches enigma rank
     family: 'reception',
+    unlockableEmoji: { token: ':enigma:', glyph: '?', color: '#A78BFA' },
   },
 
   // ── community (you sparked something) ───────────────────────────────────
@@ -124,4 +135,27 @@ export const TROPHY_CATALOG: readonly TrophyMeta[] = [
 
 export function trophyByKey(key: string): TrophyMeta | undefined {
   return TROPHY_CATALOG.find((t) => t.key === key)
+}
+
+// Catalog of (token → glyph + color) pairs. The renderer walks comment
+// body text, splits on these tokens, and replaces them with styled spans.
+// Built lazily so it stays in sync with TROPHY_CATALOG mutations.
+export function getEmojiTokenMap(): Map<string, { glyph: string; color: string }> {
+  const m = new Map<string, { glyph: string; color: string }>()
+  for (const t of TROPHY_CATALOG) {
+    if (t.unlockableEmoji) {
+      m.set(t.unlockableEmoji.token, {
+        glyph: t.unlockableEmoji.glyph,
+        color: t.unlockableEmoji.color,
+      })
+    }
+  }
+  return m
+}
+
+// Which emojis this user has unlocked, given their earned trophy keys.
+export function unlockedEmojisFor(earnedTrophyKeys: ReadonlySet<string>): TrophyMeta['unlockableEmoji'][] {
+  return TROPHY_CATALOG
+    .filter((t) => t.unlockableEmoji && earnedTrophyKeys.has(t.key))
+    .map((t) => t.unlockableEmoji!)
 }

@@ -42,8 +42,19 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     )
   }
-  if (username.length < 3) {
-    return NextResponse.json({ error: 'username must be at least 3 characters' }, { status: 400 })
+  // Username is load-bearing for /u/[username], the CreatorChip, and the
+  // future user-HP / trophy surfaces — treat it like a slug. Reject @, .,
+  // whitespace, and anything outside the slug-safe alphabet. Older accounts
+  // with email-shaped usernames exist as a known-bug in [[Open Questions]]
+  // and need separate row-level cleanup; this gate prevents new ones.
+  if (!/^[a-z0-9_-]{3,30}$/.test(username)) {
+    return NextResponse.json(
+      {
+        error:
+          'username must be 3-30 chars, lowercase letters / digits / underscore / hyphen only (no @, no dots, no spaces)',
+      },
+      { status: 400 },
+    )
   }
   if (password.length < 6) {
     return NextResponse.json({ error: 'password must be at least 6 characters' }, { status: 400 })
