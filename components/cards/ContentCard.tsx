@@ -9,6 +9,8 @@ import { Play, Clock, MapPin, Ticket } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { recordHpEvent } from '@/lib/hpEvents'
+import { useAuth } from '@/components/auth/useAuth'
+import { currentHp } from '@/lib/curation'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from './SavedBadge'
@@ -52,6 +54,56 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
 interface ContentCardProps {
   item: ContentItem
   size?: CardSize
+}
+
+// ── Publisher-only HL chip ────────────────────────────────────────────────
+//
+// Shows the item's current HL bracket on the publisher's OWN cards only —
+// never visible to other viewers. Per [[project_user_hp_visibility]]:
+// "The publisher's own feed cards show HL. Other viewers see the standard
+// card. Per-viewer ternary on auth.uid() = items.created_by."
+//
+// Bracketed labels (DÉBIL → PLENO) rather than raw numbers — keeps the
+// "no visible numeric engagement metrics" rule intact for everyone else
+// while giving the publisher a coarse, glanceable read on their post's
+// reach. The boundaries are loose; we can tune them as engagement data
+// accumulates.
+const HL_TIERS: { max: number; label: string; color: string }[] = [
+  { max: 5,    label: 'DÉBIL',    color: '#6B7280' },  // dim grey
+  { max: 15,   label: 'MODESTO',  color: '#A78BFA' },  // violet
+  { max: 30,   label: 'NOTABLE',  color: '#22D3EE' },  // cyan
+  { max: 60,   label: 'FUERTE',   color: '#F97316' },  // sys-orange
+  { max: Infinity, label: 'PLENO', color: '#F87171' }, // red — heat
+]
+
+function hlTier(hp: number): { label: string; color: string } {
+  for (const t of HL_TIERS) {
+    if (hp < t.max) return { label: t.label, color: t.color }
+  }
+  return HL_TIERS[HL_TIERS.length - 1]
+}
+
+function PublisherHlChip({ item }: { item: ContentItem }) {
+  const { currentUser } = useAuth()
+  // Three gates: caller must be authed, must be the creator, and the item
+  // must have a real createdById (seed items default to undefined). Guards
+  // against SSR / pre-hydration leakage — currentUser is null server-side
+  // and during the first paint, so the chip only appears post-hydration
+  // for the matching viewer.
+  if (!currentUser || !item.createdById) return null
+  if (currentUser.id !== item.createdById) return null
+
+  const hp = currentHp(item, new Date())
+  const { label, color } = hlTier(hp)
+  return (
+    <span
+      className="border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
+      style={{ borderColor: color, color }}
+      title={`HL · sólo tú puedes ver esto en tus publicaciones`}
+    >
+      HL·{label}
+    </span>
+  )
 }
 
 // ── Creator chip ──────────────────────────────────────────────────────────
@@ -218,6 +270,7 @@ function CardImage({
           </span>
         )}
         <PartnerAttributionChip item={item} />
+        <PublisherHlChip item={item} />
       </div>
 
       {/* NGE corner bracket — bottom right */}

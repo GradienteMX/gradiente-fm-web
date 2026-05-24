@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ContentGrid } from '@/components/ContentGrid'
-import { getUserByUsername, getUserRankServer } from '@/lib/data/users'
+import { TrophyGrid, trophyCountLine } from '@/components/profile/TrophyGrid'
+import { getUserByUsername, getUserRankServer, getTrophyKeysByUserId } from '@/lib/data/users'
 import { getItemsByCreatedBy } from '@/lib/data/items'
 import {
   ROLE_LABEL,
@@ -33,11 +34,14 @@ export default async function UserProfilePage({ params }: PageProps) {
   const user = await getUserByUsername(username)
   if (!user) notFound()
 
-  // Rank + published items in parallel — both depend only on user.id.
-  const [rank, items] = await Promise.all([
+  // Rank + published items + trophies in parallel — all keyed on user.id.
+  const [rank, items, trophies] = await Promise.all([
     getUserRankServer(user.id),
     getItemsByCreatedBy(user.id),
+    getTrophyKeysByUserId(user.id),
   ])
+  const trophyKeys = trophies.map((t) => t.key)
+  const trophyEarnedAt = new Map(trophies.map((t) => [t.key, t.earnedAt]))
 
   // Primary identity chip — staff role for guide/insider/curator/admin,
   // derived rank for plain users. Mirrors `badgeFor()` in mockUsers but
@@ -124,6 +128,14 @@ export default async function UserProfilePage({ params }: PageProps) {
           </div>
         </div>
       </header>
+
+      <section className="flex flex-col gap-3">
+        <div className="nge-divider mb-1">
+          <span className="font-mono text-xs tracking-widest text-primary">TROFEOS</span>
+        </div>
+        <p className="sys-label">{trophyCountLine(trophyKeys)} DESBLOQUEADOS</p>
+        <TrophyGrid earnedKeys={trophyKeys} earnedAtByKey={trophyEarnedAt} />
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="nge-divider mb-1">

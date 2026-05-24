@@ -88,6 +88,24 @@ export async function getUserRankServer(userId: string): Promise<UserRank> {
   return rankFromCounts(Number(data.signal_count ?? 0), Number(data.prov_count ?? 0))
 }
 
+// Trophies earned by a user, in catalog order. Returns just the keys —
+// the consumer joins against the TS catalog in lib/trophies.ts for display
+// metadata. Public-read RLS on user_trophies (migration 0019) means anyone
+// can fetch any user's trophies.
+export async function getTrophyKeysByUserId(userId: string): Promise<{ key: string; earnedAt: string }[]> {
+  const supabase = createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('user_trophies')
+    .select('trophy_key, earned_at')
+    .eq('user_id', userId)
+    .order('earned_at', { ascending: true })
+  if (error || !data) return []
+  // Cast through unknown — user_trophies is post-0019 and not in the
+  // generated types yet until `npx supabase gen types typescript` re-runs.
+  const rows = data as unknown as { trophy_key: string; earned_at: string }[]
+  return rows.map((r) => ({ key: r.trophy_key, earnedAt: r.earned_at }))
+}
+
 export async function listUsers(): Promise<User[]> {
   const supabase = createServerSupabaseClient()
   const { data, error } = await supabase

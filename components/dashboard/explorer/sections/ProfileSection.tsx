@@ -12,6 +12,7 @@ import {
   FLAG_LABEL,
 } from '@/lib/mockUsers'
 import { compressAndUploadImage } from '@/lib/imageUpload'
+import { EngagementWidget } from './EngagementWidget'
 
 const MAX_BIO_LEN = 600
 const MAX_FIRMA_LEN = 140
@@ -146,6 +147,7 @@ export function ProfileSection() {
   const publicHref = `/u/${username}`
 
   return (
+    <div className="flex flex-col gap-4">
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       {/* Avatar / identity card */}
       <div className="flex flex-col gap-3 border border-border bg-surface p-4">
@@ -307,6 +309,9 @@ export function ProfileSection() {
           .
         </p>
       </div>
+    </div>
+
+    <EngagementWidget />
     </div>
   )
 }
