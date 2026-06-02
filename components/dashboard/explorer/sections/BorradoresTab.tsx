@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import type { ContentItem } from '@/lib/types'
 import { LivePreview } from '@/components/dashboard/LivePreview'
+import { compressAndUploadImage } from '@/lib/imageUpload'
 
 // MiPartnerSection → BORRADORES tab. Lists the partner's PENDING Instagram
 // events (source='scraper:instagram', published=false) — the ones the agent
@@ -346,7 +347,37 @@ function EditPanel({
   const [vibeMin, setVibeMin] = useState(String(ev.vibeMin ?? 5))
   const [vibeMax, setVibeMax] = useState(String(ev.vibeMax ?? 5))
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+
+  // IG flyer URLs are signed + single-session and die almost immediately
+  // (server-side rehost gets 403 "signature mismatch"), so the durable path is
+  // a real upload into our own bucket — done here, during the review the partner
+  // is doing anyway. Reuses the composer's compress+upload util.
+  const onFlyer = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file
+    if (!file) return
+    setUploading(true)
+    setErr(null)
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setErr('SESIÓN EXPIRADA')
+      setUploading(false)
+      return
+    }
+    const res = await compressAndUploadImage(file, user.id, { maxSizeMB: 1, maxWidthOrHeight: 1600 })
+    if (!res.ok) {
+      setErr(res.error.toUpperCase())
+      setUploading(false)
+      return
+    }
+    setImageUrl(res.url)
+    setUploading(false)
+  }
 
   const save = async () => {
     if (!title.trim()) {
@@ -499,8 +530,36 @@ function EditPanel({
       </div>
 
       <div className="flex flex-col gap-0.5">
-        <label className={LABEL_CLS}>Imagen (URL)</label>
-        <input className={INPUT_CLS} value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+        <label className={LABEL_CLS}>Flyer (sube el archivo — el link de IG caduca)</label>
+        <div className="flex items-center gap-2">
+          <input
+            className={`${INPUT_CLS} flex-1`}
+            value={imageUrl}
+            placeholder="Sube un archivo, o pega una URL"
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          <label
+            className="flex shrink-0 cursor-pointer items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] tracking-widest text-secondary transition-opacity hover:opacity-80"
+            style={uploading ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+          >
+            {uploading ? 'SUBIENDO…' : 'SUBIR'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploading}
+              onChange={onFlyer}
+            />
+          </label>
+        </div>
+        {imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="mt-1 h-16 w-16 border border-border object-cover object-top"
+          />
+        )}
       </div>
 
       <div className="mt-1 flex gap-2">
