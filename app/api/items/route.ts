@@ -94,6 +94,15 @@ export async function POST(request: NextRequest) {
     const isAuthz =
       itemError.message.includes('row-level security') ||
       itemError.code === '42501'
+    console.error('[POST /api/items] upsert failed', {
+      code: itemError.code,
+      message: itemError.message,
+      details: itemError.details,
+      hint: itemError.hint,
+      stampAsPartner,
+      itemId: item.id,
+      itemType: item.type,
+    })
     return NextResponse.json(
       { error: itemError.message },
       { status: isAuthz ? 403 : 500 }
@@ -139,12 +148,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 3. Delete the corresponding draft for this user. Idempotent.
+  // 3. Delete the corresponding draft(s) for this user. Match on id OR slug:
+  //    the composer occasionally regenerates the item id between draft-save
+  //    and publish, leaving an orphan draft with the same slug as the now-
+  //    published row. Without the slug-side match, the orphan persists and
+  //    the next publish attempt hits a `items_slug_key` unique-constraint
+  //    violation. Idempotent — no matching draft, no-op.
   await supabase
     .from('drafts')
     .delete()
     .eq('author_id', user.id)
-    .eq('item_payload->>id', item.id)
+    .or(`item_payload->>id.eq.${item.id},item_payload->>slug.eq.${item.slug}`)
 
   return NextResponse.json({ ok: true, itemId: item.id })
 }
