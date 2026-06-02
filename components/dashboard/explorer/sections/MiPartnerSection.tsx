@@ -10,6 +10,7 @@ import {
   Copy,
   Eye,
   Image as ImageIcon,
+  Instagram,
   Lock,
   MapPin,
   Package,
@@ -41,6 +42,7 @@ import { compressAndUploadImage } from '@/lib/imageUpload'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { PARTNER_PUBLISHABLE_TYPES } from '@/lib/permissions'
 import { NuevoSection } from '@/components/dashboard/explorer/sections/NuevoSection'
+import { BorradoresTab } from '@/components/dashboard/explorer/sections/BorradoresTab'
 import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import type { ContentType, PartnerKind } from '@/lib/types'
 
@@ -75,7 +77,7 @@ function newListingId(partnerId: string): string {
 // (partner-admin or site admin). The UI hides write affordances when
 // the gate would deny anyway.
 
-type Tab = 'equipo' | 'marketplace' | 'publicar'
+type Tab = 'equipo' | 'marketplace' | 'publicar' | 'borradores'
 
 // Shape returned by GET /api/partners/[id] mapped to camelCase (matches
 // the ContentItem field names downstream so the listings composer + card
@@ -224,6 +226,8 @@ export function MiPartnerSection() {
         />
       ) : tab === 'publicar' ? (
         <PublicarTab partner={partner} />
+      ) : tab === 'borradores' ? (
+        <BorradoresTab partnerId={partner.id} />
       ) : (
         <MarketplaceTab
           partner={partner}
@@ -277,6 +281,12 @@ function TabSwitcher({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }
         onClick={() => onChange('publicar')}
         icon={<Plus size={12} strokeWidth={1.5} />}
         label="PUBLICAR"
+      />
+      <TabButton
+        active={tab === 'borradores'}
+        onClick={() => onChange('borradores')}
+        icon={<Instagram size={12} strokeWidth={1.5} />}
+        label="BORRADORES"
       />
       <TabButton
         active={tab === 'marketplace'}

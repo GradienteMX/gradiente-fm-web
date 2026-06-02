@@ -304,7 +304,14 @@ export function EventosRail({ items }: EventosRailProps) {
     // drag-to-scroll silently dies.
   }, [sorted.length, hiddenByCategoryFilter])
 
-  if (sorted.length === 0 || hiddenByCategoryFilter) return null
+  // Category-filtered to a non-evento section → hide the rail entirely (the
+  // user asked to see only that section). But when there are simply no upcoming
+  // events, KEEP the rail mounted with an empty-state — it must never just
+  // vanish (that reads as broken). The agenda repopulates on the next scraper
+  // run; until then this placeholder holds its space.
+  if (hiddenByCategoryFilter) return null
+
+  const empty = sorted.length === 0
 
   return (
     <section className="my-4" aria-label="Agenda de eventos">
@@ -317,34 +324,51 @@ export function EventosRail({ items }: EventosRailProps) {
           //AGENDA
         </span>
         <span className="ml-auto flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-          {sorted.length} EVENTOS · LIVE FEED · RA
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${empty ? '' : 'animate-pulse bg-sys-green'}`}
+            style={empty ? { backgroundColor: '#6B7280' } : undefined}
+          />
+          {empty ? 'SIN PRÓXIMOS EVENTOS' : `${sorted.length} EVENTOS · LIVE FEED · RA`}
         </span>
       </div>
       <p className="sys-label mb-2">
-        PRÓXIMOS · ORDEN CRONOLÓGICO · ARRASTRA O ESPERA · CLICK PARA DETALLE
+        {empty
+          ? 'AGENDA EN ESPERA'
+          : 'PRÓXIMOS · ORDEN CRONOLÓGICO · ARRASTRA O ESPERA · CLICK PARA DETALLE'}
       </p>
 
-      <div className="relative">
-        <div
-          ref={trackRef}
-          className="evento-rail-track flex cursor-grab gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain"
-          // Hide native scrollbar (Firefox + WebKit) — auto-scroll motion +
-          // edge fades carry the affordance; the bar adds visual noise.
-          style={{ scrollbarWidth: 'none' }}
-        >
-          {[...sorted, ...sorted].map((item, i) => (
-            <EventoRailCard
-              key={`${item.id}-${i}`}
-              item={item}
-              onOpen={handleOpen}
-            />
-          ))}
+      {empty ? (
+        <div className="flex items-center gap-3 border border-dashed border-border bg-elevated/40 px-4 py-5">
+          <Calendar size={16} strokeWidth={1.5} className="shrink-0" style={{ color: '#6B7280' }} />
+          <p className="font-mono text-[11px] leading-relaxed text-muted">
+            <span className="block tracking-widest" style={{ color: '#9CA3AF' }}>
+              ◇ AGENDA VACÍA
+            </span>
+            No hay eventos próximos por ahora. Vuelve pronto.
+          </p>
         </div>
-        {/* Edge fades — signal off-screen content + soften the wrap seam */}
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-12 bg-gradient-to-r from-base to-transparent" />
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-base to-transparent" />
-      </div>
+      ) : (
+        <div className="relative">
+          <div
+            ref={trackRef}
+            className="evento-rail-track flex cursor-grab gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+            // Hide native scrollbar (Firefox + WebKit) — auto-scroll motion +
+            // edge fades carry the affordance; the bar adds visual noise.
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {[...sorted, ...sorted].map((item, i) => (
+              <EventoRailCard
+                key={`${item.id}-${i}`}
+                item={item}
+                onOpen={handleOpen}
+              />
+            ))}
+          </div>
+          {/* Edge fades — signal off-screen content + soften the wrap seam */}
+          <div className="pointer-events-none absolute left-0 top-0 h-full w-12 bg-gradient-to-r from-base to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-base to-transparent" />
+        </div>
+      )}
     </section>
   )
 }

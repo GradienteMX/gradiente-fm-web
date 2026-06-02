@@ -128,7 +128,11 @@ export const SUBCATEGORIES_BY_CATEGORY: Record<MarketplaceListingCategory, strin
 // 0 = glacial/ice, 10 = volcán/fire — stored as number, shown as gradient position
 export type VibeScore = number
 
-export type ContentSource = 'scraper:ra' | 'manual:editor' | 'manual:partner'
+export type ContentSource =
+  | 'scraper:ra'
+  | 'scraper:instagram'
+  | 'manual:editor'
+  | 'manual:partner'
 
 export interface ContentItem {
   id: string

@@ -1064,6 +1064,30 @@ export type Database = {
       apply_user_hp_rollup: { Args: never; Returns: undefined }
       apply_vibe_check_bonuses: { Args: never; Returns: undefined }
       harvest_item: { Args: { p_item_id: string }; Returns: Json }
+      ingest_scraped_event: {
+        Args: {
+          p_source: string
+          p_external_id: string
+          p_partner_id: string | null
+          p_id: string
+          p_slug: string
+          p_title: string
+          p_subtitle: string
+          p_excerpt: string
+          p_date: string
+          p_end_date: string | null
+          p_venue: string
+          p_venue_city: string
+          p_artists: string[]
+          p_ticket_url: string
+          p_price: string
+          p_image_url: string
+          p_genres: string[]
+        }
+        Returns: Json
+      }
+      publish_partner_event: { Args: { p_item_id: string }; Returns: Json }
+      discard_partner_event: { Args: { p_item_id: string }; Returns: Json }
       record_hp_event: {
         Args: { p_base_weight: number; p_item_id: string; p_kind: string }
         Returns: number
@@ -1071,7 +1095,11 @@ export type Database = {
       sweep_old_foro_threads: { Args: never; Returns: undefined }
     }
     Enums: {
-      content_source: "scraper:ra" | "manual:editor" | "manual:partner"
+      content_source:
+        | "scraper:ra"
+        | "scraper:instagram"
+        | "manual:editor"
+        | "manual:partner"
       content_type:
         | "evento"
         | "mix"
@@ -1220,7 +1248,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      content_source: ["scraper:ra", "manual:editor", "manual:partner"],
+      content_source: ["scraper:ra", "scraper:instagram", "manual:editor", "manual:partner"],
       content_type: [
         "evento",
         "mix",
