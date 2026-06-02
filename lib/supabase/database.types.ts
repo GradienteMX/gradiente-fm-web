@@ -1088,6 +1088,26 @@ export type Database = {
       }
       publish_partner_event: { Args: { p_item_id: string }; Returns: Json }
       discard_partner_event: { Args: { p_item_id: string }; Returns: Json }
+      update_partner_event: {
+        Args: {
+          p_item_id: string
+          p_title: string
+          p_subtitle: string
+          p_excerpt: string
+          p_date: string
+          p_end_date: string | null
+          p_venue: string
+          p_venue_city: string
+          p_artists: string[]
+          p_ticket_url: string
+          p_price: string
+          p_image_url: string
+          p_genres: string[]
+          p_vibe_min: number
+          p_vibe_max: number
+        }
+        Returns: Json
+      }
       record_hp_event: {
         Args: { p_base_weight: number; p_item_id: string; p_kind: string }
         Returns: number
