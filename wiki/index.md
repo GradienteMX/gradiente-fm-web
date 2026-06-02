@@ -164,6 +164,7 @@
 - [[Why NGE Aesthetic]] — the founding design call
 - [[Size and Position as Only Signals]] — no stars, likes, or counters
 - [[No Algorithm]] — editorial curation over engagement metrics
+- [[Novelty Weighting]] — box-breaking under the hood: HP contribution scaled by content-novelty-to-user; reads stay global (No-Algorithm-safe)
 - [[Roles and Ranks]] — three identity axes (creation tier + mod/og flags + auto-rank), !/? reaction palette
 - [[Polls As Attachments]] — poll = optional ContentItem attachment, per-type variant resolution, card-as-canvas voting, anonymous-until-vote
 - [[Marketplace]] — partner-only commerce, dedicated `/marketplace` route, `partnerId` field + `partnerAdmin` flag, four-step approval flow

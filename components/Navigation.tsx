@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { AuthBadge } from '@/components/auth/AuthBadge'
+import { useFeedPulse } from '@/lib/hooks/useFeedPulse'
 
 // Header destinations. Trimmed from 9 → 4 on 2026-05-12 to break the visual
 // equivalence with the SECCIÓN rail (beta testers were ignoring FORO +
@@ -25,6 +26,14 @@ const NAV_LINKS = [
 // so the "this is where you are" cue is visually rhymed with the brand chrome.
 const ACTIVE_GRADIENT = 'linear-gradient(to right, #FF8800, #E63329)'
 const NAV_ORANGE = '#FF8800'
+
+// "hace Xm" label for the feed heartbeat (terminal voice, Spanish).
+function agoLabel(minutes: number): string {
+  if (minutes < 1) return 'AHORA'
+  if (minutes < 60) return `HACE ${minutes}m`
+  if (minutes < 1440) return `HACE ${Math.floor(minutes / 60)}h`
+  return `HACE ${Math.floor(minutes / 1440)}d`
+}
 
 const DATA_STRIP = [
   'CDMX·UNDERGROUND', '//', 'MUSICA·ELECTRONICA', '//', 'FREQ·ACTIVA·128BPM', '//',
@@ -48,6 +57,15 @@ export function Navigation() {
     const id = setInterval(update, 100)
     return () => clearInterval(id)
   }, [])
+
+  // Real feed heartbeat — how long since the HP rollup last moved the feed +
+  // active piece count. now=0 until the hook resolves client-side, so nothing
+  // time-dependent renders during SSR.
+  const { lastCuratedAt, activeCount, now } = useFeedPulse()
+  const curatedMs = lastCuratedAt ? Date.parse(lastCuratedAt) : null
+  const minutesAgo =
+    curatedMs !== null && now > 0 ? Math.max(0, Math.floor((now - curatedMs) / 60000)) : null
+  const feedFresh = minutesAgo !== null && minutesAgo < 6 // within one rollup cycle
 
   return (
     <header className="eva-scanlines sticky top-0 z-50 bg-black">
@@ -255,10 +273,29 @@ export function Navigation() {
           ))}
         </div>
 
-        {/* SYS status */}
+        {/* SYS status — real feed heartbeat: when the HP rollup last moved the
+            feed (max items.hp_last_updated_at) + active piece count. The dot
+            pulses (motion-safe) when re-curated within the last rollup cycle.
+            Authed-only data; anonymous visitors see just the dim dot. */}
         <div className="flex flex-shrink-0 items-center gap-1.5 px-3" style={{ borderLeft: '1px solid #1C1000' }}>
-          <span className="h-[4px] w-[4px] rounded-full" style={{ backgroundColor: '#FF6600', boxShadow: '0 0 4px #FF6600' }} />
-          <span className="font-mono text-[7px]" style={{ color: '#FF660066' }}>LIVE</span>
+          <span
+            className={`h-[4px] w-[4px] rounded-full ${feedFresh ? 'motion-safe:animate-pulse' : ''}`}
+            style={{
+              backgroundColor: '#FF6600',
+              boxShadow: '0 0 4px #FF6600',
+              opacity: minutesAgo === null ? 0.4 : feedFresh ? 1 : 0.6,
+            }}
+          />
+          {minutesAgo !== null && (
+            <span className="font-mono text-[7px] tabular-nums" style={{ color: '#FF660099' }}>
+              RECURADO {agoLabel(minutesAgo)}
+              {activeCount !== null && (
+                <span className="hidden sm:inline" style={{ opacity: 0.7 }}>
+                  {' '}· {activeCount} PIEZAS
+                </span>
+              )}
+            </span>
+          )}
         </div>
       </div>
       </div>

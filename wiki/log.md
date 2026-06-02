@@ -8,6 +8,40 @@
 
 ---
 
+## 2026-06-02 · INGEST · "make it alive" — HP loop reconciled + crowd-weighted, novelty weighting, composer prior, feed heartbeat
+
+A session-long arc making the reactive machinery *actually* reactive (and legible), plus two dashboard bugs surfaced while testing. Through-line: the NGE aesthetic promises a living system — make every readout true rather than decorative.
+
+### What landed
+
+- **HP rollup ↔ read-side reconciliation** — migration [0024_hp_rollup_imminence.sql](../supabase/migrations/0024_hp_rollup_imminence.sql). `apply_hp_rollup()` ignored event-imminence (always flat type half-life), so a popular *upcoming* event got flat-decayed + re-anchored on every engagement tick — eroding the imminence lift meant to keep tonight's party on top. Ported `decayLambda()`'s modulation (live-window freeze → λ=0; <7d-out → ×(daysUntil/7)²; >30d-past → ×2) into the cron, composed with the harvest decay multiplier. Cron and [[curation]] now agree.
+- **Balanced engagement weights** — [api/hp-events/route.ts](../app/api/hp-events/route.ts): open 1→1.5, save 3→4, comment 2→3. Validated with a population sim ([scripts/hpSim.mjs](../scripts/hpSim.mjs)) that showed weight *magnitude* is a minor lever (score normalizes by per-type peak), and that at growth scale a runaway item compresses the feed to `sm` — the real fix being `max` → rolling p90 normalization (TODO at `curation.ts:99`). Logged as scale-up roadmap, not shipped.
+- **Novelty weighting — box-breaking under the hood** — migration [0025_novelty_weighting.sql](../supabase/migrations/0025_novelty_weighting.sql) + [[Novelty Weighting]]. The HP a user *grants* is scaled by how novel the content's (genre · type · vibe-band) are to them: echo-chamber engagement discounted (~0.8×), cross-genre amplified (≤1.5×). New private `user_axis_affinity` store (RLS-locked, 0 policies — only the SECURITY DEFINER `record_hp_event()` touches it) replaces the bare hp_events insert. **Reads stay global** (one shared `items.hp` for everyone; only the write-weight is personal), so [[No Algorithm]] holds. Gentle spread (M_MIN 0.6 / M_MAX 1.5 / γ1 / 45d half-life / 15-interaction cold start), tuned in [scripts/noveltySim.mjs](../scripts/noveltySim.mjs). Relaxes the `curation.ts:5` "No per-user logs" line — intentional, documented.
+- **Composer vibe-prior** (Vibe Philosophy idea #3) — [lib/data/vibePriors.ts](../lib/data/vibePriors.ts) (weighted prior from author×3 + venue×2 + genres×1, confidence→narrowness, no new schema) → [api/vibe-prior](../app/api/vibe-prior/route.ts) → [useVibePrior](../lib/hooks/useVibePrior.ts) → [VibePriorHint](../components/dashboard/forms/shared/VibePriorHint.tsx), wired under the VibeField in all 8 compose forms. Suggest-and-apply (`≈ SUGERIDO 5–9 · tu historial · APLICAR`), non-destructive, renders nothing when there's no history.
+- **Feed heartbeat** — [Navigation.tsx](../components/Navigation.tsx) + [useFeedPulse](../lib/hooks/useFeedPulse.ts). The fake `● LIVE` data-strip slot is now real: `RECURADO HACE Xm` (from `max(items.hp_last_updated_at)` — honest at any traffic level since a no-op rollup doesn't advance it) + active piece count. Dot `motion-safe:animate-pulse`s only when re-curated within the last rollup cycle. Authed-only data (items reads auth-gated, 0014); anon sees just the dim dot.
+
+### Bugs fixed (dashboard LivePreview)
+
+- **`useOverlayShell must be used inside <OverlayShell>`** on editorial/review/opinion/noticia previews — latent since the 2026-05-21 comments work ([ReaderOverlay](../components/overlay/ReaderOverlay.tsx) reads the comment count via `useOverlayShell()`, but [LivePreview](../components/dashboard/LivePreview.tsx) renders it without a shell). Fix: new exported `OverlayShellPreviewProvider` (inert stub — 0 comments, no-op toggle; module-const value to dodge the SWC parse gotcha) in [OverlayShell.tsx](../components/overlay/OverlayShell.tsx); LivePreview wraps `PreviewBody` in it.
+- **Articulo previewed via GenericOverlay** — added the `articulo` case so [ArticuloOverlay](../components/overlay/ArticuloOverlay.tsx) renders in preview.
+
+### Infra
+
+- 0024 + 0025 applied to prod via the Supabase SQL editor — **not** `db push` (prod migration history stops at 0016 though the DB has 0017–0023, applied out-of-band; a push would replay + conflict). [database.types.ts](../lib/supabase/database.types.ts) regenerated from the live schema (also closes the older Functions/columns drift); harvest route dropped its now-unneeded rpc cast; CLAUDE.md "No backend yet" line corrected.
+
+### Wiki touched
+
+- [[Novelty Weighting]] — new §90 decision. [[index]] — added it under §90.
+
+### Deferred / open
+
+- **`max` → rolling p90 normalization** in [[curation]] — the real scale-up knob so a runaway item can't compress the feed. Defer until traffic.
+- **Re-tune novelty spread + engagement weights from production data** after a few weeks of beta (shipped numbers come from assumed profiles; the sims are the bench).
+- **Voting-budget normalization** for novelty (avg multiplier ≈ 1.0) — add only if heavy users' total influence needs reining in.
+- **Reconcile migration history** — mark 0017–0023 as applied so future `db push` is sane.
+
+---
+
 ## 2026-05-21 · INGEST · COMENTARIOS button promoted to a real CTA
 
 Beta feedback rollup: multiple users were missing the comments surface entirely. The vertical rail button on the right edge of every overlay looked like decorative chrome — gray-on-near-black, 10px rotated text, no count, no presence signal. The closed-state color (`#9CA3AF` muted gray) only flipped to orange `#F97316` *after* a click, which is exactly backwards: the invitation to click was inert, the confirmation of having clicked was loud. Four converging changes, all on existing surfaces, no new chrome introduced.

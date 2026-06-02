@@ -7,6 +7,8 @@ import { ListicleOverlay } from '@/components/overlay/ListicleOverlay'
 import { EventoOverlay } from '@/components/overlay/EventoOverlay'
 import { ReaderOverlay } from '@/components/overlay/ReaderOverlay'
 import { GenericOverlay } from '@/components/overlay/GenericOverlay'
+import { ArticuloOverlay } from '@/components/overlay/ArticuloOverlay'
+import { OverlayShellPreviewProvider } from '@/components/overlay/OverlayShell'
 
 // Renders a draft ContentItem through its real overlay component inside a
 // preview frame — mimics the overlay chrome without taking over the screen.
@@ -61,7 +63,12 @@ export function LivePreview({ draft }: { draft: ContentItem }) {
           className="overflow-y-auto"
           style={{ maxHeight: 'calc(100vh - 300px)' }}
         >
-          <PreviewBody draft={draft} />
+          {/* Preview renders the real overlay BODY without the full OverlayShell,
+              so supply an inert shell context (comments aren't live for a draft)
+              — otherwise ReaderOverlay's useOverlayShell() throws. */}
+          <OverlayShellPreviewProvider>
+            <PreviewBody draft={draft} />
+          </OverlayShellPreviewProvider>
         </div>
       </div>
 
@@ -80,6 +87,8 @@ function PreviewBody({ draft }: { draft: ContentItem }) {
       return <MixOverlay item={draft} />
     case 'listicle':
       return <ListicleOverlay item={draft} />
+    case 'articulo':
+      return <ArticuloOverlay item={draft} />
     case 'evento':
       return <EventoOverlay item={draft} />
     case 'editorial':

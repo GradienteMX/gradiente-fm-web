@@ -20,6 +20,7 @@ import {
   useDraftWorkbench,
 } from './shared/Fields'
 import { PollFieldset } from './shared/PollFieldset'
+import { VibePriorHint } from './shared/VibePriorHint'
 
 const DRAFT_KEY = 'gradiente:dashboard:evento-draft'
 
@@ -197,6 +198,13 @@ export function EventoForm() {
 
         <Section label="06" title="VIBE + GÉNEROS">
           <VibeField valueMin={draft.vibeMin} valueMax={draft.vibeMax} onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })} />
+          <VibePriorHint
+            genres={draft.genres}
+            venue={draft.venue}
+            currentMin={draft.vibeMin}
+            currentMax={draft.vibeMax}
+            onApply={(min, max) => patch({ vibeMin: min, vibeMax: max })}
+          />
           <GenreMultiSelect
             value={draft.genres}
             onChange={(genres) => patch({ genres })}

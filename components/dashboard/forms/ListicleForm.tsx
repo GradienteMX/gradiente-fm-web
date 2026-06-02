@@ -31,6 +31,7 @@ import {
   useDraftWorkbench,
 } from './shared/Fields'
 import { PollFieldset } from './shared/PollFieldset'
+import { VibePriorHint } from './shared/VibePriorHint'
 
 const DRAFT_KEY = 'gradiente:dashboard:listicle-draft'
 
@@ -161,6 +162,12 @@ export function ListicleForm() {
 
         <Section label="03" title="VIBE + GÉNEROS">
           <VibeField valueMin={draft.vibeMin} valueMax={draft.vibeMax} onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })} />
+          <VibePriorHint
+            genres={draft.genres}
+            currentMin={draft.vibeMin}
+            currentMax={draft.vibeMax}
+            onApply={(min, max) => patch({ vibeMin: min, vibeMax: max })}
+          />
           <GenreMultiSelect
             value={draft.genres}
             onChange={(genres) => patch({ genres })}

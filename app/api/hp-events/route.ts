@@ -19,11 +19,17 @@ import { createClient } from '@/lib/supabase/server'
 // is 20 (or 50 for editorial). A single click adds 0.5 — meaningful but
 // nowhere near a republish. A save adds 3 — about the value of a single
 // item half-life tick.
+// Tuned 2026-06-02 (balanced set, validated via scripts/hpSim.mjs). At beta
+// scale these sharpen crowd reactivity — a well-received non-editorial item
+// can reach the lg tier while a neglected editorial pick slips toward sm —
+// without overpowering the editorial spawn lever. NOTE: weight *magnitude* is
+// a minor lever (score normalizes by per-type peak); the real scale-up knob is
+// switching that normalization from max → rolling p90 (see lib/curation.ts:99).
 const KIND_WEIGHTS: Record<string, number> = {
   click: 0.5,
-  open: 1,
-  save: 3,
-  comment: 2,
+  open: 1.5,
+  save: 4,
+  comment: 3,
 }
 
 interface PostBody {
@@ -58,17 +64,23 @@ export async function POST(request: NextRequest) {
 
   const weight = KIND_WEIGHTS[body.kind]
 
-  const { error } = await supabase
-    .from('hp_events')
-    .insert({ item_id: body.item_id, kind: body.kind, weight })
+  // record_hp_event (migration 0025) scales the base weight by how novel this
+  // item's genre/type/vibe are to the caller, records the event, and folds the
+  // interaction into the caller's private affinity profile — all atomically,
+  // server-authoritative. Returns the applied multiplier, or -1 if the item is
+  // absent. We deliberately do NOT echo the multiplier: the novelty weighting
+  // is under the hood, never surfaced to the client (see Novelty Weighting doc).
+  const { data: result, error } = await supabase.rpc('record_hp_event', {
+    p_item_id: body.item_id,
+    p_kind: body.kind,
+    p_base_weight: weight,
+  })
 
   if (error) {
-    // FK violation (item_id not in items) → 404; everything else → 500.
-    const isFk = error.code === '23503'
-    return NextResponse.json(
-      { error: error.message },
-      { status: isFk ? 404 : 500 },
-    )
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  if (result === null || result < 0) {
+    return NextResponse.json({ error: 'item not found' }, { status: 404 })
   }
   return NextResponse.json({ ok: true })
 }

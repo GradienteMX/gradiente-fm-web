@@ -428,8 +428,11 @@ export type Database = {
           external_id: string | null
           footnotes: Json
           genres: string[]
+          harvested_amount: number | null
+          harvested_at: string | null
           hero_caption: string | null
           hp: number | null
+          hp_decay_multiplier: number
           hp_last_updated_at: string | null
           id: string
           image_url: string | null
@@ -442,6 +445,7 @@ export type Database = {
           mix_status: Database["public"]["Enums"]["mix_status"] | null
           mix_url: string | null
           musical_key: string | null
+          partner_id: string | null
           partner_kind: Database["public"]["Enums"]["partner_kind"] | null
           partner_last_updated: string | null
           partner_url: string | null
@@ -487,8 +491,11 @@ export type Database = {
           external_id?: string | null
           footnotes?: Json
           genres?: string[]
+          harvested_amount?: number | null
+          harvested_at?: string | null
           hero_caption?: string | null
           hp?: number | null
+          hp_decay_multiplier?: number
           hp_last_updated_at?: string | null
           id: string
           image_url?: string | null
@@ -501,6 +508,7 @@ export type Database = {
           mix_status?: Database["public"]["Enums"]["mix_status"] | null
           mix_url?: string | null
           musical_key?: string | null
+          partner_id?: string | null
           partner_kind?: Database["public"]["Enums"]["partner_kind"] | null
           partner_last_updated?: string | null
           partner_url?: string | null
@@ -546,8 +554,11 @@ export type Database = {
           external_id?: string | null
           footnotes?: Json
           genres?: string[]
+          harvested_amount?: number | null
+          harvested_at?: string | null
           hero_caption?: string | null
           hp?: number | null
+          hp_decay_multiplier?: number
           hp_last_updated_at?: string | null
           id?: string
           image_url?: string | null
@@ -560,6 +571,7 @@ export type Database = {
           mix_status?: Database["public"]["Enums"]["mix_status"] | null
           mix_url?: string | null
           musical_key?: string | null
+          partner_id?: string | null
           partner_kind?: Database["public"]["Enums"]["partner_kind"] | null
           partner_last_updated?: string | null
           partner_url?: string | null
@@ -592,6 +604,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
         ]
@@ -768,6 +787,76 @@ export type Database = {
           },
         ]
       }
+      user_axis_affinity: {
+        Row: {
+          axis: string
+          key: string
+          updated_at: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          axis: string
+          key: string
+          updated_at?: string
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          axis?: string
+          key?: string
+          updated_at?: string
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_axis_affinity_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_hp_events: {
+        Row: {
+          attribution_key: string | null
+          created_at: string
+          id: number
+          kind: string
+          processed_at: string | null
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          attribution_key?: string | null
+          created_at?: string
+          id?: number
+          kind: string
+          processed_at?: string | null
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          attribution_key?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+          processed_at?: string | null
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hp_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_saves: {
         Row: {
           item_id: string
@@ -801,13 +890,45 @@ export type Database = {
           },
         ]
       }
+      user_trophies: {
+        Row: {
+          earned_at: string
+          trophy_key: string
+          user_id: string
+        }
+        Insert: {
+          earned_at?: string
+          trophy_key: string
+          user_id: string
+        }
+        Update: {
+          earned_at?: string
+          trophy_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_trophies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           display_name: string
+          engagement_hp: number
+          engagement_hp_last_updated_at: string | null
+          firma: string | null
           id: string
           is_mod: boolean
           is_og: boolean
           joined_at: string
+          location: string | null
           partner_admin: boolean
           partner_id: string | null
           profile_meta: Json
@@ -816,11 +937,17 @@ export type Database = {
           username: string
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           display_name: string
+          engagement_hp?: number
+          engagement_hp_last_updated_at?: string | null
+          firma?: string | null
           id: string
           is_mod?: boolean
           is_og?: boolean
           joined_at?: string
+          location?: string | null
           partner_admin?: boolean
           partner_id?: string | null
           profile_meta?: Json
@@ -829,11 +956,17 @@ export type Database = {
           username: string
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           display_name?: string
+          engagement_hp?: number
+          engagement_hp_last_updated_at?: string | null
+          firma?: string | null
           id?: string
           is_mod?: boolean
           is_og?: boolean
           joined_at?: string
+          location?: string | null
           partner_admin?: boolean
           partner_id?: string | null
           profile_meta?: Json
@@ -845,6 +978,44 @@ export type Database = {
           {
             foreignKeyName: "users_partner_id_fkey"
             columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vibe_checks: {
+        Row: {
+          created_at: string
+          hp_credited_at: string | null
+          item_id: string
+          updated_at: string
+          user_id: string
+          vibe_max: number
+          vibe_min: number
+        }
+        Insert: {
+          created_at?: string
+          hp_credited_at?: string | null
+          item_id: string
+          updated_at?: string
+          user_id: string
+          vibe_max: number
+          vibe_min: number
+        }
+        Update: {
+          created_at?: string
+          hp_credited_at?: string | null
+          item_id?: string
+          updated_at?: string
+          user_id?: string
+          vibe_max?: number
+          vibe_min?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vibe_checks_item_id_fkey"
+            columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -869,9 +1040,34 @@ export type Database = {
           },
         ]
       }
+      vibe_check_aggregates: {
+        Row: {
+          check_count: number | null
+          item_id: string | null
+          median_max: number | null
+          median_min: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vibe_checks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_hp_rollup: { Args: never; Returns: undefined }
+      apply_trophy_unlocks: { Args: never; Returns: undefined }
+      apply_user_hp_rollup: { Args: never; Returns: undefined }
+      apply_vibe_check_bonuses: { Args: never; Returns: undefined }
+      harvest_item: { Args: { p_item_id: string }; Returns: Json }
+      record_hp_event: {
+        Args: { p_base_weight: number; p_item_id: string; p_kind: string }
+        Returns: number
+      }
       sweep_old_foro_threads: { Args: never; Returns: undefined }
     }
     Enums: {

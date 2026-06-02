@@ -54,6 +54,25 @@ export function useOverlayShell() {
   return ctx
 }
 
+// Inert shell context for previews (e.g. the dashboard LivePreview) that render
+// an overlay BODY without the full OverlayShell. A draft has no live comments,
+// so overlay components that read the comment count (ReaderOverlay's DISCUSIÓN
+// entry / [C] footer) get inert values instead of throwing. Real overlays always
+// use the full <OverlayShell> below. The value is a module const (not inlined on
+// the Provider) to dodge the SWC "jsx identifier" parse error noted in the log.
+const PREVIEW_SHELL_VALUE: OverlayShellContextValue = {
+  commentsOpen: false,
+  setCommentsOpen: () => {},
+  commentsTotal: 0,
+  commentsLoading: false,
+  comments: [],
+  commentsUsersById: new Map<string, User>(),
+}
+
+export function OverlayShellPreviewProvider({ children }: { children: ReactNode }) {
+  return <OverlayShellContext.Provider value={PREVIEW_SHELL_VALUE}>{children}</OverlayShellContext.Provider>
+}
+
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
   evento: 'EVENTO',
   mix: 'MIX',

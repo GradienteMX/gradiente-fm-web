@@ -19,7 +19,7 @@ The repo folder is still named `espectro-fm-web` for historical reasons; the UI 
 - Animation: Framer Motion 12
 - Icons: Lucide React
 - Date handling: date-fns 3 + `date-fns/locale/es`
-- No backend yet — all data from [`lib/mockData.ts`](./lib/mockData.ts). See [`wiki/70-Roadmap/Supabase Migration.md`](./wiki/70-Roadmap/Supabase Migration.md).
+- Backend: Supabase (Postgres + RLS + Auth + Storage + Realtime), live in production on Vercel at gradiente.org. `lib/mockData.ts` is retained as dev seed data only. See [`wiki/70-Roadmap/Backend Plan.md`](./wiki/70-Roadmap/Backend Plan.md).
 
 ## Folder structure
 

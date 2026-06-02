@@ -15,6 +15,7 @@ import { LivePreview } from '@/components/dashboard/LivePreview'
 import { EmbedList, useDraftWorkbench, VibeField } from './shared/Fields'
 import { SubmitFooter } from './shared/Fields'
 import { PollFieldset } from './shared/PollFieldset'
+import { VibePriorHint } from './shared/VibePriorHint'
 
 const DRAFT_KEY = 'gradiente:dashboard:mix-draft'
 
@@ -175,6 +176,12 @@ export function MixForm() {
             valueMin={draft.vibeMin}
             valueMax={draft.vibeMax}
             onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })}
+          />
+          <VibePriorHint
+            genres={draft.genres}
+            currentMin={draft.vibeMin}
+            currentMax={draft.vibeMax}
+            onApply={(min, max) => patch({ vibeMin: min, vibeMax: max })}
           />
           <GenreMultiSelect
             value={draft.genres}

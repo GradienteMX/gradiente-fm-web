@@ -32,20 +32,17 @@ export async function POST(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Cast through unknown — harvest_item RPC isn't in the generated types
-  // yet until `npx supabase gen types typescript` re-runs.
-  const { data, error } = await (supabase.rpc as unknown as (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>)(
-    'harvest_item',
-    { p_item_id: params.id },
-  )
+  // harvest_item() is a SECURITY DEFINER fn returning a jsonb result shaped
+  // { ok, error?, echo? }. The RPC name + args are typed; the jsonb payload is
+  // opaque to the type system, so we shape it explicitly.
+  const { data, error } = await supabase.rpc('harvest_item', {
+    p_item_id: params.id,
+  })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  const result = data as { ok: boolean; error?: string; echo?: number }
+  const result = data as unknown as { ok: boolean; error?: string; echo?: number }
   if (!result.ok) {
     const status = ERROR_STATUS[result.error ?? ''] ?? 400
     return NextResponse.json({ error: result.error ?? 'harvest_failed' }, { status })
