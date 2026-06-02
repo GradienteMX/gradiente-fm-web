@@ -43,6 +43,43 @@ function sanitizeId(s: string): string {
   return s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 40)
 }
 
+// Rehost an external (e.g. Instagram CDN) image into our own public `uploads`
+// bucket so it persists — IG signed URLs expire (~weeks) and can hotlink-fail.
+// Server-side fetch (no CORS) → upload as the calling user (storage RLS gates
+// writes to their own folder) → return the permanent public URL. Deterministic
+// path keyed on the post id so re-ingest overwrites instead of orphaning.
+// Best-effort: on any failure, falls back to the original URL.
+async function rehostImage(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  externalId: string,
+  srcUrl: string,
+): Promise<string> {
+  try {
+    const res = await fetch(srcUrl)
+    if (!res.ok) return srcUrl
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    if (!contentType.startsWith('image/')) return srcUrl
+    const bytes = await res.arrayBuffer()
+    if (bytes.byteLength === 0 || bytes.byteLength > 8_000_000) return srcUrl
+    const ext = contentType.includes('png')
+      ? 'png'
+      : contentType.includes('webp')
+        ? 'webp'
+        : contentType.includes('gif')
+          ? 'gif'
+          : 'jpg'
+    const path = `${userId}/ig/${sanitizeId(externalId)}.${ext}`
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(path, bytes, { contentType, upsert: true, cacheControl: '3600' })
+    if (error) return srcUrl
+    return supabase.storage.from('uploads').getPublicUrl(path).data.publicUrl
+  } catch {
+    return srcUrl
+  }
+}
+
 export async function POST(request: NextRequest) {
   const supabase = createClient()
   const {
@@ -85,6 +122,14 @@ export async function POST(request: NextRequest) {
     const id = `${raw.source === 'scraper:instagram' ? 'ev-ig-' : 'ev-ra-'}${ext}`
     const slug = `${slugify(raw.title) || 'evento'}-${ext}`.slice(0, 80)
 
+    // Save the flyer into our own bucket. Skip if already a storage URL
+    // (idempotent re-ingest) or not an http(s) image.
+    const rawImage = (raw.imageUrl ?? '').trim()
+    const imageUrl =
+      rawImage && /^https?:\/\//i.test(rawImage) && !rawImage.includes('/storage/v1/object/public/')
+        ? await rehostImage(supabase, user.id, raw.externalId, rawImage)
+        : rawImage
+
     const { data, error } = await supabase.rpc('ingest_scraped_event', {
       p_source: raw.source,
       p_external_id: raw.externalId,
@@ -101,7 +146,7 @@ export async function POST(request: NextRequest) {
       p_artists: raw.artists ?? [],
       p_ticket_url: raw.ticketUrl ?? '',
       p_price: raw.price ?? '',
-      p_image_url: raw.imageUrl ?? '',
+      p_image_url: imageUrl,
       p_genres: raw.genres ?? [],
     })
 
