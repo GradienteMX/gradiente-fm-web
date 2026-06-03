@@ -9,6 +9,7 @@ import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
 import { categoryColor, isExpired } from '@/lib/utils'
 import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
+import { recordItems } from '@/lib/itemsCache'
 
 const EVENT_RED = categoryColor('evento')
 
@@ -155,6 +156,14 @@ export function EventosRail({ items }: EventosRailProps) {
         ),
     [items],
   )
+
+  // Prime the slug→item cache so the overlay can resolve rail-event clicks.
+  // Rail events are rail-ONLY (excluded from the mosaic), so ContentGrid never
+  // records them — without this, clicking a rail card resolves to no item and
+  // the overlay never opens.
+  useEffect(() => {
+    recordItems(items)
+  }, [items])
 
   const handleOpen = (slug: string, rect?: DOMRect) => {
     open(
