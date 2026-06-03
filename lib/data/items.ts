@@ -348,19 +348,22 @@ function attachPartner(
 
 // ── Public read API ────────────────────────────────────────────────────────
 
-// Fetch every item the calling user can see, in `published_at` desc order.
-// RLS narrows the visible set: anon / unauthenticated → published items only;
-// admin / guide → all items (including unpublished + seeded).
+// Public content read — drives the home feed + every type page. Returns
+// PUBLISHED items only, and the SAME set for every viewer (No-Algorithm: the
+// feed must not vary by who's logged in). We filter `published=true` EXPLICITLY
+// rather than lean on RLS: the items_partner_team_read policy (migration 0026)
+// lets a partner member read their OWN partner's unpublished drafts so BORRADORES
+// can list them — and without this filter those drafts leaked into the partner's
+// home feed + events rail. Unpublished drafts live only in dashboard surfaces,
+// which query them directly (drafts table, BORRADORES, etc.).
 //
-// Pages still apply their own filters (filterForHome, etc.) on
-// the result. Centralizing the read here means we're one swap away from
-// adding pagination, FTS, or denormalized aggregates later without touching
-// any pages.
+// Pages still apply their own filters (filterForHome, etc.) on the result.
 export async function getItems(): Promise<ContentItem[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('items')
     .select(ITEMS_SELECT)
+    .eq('published', true)
     .order('published_at', { ascending: false })
 
   if (error) {
