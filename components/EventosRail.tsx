@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Calendar } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -129,6 +129,14 @@ export function EventosRail({ items }: EventosRailProps) {
   const { open } = useOverlay()
   const { categoryFilter } = useVibe()
 
+  // The marquee duplicates the card set so the auto-scroll wrap (at
+  // scrollWidth/2) is seamless. That's only correct when the single set is
+  // WIDER than the viewport — otherwise the duplicate copy is visible on-screen
+  // and reads as "every event listed twice" (acute with just 1-2 events). So we
+  // only loop+duplicate when the cards actually overflow; few events render once
+  // and sit still.
+  const [loop, setLoop] = useState(false)
+
   // Hide the rail when the user has filtered to a category other than events
   // (mix / editorial / noticia / etc.) — they explicitly asked to NOT see
   // events. When filter is null OR 'evento', the rail is visible. Mirrors
@@ -169,6 +177,8 @@ export function EventosRail({ items }: EventosRailProps) {
   useEffect(() => {
     const track = trackRef.current
     if (!track) return
+    // Nothing to auto-scroll when the set fits on-screen (not duplicated).
+    if (!loop) return
 
     // Honor reduced-motion: no auto-scroll, manual scroll still works.
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -302,6 +312,20 @@ export function EventosRail({ items }: EventosRailProps) {
     // first cleanup removes listeners from the old DOM on unmount, the
     // new DOM mounts on re-show, but no effect re-fires to wire it up —
     // drag-to-scroll silently dies.
+  }, [sorted.length, hiddenByCategoryFilter, loop])
+
+  // Decide whether the rail needs the duplicated marquee: only when the single
+  // card set is wider than the viewport. Card = 180px + 8px gap. Re-measures on
+  // resize so it stays correct across breakpoints / window changes.
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const CARD_PX = 188
+    const measure = () => setLoop(sorted.length * CARD_PX > track.clientWidth + 8)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(track)
+    return () => ro.disconnect()
   }, [sorted.length, hiddenByCategoryFilter])
 
   // Category-filtered to a non-evento section → hide the rail entirely (the
@@ -356,7 +380,7 @@ export function EventosRail({ items }: EventosRailProps) {
             // edge fades carry the affordance; the bar adds visual noise.
             style={{ scrollbarWidth: 'none' }}
           >
-            {[...sorted, ...sorted].map((item, i) => (
+            {(loop ? [...sorted, ...sorted] : sorted).map((item, i) => (
               <EventoRailCard
                 key={`${item.id}-${i}`}
                 item={item}
