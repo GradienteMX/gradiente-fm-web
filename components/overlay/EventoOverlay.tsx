@@ -168,7 +168,7 @@ export function EventoOverlay({ item }: Props) {
 
         {/* Excerpt / body */}
         {item.excerpt && (
-          <p className="font-grotesk text-sm leading-relaxed text-secondary">
+          <p className="whitespace-pre-line font-grotesk text-sm leading-relaxed text-secondary">
             {item.excerpt}
           </p>
         )}
