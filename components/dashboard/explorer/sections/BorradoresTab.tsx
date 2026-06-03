@@ -7,7 +7,15 @@ import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import type { ContentItem } from '@/lib/types'
 import { LivePreview } from '@/components/dashboard/LivePreview'
-import { compressAndUploadImage } from '@/lib/imageUpload'
+import {
+  Section,
+  TextField,
+  TextArea,
+  StringListField,
+  VibeField,
+  GenreMultiSelect,
+  ImageUrlField,
+} from '@/components/dashboard/forms/shared/Fields'
 
 // MiPartnerSection → BORRADORES tab. Lists the partner's PENDING Instagram
 // events (source='scraper:instagram', published=false) — the ones the agent
@@ -19,7 +27,9 @@ import { compressAndUploadImage } from '@/lib/imageUpload'
 // membership server-side (so any team member — not just the creator — can act,
 // and none of it depends on the items RLS update policy):
 //   - VER      → preview the real EventoOverlay via <LivePreview> (no write)
-//   - EDITAR   → fix agent-extracted data + set vibe/genres → update_partner_event (0027)
+//   - EDITAR   → the SAME field components as the events composer (Section /
+//                TextField / VibeField / GenreMultiSelect / ImageUrlField + a
+//                LivePreview), saving via update_partner_event (0027)
 //   - PUBLICAR → publish_partner_event (0026); DESCARTAR → discard_partner_event (0026)
 // Editing keeps source='scraper:instagram', so the (source, external_id) dedup
 // key survives — re-scrapes still recognize the post.
@@ -52,7 +62,9 @@ const SELECT =
 // CDMX is -06:00 year-round (Mexico dropped DST in 2022), matching how the
 // scraper stamps event times. Convert a stored ISO ↔ the wall-clock a
 // <input type="datetime-local"> wants, pinned to CDMX regardless of the
-// editor's browser timezone.
+// editor's browser timezone. (The composer's own isoToLocal slices naively,
+// which is correct for composer-authored naive-local strings but NOT for these
+// UTC-stamped scraped rows — so BORRADORES keeps its own CDMX-aware pair.)
 const CDMX_OFFSET = '-06:00'
 function isoToLocalInput(iso: string | null): string {
   if (!iso) return ''
@@ -65,46 +77,65 @@ function isoToLocalInput(iso: string | null): string {
     return ''
   }
 }
-function localInputToIso(local: string): string | null {
-  if (!local) return null
+function localInputToIso(local: string): string {
+  if (!local) return ''
   return `${local}:00${CDMX_OFFSET}`
 }
 
-// PendingEvent → a ContentItem good enough for EventoOverlay to render in the
-// preview. partner events publish with editorial=true (rail + mosaic), so the
-// preview sets it to match the live result.
-function toContentItem(ev: PendingEvent): ContentItem {
+// PendingEvent / draft → a ContentItem good enough for EventoOverlay to render
+// in the preview. partner events publish with editorial=true (rail + mosaic),
+// so the preview sets it to match the live result.
+function toContentItem(
+  src: {
+    id: string
+    slug: string | null
+    title: string
+    subtitle?: string | null
+    excerpt?: string | null
+    vibeMin?: number | null
+    vibeMax?: number | null
+    genres?: string[] | null
+    tags?: string[] | null
+    imageUrl?: string | null
+    publishedAt?: string | null
+    date?: string | null
+    endDate?: string | null
+    venue?: string | null
+    venueCity?: string | null
+    artists?: string[] | null
+    ticketUrl?: string | null
+    price?: string | null
+    partnerKind?: string | null
+    partnerId?: string | null
+  },
+): ContentItem {
   return {
-    id: ev.id,
-    slug: ev.slug ?? ev.id,
+    id: src.id,
+    slug: src.slug ?? src.id,
     type: 'evento',
-    title: ev.title,
-    subtitle: ev.subtitle ?? undefined,
-    excerpt: ev.excerpt ?? undefined,
-    vibeMin: (ev.vibeMin ?? 5) as ContentItem['vibeMin'],
-    vibeMax: (ev.vibeMax ?? 5) as ContentItem['vibeMax'],
-    genres: ev.genres ?? [],
-    tags: ev.tags ?? [],
-    imageUrl: ev.imageUrl ?? undefined,
-    publishedAt: ev.publishedAt ?? new Date().toISOString(),
-    date: ev.date ?? undefined,
-    endDate: ev.endDate ?? undefined,
-    venue: ev.venue ?? undefined,
-    venueCity: ev.venueCity ?? undefined,
-    artists: ev.artists ?? undefined,
-    ticketUrl: ev.ticketUrl ?? undefined,
-    price: ev.price ?? undefined,
+    title: src.title,
+    subtitle: src.subtitle ?? undefined,
+    excerpt: src.excerpt ?? undefined,
+    vibeMin: (src.vibeMin ?? 5) as ContentItem['vibeMin'],
+    vibeMax: (src.vibeMax ?? 5) as ContentItem['vibeMax'],
+    genres: src.genres ?? [],
+    tags: src.tags ?? [],
+    imageUrl: src.imageUrl ?? undefined,
+    publishedAt: src.publishedAt ?? new Date().toISOString(),
+    date: src.date ?? undefined,
+    endDate: src.endDate ?? undefined,
+    venue: src.venue ?? undefined,
+    venueCity: src.venueCity ?? undefined,
+    artists: src.artists ?? undefined,
+    ticketUrl: src.ticketUrl ?? undefined,
+    price: src.price ?? undefined,
     elevated: false,
     editorial: true,
     pinned: false,
-    partnerKind: (ev.partnerKind ?? undefined) as ContentItem['partnerKind'],
-    partnerId: ev.partnerId ?? undefined,
+    partnerKind: (src.partnerKind ?? undefined) as ContentItem['partnerKind'],
+    partnerId: src.partnerId ?? undefined,
   }
 }
-
-const INPUT_CLS =
-  'w-full border border-border bg-base px-2 py-1 font-mono text-[11px] text-primary outline-none focus:border-secondary'
-const LABEL_CLS = 'font-mono text-[9px] uppercase tracking-widest text-muted'
 
 export function BorradoresTab({ partnerId }: { partnerId: string }) {
   const [events, setEvents] = useState<PendingEvent[]>([])
@@ -286,7 +317,7 @@ export function BorradoresTab({ partnerId }: { partnerId: string }) {
 
       <p className="font-mono text-[10px] leading-relaxed text-muted">
         Estos eventos los extrae el agente desde el Instagram del partner. Corrige lo que esté mal con
-        EDITAR (y ponle vibe + géneros), revisa con VER cómo se verá, y publica — o descarta.
+        EDITAR (mismo editor que el compositor de eventos), revisa con VER cómo se verá, y publica — o descarta.
       </p>
     </div>
   )
@@ -324,6 +355,27 @@ function ActionButton({
   )
 }
 
+// Same field components + layout as the events composer (EventoForm) — Sections
+// on the left, a sticky LivePreview on the right — but the save routes through
+// the update_partner_event RPC (pending partner event, source unchanged) instead
+// of the publish workbench.
+interface EditDraft {
+  title: string
+  subtitle: string
+  date: string
+  endDate: string
+  venue: string
+  venueCity: string
+  artists: string[]
+  ticketUrl: string
+  price: string
+  excerpt: string
+  imageUrl: string
+  vibeMin: number
+  vibeMax: number
+  genres: string[]
+}
+
 function EditPanel({
   ev,
   onSaved,
@@ -333,59 +385,43 @@ function EditPanel({
   onSaved: () => void | Promise<void>
   onCancel: () => void
 }) {
-  const [title, setTitle] = useState(ev.title ?? '')
-  const [dateLocal, setDateLocal] = useState(isoToLocalInput(ev.date))
-  const [endLocal, setEndLocal] = useState(isoToLocalInput(ev.endDate))
-  const [venue, setVenue] = useState(ev.venue ?? '')
-  const [venueCity, setVenueCity] = useState(ev.venueCity ?? '')
-  const [artists, setArtists] = useState((ev.artists ?? []).join('\n'))
-  const [price, setPrice] = useState(ev.price ?? '')
-  const [ticketUrl, setTicketUrl] = useState(ev.ticketUrl ?? '')
-  const [excerpt, setExcerpt] = useState(ev.excerpt ?? '')
-  const [genres, setGenres] = useState((ev.genres ?? []).join(', '))
-  const [imageUrl, setImageUrl] = useState(ev.imageUrl ?? '')
-  const [vibeMin, setVibeMin] = useState(String(ev.vibeMin ?? 5))
-  const [vibeMax, setVibeMax] = useState(String(ev.vibeMax ?? 5))
+  const [draft, setDraft] = useState<EditDraft>(() => ({
+    title: ev.title ?? '',
+    subtitle: ev.subtitle ?? '',
+    date: ev.date ?? '',
+    endDate: ev.endDate ?? '',
+    venue: ev.venue ?? '',
+    venueCity: ev.venueCity ?? '',
+    artists: ev.artists ?? [],
+    ticketUrl: ev.ticketUrl ?? '',
+    price: ev.price ?? '',
+    excerpt: ev.excerpt ?? '',
+    imageUrl: ev.imageUrl ?? '',
+    vibeMin: ev.vibeMin ?? 5,
+    vibeMax: ev.vibeMax ?? 5,
+    genres: ev.genres ?? [],
+  }))
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const patch = (p: Partial<EditDraft>) => setDraft((d) => ({ ...d, ...p }))
 
-  // IG flyer URLs are signed + single-session and die almost immediately
-  // (server-side rehost gets 403 "signature mismatch"), so the durable path is
-  // a real upload into our own bucket — done here, during the review the partner
-  // is doing anyway. Reuses the composer's compress+upload util.
-  const onFlyer = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // allow re-selecting the same file
-    if (!file) return
-    setUploading(true)
-    setErr(null)
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setErr('SESIÓN EXPIRADA')
-      setUploading(false)
-      return
-    }
-    const res = await compressAndUploadImage(file, user.id, { maxSizeMB: 1, maxWidthOrHeight: 1600 })
-    if (!res.ok) {
-      setErr(res.error.toUpperCase())
-      setUploading(false)
-      return
-    }
-    setImageUrl(res.url)
-    setUploading(false)
-  }
+  const previewItem = toContentItem({
+    id: ev.id,
+    slug: ev.slug,
+    tags: ev.tags,
+    publishedAt: ev.publishedAt,
+    partnerKind: ev.partnerKind,
+    partnerId: ev.partnerId,
+    ...draft,
+  })
 
   const save = async () => {
-    if (!title.trim()) {
-      setErr('TÍTULO REQUERIDO')
+    if (!draft.title.trim()) {
+      setErr('FALTA EL TÍTULO')
       return
     }
-    if (!dateLocal) {
-      setErr('FECHA REQUERIDA')
+    if (!draft.date) {
+      setErr('FALTA LA FECHA DE INICIO')
       return
     }
     setSaving(true)
@@ -393,26 +429,20 @@ function EditPanel({
     const supabase = createClient()
     const { data, error } = await supabase.rpc('update_partner_event', {
       p_item_id: ev.id,
-      p_title: title.trim(),
-      p_subtitle: ev.subtitle ?? '', // preserve — not editable here
-      p_excerpt: excerpt.trim(),
-      p_date: localInputToIso(dateLocal) as string,
-      p_end_date: endLocal ? localInputToIso(endLocal) : null,
-      p_venue: venue.trim(),
-      p_venue_city: venueCity.trim(),
-      p_artists: artists
-        .split('\n')
-        .map((a) => a.trim())
-        .filter(Boolean),
-      p_ticket_url: ticketUrl.trim(),
-      p_price: price.trim(),
-      p_image_url: imageUrl.trim(),
-      p_genres: genres
-        .split(',')
-        .map((g) => g.trim().toLowerCase())
-        .filter(Boolean),
-      p_vibe_min: Number(vibeMin) || 0,
-      p_vibe_max: Number(vibeMax) || 0,
+      p_title: draft.title.trim(),
+      p_subtitle: draft.subtitle.trim(),
+      p_excerpt: draft.excerpt.trim(),
+      p_date: draft.date,
+      p_end_date: draft.endDate || null,
+      p_venue: draft.venue.trim(),
+      p_venue_city: draft.venueCity.trim(),
+      p_artists: draft.artists.map((a) => a.trim()).filter(Boolean),
+      p_ticket_url: draft.ticketUrl.trim(),
+      p_price: draft.price.trim(),
+      p_image_url: draft.imageUrl.trim(),
+      p_genres: draft.genres.map((g) => g.trim().toLowerCase()).filter(Boolean),
+      p_vibe_min: draft.vibeMin,
+      p_vibe_max: draft.vibeMax,
     })
     const r = data as unknown as { ok: boolean; error?: string } | null
     if (error || !r?.ok) {
@@ -425,161 +455,124 @@ function EditPanel({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-border pt-3">
-      {err && <p className="font-mono text-[10px] text-sys-red">// {err}</p>}
+    <div className="border-t border-border pt-3">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="flex flex-col gap-4">
+          {err && <p className="font-mono text-[10px] text-sys-red">// {err}</p>}
 
-      <div className="flex flex-col gap-0.5">
-        <label className={LABEL_CLS}>Título</label>
-        <input className={INPUT_CLS} value={title} onChange={(e) => setTitle(e.target.value)} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Fecha (CDMX)</label>
-          <input
-            type="datetime-local"
-            className={INPUT_CLS}
-            value={dateLocal}
-            onChange={(e) => setDateLocal(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Fin (opcional)</label>
-          <input
-            type="datetime-local"
-            className={INPUT_CLS}
-            value={endLocal}
-            onChange={(e) => setEndLocal(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Lugar</label>
-          <input className={INPUT_CLS} value={venue} onChange={(e) => setVenue(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Ciudad</label>
-          <input className={INPUT_CLS} value={venueCity} onChange={(e) => setVenueCity(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        <label className={LABEL_CLS}>Artistas (uno por línea)</label>
-        <textarea
-          className={`${INPUT_CLS} min-h-[60px] resize-y`}
-          value={artists}
-          onChange={(e) => setArtists(e.target.value)}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Precio</label>
-          <input className={INPUT_CLS} value={price} onChange={(e) => setPrice(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Boletos (URL)</label>
-          <input className={INPUT_CLS} value={ticketUrl} onChange={(e) => setTicketUrl(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        <label className={LABEL_CLS}>Descripción</label>
-        <textarea
-          className={`${INPUT_CLS} min-h-[60px] resize-y`}
-          value={excerpt}
-          onChange={(e) => setExcerpt(e.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        <label className={LABEL_CLS}>Géneros (separados por coma)</label>
-        <input
-          className={INPUT_CLS}
-          value={genres}
-          placeholder="techno, ambient, dub"
-          onChange={(e) => setGenres(e.target.value)}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Vibe mín (0–10)</label>
-          <input
-            type="number"
-            min={0}
-            max={10}
-            className={INPUT_CLS}
-            value={vibeMin}
-            onChange={(e) => setVibeMin(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <label className={LABEL_CLS}>Vibe máx (0–10)</label>
-          <input
-            type="number"
-            min={0}
-            max={10}
-            className={INPUT_CLS}
-            value={vibeMax}
-            onChange={(e) => setVibeMax(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        <label className={LABEL_CLS}>Flyer (sube el archivo — el link de IG caduca)</label>
-        <div className="flex items-center gap-2">
-          <input
-            className={`${INPUT_CLS} flex-1`}
-            value={imageUrl}
-            placeholder="Sube un archivo, o pega una URL"
-            onChange={(e) => setImageUrl(e.target.value)}
-          />
-          <label
-            className="flex shrink-0 cursor-pointer items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] tracking-widest text-secondary transition-opacity hover:opacity-80"
-            style={uploading ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
-          >
-            {uploading ? 'SUBIENDO…' : 'SUBIR'}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={uploading}
-              onChange={onFlyer}
+          <Section label="01" title="IDENTIDAD">
+            <TextField label="TÍTULO" value={draft.title} onChange={(v) => patch({ title: v })} required />
+            <TextField
+              label="SUBTÍTULO"
+              value={draft.subtitle}
+              onChange={(v) => patch({ subtitle: v })}
+              placeholder="Club Japan · Roma Norte"
             />
-          </label>
-        </div>
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt=""
-            className="mt-1 h-16 w-16 border border-border object-cover object-top"
-          />
-        )}
-      </div>
+          </Section>
 
-      <div className="mt-1 flex gap-2">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={save}
-          className="flex items-center gap-1 border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-opacity hover:opacity-80 disabled:opacity-40"
-          style={{ borderColor: 'rgba(96,165,250,0.5)', color: '#60A5FA', background: 'rgba(96,165,250,0.1)' }}
-        >
-          <Save size={10} strokeWidth={1.5} /> {saving ? 'GUARDANDO…' : 'GUARDAR'}
-        </button>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={onCancel}
-          className="flex items-center gap-1 border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-opacity hover:opacity-80 disabled:opacity-40"
-        >
-          <X size={10} strokeWidth={1.5} /> CANCELAR
-        </button>
+          <Section label="02" title="FECHAS">
+            <TextField
+              label="INICIO (CDMX)"
+              type="datetime-local"
+              mono
+              required
+              value={isoToLocalInput(draft.date)}
+              onChange={(v) => patch({ date: localInputToIso(v) })}
+            />
+            <TextField
+              label="FIN (opcional)"
+              type="datetime-local"
+              mono
+              value={isoToLocalInput(draft.endDate)}
+              onChange={(v) => patch({ endDate: localInputToIso(v) })}
+            />
+          </Section>
+
+          <Section label="03" title="UBICACIÓN">
+            <TextField label="VENUE" value={draft.venue} onChange={(v) => patch({ venue: v })} placeholder="Club Japan" />
+            <TextField
+              label="CIUDAD / DIRECCIÓN"
+              value={draft.venueCity}
+              onChange={(v) => patch({ venueCity: v })}
+              placeholder="CDMX · Roma Norte"
+            />
+          </Section>
+
+          <Section label="04" title="LINE-UP">
+            <StringListField
+              label="ARTISTAS"
+              placeholder="Surgeon"
+              values={draft.artists}
+              onChange={(artists) => patch({ artists })}
+              addLabel="AÑADIR ARTISTA"
+            />
+          </Section>
+
+          <Section label="05" title="DESCRIPCIÓN">
+            <TextArea
+              label="DESCRIPCIÓN"
+              value={draft.excerpt}
+              onChange={(v) => patch({ excerpt: v })}
+              rows={5}
+              placeholder="La parte descriptiva del evento — el concepto, la vibra…"
+            />
+          </Section>
+
+          <Section label="06" title="VIBE + GÉNEROS">
+            <VibeField
+              valueMin={draft.vibeMin}
+              valueMax={draft.vibeMax}
+              onChange={(min, max) => patch({ vibeMin: min, vibeMax: max })}
+            />
+            <GenreMultiSelect value={draft.genres} onChange={(genres) => patch({ genres })} />
+          </Section>
+
+          <Section label="07" title="MEDIA + BOLETOS">
+            <ImageUrlField
+              label="FLYER"
+              value={draft.imageUrl}
+              onChange={(v) => patch({ imageUrl: v })}
+              placeholder="Sube un archivo o pega una URL"
+            />
+            <TextField
+              label="TICKET URL"
+              value={draft.ticketUrl}
+              onChange={(v) => patch({ ticketUrl: v })}
+              mono
+              placeholder="https://..."
+            />
+            <TextField
+              label="PRECIO"
+              value={draft.price}
+              onChange={(v) => patch({ price: v })}
+              placeholder="Primeras 100 gratis · general $350"
+            />
+          </Section>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={save}
+              className="flex items-center gap-1.5 border px-4 py-2 font-mono text-[11px] tracking-widest transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ borderColor: 'rgba(96,165,250,0.5)', color: '#60A5FA', background: 'rgba(96,165,250,0.12)' }}
+            >
+              <Save size={12} strokeWidth={1.5} /> {saving ? 'GUARDANDO…' : 'GUARDAR'}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onCancel}
+              className="flex items-center gap-1.5 border border-border px-4 py-2 font-mono text-[11px] tracking-widest text-muted transition-opacity hover:opacity-80 disabled:opacity-40"
+            >
+              <X size={12} strokeWidth={1.5} /> CANCELAR
+            </button>
+          </div>
+        </div>
+
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <LivePreview draft={previewItem} />
+        </div>
       </div>
     </div>
   )
