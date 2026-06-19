@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { ContentItem } from '@/lib/types'
 import { MOCK_ITEMS } from '@/lib/mockData'
 import { fmtDateFull, isEditableTarget } from '@/lib/utils'
@@ -250,7 +250,8 @@ export function MixOverlay({ item }: Props) {
           </Panel>
         )}
 
-        {/* 02 CONTEXTO */}
+        {/* 02 CONTEXTO. (The single analyzer is now the GPU particle field in
+            panel 01 — the old canvas-2D ESPECTRO panel was removed.) */}
         <Panel index="02" title="CONTEXTO">
           <dl className="grid grid-cols-[max-content_auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
             {item.mixSeries && (
@@ -416,8 +417,6 @@ function RelatedMixes({ item }: Props) {
     </section>
   )
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function Panel({
   index,

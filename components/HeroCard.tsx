@@ -1,7 +1,8 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor, vibeMid, vibeBandGradient, categoryColor, fmtDateShort } from '@/lib/utils'
+import { vibeToColor, vibeMid, fmtDateShort } from '@/lib/utils'
+import { VibeMeter } from '@/components/VibeMeter'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
@@ -30,7 +31,6 @@ interface HeroCardProps {
 
 export function HeroCard({ item }: HeroCardProps) {
   const vibeColor = vibeToColor(vibeMid(item))
-  const vibeBand = vibeBandGradient(item)
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -118,24 +118,18 @@ export function HeroCard({ item }: HeroCardProps) {
           <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30 md:to-black/60" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden" />
 
-          {/* Vibe accent — left edge. Gradient band when item is a range,
-              solid color when point. The vertical orientation rotates the
-              90deg horizontal gradient to 180deg. */}
-          <div
-            className="absolute bottom-0 left-0 top-0 w-1"
-            style={{
-              background: vibeBand.startsWith('linear-gradient')
-                ? vibeBand.replace('90deg', '180deg')
-                : vibeBand,
-            }}
+          {/* Vibe meter — left edge, slot 0 at top. Full 11-slot scale;
+              the lit segments are the item's band reading. */}
+          <VibeMeter
+            item={item}
+            size="sm"
+            vertical
+            className="absolute bottom-0 left-0 top-0"
           />
 
           {/* Type badge */}
           <div className="absolute left-4 top-4">
-            <span
-              className="bg-black/75 px-2 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
-              style={{ color: categoryColor(item.type) }}
-            >
+            <span className="bg-black/75 px-2 py-1 font-mono text-[10px] tracking-widest text-secondary backdrop-blur-sm">
               //{TYPE_LABEL[item.type]}
             </span>
           </div>

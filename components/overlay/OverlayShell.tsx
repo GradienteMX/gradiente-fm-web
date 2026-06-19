@@ -6,6 +6,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -14,8 +15,9 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { ContentItem } from '@/lib/types'
-import { categoryColor } from '@/lib/utils'
+import { categoryColor, effectiveVibeBand, vibeToColor } from '@/lib/utils'
 import { useOverlay } from './useOverlay'
+import { SignalTransition } from './SignalTransition'
 import { ShareButton } from './ShareButton'
 import { removeItem } from '@/lib/drafts'
 import { removePublishedItemLocal } from '@/lib/publishedItemsCache'
@@ -154,14 +156,41 @@ export function OverlayShell({
     router.refresh()
   }
 
-  // Compute transform-origin from click rect so the CRT boot-in grows
-  // from roughly where the card was.
-  const [transformOrigin] = useState<string>(() => {
-    if (typeof window === 'undefined' || !originRect) return 'center center'
-    const cardCx = originRect.x + originRect.width / 2
-    const cardCy = originRect.y + originRect.height / 2
-    return `${cardCx}px ${cardCy}px`
+  // ── Signal-acquisition transition ──────────────────────────────────────────
+  // Replaces the old CRT-boot scaleX/scaleY keyframe. A transient teletext
+  // block-mosaic (SignalTransition, canvas-2D, NO WebGL) masks the panel and
+  // resolves noise → clear on open, and de-resolves clear → noise on close.
+  // The sweep emanates from the clicked card's viewport-space center.
+  const panelRef = useRef<HTMLDivElement | null>(null)
+
+  // Click origin in viewport space — the mosaic sweep emanates from here.
+  const [originPoint] = useState<{ x: number; y: number } | null>(() => {
+    if (typeof window === 'undefined' || !originRect) return null
+    return {
+      x: originRect.x + originRect.width / 2,
+      y: originRect.y + originRect.height / 2,
+    }
   })
+
+  // Item's vibe slot color — tints the resolving blocks (a hint, not a wash).
+  // Uses the effective band midpoint so crowd vibe checks are honored.
+  const vibeColor = (() => {
+    const [lo, hi] = effectiveVibeBand(item)
+    return vibeToColor(Math.round((lo + hi) / 2))
+  })()
+
+  // Panel opacity is shell-owned state (not an imperative panel.style mutation)
+  // so React re-renders — comments toggle, rail hover — don't clobber it. Starts
+  // at 0 to avoid a 1-frame flash of unmasked content before the mosaic canvas
+  // mounts; SignalTransition fires onReveal once the mask is in place.
+  const [panelRevealed, setPanelRevealed] = useState(false)
+
+  // Gate unmount on the close-transition finishing. The backdrop fade runs in
+  // parallel; we only call onExited() once the panel de-resolve has cut out.
+  const [signalOutDone, setSignalOutDone] = useState(false)
+  useEffect(() => {
+    if (exiting && signalOutDone) onExited()
+  }, [exiting, signalOutDone, onExited])
 
   // Lock body scroll while open.
   useEffect(() => {
@@ -215,11 +244,6 @@ export function OverlayShell({
         (exiting ? 'overlay-backdrop-out' : 'overlay-backdrop-in')
       }
       onClick={close}
-      onAnimationEnd={(e) => {
-        if (exiting && e.animationName === 'overlay-backdrop-out') {
-          onExited()
-        }
-      }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/75 backdrop-blur-md" aria-hidden />
@@ -235,19 +259,34 @@ export function OverlayShell({
             Framer Motion animates the resulting width change smoothly via
             the parent's max-width animation + the column's basis animation. */}
         <div
+          ref={panelRef}
           onClick={(e) => e.stopPropagation()}
-          className={
-            'eva-box eva-scanlines relative flex min-w-0 flex-col overflow-hidden bg-base ' +
-            (exiting ? 'overlay-panel-out' : 'overlay-panel-in')
-          }
+          className="eva-box eva-scanlines relative flex min-w-0 flex-col overflow-hidden bg-base"
           style={{
             maxHeight: 'min(92vh, 900px)',
-            transformOrigin,
             flexGrow: 1,
             flexShrink: 1,
             flexBasis: 0,
+            // Hidden until the mosaic mounts and reveals it — avoids a 1-frame
+            // flash of unmasked content. Once SignalTransition fires onReveal
+            // the canvas masks the now-opaque panel. On close we keep it at 1
+            // through the de-resolve; the unmount (signalOutDone → onExited) is
+            // the broadcast cut. Reduced-motion: instant 0→1.
+            opacity: panelRevealed ? 1 : 0,
           }}
         >
+          {/* Signal-acquisition mosaic — transient canvas, mounted only while
+              the transition runs, fully torn down on completion. Keyed on the
+              phase so the open mosaic and close mosaic are distinct mounts. */}
+          <SignalTransition
+            key={exiting ? 'signal-out' : 'signal-in'}
+            panelRef={panelRef}
+            phase={exiting ? 'out' : 'in'}
+            originPoint={originPoint}
+            vibeColor={vibeColor}
+            onReveal={() => setPanelRevealed(true)}
+            onDone={exiting ? () => setSignalOutDone(true) : () => {}}
+          />
           {/* Chrome / header */}
           <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
             <div className="flex min-w-0 items-center gap-3">

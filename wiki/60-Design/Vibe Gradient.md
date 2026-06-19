@@ -1,77 +1,72 @@
 ---
 type: design
 status: current
-tags: [design, vibe, gradient, color]
-updated: 2026-04-24
+tags: [design, vibe, gradient, color, instrument-ramp]
+updated: 2026-06-12
 ---
 
 # Vibe Gradient
 
-> The dominant visual motif. Cold-cyan → warm-pink → hot-red, mapping to the [[Vibe Spectrum]] 0–10.
+> The dominant visual motif. Glacial cyan → estática → ember orange, mapping to the [[Vibe Spectrum]] 0–10. One system, hard-stepped, since Redesign 2026.
 
-## Three expressions (not two)
+## One expression (was three)
 
-There are **three** related color scales. Yes, it's a bit fragmented. Reconciliation is on the deferred list.
+> **Redesign 2026:** the three fragmented scales this page used to document — the Tailwind 8-stop pastel `bg-vibe-gradient`, the saturated rainbow `vibeToColor` 11-step, and the slider's per-dash `interpolateVibeColor` RGB lerp — are all gone. The reconciliation that sat on [[Open Questions]] happened, just not as a `mode:` parameter: there is now exactly **one** palette and every consumer renders it stepped.
 
-### 1. Tailwind `bg-vibe-gradient` — 8-stop smooth gradient
+Canonical source: `VIBE_SLOT_COLORS` in [utils.ts](../../lib/utils.ts). Everything else — the Tailwind `vibe-0…vibe-10` tokens, the `--vibe-gradient` custom property — is a derived copy, changed in lockstep.
 
-Used for: [[VibeSlider]] track (as the neon gradient base), long horizontal bars.
-
-```
-#7DD3FC (ice)  → #38BDF8 → #818CF8 → #A78BFA → #E879F9 → #FB923C → #F87171 → #B91C1C (volcano)
-```
-
-Pastel-to-blood. Softer than the other two. Defined in [tailwind.config.ts:42](../../tailwind.config.ts).
-
-### 2. `vibeToColor()` — 11-step discrete palette
-
-Used for: per-item accents in [[ContentCard]], [[HeroCard]], [[MixCard]], [[EventCard]], [[ArticleCard]].
+## The 11-slot thermo-diverging instrument ramp
 
 ```
-0  #00FFFF   pure cyan
-1  #00CCFF
-2  #0066FF
-3  #6600FF
-4  #CC00FF
-5  #FF00FF   pure magenta
-6  #FF0066
-7  #FF5500
-8  #FFAA00
-9  #FF2200
-10 #FF0000   pure red
+0  #087487   GLACIAL   oklch(0.515 0.089 215)
+1  #217B98   POLAR     oklch(0.545 0.092 224)
+2  #48819E   CHILL     oklch(0.575 0.075 233)
+3  #6586A0   COOL      oklch(0.605 0.055 243)
+4  #7A8A9D   FRESH     oklch(0.628 0.034 253)
+5  #948E85   GROOVE    oklch(0.648 0.014 75)   ← the hinge: signal dying into static
+6  #C38174   WARM      oklch(0.668 0.085 32)
+7  #E17756   HOT       oklch(0.684 0.140 38)
+8  #FC6C0F   FUEGO     oklch(0.700 0.196 45)   ← brand orange, sRGB gamut cusp
+9  #FC9414   BRASA     oklch(0.760 0.171 62)   ← broadcast amber
+10 #FEB225   VOLCÁN    oklch(0.815 0.163 76)   ← heading white-hot
 ```
 
-Saturated, high-contrast. Closer to fluorescent marker colors. Defined in [utils.ts:19](../../lib/utils.ts).
+Two hue arms hinged through a near-neutral middle:
 
-### 3. `VibeSlider::interpolateVibeColor()` — per-dash RGB lerp over the 11-step anchors
+- **Glacial cyan arm (0–4)** — desaturating as it warms toward the hinge.
+- **Estática hinge (5)** — near-gray `#948E85`. The midpoint of the spectrum is *no signal*, not "purple".
+- **Ember / overload arm (6–10)** — saturation climbs back; slots 8–10 sit on the **brand-orange family**. The brand color IS the meter's overload zone.
 
-Used for: the phosphor tape in [[VibeSlider]]. Inline helper in [VibeSlider.tsx](../../components/VibeSlider.tsx).
+OKLCH anchors are recorded inline beside each hex (for future P3 upgrades). Structure precedent: Kovesi "linear-diverging" colormaps / FLIR Arctic thermal palettes — not a rainbow.
 
-Not a separate palette — it piggybacks on `vibeToColor` (scale 2 above). For a float vibe `v`, it does linear RGB interpolation between `vibeToColor(floor(v))` and `vibeToColor(ceil(v))`:
+## Why monotonic lightness
 
-```ts
-interpolateVibeColor(3.7)   // lerp between #6600FF (slot 3) and #CC00FF (slot 4), t=0.7
-```
+OKLCH lightness climbs strictly 0.515 → 0.815 across the ramp: **energy = brightness**. Dim is cold, bright is hot, and the scale survives grayscale conversion — the old rainbow (cyan→magenta→red) had non-monotonic lightness, the classic "AI gradient" tell. Hue never transits green/purple/magenta and never folds back. Every slot clears 3:1 non-text contrast on the `#0D0D0D` base.
 
-Each dash in the tape is colored by its x-position on `[0, 10]` once at module load — so the band reads as a smooth gradient but anchors exactly on the discrete per-item slot colors. This replaced the old `NEON_GRADIENT` CSS-gradient string when the slider was redesigned as phosphor tape (2026-04-24).
+## Hard-stepped, never smooth
 
-## Why three
+The ramp renders as **11 discrete bands, never a continuous gradient**. Calibrated bands read as *measured*; a smooth lerp reads as *generated*. Concretely:
 
-- **Tailwind pastel** — looks good as a large fill (a sticky bar), softer on the eye, less fatiguing when always visible.
-- **Discrete saturated** — individual items benefit from crisp color identity (vibe 7 is unmistakably different from vibe 8).
-- **Slider interpolation** — lerps between the discrete saturated anchors so the phosphor tape matches per-item accents exactly, with smooth in-between colors on the band itself.
+- `--vibe-gradient` in [globals.css](../../app/globals.css) is a linear-gradient of 11 hard color stops (each band 9.09% wide). This is now the **single canonical definition** backing `.bg-vibe-gradient` — the old duplicate in `tailwind.config.ts::backgroundImage` (which shadowed it) was removed.
+- [[VibeSlider]]'s tape dashes are hard-assigned to a slot (`Math.floor(t * 11)`), no per-dash lerp. `interpolateVibeColor` is deleted.
+- [[VibeMeter]] renders 11 discrete segments.
 
-## Should they unify
+## Lit / unlit convention
 
-Probably. A single exported function that returns color(s) for a vibe with `mode: 'discrete' | 'continuous' | 'pastel'` would be cleaner — the slider's `interpolateVibeColor` is 80% of what `'continuous'` would be. Not urgent — the fragmentation is invisible to users. See [[Open Questions]].
+Out-of-band slots dim to a **low-alpha version of their own hue** — unlit LEDs on a calibrated scale, never gray. The full scale always renders (the printed plate); the band reading is which slots are lit. [[VibeMeter]] uses `'33'` alpha (~20%), the slider tape uses opacity 0.16 (slightly dimmer — the tape sits on `bg-base`, the meter over imagery).
+
+## vibeBandGradient → VibeMeter
+
+The `vibeBandGradient()` CSS-gradient helper (smooth band strips on cards/overlays) is **deleted** from [utils.ts](../../lib/utils.ts) — zero call sites after every strip was replaced by the [[VibeMeter]] component, which is now the canonical band display.
 
 ## Visual identity
 
-The vibe gradient is **the** signature of the site. If a user describes GRADIENTE FM in one sentence, they probably mention "the color bar that goes from blue to red". It's the brand at a glance.
+The vibe ramp is **the** signature of the site, and per the "one expressive variable" rule it's the only expressive color on cards (see [[Color System]]). If a user describes GRADIENTE in one sentence, they probably mention the temperature scale going from cold cyan to burning orange. It's the brand at a glance — literally: the brand orange is slot 8.
 
 ## Links
 
 - [[Vibe Spectrum]]
 - [[Color System]]
+- [[VibeMeter]]
 - [[VibeSlider]]
 - [[utils]]

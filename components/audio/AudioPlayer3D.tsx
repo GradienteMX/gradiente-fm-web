@@ -8,7 +8,7 @@ import {
   Shuffle,
   Repeat,
 } from "lucide-react";
-import { Reproductor3D } from "./Reproductor3D";
+import { ParticleField3D } from "./ParticleField3D";
 
 export interface AudioPlayer3DProps {
   // Visualization input.
@@ -190,35 +190,25 @@ export function AudioPlayer3D({
         </div>
       </div>
 
-      {/* ── 3D matrix viewport ──────────────────────────────────────────── */}
-      <div className="relative mx-5 mt-4 h-[320px] overflow-hidden">
-        <Reproductor3D
+      {/* ── GPU particle field — the star of the overlay. Generous height so
+           the field reads as the marquee analyzer, not a thumbnail. ─────── */}
+      <div className="relative mx-5 mt-4 h-[440px] overflow-hidden">
+        <ParticleField3D
           data={data}
           sampleRate={sampleRate}
+          orientation="landscape"
+          interactive
           className="absolute inset-0"
         />
 
-        {/* MATRIX MODE legend, top-left */}
+        {/* CAMPO DE PARTÍCULAS legend, top-left. Honest: each row maps to a
+            real driver of the field (cool↔hot color = spectral brightness;
+            energy = flow/brillo; graves = the bass breath pulse). */}
         <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1.5 text-[10px] tracking-widest">
-          <span style={{ color: "#F97316" }}>MATRIX MODE</span>
-          <LegendRow color="#0EA5E9" label="LOW" />
-          <LegendRow color="#D946EF" label="MID" />
-          <LegendRow color="#F97316" label="HIGH" />
-        </div>
-
-        {/* dB-ish vertical scale, right */}
-        <div className="pointer-events-none absolute right-2 top-1 flex h-full flex-col justify-between py-1 text-[10px] tracking-widest text-muted">
-          <span>-20k</span>
-          <span>1k</span>
-          <span>-20</span>
-        </div>
-
-        {/* frequency scale, bottom */}
-        <div className="pointer-events-none absolute inset-x-2 bottom-1 flex justify-between text-[10px] tracking-widest text-muted">
-          <span>20Hz</span>
-          <span>250Hz</span>
-          <span>2kHz</span>
-          <span>20kHz</span>
+          <span style={{ color: "#F97316" }}>CAMPO · PARTÍCULAS</span>
+          <LegendRow color="#087487" label="FRÍO · GRAVE" />
+          <LegendRow color="#948E85" label="ENERGÍA" />
+          <LegendRow color="#FC6C0F" label="CÁLIDO · BRILLO" />
         </div>
       </div>
 

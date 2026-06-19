@@ -49,11 +49,12 @@
 
 ## 40 — Components
 
-- [[Navigation]] — EVA-themed header, MAGI indicators, data-strip ticker
-- [[VibeSlider]] — dual-handle range over neon stripe band + multi-genre toggle chip strip (feed-driven)
+- [[Navigation]] — broadcast header: wordmark lockup, CDMX clock, identity-motto ticker, feed heartbeat
+- [[VibeSlider]] — station dial: dual needles over a printed slot plate + thermal tape; multi-genre toggle chip strip (feed-driven)
 - [[VibeFader]] — inline draggable fader inside every overlay; drives [[Vibe Checks]]
+- [[VibeMeter]] — 11-segment stepped band display; canonical vibe readout on cards + overlays (renders the effective band)
 - [[CategoryRail]] — sticky left rail with counts per type
-- [[ContentGrid]] — HP-driven mosaic with directional layout animations
+- [[ContentGrid]] — HP-driven mosaic; size snaps between tiers, position slides (motion constitution)
 - [[EventosRail]] — auto-scrolling horizontal marquee of scraped events under the hero; isolates the RA firehose from the editorial mosaic
 - [[ContentCard]] — sm/md/lg tiered card (image-forward); opens overlay on click
 - [[HeroCard]] — split portada hero; opens overlay on click

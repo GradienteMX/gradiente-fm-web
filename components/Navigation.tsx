@@ -4,14 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { AuthBadge } from '@/components/auth/AuthBadge'
+import { SystemObject } from '@/components/brand/SystemObject'
 import { useFeedPulse } from '@/lib/hooks/useFeedPulse'
 
-// Header destinations. Trimmed from 9 → 4 on 2026-05-12 to break the visual
+// Header destinations. Trimmed from 9 → 5 on 2026-05-12 to break the visual
 // equivalence with the SECCIÓN rail (beta testers were ignoring FORO +
 // MARKETPLACE because they read as duplicates of //NOTICIA / //MIX / etc
 // filter rows). QUÉ ES GRADIENTE added 2026-05-21 to surface the
 // invitation-as-about page that now lives at /about.
-// Every item renders in NGE orange by default; only the *active* item
+// Every item renders in sys-orange by default; only the *active* item
 // switches to an orange → red gradient + glow. The differentiation is
 // "selected vs not," not "this item is its own color."
 const NAV_LINKS = [
@@ -22,10 +23,10 @@ const NAV_LINKS = [
   { href: '/about',       label: 'QUÉ ES GRADIENTE' },
 ]
 
-// Active-state gradient — matches the header's top accent bar (line ~47)
-// so the "this is where you are" cue is visually rhymed with the brand chrome.
-const ACTIVE_GRADIENT = 'linear-gradient(to right, #FF8800, #E63329)'
-const NAV_ORANGE = '#FF8800'
+// Active-state gradient — sys-orange → sys-red, matching the header's top
+// accent bar so the "this is where you are" cue is visually rhymed with the
+// brand chrome. Inline (not Tailwind) because it feeds WebkitBackgroundClip.
+const ACTIVE_GRADIENT = 'linear-gradient(to right, #F97316, #E63329)'
 
 // "hace Xm" label for the feed heartbeat (terminal voice, Spanish).
 function agoLabel(minutes: number): string {
@@ -35,26 +36,34 @@ function agoLabel(minutes: number): string {
   return `HACE ${Math.floor(minutes / 1440)}d`
 }
 
+// Identity mottos only — no status readouts. The strip never claims system
+// state it can't verify (the feed heartbeat at the right edge is the one
+// honest live readout on this row).
 const DATA_STRIP = [
-  'CDMX·UNDERGROUND', '//', 'MUSICA·ELECTRONICA', '//', 'FREQ·ACTIVA·128BPM', '//',
-  'UNIT·GRADIENTE·ONLINE', '//', 'PATTERN:CONFIRMED', '//', 'SINCRONIZACION·ACTIVA', '//',
-  'MAGI·SYSTEM·NOMINAL', '//', 'GRADIENTE·MX·SUBSISTEMA·CULTURAL', '//',
-  'A·T·FIELD·STABLE', '//', 'INSTRUMENTACION·NEURAL·ACTIVA', '//', 'BIOPATTERN·LOCKED', '//',
+  'GRADIENTE·MX·SUBSISTEMA·CULTURAL', '//', 'TRANSMISIÓN·CDMX', '//',
+  'FRECUENCIA·ABIERTA', '//', 'MÚSICA·ELECTRÓNICA', '//', 'ARCHIVO·VIVO', '//',
+  'GUÍAS·NO·GATEKEEPERS', '//', 'SIN·ALGORITMO', '//',
+  '00·GLACIAL····10·VOLCÁN', '//', 'CDMX·UNDERGROUND', '//',
 ]
 
 export function Navigation() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [time, setTime] = useState('--:--:--')
-  const [frames, setFrames] = useState('00000')
+  // Real CDMX wall clock. Stable placeholder server-side, filled on mount —
+  // same hydration pattern as the feed pulse (nothing time-dependent in SSR).
+  const [clock, setClock] = useState('--:--:--')
 
   useEffect(() => {
-    const update = () => {
-      setTime(new Date().toTimeString().slice(0, 8))
-      setFrames(String(Math.floor(Date.now() / 33) % 100000).padStart(5, '0'))
-    }
+    const fmt = new Intl.DateTimeFormat('es-MX', {
+      timeZone: 'America/Mexico_City',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+    const update = () => setClock(fmt.format(new Date()))
     update()
-    const id = setInterval(update, 100)
+    const id = setInterval(update, 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -68,48 +77,37 @@ export function Navigation() {
   const feedFresh = minutesAgo !== null && minutesAgo < 6 // within one rollup cycle
 
   return (
-    <header className="eva-scanlines sticky top-0 z-50 bg-black">
+    <header className="eva-scanlines sticky top-0 z-50 bg-base">
 
       {/* ── Top gradient bar ── */}
-      <div className="h-[2px] w-full" style={{ background: 'linear-gradient(to right, #FF2200, #FF8800, #FFB800, #FF8800, #FF2200)' }} />
+      <div className="h-[2px] w-full bg-gradient-to-r from-sys-red via-sys-orange to-sys-red" />
 
       {/* ── Main bar ── */}
-      <div className="h-[54px]" style={{ borderBottom: '1px solid #1C1000' }}>
+      <div className="h-[54px] border-b border-border-subtle">
       <div className="mx-auto flex h-full max-w-screen-2xl items-stretch px-4 md:px-8">
 
-        {/* ── Logo — EVA unit designation box ── */}
+        {/* ── Logo — wordmark lockup ── */}
         <Link
           href="/"
-          className="group flex items-center gap-3 pl-3 pr-4 transition-colors hover:bg-[#0A0400]"
-          style={{ borderRight: '2px solid #FF6600', borderImage: 'linear-gradient(to bottom, #FF9900, #FF4400) 1' }}
+          className="group flex items-center gap-2.5 border-r-2 border-sys-orange pl-3 pr-4 transition-colors hover:bg-hover"
         >
-          <div className="flex flex-col gap-[2px]">
-            <span className="font-mono text-[6px] tracking-[0.25em]" style={{ color: '#FF6600', opacity: 0.55 }}>
-              UNIT·ID / SUBSISTEMA·MX
+          {/* Living ASCII brand mark — a rotating icosahedron lattice
+              rasterized into a character grid, lit by the live feed piece
+              count (tonight's signal strength). Density/heat/spin ARE the
+              readout — no raw number. ~40px, canvas-2D, no WebGL context. */}
+          <SystemObject signalStrength={activeCount} size={40} />
+          <div className="flex flex-col gap-[3px]">
+            <span className="font-syne text-[17px] font-black leading-none tracking-tighter text-sys-orange">
+              GRADIENTE<span className="text-sys-amber">·</span>MX
             </span>
-
-            {/* The box */}
-            <div className="eva-box flex items-center gap-2 px-2 py-[3px]">
-              <div className="flex flex-col gap-[2px]">
-                <div className="h-[2px] w-4" style={{ background: '#FF6600', boxShadow: '0 0 4px #FF6600' }} />
-                <div className="h-[2px] w-4 opacity-30" style={{ background: '#FF6600' }} />
-                <div className="h-[2px] w-2 opacity-10" style={{ background: '#FF6600' }} />
-              </div>
-              <span
-                className="eva-glow font-syne text-[17px] font-black tracking-tighter leading-none"
-              >
-                GRADIENTE<span style={{ color: '#FFB800', textShadow: '0 0 8px #FFB800' }}>·</span>MX
-              </span>
-            </div>
-
-            <span className="font-mono text-[6px] tracking-[0.12em]" style={{ color: '#2A1800' }}>
-              CULTURAL·SUBSYSTEM·ACTIVE
+            <span className="font-mono text-[6px] tracking-[0.2em] text-muted">
+              // SUBSISTEMA·CULTURAL·CDMX
             </span>
           </div>
         </Link>
 
         {/* ── Desktop nav links ──
-            Inactive = always-visible NGE orange (no dim-until-active —
+            Inactive = always-visible sys-orange (no dim-until-active —
             the original complaint was that inactive items vanished).
             Active = orange → red gradient text + matching bottom bar +
             subtle tinted bg. The gradient is the only thing that swaps;
@@ -121,26 +119,27 @@ export function Navigation() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="group relative flex items-center justify-center px-6 transition-colors"
+                className="group relative flex items-center justify-center border-r border-border-subtle px-6 transition-colors"
                 style={{
-                  borderRight: '1px solid #140B00',
                   // Subtle gradient tint behind the active item — mirrors
                   // the text gradient at ~6% opacity. Reads as "boxed"
                   // without dominating.
                   background: active
-                    ? 'linear-gradient(to right, rgba(255,136,0,0.08), rgba(230,51,41,0.08))'
+                    ? 'linear-gradient(to right, rgba(249,115,22,0.08), rgba(230,51,41,0.08))'
                     : 'transparent',
                 }}
               >
                 {/* Label.
-                    - Inactive: solid NGE orange with a faint glow.
+                    - Inactive: solid sys-orange, no glow.
                     - Active: gradient text via bg-clip. `text-shadow` does
                       NOT render on bg-clipped text (the underlying glyph
                       is transparent), so the active glow uses `filter:
                       drop-shadow()` instead — that works because filter
                       operates on the rendered pixels, gradient included. */}
                 <span
-                  className="font-syne text-[13px] font-bold tracking-widest leading-none"
+                  className={`font-syne text-[13px] font-bold leading-none tracking-widest ${
+                    active ? '' : 'text-sys-orange'
+                  }`}
                   style={
                     active
                       ? {
@@ -148,12 +147,9 @@ export function Navigation() {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text',
-                          filter: 'drop-shadow(0 0 6px rgba(255,102,0,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
+                          filter: 'drop-shadow(0 0 6px rgba(249,115,22,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
                         }
-                      : {
-                          color: NAV_ORANGE,
-                          textShadow: '0 0 6px rgba(255,102,0,0.2)',
-                        }
+                      : undefined
                   }
                 >
                   {link.label}
@@ -164,44 +160,28 @@ export function Navigation() {
                     className="absolute bottom-0 left-0 right-0 h-[2px]"
                     style={{
                       background:
-                        'linear-gradient(to right, transparent, #FF8800, #E63329, transparent)',
-                      boxShadow: '0 0 6px #FF4400',
+                        'linear-gradient(to right, transparent, #F97316, #E63329, transparent)',
+                      boxShadow: '0 0 6px rgba(249,115,22,0.5)',
                     }}
                   />
                 )}
-                {/* Hover crosshair — NGE orange */}
+                {/* Hover crosshair */}
                 <span
-                  className="absolute right-1 top-1 font-mono text-[9px] opacity-0 transition-opacity group-hover:opacity-30"
-                  style={{ color: NAV_ORANGE }}
+                  className="absolute right-1 top-1 font-mono text-[9px] text-sys-orange opacity-0 transition-opacity group-hover:opacity-30"
                 >+</span>
               </Link>
             )
           })}
         </nav>
 
-        {/* ── Status / Timer ── */}
+        {/* ── CDMX clock — the header's one true time readout ── */}
         {/* Hidden below 2xl — pure chrome, sacrificed first when the
             DASHBOARD button needs viewport room at MacBook widths. */}
-        <div className="hidden items-stretch 2xl:flex" style={{ borderLeft: '1px solid #140B00' }}>
-
-          {/* Timer — EVA countdown style */}
-          <div className="flex flex-col items-center justify-center px-4">
-            <span className="font-mono text-[6px] tracking-[0.2em]" style={{ color: '#2A1800' }}>T+</span>
-            <span
-              className="font-mono text-[15px] tabular-nums font-bold leading-none"
-              style={{
-                color: '#FF9900',
-                textShadow: '0 0 4px #FF6600, 0 0 10px #FF660066, 0 0 20px #FF440033',
-                letterSpacing: '0.05em',
-              }}
-            >
-              {time}
-            </span>
-            <span
-              className="font-mono text-[8px] tabular-nums"
-              style={{ color: '#332000', letterSpacing: '0.05em' }}
-            >
-              :{frames}
+        <div className="hidden items-stretch border-l border-border-subtle 2xl:flex">
+          <div className="flex flex-col items-center justify-center gap-[2px] px-4">
+            <span className="font-mono text-[6px] tracking-[0.2em] text-muted">CDMX</span>
+            <span className="font-mono text-[15px] font-bold leading-none tracking-[0.05em] tabular-nums text-sys-orange">
+              {clock}
             </span>
           </div>
         </div>
@@ -211,12 +191,11 @@ export function Navigation() {
 
         {/* Mobile toggle */}
         <button
-          className="ml-auto flex items-center px-4 md:hidden"
-          style={{ color: '#FF6600' }}
+          className="ml-auto flex items-center px-4 text-sys-orange md:hidden"
           onClick={() => setMobileOpen((v) => !v)}
           aria-label="Menú"
         >
-          <span className="font-syne text-xl font-black" style={{ textShadow: '0 0 8px #FF6600' }}>
+          <span className="font-syne text-xl font-black">
             {mobileOpen ? '×' : '≡'}
           </span>
         </button>
@@ -224,18 +203,15 @@ export function Navigation() {
       </div>
 
       {/* ── Data strip ── */}
-      <div style={{ borderBottom: '2px solid #1C1000', backgroundColor: '#030100' }}>
+      <div className="border-b-2 border-border-subtle bg-base">
       <div className="mx-auto flex h-[20px] max-w-screen-2xl items-center overflow-hidden px-4 md:px-8">
         {/* Left accent bar */}
-        <div
-          className="h-full w-[3px] flex-shrink-0"
-          style={{ background: 'linear-gradient(to bottom, #FF9900, #FF3300)' }}
-        />
+        <div className="h-full w-[3px] flex-shrink-0 bg-gradient-to-b from-sys-orange to-sys-red" />
 
         {/* Tick ruler */}
-        <div className="flex h-full flex-shrink-0 items-end pb-[3px] pl-2 gap-[3px]">
+        <div className="flex h-full flex-shrink-0 items-end gap-[3px] pb-[3px] pl-2">
           {[6, 4, 4, 4, 8, 4, 4, 4, 6].map((h, i) => (
-            <div key={i} className="w-px flex-shrink-0" style={{ height: `${h}px`, backgroundColor: '#2A1800' }} />
+            <div key={i} className="w-px flex-shrink-0 bg-border-subtle" style={{ height: `${h}px` }} />
           ))}
         </div>
 
@@ -245,11 +221,9 @@ export function Navigation() {
             {[...DATA_STRIP, ...DATA_STRIP].map((token, i) => (
               <span
                 key={i}
-                className="font-mono text-[8px]"
-                style={{
-                  color: token === '//' ? '#FF550033' : '#261600',
-                  textShadow: token === '//' ? '0 0 4px #FF440022' : 'none',
-                }}
+                className={`font-mono text-[8px] ${
+                  token === '//' ? 'text-sys-orange/25' : 'text-muted'
+                }`}
               >
                 {token}
               </span>
@@ -257,40 +231,23 @@ export function Navigation() {
           </div>
         </div>
 
-        {/* Right axis numbers — EVA waveform style */}
-        <div className="flex flex-shrink-0 items-center gap-[6px] px-3" style={{ borderLeft: '1px solid #1C1000' }}>
-          {['-2', '-1', '0', '+1', '+2'].map((n) => (
-            <span
-              key={n}
-              className="font-mono text-[8px] tabular-nums"
-              style={{
-                color: n === '0' ? '#FF660044' : '#1A1000',
-                textShadow: n === '0' ? '0 0 6px #FF440033' : 'none',
-              }}
-            >
-              {n}
-            </span>
-          ))}
-        </div>
-
         {/* SYS status — real feed heartbeat: when the HP rollup last moved the
             feed (max items.hp_last_updated_at) + active piece count. The dot
             pulses (motion-safe) when re-curated within the last rollup cycle.
             Authed-only data; anonymous visitors see just the dim dot. */}
-        <div className="flex flex-shrink-0 items-center gap-1.5 px-3" style={{ borderLeft: '1px solid #1C1000' }}>
+        <div className="flex flex-shrink-0 items-center gap-1.5 border-l border-border-subtle px-3">
           <span
-            className={`h-[4px] w-[4px] rounded-full ${feedFresh ? 'motion-safe:animate-pulse' : ''}`}
+            className={`h-[4px] w-[4px] rounded-full bg-sys-orange ${feedFresh ? 'motion-safe:animate-pulse' : ''}`}
             style={{
-              backgroundColor: '#FF6600',
-              boxShadow: '0 0 4px #FF6600',
+              boxShadow: '0 0 4px #F97316',
               opacity: minutesAgo === null ? 0.4 : feedFresh ? 1 : 0.6,
             }}
           />
           {minutesAgo !== null && (
-            <span className="font-mono text-[7px] tabular-nums" style={{ color: '#FF660099' }}>
+            <span className="font-mono text-[7px] tabular-nums text-sys-orange/60">
               RECURADO {agoLabel(minutesAgo)}
               {activeCount !== null && (
-                <span className="hidden sm:inline" style={{ opacity: 0.7 }}>
+                <span className="hidden opacity-70 sm:inline">
                   {' '}· {activeCount} PIEZAS
                 </span>
               )}
@@ -302,7 +259,7 @@ export function Navigation() {
 
       {/* ── Mobile menu ── */}
       {mobileOpen && (
-        <nav className="border-t bg-black" style={{ borderColor: '#1C1000' }}>
+        <nav className="border-t border-border-subtle bg-base">
           {NAV_LINKS.map((link) => {
             const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
             return (
@@ -310,22 +267,20 @@ export function Navigation() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 border-b px-4 py-3"
+                className="flex items-center gap-3 border-b border-border-subtle px-4 py-3"
                 style={{
-                  borderColor: '#1C1000',
                   background: active
-                    ? 'linear-gradient(to right, rgba(255,136,0,0.08), rgba(230,51,41,0.08))'
+                    ? 'linear-gradient(to right, rgba(249,115,22,0.08), rgba(230,51,41,0.08))'
                     : 'transparent',
                 }}
               >
-                <span
-                  className="font-mono text-[10px]"
-                  style={{ color: NAV_ORANGE, textShadow: active ? '0 0 6px #FF6600' : 'none' }}
-                >
+                <span className="font-mono text-[10px] text-sys-orange">
                   {active ? '▶' : '·'}
                 </span>
                 <span
-                  className="font-syne text-xs font-bold tracking-widest"
+                  className={`font-syne text-xs font-bold tracking-widest ${
+                    active ? '' : 'text-sys-orange'
+                  }`}
                   style={
                     active
                       ? {
@@ -333,12 +288,9 @@ export function Navigation() {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text',
-                          filter: 'drop-shadow(0 0 6px rgba(255,102,0,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
+                          filter: 'drop-shadow(0 0 6px rgba(249,115,22,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
                         }
-                      : {
-                          color: NAV_ORANGE,
-                          textShadow: '0 0 6px rgba(255,102,0,0.2)',
-                        }
+                      : undefined
                   }
                 >
                   {link.label}

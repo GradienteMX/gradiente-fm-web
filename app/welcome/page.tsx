@@ -2,8 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { Code2, UserSquare2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
+import { peekInviteCard, type InviteCard } from '@/lib/invitations'
+import { RegistroCard } from '@/components/welcome/RegistroCard'
+
+// The full invitación-3d experience is heavy (three.js + assets) — load it only
+// when a valid code resolves, so the gate page stays light for everyone else.
+const InviteExperience = dynamic(
+  () => import('@/components/welcome/invite3d/InviteExperience').then((m) => m.InviteExperience),
+  { ssr: false },
+)
+
+// Same Google Fonts the prototype loads (Fraunces / IBM Plex Mono / Rajdhani /
+// Space Grotesk) — the holo card + overlay chrome need them.
+const INVITE_FONTS =
+  'https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@300;400;500&display=swap'
 
 // /welcome — invite-only landing for anonymous visitors. Middleware
 // redirects everyone here when they have no session, and bounces them
@@ -29,14 +44,46 @@ export default function WelcomePage() {
     }
   }, [authResolved, isAuthed, router])
 
-  // Deep-link from the invitation HTML: /welcome?codigo=INV-xxx.
-  // Auto-open the signup overlay with the code pre-filled so the
-  // recipient lands one form away from a real account.
+  // Deep-link from the invitation: /welcome?codigo=INV-xxx. Resolve the code
+  // into the real invitee/card data via the anon-safe peek_invite_card RPC,
+  // then branch on its status. On an active code we keep driving the existing
+  // signup overlay (INTERIM — this status strip is the slot where the
+  // invitación-3d unbox will later mount and feed `invite` into the card). On a
+  // spent/invalid code we show a graceful message instead of opening signup
+  // with a dead code (the old effect opened signup blindly on any codigo).
+  const [invite, setInvite] = useState<InviteCard | null>(null)
+  const [inviteState, setInviteState] = useState<
+    'idle' | 'loading' | 'ready' | 'used' | 'expired' | 'invalid'
+  >('idle')
+  // Manual code entry (the INSERTAR CÓDIGO path when no ?codigo= is present).
+  const [showCodeEntry, setShowCodeEntry] = useState(false)
+  const [codeInput, setCodeInput] = useState('')
+
+  // WebGL gate: the 3D experience needs it. Without it, a valid code falls back
+  // to the inline RegistroCard in the cockpit (still a working signup path).
+  const [webglOk, setWebglOk] = useState(true)
   useEffect(() => {
-    if (authResolved && !isAuthed && codigo) {
-      openLogin('signup', codigo)
+    try {
+      const c = document.createElement('canvas')
+      setWebglOk(!!(c.getContext('webgl2') || c.getContext('webgl')))
+    } catch {
+      setWebglOk(false)
     }
-  }, [authResolved, isAuthed, codigo, openLogin])
+  }, [])
+
+  useEffect(() => {
+    if (!authResolved || isAuthed || !codigo) return
+    let cancelled = false
+    setInviteState('loading')
+    peekInviteCard(codigo).then((res) => {
+      if (cancelled) return
+      setInvite(res)
+      setInviteState(res.status === 'active' ? 'ready' : res.status)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authResolved, isAuthed, codigo])
 
   // Live UTC clock — doubles as a "this is on, this is real" cue.
   const [clock, setClock] = useState('--:--:--')
@@ -50,6 +97,23 @@ export default function WelcomePage() {
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
   }, [])
+
+  // Invited user with a valid code + WebGL → the full immersive unbox: envelope
+  // → holo card → the 5 cards → REGISTRO form, filling the viewport over the
+  // cockpit chrome. The form's signup creates the account, then the redirect
+  // effect above sends them home.
+  if (inviteState === 'ready' && invite && webglOk) {
+    return (
+      <>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="stylesheet" href={INVITE_FONTS} />
+        <div className="fixed inset-0 z-[55] overflow-hidden bg-base">
+          <InviteExperience invite={invite} />
+        </div>
+      </>
+    )
+  }
 
   return (
     <div
@@ -127,31 +191,78 @@ export default function WelcomePage() {
             <span className="ml-1 animate-pulse">_</span>
           </p>
 
-          {/* Vinyl */}
-          <div className="flex min-h-0 flex-1 items-center justify-center">
-            <VinylAscii />
-          </div>
+          {/* Resolved-invitation status for non-active codes (used / expired /
+              unrecognized). An active code drops into the RegistroCard below. */}
+          {codigo &&
+            inviteState !== 'idle' &&
+            inviteState !== 'ready' && <InvitePeekStrip state={inviteState} />}
 
-          {/* CTAs */}
-          <div className="flex w-full max-w-3xl flex-col gap-4 sm:flex-row">
-            <CtaButton
-              icon={<UserSquare2 size={26} strokeWidth={1.5} />}
-              label="INICIAR SESIÓN"
-              sublabel="USUARIO REGISTRADO"
-              onClick={() => openLogin('login')}
-            />
-            <CtaButton
-              icon={<Code2 size={26} strokeWidth={1.5} />}
-              label="INSERTAR CÓDIGO"
-              sublabel="ACCESO POR INVITACIÓN"
-              onClick={() => openLogin('signup', codigo)}
-            />
-          </div>
+          {inviteState === 'ready' && invite ? (
+            /* No-WebGL fallback: a valid code WITH WebGL early-returns into the
+               full 3D experience above; this inline RegistroCard is the working
+               signup path when WebGL is unavailable. */
+            <div className="flex min-h-0 flex-1 items-center justify-center py-2">
+              <RegistroCard invite={invite} />
+            </div>
+          ) : (
+            <>
+              {/* Vinyl */}
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <VinylAscii />
+              </div>
 
-          <p className="mt-2 font-mono text-[10px] tracking-widest text-muted">
-            <span className="text-sys-red">⚠ ADVERTENCIA</span>: Este sistema
-            registra actividad. Toda acción deja rastro.
-          </p>
+              {/* CTAs */}
+              <div className="flex w-full max-w-3xl flex-col gap-4 sm:flex-row">
+                <CtaButton
+                  icon={<UserSquare2 size={26} strokeWidth={1.5} />}
+                  label="INICIAR SESIÓN"
+                  sublabel="USUARIO REGISTRADO"
+                  onClick={() => openLogin('login')}
+                />
+                <CtaButton
+                  icon={<Code2 size={26} strokeWidth={1.5} />}
+                  label="INSERTAR CÓDIGO"
+                  sublabel="ACCESO POR INVITACIÓN"
+                  onClick={() => setShowCodeEntry(true)}
+                />
+              </div>
+
+              {/* Manual code entry → re-enters /welcome with ?codigo= so the
+                  same peek + RegistroCard path runs (no signup modal). */}
+              {showCodeEntry && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const c = codeInput.trim()
+                    if (c) router.push(`/welcome?codigo=${encodeURIComponent(c)}`)
+                  }}
+                  className="flex w-full max-w-3xl items-stretch gap-2"
+                >
+                  <input
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    placeholder="INV-XXXXXXXXXXXXXXXX"
+                    autoFocus
+                    autoComplete="off"
+                    className="flex-1 border bg-black px-3 py-2 font-mono text-sm tracking-widest text-primary outline-none focus:border-sys-orange"
+                    style={{ borderColor: '#242424' }}
+                  />
+                  <button
+                    type="submit"
+                    className="border px-5 font-mono text-[11px] tracking-widest transition-colors hover:bg-sys-orange/15"
+                    style={{ borderColor: '#F97316', color: '#F97316', backgroundColor: 'rgba(249,115,22,0.08)' }}
+                  >
+                    ▶ ACTIVAR
+                  </button>
+                </form>
+              )}
+
+              <p className="mt-2 font-mono text-[10px] tracking-widest text-muted">
+                <span className="text-sys-red">⚠ ADVERTENCIA</span>: Este sistema
+                registra actividad. Toda acción deja rastro.
+              </p>
+            </>
+          )}
         </main>
 
         {/* ── RIGHT COLUMN ────────────────────────────────────────── */}
@@ -265,6 +376,40 @@ export default function WelcomePage() {
         }
       `}</style>
     </div>
+  )
+}
+
+// ── Resolved-invitation strip ───────────────────────────────────────────────
+//
+// Status for /welcome?codigo= when the code is NOT registerable (verifying, or
+// spent / expired / unrecognized). An active code renders the RegistroCard
+// instead, so 'ready' never reaches this strip.
+function InvitePeekStrip({
+  state,
+}: {
+  state: 'loading' | 'used' | 'expired' | 'invalid'
+}) {
+  if (state === 'loading') {
+    return (
+      <p className="font-mono text-[11px] tracking-widest text-muted">
+        &gt; VERIFICANDO CÓDIGO<span className="animate-pulse">_</span>
+      </p>
+    )
+  }
+
+  const msg =
+    state === 'used'
+      ? 'ESTE CÓDIGO YA FUE ACTIVADO'
+      : state === 'expired'
+        ? 'ESTE CÓDIGO EXPIRÓ'
+        : 'CÓDIGO NO RECONOCIDO'
+  return (
+    <p
+      className="border px-4 py-2 font-mono text-[11px] tracking-widest"
+      style={{ borderColor: '#E63329', color: '#E63329' }}
+    >
+      ⚠ {msg}
+    </p>
   )
 }
 

@@ -49,7 +49,7 @@ export function EventCard({ item }: EventCardProps) {
             </span>
           )}
           {item.tags.includes('lgbtq') && (
-            <span className="sys-label border border-vibe-warm/40 px-1.5 py-0.5 text-vibe-warm">
+            <span className="sys-label border border-vibe-7/40 px-1.5 py-0.5 text-vibe-7">
               LGBTQ+
             </span>
           )}

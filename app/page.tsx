@@ -1,3 +1,4 @@
+import nextDynamic from 'next/dynamic'
 import { CategoryRail } from '@/components/CategoryRail'
 import { EventosRail } from '@/components/EventosRail'
 import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
@@ -8,6 +9,13 @@ import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
+
+// SHOWPIECE — teletext signal-field background. Client-only (raw WebGL),
+// loaded with ssr:false so it never touches LCP; the component self-gates to
+// capable surfaces and mounts after idle. Fixed z-0 canvas behind all content.
+const VibeFluid = nextDynamic(() => import('@/components/fluid/VibeFluid'), {
+  ssr: false,
+})
 
 // Reads from Supabase via cookies()-aware server client → forces dynamic.
 // Will become `revalidate = 300` once the SYSTEM UPDATE countdown lands
@@ -57,7 +65,14 @@ export default async function HomePage() {
 
   return (
     <>
-      <div className="flex gap-6">
+      {/* SHOWPIECE — signal-field background. The fluid is fixed at z-0
+          (visible above the page background); the feed wrapper is lifted to
+          z-10 so it always paints ABOVE the field by explicit z-order — not
+          source-order luck, and without burying the fluid behind an opaque
+          ancestor background (which z-[-1] did). */}
+      <VibeFluid />
+
+      <div className="relative z-10 flex gap-6">
         {/* Left category rail — desktop only, sticky */}
         <CategoryRail items={gridItems} />
 

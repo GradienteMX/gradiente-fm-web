@@ -1,7 +1,8 @@
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor, vibeMid, vibeBandGradient } from '@/lib/utils'
+import { vibeToColor, vibeMid } from '@/lib/utils'
 import { getGenreNames } from '@/lib/genres'
 import { fmtDateShort } from '@/lib/utils'
+import { VibeMeter } from '@/components/VibeMeter'
 import { Play } from 'lucide-react'
 
 interface MixCardProps {
@@ -11,14 +12,12 @@ interface MixCardProps {
 export function MixCard({ item }: MixCardProps) {
   const vibeMidVal = vibeMid(item)
   const vibeColor = vibeToColor(vibeMidVal)
-  const vibeBand = vibeBandGradient(item)
   const genres = getGenreNames(item.genres).slice(0, 3)
   const primaryUrl = item.embeds?.[0]?.url ?? item.mixUrl ?? '#'
 
   return (
     <article className="group relative border border-border bg-surface transition-colors hover:border-secondary hover:bg-elevated">
-      {/* Top accent stripe — gradient band when range, solid when point. */}
-      <div className="h-0.5 w-full" style={{ background: vibeBand }} />
+      <VibeMeter item={item} size="xs" />
 
       <div className="flex items-stretch gap-0">
         {/* Play zone */}

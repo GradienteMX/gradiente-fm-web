@@ -15,35 +15,43 @@ const config: Config = {
         mono: ['var(--font-space-mono)', 'monospace'],
       },
       colors: {
-        base: '#000000',
-        surface: '#080808',
-        elevated: '#111111',
-        hover: '#181818',
-        border: '#242424',
-        'border-subtle': '#161616',
+        // Deep-charcoal base (not pure black): nighttime readability per the
+        // RA brutalism teardown. Grey ramp re-derived to keep the original
+        // elevation deltas above the new base.
+        base: '#0D0D0D',
+        surface: '#141414',
+        elevated: '#1B1B1B',
+        hover: '#222222',
+        border: '#2E2E2E',
+        'border-subtle': '#202020',
         primary: '#F0F0F0',
         secondary: '#888888',
-        muted: '#444444',
-        // NGE system colors
+        muted: '#4A4A4A',
+        // System colors
         'sys-red': '#E63329',
         'sys-orange': '#F97316',
         'sys-amber': '#F59E0B',
         'sys-green': '#4ADE80',
-        // Vibe colors (cold → hot)
-        'vibe-ice': '#7DD3FC',
-        'vibe-cold': '#38BDF8',
-        'vibe-cool': '#818CF8',
-        'vibe-neutral': '#A78BFA',
-        'vibe-warm': '#E879F9',
-        'vibe-hot': '#FB923C',
-        'vibe-fire': '#F87171',
-        'vibe-volcano': '#B91C1C',
+        // Vibe slots 0-10 — thermo-diverging instrument ramp. Single source of
+        // truth is VIBE_SLOT_COLORS in lib/utils.ts; change in lockstep.
+        'vibe-0': '#087487',
+        'vibe-1': '#217B98',
+        'vibe-2': '#48819E',
+        'vibe-3': '#6586A0',
+        'vibe-4': '#7A8A9D',
+        'vibe-5': '#948E85',
+        'vibe-6': '#C38174',
+        'vibe-7': '#E17756',
+        'vibe-8': '#FC6C0F',
+        'vibe-9': '#FC9414',
+        'vibe-10': '#FEB225',
       },
       backgroundImage: {
-        'vibe-gradient':
-          'linear-gradient(to right, #7DD3FC 0%, #38BDF8 12%, #818CF8 28%, #A78BFA 42%, #E879F9 55%, #FB923C 70%, #F87171 83%, #B91C1C 100%)',
+        // NOTE: no 'vibe-gradient' entry here — the canonical .bg-vibe-gradient
+        // class lives in globals.css (single definition; the old duplicate
+        // shadowed this utility).
         'hazard-stripes':
-          'repeating-linear-gradient(-45deg, #F97316 0px, #F97316 4px, #000 4px, #000 12px)',
+          'repeating-linear-gradient(-45deg, #F97316 0px, #F97316 4px, #0D0D0D 4px, #0D0D0D 12px)',
       },
       borderRadius: {
         DEFAULT: '0px',

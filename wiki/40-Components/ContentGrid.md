@@ -2,12 +2,12 @@
 type: component
 status: current
 tags: [component, grid, mosaic, curation, layout-animation]
-updated: 2026-04-22
+updated: 2026-06-12
 ---
 
 # ContentGrid
 
-> The mosaic. HP-driven card sizing + Framer Motion shared-layout animations with directional easing.
+> The mosaic. HP-driven card sizing + Framer Motion layout animations under one rule: **position interpolates, size quantizes**.
 
 ## Source
 
@@ -57,26 +57,21 @@ container-type: inline-size   ← future-proofing for container queries
 
 ## Layout animations
 
-Each card is a `motion.div` with `layout` and `layoutId`. Framer Motion tracks position/size across renders and animates transitions. Transitions differ by direction:
+> **Redesign 2026** (motion constitution): *position interpolates, size quantizes*. The old directional-easing scheme (400ms growth / 700ms shrink / 600ms same-area, picked via a `useRef<Map>` span snapshot) is deleted along with its direction-tracker machinery.
 
-| Direction | Duration | Easing |
-|---|---|---|
-| First mount | 400ms | `easeOut` |
-| **Growth** (area increased) | 400ms | `easeOut` — fast, confident |
-| **Shrink** (area decreased) | 700ms | `easeIn` — slow, quiet |
-| Same area | 600ms | `easeInOut` |
+Each card is a `motion.div` with `layout="position"` — Framer Motion animates **position only**. Size changes between tiers **snap** (an HP tier is a state, not a momentum; also avoids text squish during span changes) while the surrounding field slides to absorb them.
 
-The rationale ([`MosaicItem` comment](../../components/ContentGrid.tsx)): "Growth: fast/confident. Shrink: slow/quiet."
-
-Implementation uses a `useRef<Map<id, {colSpan, rowSpan}>>` to snapshot previous spans before each render, then picks the easing.
+| Motion | Treatment |
+|---|---|
+| Position (reflow) | one transition: 250ms `easeOut` |
+| Size (tier change) | instant snap |
+| Entrant (mount) | stepped opacity — 4 hard steps (0 → ⅓ → ⅔ → 1), 280ms, 40ms stagger capped at index 8. Signal acquisition, not a fade. No scale-in: cards CUT in, they do not grow. |
+| Exit | instant unmount (no AnimatePresence — see the in-file comment on the popLayout bug) |
+| `prefers-reduced-motion` | `layout={false}` — the position slide is disabled; the opacity-only reveal stays |
 
 ## The `--prominence` CSS variable
 
-Each card sets `--prominence: {0..1}` based on its intra-tier intensity, and uses it for:
-- `padding: calc(var(--prominence) * 0.25rem)` — subtle inset
-- `transform: scale(calc(0.98 + --prominence * 0.04))` — up to 2% scale
-
-So a card at the top of its tier is almost imperceptibly larger than one at the bottom. Design nuance you feel without reading.
+Each card still sets `--prominence: {0..1}` from its intra-tier intensity, but it currently has **no visual consumer** — the old standing-scale breathing (`scale(0.98 + p*0.04)`) and prominence padding were removed in Redesign 2026. The variable is kept as a hook for future shader/treatment work; don't remove it without checking [[ContentCard]] + CSS.
 
 ## Empty state
 

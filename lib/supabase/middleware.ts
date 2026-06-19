@@ -53,10 +53,13 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname
   const isApi = path.startsWith('/api/')
   const isWelcome = path === '/welcome'
+  // Dev-only: let /lab/* experimental routes (e.g. the tarjeta-3d reconciliation
+  // spike) be viewed without auth. Guarded by NODE_ENV so production is unchanged.
+  const isDevLab = process.env.NODE_ENV !== 'production' && path.startsWith('/lab')
 
   // Anonymous: redirect every page request to /welcome (API routes pass
   // through and self-401 in their handlers).
-  if (!user && !isApi && !isWelcome) {
+  if (!user && !isApi && !isWelcome && !isDevLab) {
     const url = request.nextUrl.clone()
     url.pathname = '/welcome'
     url.search = ''

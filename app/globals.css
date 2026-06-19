@@ -4,16 +4,25 @@
 
 /* ── CSS custom properties ────────────────────────────────── */
 :root {
+  /* Canonical full-axis vibe gradient — 11 HARD slot steps of the
+     thermo-diverging instrument ramp (single source of truth:
+     VIBE_SLOT_COLORS in lib/utils.ts; change in lockstep). Stepped, not
+     smooth: 11 calibrated bands read as measured, a continuous gradient
+     reads as generated. This is the ONLY definition of .bg-vibe-gradient —
+     the old Tailwind backgroundImage duplicate was removed. */
   --vibe-gradient: linear-gradient(
     to right,
-    #00ffff  0%,
-    #0066ff 18%,
-    #6600ff 34%,
-    #ff00ff 50%,
-    #ff0066 62%,
-    #ff5500 76%,
-    #ff2200 90%,
-    #ff0000 100%
+    #087487 0%      9.09%,
+    #217B98 9.09%  18.18%,
+    #48819E 18.18% 27.27%,
+    #6586A0 27.27% 36.36%,
+    #7A8A9D 36.36% 45.45%,
+    #948E85 45.45% 54.55%,
+    #C38174 54.55% 63.64%,
+    #E17756 63.64% 72.73%,
+    #FC6C0F 72.73% 81.82%,
+    #FC9414 81.82% 90.91%,
+    #FEB225 90.91% 100%
   );
   --font-syne: 'Syne', sans-serif;
   --font-space-grotesk: 'Space Grotesk', sans-serif;
@@ -26,7 +35,7 @@
 }
 
 html {
-  background-color: #000000;
+  background-color: #0D0D0D;
   color: #f0f0f0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -34,7 +43,7 @@ html {
 
 body {
   font-family: var(--font-space-grotesk);
-  background-color: #000000;
+  background-color: #0D0D0D;
   min-height: 100vh;
   /* Safety net — prevents any rogue child from producing a horizontal
      scrollbar at intermediate viewport widths. The header and home layout
@@ -48,7 +57,7 @@ body {
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: #0D0D0D;
 }
 ::-webkit-scrollbar-thumb {
   background: #333;
@@ -111,7 +120,7 @@ body {
     background: repeating-linear-gradient(
       -45deg,
       #F97316 0px 4px,
-      #000000 4px 12px
+      #0D0D0D 4px 12px
     );
   }
 
@@ -165,29 +174,6 @@ body {
 /* EventosRail track — hide native scrollbar on WebKit so the rAF-driven
    auto-scroll + edge fades carry the affordance without a stray gutter. */
 .evento-rail-track::-webkit-scrollbar { display: none; }
-
-/* ── Hologram flicker ────────────────────────────────────── */
-@keyframes holo-flicker {
-  0%, 94%, 96.5%, 100% { opacity: 1; filter: brightness(1); }
-  95%, 96%             { opacity: 0.7; filter: brightness(1.4); }
-}
-
-/* ── EVA orange glow text ────────────────────────────────── */
-.eva-glow {
-  color: #FF8C00;
-  text-shadow:
-    0 0 3px #FF6600,
-    0 0 8px #FF660088,
-    0 0 18px #FF440044,
-    -1px 0 0 #FF000055,
-    1px 0 0 #FF990022;
-  animation: holo-flicker 8s step-end infinite;
-}
-
-.eva-glow-sm {
-  color: #FF8C00;
-  text-shadow: 0 0 4px #FF6600, 0 0 10px #FF440055;
-}
 
 /* ── EVA scan-line overlay ───────────────────────────────── */
 .eva-scanlines::after {
@@ -401,5 +387,103 @@ body {
 }
 .fresh-chip-flicker {
   animation: fresh-chip-flicker 2.8s steps(20, end) infinite;
+}
+
+/* ── Document-mount feed — archival at-rest flyer treatment ───────────────
+   (redesign 2026 · SHOWPIECE)
+
+   Every flyer in the feed rests as a tinted archival print: grayscale base,
+   colorized by the item's vibe temperature (the 11-slot thermal ramp —
+   vibeToColor(vibeMid) arrives per-item as an inline background-color on
+   .flyer-tint), under a halftone print-grain scrim. Hover or keyboard focus
+   "develops" the print back to full color — attention is the developer
+   bath. Zero GPU shader cost: gradients, blend modes, opacity and
+   grayscale/contrast filters only. blur() is deliberately absent from this
+   whole chain (convolution cost at 100+ cards).
+
+   Exceptions are decided in ContentCard, not here: fresh (<1h) items keep
+   their glitch chrome untreated (fresh-cover-flicker owns `filter`),
+   drafts keep the draft treatment, imageless cards and the pinned hero are
+   untouched.
+
+   .flyer-scope sits on the card's OUTER wrapper (the focusable
+   role="button" div), not the .group article, because keyboard focus lands
+   on the wrapper — :focus-within must be tested there. Hovering the
+   wrapper is geometrically identical to hovering the article. */
+
+.flyer-mount {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Contain the blend modes: 'color' and 'multiply' composite against the
+     grayscale img only — never against whatever sits behind the card. */
+  isolation: isolate;
+}
+
+.flyer-img {
+  filter: grayscale(1) contrast(1.05);
+  /* Owns the full transition (the Tailwind transition-transform utility is
+     dropped on treated imgs so this shorthand doesn't fight it): filter
+     for the develop reveal, transform for the existing hover zoom.
+     Filter (non-blur) + transform both run on the compositor. */
+  transition:
+    filter 350ms cubic-bezier(0, 0, 0.2, 1),
+    transform 700ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.flyer-tint,
+.flyer-halftone {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 350ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Slot-tint — hue/chroma from the vibe slot, luminosity from the print:
+   mix-blend-mode color tints, never paints. Opacity applies after the
+   blend, so 0.22 reads as "22% developed toward the slot color". */
+.flyer-tint {
+  mix-blend-mode: color;
+  opacity: 0.22;
+}
+
+/* Halftone scrim — two offset dot grids (the classic 45° print screen)
+   from repeating radial-gradient dots. 4px pitch / 2px offset keeps dots
+   on the device-pixel grid at DPR 1 (1px dots) and DPR 2 (2px dots):
+   crisp print grain with no blur anywhere. Deterministic structure, not
+   randomness — the same grid on every print is what makes it read as the
+   archive's screen, not noise. */
+.flyer-halftone {
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle, rgba(13, 13, 13, 0.9) 0 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(13, 13, 13, 0.9) 0 1px, transparent 1.6px);
+  background-size: 4px 4px, 4px 4px;
+  background-position: 0 0, 2px 2px;
+}
+
+/* Attention develops the print — hover or keyboard focus lifts the
+   grayscale and fades both scrims. Opacity + filter only; one-shot user-
+   driven transition, so no luminance oscillation (photosensitivity-safe). */
+.flyer-scope:hover .flyer-img,
+.flyer-scope:focus-within .flyer-img {
+  filter: grayscale(0) contrast(1);
+}
+.flyer-scope:hover .flyer-tint,
+.flyer-scope:focus-within .flyer-tint,
+.flyer-scope:hover .flyer-halftone,
+.flyer-scope:focus-within .flyer-halftone {
+  opacity: 0;
+}
+
+/* Reduced motion: the reveal still works, instantly. Zeroing the duration
+   also stills the hover zoom inherited through .flyer-img's shorthand. */
+@media (prefers-reduced-motion: reduce) {
+  .flyer-img,
+  .flyer-tint,
+  .flyer-halftone {
+    transition-duration: 0ms;
+  }
 }
 

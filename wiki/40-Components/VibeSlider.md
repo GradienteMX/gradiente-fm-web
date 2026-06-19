@@ -1,13 +1,15 @@
 ---
 type: component
 status: current
-tags: [component, vibe, filter, slider, phosphor, multi-genre]
-updated: 2026-05-12
+tags: [component, vibe, filter, slider, station-dial, phosphor, multi-genre]
+updated: 2026-06-12
 ---
 
 # VibeSlider
 
-> Sticky dual-handle range slider across a three-row phosphor tape, plus a feed-driven multi-genre chip strip below. Writes to [[VibeContext]].
+> Sticky **station dial** — printed scale plate + three-row phosphor tape + two needle handles — plus a feed-driven multi-genre chip strip below. Writes to [[VibeContext]].
+
+> **Redesign 2026** reworked the band as a station dial (see "Three layers, strict roles" below): static printed plate, hard-slot tape colors, PPM ballistics, release-snap detents, arrow-key stepping. Preserved verbatim: the `[data-vibe-strip]` container contract (measured by [[CategoryRail]] for its sticky offset), the chip strip's interaction-gated auto-hide, and the [[VibeContext]] API.
 
 ## Source
 
@@ -25,39 +27,40 @@ The slider is a feed-curation control — it has no meaning in editor surfaces. 
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ VIBE                                       [RESET]   │  ← header (RESET always rendered, invisible at full range)
+│ //VIBE  03-07 · COOL → HOT                  [RESET]  │  ← header readout (fixed 24ch slot; RESET always rendered)
 ├──────────────────────────────────────────────────────┤
-│         GLACIAL ──────────── VOLCÁN                  │  ← handle labels
-│   · ·  ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·    │  ← top phosphor row (sparse)
-│  ══════════════════════════════════════════════════  │  ← middle (dense, the baseline)
+│   · ·  ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·    │  ← top tape row (sparse)
+│  ═════════│════════════════════│═══════════════════  │  ← middle (dense baseline) + needles
 │    · ·  · ·  · ·  · ·  · ·  · ·  · ·  · ·  · · ·    │  ← bottom (sparse, half-step offset)
-│         │                       │                    │  ← handles (3px white)
+│  00  01  02  03  04  05  06  07  08  09  10          │  ← scale plate — printed, STATIC
+│  GLACIAL POLAR CHILL COOL … BRASA VOLCÁN             │     slot names (hidden below md)
 ├──────────────────────────────────────────────────────┤
-│  + 28 GÉNEROS   Ambient · Lo-fi · Jazz · …           │  ← chip strip (range-driven visibility)
+│  + 28 GÉNEROS   Ambient · Lo-fi · Jazz · …           │  ← chip strip (interaction-gated visibility)
 └──────────────────────────────────────────────────────┘
 ```
 
 Sticks below [[Navigation]] at `top: 76px`. The chip-strip row is content-driven — collapses to the pin button when chips are hidden (no more `min-h-[3.5rem]` reservation). See "Layout & shift policy" below.
 
-## Interaction model — slider band
+## Three layers, strict roles (station dial)
 
-- **Drag a handle** → updates `vibeRange` continuously
-- **Click on the track** → moves the nearer handle to that position
-- **RESET button** appears (becomes visible) when range ≠ `[0, 10]`; restores `[0, 10]`. Always rendered so the header height never shifts.
+- **PLATE** — printed scale: zero-padded numerals `00`–`10` + slot names at fixed band centers. **Never moves**; in-range labels brighten (`text-muted` → `text-secondary`, "lit plate"), nothing else. Names hidden below the `md` breakpoint (numerals stay). This replaced the traveling handle labels — labels no longer follow the handles.
+- **TAPE** — phosphor dash field colored in **11 hard slot bands** (no per-dash lerp). In-range dashes lit at full slot color + glow; out-of-range dim to a low-alpha version of their **own** hue — unlit LEDs on a calibrated scale, never gray.
+- **NEEDLES** — the two range handles: 1.5px white line + 5×7px grip cap, inside a 28px-wide invisible drag target (`role="slider"` with full aria values). Only the needles move.
 
-Handles are 6px-wide invisible pointer targets wrapping a 3px white visible mark. Touchable on mobile without a heavy footprint.
+Value↔position mapping: an integer slot sits at the **center** of its band (`slotCenterPct(v) = (v + 0.5) / 11`), so a detented needle points exactly at its printed numeral. The tape dashes share the same 0–100 mapping (this fixed a ~1% tape/plate misalignment from a 99%-vs-100% scale).
 
-## Continuous range
+## Interaction model — the dial
 
-`vibeRange` is `[number, number]` of **continuous floats in `[0, 10]`**, not integer slots. Dragging produces `3.73` / `7.19`.
+- **Drag a needle** → updates `vibeRange` continuously (floats); the needle follows instantly (transition off while dragging).
+- **Release → detent snap** — the dragged needle snaps to the nearest integer slot via a 200ms `cubic-bezier(0.3, 1.6, 0.5, 1)` overshoot transition, so the snap reads as a felt click. **Magnetic edges:** slots 0 and 10 capture a wider window (±0.65 vs ±0.5 interior) so the extremes are generous targets.
+- **Click on the track** → moves the nearer needle to the clicked slot (snapped). A drag-end click is suppressed via a `justDraggedRef` guard so releasing between the needles can't teleport the other one.
+- **Arrow keys** (new in Redesign 2026) — `←`/`↓` and `→`/`↑` step the focused needle one detent, clamped against the other needle; `Home`/`End` jump to the magnetic extremes.
+- **RESET button** becomes visible when range ≠ `[0, 10]`; restores `[0, 10]`. Always rendered so the header height never shifts.
+- **`prefers-reduced-motion`** → all of it goes instant: tape ballistics `0ms`, needle transition `none`.
 
-Three things snap to integers for legibility, nothing else does:
+## Continuous during drag, quantized at rest
 
-1. **Handle label** — `VIBE_SLOT_NAMES[Math.round(min)]`. Handle at 3.73 reads as `FRESH` (slot 4).
-2. **Handle label color** — `vibeToColor(Math.round(min))`.
-3. **Genre chip in/out** — chips check `feedSet.has(id)` (or `GENRE_VIBE[id]` in fallback), both integer-keyed.
-
-Everything else — handle x-position, dash lit/unlit boundary, content filter — uses the raw float.
+`vibeRange` is `[number, number]` in `[0, 10]` — but floats exist **only mid-drag** (release snaps both writes to integers). Slot-quantized values (`Math.round`) drive the lit tape bands, the plate brightening and the header readout, so whole bands flip as a needle crosses detent boundaries — stepped, not smeared. The content filter and needle x-position use the raw value (float while dragging).
 
 ## The phosphor tape
 
@@ -69,9 +72,11 @@ Three horizontal rows of short vertical dashes (~200 total `<div>`s, generated o
 | Middle | `50%` | 120 | 4–6 px | dense, near-continuous baseline |
 | Bottom | `32%` | 40 | 3–5 px | sparse, half-step offset from top |
 
-Each dash's color is `interpolateVibeColor(t * 10)` (RGB lerp between two `vibeToColor` anchors). Lit when `dashVibe ∈ [min, max]`, unlit otherwise (opacity 0.08). 120ms transition. See [[Vibe Gradient]] for palette details.
+Each dash is **hard-assigned to one slot** (`Math.floor(t * 11)`) and colored `VIBE_SLOT_COLORS[slot]` — no lerp across band boundaries (the old `interpolateVibeColor` RGB-lerp helper is deleted). Lit when `slot ∈ [minSlot, maxSlot]` (opacity 1 + 3px glow), unlit otherwise (opacity 0.16, same hue). See [[Vibe Gradient]].
 
-Determinism: dash widths use `Math.imul`-based `hash01(seed, salt)` to avoid SSR/client hydration drift.
+**PPM ballistics:** per-dash `transitionDuration` is picked by the lit-state the dash is transitioning *into* — fast attack (~100ms) when a band lights, slow decay (~600ms) when it dims. The plate labels brighten/dim on the same ballistics.
+
+Determinism: dash heights use `Math.imul`-based `hash01(seed, salt)` to avoid SSR/client hydration drift.
 
 ## Chip strip — feed-driven, multi-genre toggle
 
@@ -102,7 +107,7 @@ inFeed = feedSet
 chipVisible = pinned || active || (!isFullRange && inFeed && recentInteraction)
 ```
 
-Active (yellow) chips stay visible **always** — the user needs to see and clear them. Non-active chips inherit the same 2s interaction gate as the container, so once a filter is committed and 2s of idle pass, the strip settles to just the yellow selections. Toggling a chip resets the timer, giving a fresh 2s window to pick another candidate before the strip settles back.
+Active (orange) chips stay visible **always** — the user needs to see and clear them. Non-active chips inherit the same 2s interaction gate as the container, so once a filter is committed and 2s of idle pass, the strip settles to just the orange selections. Toggling a chip resets the timer, giving a fresh 2s window to pick another candidate before the strip settles back.
 
 The earlier (pre-2026-05-12) version dropped the `recentInteraction` clause, so committing a filter left the entire 70-chip candidate strip visible indefinitely — the surface read as "you've picked these three, plus also here are 70 more options" — opposite of what the user just did.
 
@@ -124,7 +129,7 @@ Feed-driven via `visibleGenres` from [[VibeContext]] (pushed by [[ContentGrid]])
 
 Each chip is a `<button aria-pressed>`. Click fires `toggleGenre(id)` from [[VibeContext]] — adds if absent, removes if present. Multi-select; multiple genres can be active simultaneously and intersect via OR semantics in [[ContentGrid]]'s `itemMatchesGenreFilter` (which rolls up parent → descendants).
 
-Active chips: gold fill (`bg-[#F5C500] text-black shadow-[0_0_6px_rgba(245,197,0,0.55)]`).
+Active chips: sys-orange fill (`bg-sys-orange text-black shadow-[0_0_6px_rgba(249,115,22,0.55)]`).
 Inactive chips: outlined (`border-border/40 text-secondary`).
 
 ### Smooth fade transitions
@@ -168,11 +173,9 @@ Two height-stability fixes that *did* survive the rework:
 6 WARM     7 HOT    8 FUEGO   9 BRASA  10 VOLCÁN
 ```
 
-Canonical source: `VIBE_SLOT_NAMES` exported from [utils.ts](../../lib/utils.ts). The slider, [[VibeFader]], composer [[Dashboard Forms|VibeField]], and overlay vibe chips (via `vibeRangeLabel`) all read from this single array, so adjacent slots never share a label.
+Canonical source: `VIBE_SLOT_NAMES` exported from [utils.ts](../../lib/utils.ts). The slider's plate + header readout, [[VibeFader]], composer [[Dashboard Forms|VibeField]], and overlay vibe chips (via `vibeRangeLabel`) all read from this single array, so adjacent slots never share a label.
 
-## Label overlap handling
-
-When both handles are close (< 14% apart), only the min-handle label shows. Prevents text collision.
+(The old "label overlap handling" — hiding the max-handle label when the handles were < 14% apart — is gone with the traveling labels themselves: the plate is printed at fixed positions, so nothing can collide.)
 
 ## Why the chip strip is feed-driven (not GENRE_VIBE-driven)
 

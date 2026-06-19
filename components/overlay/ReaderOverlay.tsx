@@ -22,6 +22,7 @@ import {
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
+import { VibeMeter } from '@/components/VibeMeter'
 import { useOverlayShell } from './OverlayShell'
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
@@ -267,9 +268,10 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   alt={item.title}
                   className="h-full w-full object-cover object-top"
                 />
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-0.5"
-                  style={{ backgroundColor: vibeColor }}
+                <VibeMeter
+                  item={item}
+                  size="xs"
+                  className="absolute bottom-0 left-0"
                 />
               </div>
               <div className="mt-2 flex items-center justify-between font-mono text-[10px]">

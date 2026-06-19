@@ -349,38 +349,50 @@ export type Database = {
       }
       invite_codes: {
         Row: {
+          card_name: string | null
           code: string
           created_at: string
           created_by: string | null
           expires_at: string | null
+          folio: number | null
+          folio_denominator: number
           intended_is_mod: boolean
           intended_partner_admin: boolean
           intended_partner_id: string | null
           intended_role: Database["public"]["Enums"]["user_role"]
+          issued_label: string | null
           used_at: string | null
           used_by: string | null
         }
         Insert: {
+          card_name?: string | null
           code: string
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          folio?: number | null
+          folio_denominator?: number
           intended_is_mod?: boolean
           intended_partner_admin?: boolean
           intended_partner_id?: string | null
           intended_role?: Database["public"]["Enums"]["user_role"]
+          issued_label?: string | null
           used_at?: string | null
           used_by?: string | null
         }
         Update: {
+          card_name?: string | null
           code?: string
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          folio?: number | null
+          folio_denominator?: number
           intended_is_mod?: boolean
           intended_partner_admin?: boolean
           intended_partner_id?: string | null
           intended_role?: Database["public"]["Enums"]["user_role"]
+          issued_label?: string | null
           used_at?: string | null
           used_by?: string | null
         }
@@ -1085,6 +1097,20 @@ export type Database = {
           p_genres: string[]
         }
         Returns: Json
+      }
+      peek_invite_card: {
+        Args: { p_code: string }
+        Returns: {
+          card_name: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          folio: number | null
+          folio_denominator: number | null
+          issued_label: string | null
+          issued_at: string | null
+          partner_title: string | null
+          partner_logo_url: string | null
+          status: string
+        }[]
       }
       publish_partner_event: { Args: { p_item_id: string }; Returns: Json }
       discard_partner_event: { Args: { p_item_id: string }; Returns: Json }

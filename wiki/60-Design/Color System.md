@@ -2,32 +2,34 @@
 type: design
 status: current
 tags: [design, color, palette]
-updated: 2026-04-22
+updated: 2026-06-12
 ---
 
 # Color System
 
-> Black base. Grey ramp for chrome. Orange family for brand + alerts. Vibe gradient for content temperature. Category colors for type recognition.
+> Charcoal base. Grey ramp for chrome. Orange family for brand + alerts. Vibe ramp for content temperature — the **one expressive variable** on cards. Category colors demoted to non-card chrome.
 
 ## Five palettes
 
 ### 1. Base + greys (structural)
 
+> **Redesign 2026:** base moved `#000000` → `#0D0D0D` deep charcoal (pure black fails nighttime readability — RA brutalism teardown). The whole grey ramp was re-derived to keep the original elevation deltas above the new base.
+
 ```
-base         #000000   html background, absolute base
-surface      #080808   slightly elevated (sidebar panels)
-elevated     #111111   card fills, hover states
-hover        #181818   explicit hover
-border       #242424   main dividers
-border-subtle #161616  faint dividers
+base         #0D0D0D   html background, deep charcoal
+surface      #141414   slightly elevated (sidebar panels)
+elevated     #1B1B1B   card fills, hover states
+hover        #222222   explicit hover
+border       #2E2E2E   main dividers
+border-subtle #202020  faint dividers
 primary      #F0F0F0   default text, headlines
 secondary    #888888   subdued text
-muted        #444444   chrome labels, meta
+muted        #4A4A4A   chrome labels, meta
 ```
 
-Defined in [tailwind.config.ts:17](../../tailwind.config.ts).
+Defined in [tailwind.config.ts](../../tailwind.config.ts).
 
-### 2. NGE system colors (accents)
+### 2. System colors (accents)
 
 ```
 sys-red      #E63329   brand red — section markers, hero accents, ★ badges
@@ -36,33 +38,33 @@ sys-amber    #F59E0B   (unused actively but defined)
 sys-green    #4ADE80   live / online / pinned indicators
 ```
 
-Plus an extensive inline palette in [[Navigation]] for EVA orange glow:
-- `#FF6600` `#FF8800` `#FFAA00` `#FF9900` `#FFB800` `#FF2200` — the "MAGI fire" range
-- Deep backgrounds `#1C1000` `#140B00` `#0C0500` `#030100` — near-black with orange tint
-- `#00FF44` — MAGI status green
+> **Redesign 2026:** the extensive inline "MAGI fire" palette in [[Navigation]] (`#FF6600`…`#FF2200`, near-black orange-tinted backgrounds, `#00FF44` status green — 18 inline hexes) is gone, replaced by the tokens above. The `.eva-glow` / `.eva-glow-sm` / `holo-flicker` CSS was deleted (Navigation was the last consumer).
 
 ### 3. Vibe colors (content accent)
 
 ```
-vibe-ice      #7DD3FC
-vibe-cold     #38BDF8
-vibe-cool     #818CF8
-vibe-neutral  #A78BFA
-vibe-warm     #E879F9
-vibe-hot      #FB923C
-vibe-fire     #F87171
-vibe-volcano  #B91C1C
+vibe-0   #087487   GLACIAL
+vibe-1   #217B98   POLAR
+vibe-2   #48819E   CHILL
+vibe-3   #6586A0   COOL
+vibe-4   #7A8A9D   FRESH
+vibe-5   #948E85   GROOVE — estática hinge
+vibe-6   #C38174   WARM
+vibe-7   #E17756   HOT
+vibe-8   #FC6C0F   FUEGO — brand orange
+vibe-9   #FC9414   BRASA
+vibe-10  #FEB225   VOLCÁN
 ```
 
-These are the **Tailwind** vibe color tokens (8 steps). A different, finer **11-step** discrete palette lives in [`vibeToColor`](../../lib/utils.ts) for per-item rendering.
+The Tailwind `vibe-0…vibe-10` tokens (they replaced the old 8-step pastel `vibe-ice…vibe-volcano` set in Redesign 2026). Single source of truth is `VIBE_SLOT_COLORS` in [utils.ts](../../lib/utils.ts) — the tokens are a copy, changed in lockstep. One palette now, not two. See [[Vibe Gradient]] for structure + rationale.
 
-Yes, there are two vibe palettes. See [[Vibe Gradient]] for the reconciliation and why it's like that.
+**The "one expressive variable" rule:** vibe temperature is the only expressive color on cards. Everything else on a card is greys + system colors (★ editorial stays sys-red, PINNED sys-green, //PRESENTA orange — system colors, not category hues).
 
-### 4. Category colors (type indicators)
+### 4. Category colors (type indicators — demoted on cards)
 
 Returned by [`categoryColor`](../../lib/utils.ts):
 
-| Type | Hex | Where it shows |
+| Type | Hex | Note |
 |---|---|---|
 | evento | `#E63329` | red — the default brand accent |
 | mix | `#22D3EE` | cyan — cool/aquatic |
@@ -70,26 +72,15 @@ Returned by [`categoryColor`](../../lib/utils.ts):
 | editorial | `#84CC16` | lime — fresh voice |
 | noticia | `#F5F5F5` | near-white — neutral reportage |
 | opinion | `#A78BFA` | violet — perspective |
+| articulo | `#FDE68A` | pale gold — longform |
+| listicle | `#FB923C` | orange — curated lists |
 | partner | `#6B7280` | grey — deliberately desaturated |
 
-Used on the type badge `//EVENTO` label and the [[CategoryRail]] row labels.
+> **Redesign 2026:** category hues are retired from card chrome — the `//EVENTO` type badge is plain `text-secondary` now, per the one-expressive-variable rule (§3). `categoryColor()` still exists and still colors the `fresh-glitch` border suite plus non-card uses: [[CategoryRail]] row labels, [[FeedHeader]], [[SearchOverlay]] results, overlay headers, dashboard chrome, empty states.
 
 ### 5. The vibe gradient (full-spectrum fill)
 
-An 8-stop horizontal gradient in `tailwind.config.ts::bg-vibe-gradient`:
-
-```
-#7DD3FC  0%   ice
-#38BDF8  12%
-#818CF8  28%
-#A78BFA  42%
-#E879F9  55%
-#FB923C  70%
-#F87171  83%
-#B91C1C  100% volcano
-```
-
-Rendered whenever a continuous vibe bar is needed. See [[Vibe Gradient]].
+`--vibe-gradient` in [globals.css](../../app/globals.css) — **11 hard slot steps** of the instrument ramp (each band 9.09% wide), backing the `.bg-vibe-gradient` utility. This is the single canonical definition; the old smooth 8-stop duplicate in `tailwind.config.ts::backgroundImage` (which shadowed it) was removed. Stepped, not smooth — see [[Vibe Gradient]].
 
 ## Selection color
 
@@ -97,7 +88,7 @@ Rendered whenever a continuous vibe bar is needed. See [[Vibe Gradient]].
 
 ## Scrollbar
 
-4px thin webkit scrollbar, `#333` thumb. See [globals.css:42](../../app/globals.css).
+4px thin webkit scrollbar, `#333` thumb on `#0D0D0D` track. See [globals.css](../../app/globals.css).
 
 ## Links
 

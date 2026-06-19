@@ -5,6 +5,7 @@ import { fmtDateFull, vibeToColor, vibeMid } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { VibeFader } from '@/components/VibeFader'
+import { VibeMeter } from '@/components/VibeMeter'
 
 interface Props {
   item: ContentItem
@@ -30,9 +31,10 @@ export function GenericOverlay({ item }: Props) {
             alt={item.title}
             className="h-full w-full object-cover object-top"
           />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-1"
-            style={{ backgroundColor: vibeColor }}
+          <VibeMeter
+            item={item}
+            size="sm"
+            className="absolute bottom-0 left-0"
           />
         </div>
       )}

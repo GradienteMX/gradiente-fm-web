@@ -1,15 +1,16 @@
 'use client'
 
-import { forwardRef, useMemo, useRef, useEffect, type CSSProperties } from 'react'
+import { forwardRef, useMemo, useEffect, type CSSProperties } from 'react'
 import { parseISO } from 'date-fns'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { ContentItem } from '@/lib/types'
 import { useVibe } from '@/context/VibeContext'
-import { filterByVibe } from '@/lib/utils'
+import { filterByVibe, vibeMid, vibeToColor } from '@/lib/utils'
 import { itemMatchesGenreFilter } from '@/lib/genres'
 import { rankItems, type CardLayout } from '@/lib/curation'
 import { recordItems } from '@/lib/itemsCache'
 import { ContentCard } from './cards/ContentCard'
+import { RecurationSweep } from './grid/RecurationSweep'
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 //
@@ -96,11 +97,9 @@ interface ContentGridProps {
   emptyLabel?: string
 }
 
-// Track prior layout per id to pick asymmetric growth-vs-shrink easing.
-function useDirectionTracker() {
-  const prev = useRef<Map<string, { colSpan: number; rowSpan: number }>>(new Map())
-  return prev
-}
+// Entrant reveal — opacity lands on 4 hard steps (0 → ⅓ → ⅔ → 1): signal
+// acquisition, not a soft fade.
+const stepEase = (t: number) => Math.min(1, Math.floor(t * 4) / 3)
 
 // `forwardRef` so a parent (e.g. a future AnimatePresence wrapper, scroll
 // observer, etc.) can attach a ref to measure the rendered grid cell.
@@ -110,29 +109,20 @@ const MosaicItem = forwardRef<
     id: string
     layout: CardLayout
     children: React.ReactNode
-    priorArea: number | undefined
+    index: number
     isPast?: boolean
   }
->(function MosaicItem({ id, layout, children, priorArea, isPast }, ref) {
-  const area = layout.colSpan * layout.rowSpan
-  // Growth: fast/confident. Shrink: slow/quiet. First mount: neutral fade-in.
-  const transition =
-    priorArea === undefined
-      ? { duration: 0.4, ease: 'easeOut' as const }
-      : area > priorArea
-        ? { duration: 0.4, ease: 'easeOut' as const }
-        : area < priorArea
-          ? { duration: 0.7, ease: 'easeIn' as const }
-          : { duration: 0.6, ease: 'easeInOut' as const }
+>(function MosaicItem({ id, layout, children, index, isPast }, ref) {
+  const reducedMotion = useReducedMotion()
 
   const style: CSSProperties = {
     gridColumn: layout.colStart
       ? `${layout.colStart} / span ${layout.colSpan}`
       : `span ${layout.colSpan} / span ${layout.colSpan}`,
     gridRow: `span ${layout.rowSpan} / span ${layout.rowSpan}`,
+    // No visual consumer today — kept as a hook for future shader/treatment
+    // work; do not remove without checking ContentCard + CSS.
     ['--prominence' as any]: layout.intensity.toFixed(3),
-    padding: 'calc(var(--prominence) * 0.25rem)',
-    transformOrigin: 'center',
     // Past events on /agenda: desaturate + soften so the archive reads as
     // archive without losing the discussion record. Hover restores full color
     // so users can re-engage without ambiguity.
@@ -146,18 +136,22 @@ const MosaicItem = forwardRef<
   return (
     <motion.div
       ref={ref}
-      layout
-      transition={transition}
+      // Position interpolates, size quantizes: span changes snap (an HP tier
+      // is a state, not a momentum) and the field slides to absorb them. Also
+      // avoids text squish during span changes. Under prefers-reduced-motion
+      // the slide is disabled; the reveal below is opacity-only, so it stays.
+      layout={reducedMotion ? false : 'position'}
       style={style}
-      // Initial mount expands from a slightly recessed scale; standing scale
-      // comes from `--prominence` so prominent items breathe a touch more.
-      initial={{
-        opacity: 0,
-        scale: 0.92,
-      }}
-      animate={{
-        opacity: 1,
-        scale: 0.98 + layout.intensity * 0.04,
+      // Mount cuts in stepped — no scale-in: cards CUT in, they do not grow.
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{
+        layout: { duration: 0.25, ease: 'easeOut' },
+        opacity: {
+          duration: 0.28,
+          ease: stepEase,
+          delay: Math.min(index, 8) * 0.04,
+        },
       }}
     >
       {children}
@@ -167,7 +161,6 @@ const MosaicItem = forwardRef<
 
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
   const { vibeRange, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
-  const directions = useDirectionTracker()
 
   // Bridge server-rendered items into the slug-keyed client cache so the
   // OverlayRouter can resolve `?item=<slug>` for real DB rows (it used to
@@ -252,21 +245,21 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
     )
   }, [items, vibeRange, categoryFilter, genreFilter, mode])
 
-  // Snapshot prior spans before rendering new ones — used to choose easing.
-  const priorSpans = useMemo(() => {
-    const snapshot = new Map<string, { colSpan: number; rowSpan: number }>()
-    directions.current.forEach((v, k) => snapshot.set(k, v))
-    return snapshot
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ranked])
+  // Re-curation sweep signature — the identity+order of the visible set plus
+  // the active filter signature. Changes ONLY on a genuine re-rank/filter
+  // change (not on incidental re-renders), which is exactly when the broadcast
+  // monitor should "retune". Cheap string join; `ranked` is already memoized.
+  const sweepSignature = useMemo(
+    () =>
+      `${vibeRange[0]}-${vibeRange[1]}|${categoryFilter ?? '*'}|${genreFilter.join(',')}|${mode}|` +
+      ranked.map((r) => r.item.id).join(','),
+    [ranked, vibeRange, categoryFilter, genreFilter, mode],
+  )
 
-  useEffect(() => {
-    const next = new Map<string, { colSpan: number; rowSpan: number }>()
-    ranked.forEach(({ item, layout }) =>
-      next.set(item.id, { colSpan: layout.colSpan, rowSpan: layout.rowSpan }),
-    )
-    directions.current = next
-  }, [ranked, directions])
+  // A hint of the active vibe to tint the sweep band — midpoint of the active
+  // filter range, mapped through the canonical thermal ramp. Carries true
+  // filter state (not decoration).
+  const sweepColor = vibeToColor(vibeMid({ vibeMin: vibeRange[0], vibeMax: vibeRange[1] }))
 
   const gridStyle: CSSProperties = {
     containerType: 'inline-size',
@@ -275,6 +268,9 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
     gridAutoRows: 'minmax(220px, auto)',
     gridAutoFlow: 'dense',
     gap: 'clamp(8px, 1vw, 16px)',
+    // Positioning context so RecurationSweep's transient canvas (absolute,
+    // inset-0) clips to the mosaic. Does not affect the grid layout itself.
+    position: 'relative',
   } as CSSProperties
 
   if (ranked.length === 0) {
@@ -287,6 +283,13 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
 
   return (
     <div style={gridStyle}>
+      {/* Re-curation sweep — a transient teletext/scanline band that retunes the
+          mosaic whenever the ranked set's identity/order changes (filter change
+          or realtime re-curation). Pure visual layer above the cards
+          (pointer-events-none); the card DOM, click-to-open, focus, selection,
+          screen-reader, the layout="position" reflow + stepped entrants below
+          are all untouched. Skips first mount and reduced-motion. */}
+      <RecurationSweep signature={sweepSignature} vibeColor={sweepColor} />
       {/* AnimatePresence intentionally NOT used here. With `mode="popLayout"`
           + `layoutId` Framer was failing to unmount filtered-out cards
           (children stayed in the DOM at full opacity even after their exit
@@ -295,9 +298,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
           motion.div's own `layout` + `initial`/`animate` still gives a smooth
           mount + reflow; we just lose the exit fade, which the filter UX
           can live without. See [[Genre Filter Plumbing]] in the wiki log. */}
-      {ranked.map(({ item, layout }) => {
-        const prior = priorSpans.get(item.id)
-        const priorArea = prior ? prior.colSpan * prior.rowSpan : undefined
+      {ranked.map(({ item, layout }, index) => {
         const isPast =
           mode === 'agenda' &&
           item.type === 'evento' &&
@@ -308,7 +309,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
             key={item.id}
             id={item.id}
             layout={layout}
-            priorArea={priorArea}
+            index={index}
             isPast={isPast}
           >
             <ContentCard item={item} size={layout.tier === 'xl' ? 'lg' : layout.tier} />

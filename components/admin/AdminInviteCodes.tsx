@@ -25,6 +25,7 @@ export function AdminInviteCodes({
 }) {
   const router = useRouter()
 
+  const [cardName, setCardName] = useState('')
   const [role, setRole] = useState<Role>('user')
   const [isMod, setIsMod] = useState(false)
   const [partnerId, setPartnerId] = useState('')
@@ -50,6 +51,7 @@ export function AdminInviteCodes({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          card_name: cardName.trim() || null,
           intended_role: role,
           intended_is_mod: isMod,
           intended_partner_id: partnerId.trim() || null,
@@ -64,6 +66,7 @@ export function AdminInviteCodes({
       }
       const json = await res.json()
       setLatestCode(json.code.code)
+      setCardName('') // clear the name so the next invitee starts fresh
       router.refresh()
     } finally {
       setSubmitting(false)
@@ -94,6 +97,17 @@ export function AdminInviteCodes({
           className="flex flex-col gap-4 border bg-base p-4"
           style={{ borderColor: '#242424' }}
         >
+          <Field label="NOMBRE DEL INVITADO (impreso en la tarjeta)">
+            <input
+              type="text"
+              value={cardName}
+              onChange={(e) => setCardName(e.target.value)}
+              placeholder="p. ej. Allan · Club Japan · DJ Támara"
+              className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
+              style={{ borderColor: '#242424' }}
+            />
+          </Field>
+
           <Field label="ROL">
             <select
               value={role}
@@ -240,7 +254,9 @@ export function AdminInviteCodes({
               <thead>
                 <tr className="border-b" style={{ borderColor: '#242424' }}>
                   <Th>CÓDIGO</Th>
+                  <Th>NOMBRE</Th>
                   <Th>ROL</Th>
+                  <Th>FOLIO</Th>
                   <Th>FLAGS</Th>
                   <Th>ESTADO</Th>
                   <Th>EXPIRA</Th>
@@ -268,7 +284,17 @@ export function AdminInviteCodes({
                         </button>
                       </Td>
                       <Td>
+                        <span className="text-secondary">{c.card_name ?? '—'}</span>
+                      </Td>
+                      <Td>
                         <span className="text-secondary uppercase">{c.intended_role}</span>
+                      </Td>
+                      <Td>
+                        <span className="text-muted tabular-nums">
+                          {c.folio
+                            ? `${String(c.folio).padStart(3, '0')}/${c.folio_denominator}`
+                            : '—'}
+                        </span>
                       </Td>
                       <Td>
                         <span className="text-muted">

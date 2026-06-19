@@ -1,0 +1,38 @@
+<svg viewBox="0 0 1000 640" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Tarjeta ARCHIVO VIVO</title>
+  <defs>
+    <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.016 0.022" numOctaves="2" seed="87" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11" result="g"/>
+      <feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0"/>
+      <feComposite in2="SourceGraphic" operator="over"/>
+    </filter>
+    <style>
+      .h { font-family:Fraunces, Georgia, 'Times New Roman', serif; font-size:34px; fill:#1c1813; fill-opacity:0.92; }
+      .b { font-family:'IBM Plex Mono', 'Courier New', monospace; font-size:16px; fill:#1c1813; fill-opacity:0.86; letter-spacing:0.2px; }
+      .c { font-family:Fraunces, Georgia, 'Times New Roman', serif; font-style:italic; font-size:17px; fill:#1c1813; fill-opacity:0.62; }
+      .s { font-family:'IBM Plex Mono', 'Courier New', monospace; font-size:13px; fill:#1c1813; fill-opacity:0.5; letter-spacing:2px; }
+      .folio { font-family:'IBM Plex Mono', 'Courier New', monospace; font-size:15px; fill:#1c1813; fill-opacity:0.55; letter-spacing:5px; }
+      .lbl { font-family:'IBM Plex Mono', 'Courier New', monospace; font-size:13px; letter-spacing:1px; }
+      .sym { font-family:'IBM Plex Mono', 'Courier New', monospace; font-size:20px; font-weight:600; letter-spacing:1px; }
+      .glyph { fill:none; stroke:#1c1813; stroke-opacity:0.5; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+    </style>
+  </defs>
+  <rect width="1000" height="640" fill="#fbf7ee"/>
+  <rect width="1000" height="640" fill="#fbf7ee" filter="url(#grain)"/>
+  <rect x="28" y="28" width="944" height="584" fill="none" stroke="#1c1813" stroke-opacity="0.26" stroke-width="1.5"/>
+  <g filter="url(#pencil)"><rect x="57.5" y="85.5" width="204" height="474" rx="3" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2"/>
+    <rect x="56" y="84" width="204" height="474" rx="3" fill="none" stroke="#1c1813" stroke-opacity="0.36" stroke-width="1.6"/><g class="face" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#ffffff" stroke-opacity="0.4" transform="translate(1,1.4)"><rect x="84" y="152" width="148" height="128" rx="3" stroke-width="1.6"/><path d="M92 186 Q122 171 152 186 Q122 201 92 186 Z" stroke-width="1.8"/><path d="M164 186 Q194 171 224 186 Q194 201 164 186 Z" stroke-width="1.8"/><path d="M158 188 V234" stroke-width="2.2"/><path d="M150 234 Q158 240 166 234" stroke-width="1.4"/></g>
+    <g stroke="#1c1813" stroke-opacity="0.55"><rect x="84" y="152" width="148" height="128" rx="3" stroke-width="1.6"/><path d="M92 186 Q122 171 152 186 Q122 201 92 186 Z" stroke-width="1.8"/><path d="M164 186 Q194 171 224 186 Q194 201 164 186 Z" stroke-width="1.8"/><path d="M158 188 V234" stroke-width="2.2"/><path d="M150 234 Q158 240 166 234" stroke-width="1.4"/></g>
+  </g><circle cx="122" cy="186" r="3.6" fill="#1c1813" fill-opacity="0.55"/><circle cx="194" cy="186" r="3.6" fill="#1c1813" fill-opacity="0.55"/><g class="glyph"><g transform="translate(95,360) scale(0.85)"><path d="M8 3 L14 21 L2 21 Z"/></g><g transform="translate(110.3,360) scale(0.85)"><path d="M5 3 V22 M5 4 H12 M5 12 H11 M5 21 H12"/></g><g transform="translate(125.6,360) scale(0.85)"><path d="M12 4 A9 9 0 1 0 12 20"/></g><g transform="translate(140.9,360) scale(0.85)"><path d="M5 3 V22 M11 3 V22 M5 9 H11 M5 15 H11"/></g><g transform="translate(156.20000000000002,360) scale(0.85)"><path d="M2 4 L8 12 L14 4 M8 12 V22"/></g><g transform="translate(171.50000000000003,360) scale(0.85)"><path d="M3 4 L8 20 L13 4"/></g><g transform="translate(186.80000000000004,360) scale(0.85)"><path d="M8 6 m-1 0 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 M8 16 m-1 0 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0"/></g><g transform="translate(202.10000000000005,360) scale(0.85)"><path d="M3 4 L8 20 L13 4"/></g><g transform="translate(217.40000000000006,360) scale(0.85)"><path d="M2 4 L8 12 L14 4 M8 12 V22"/></g><g transform="translate(232.70000000000007,360) scale(0.85)"><path d="M3 4 L8 20 L13 4"/></g><g transform="translate(248.00000000000009,360) scale(0.85)"><path d="M8 6 m-1 0 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 M8 16 m-1 0 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0"/></g></g></g>
+  <text class="folio" x="300" y="100">ARCHIVO VIVO</text>
+  <text class="h" x="300" y="148">Un archivo vivo y tuyo.</text><text class="b" x="300" y="186">Gradiente es infraestructura y memoria para la escena</text><text class="b" x="300" y="213">underground de música y arte sonoro en México.</text><text class="b" x="300" y="240"></text><text class="b" x="300" y="267">Con HL (Half-Life) y HP (Human Presence) siembras y cosechas.</text><text class="b" x="300" y="294">Tu tiempo y tu presencia valen, y aquí se vuelven tangibles.</text><text class="b" x="300" y="321"></text><text class="b" x="300" y="348"></text><text class="b" x="300" y="375"></text><text class="b" x="300" y="402"></text><text class="b" x="300" y="429"></text><text class="b" x="300" y="456"></text><text class="b" x="300" y="483"></text><text class="b" x="300" y="510">No alimentan a un algoritmo parásito. Fortalecen tus</text><text class="b" x="300" y="537">vínculos y cultivan tus proyectos.</text>
+  <g filter="url(#pencil)"><circle cx="512" cy="374" r="46" fill="none" stroke="#2966ad" stroke-width="3.5"/><path d="M512 328 A46 46 0 0 0 512 420 Z" fill="#2966ad" fill-opacity="0.9"/><circle cx="708" cy="374" r="10" fill="#d2701c"/><circle cx="708" cy="374" r="22" fill="none" stroke="#d2701c" stroke-opacity="0.9" stroke-width="3"/><circle cx="708" cy="374" r="33" fill="none" stroke="#d2701c" stroke-opacity="0.55" stroke-width="3"/><circle cx="708" cy="374" r="44" fill="none" stroke="#d2701c" stroke-opacity="0.3" stroke-width="3"/><circle cx="708" cy="374" r="55" fill="none" stroke="#d2701c" stroke-opacity="0.15" stroke-width="3"/></g><text class="sym" x="512" y="460" fill="#2966ad" text-anchor="middle">HL</text>
+    <text class="lbl" x="512" y="480" fill="#2966ad" text-anchor="middle">Half-Life</text>
+    <text class="sym" x="708" y="460" fill="#d2701c" text-anchor="middle">HP</text>
+    <text class="lbl" x="708" y="480" fill="#d2701c" text-anchor="middle">Human Presence</text>
+</svg>

@@ -15,6 +15,7 @@ import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
+import { VibeMeter } from '@/components/VibeMeter'
 
 interface Props {
   item: ContentItem
@@ -60,10 +61,11 @@ export function EventoOverlay({ item }: Props) {
           </div>
         )}
 
-        {/* Vibe stripe */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1"
-          style={{ backgroundColor: vibeColor }}
+        {/* Vibe meter — flyer base edge */}
+        <VibeMeter
+          item={item}
+          size="sm"
+          className="absolute bottom-0 left-0"
         />
       </div>
 

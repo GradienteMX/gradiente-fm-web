@@ -18,18 +18,31 @@ export function categoryColor(type: ContentType): string {
   }
 }
 
+// Thermo-diverging instrument ramp (redesign 2026). Two hue arms — glacial
+// cyan and ember orange — hinged through a near-neutral "estática" gray at
+// slot 5, with strictly monotonic OKLCH lightness (0.515 → 0.815) so dim=cold
+// and bright=hot reads as a thermal instrument, not a rainbow. Slots 8–10 sit
+// on the brand-orange family at the sRGB gamut cusp: the brand color IS the
+// meter's overload zone. Every slot clears 3:1 non-text contrast on #0D0D0D.
+// Hue never transits green/purple/magenta and never folds back (the rainbow
+// tells). OKLCH anchors recorded beside each hex for future P3 upgrades.
+export const VIBE_SLOT_COLORS = [
+  '#087487', // 0 GLACIAL oklch(0.515 0.089 215)
+  '#217B98', // 1 POLAR   oklch(0.545 0.092 224)
+  '#48819E', // 2 CHILL   oklch(0.575 0.075 233)
+  '#6586A0', // 3 COOL    oklch(0.605 0.055 243)
+  '#7A8A9D', // 4 FRESH   oklch(0.628 0.034 253)
+  '#948E85', // 5 GROOVE  oklch(0.648 0.014 75) — the hinge: signal dying into static
+  '#C38174', // 6 WARM    oklch(0.668 0.085 32)
+  '#E17756', // 7 HOT     oklch(0.684 0.140 38)
+  '#FC6C0F', // 8 FUEGO   oklch(0.700 0.196 45) — brand orange, gamut cusp
+  '#FC9414', // 9 BRASA   oklch(0.760 0.171 62) — broadcast amber
+  '#FEB225', // 10 VOLCÁN oklch(0.815 0.163 76) — heading white-hot
+] as const
+
 export function vibeToColor(vibe: number): string {
-  if (vibe <= 0)  return '#00FFFF'
-  if (vibe <= 1)  return '#00CCFF'
-  if (vibe <= 2)  return '#0066FF'
-  if (vibe <= 3)  return '#6600FF'
-  if (vibe <= 4)  return '#CC00FF'
-  if (vibe <= 5)  return '#FF00FF'
-  if (vibe <= 6)  return '#FF0066'
-  if (vibe <= 7)  return '#FF5500'
-  if (vibe <= 8)  return '#FFAA00'
-  if (vibe <= 9)  return '#FF2200'
-  return '#FF0000'
+  const slot = Math.max(0, Math.min(10, Math.round(vibe)))
+  return VIBE_SLOT_COLORS[slot]
 }
 
 // Canonical 11-slot vibe names — one per integer from 0 to 10. The slider,
@@ -103,19 +116,9 @@ export function vibeRangeLabel(item: { vibeMin: number; vibeMax: number }): stri
   return `${item.vibeMin}-${item.vibeMax} · ${vibeToLabel(item.vibeMin)} → ${vibeToLabel(item.vibeMax)}`
 }
 
-// CSS linear-gradient string spanning the active band. Discrete integer stops
-// keep each bucket's true color visible in the band rather than smoothly
-// interpolating across them. Use as the `background` of a strip / chip.
-export function vibeBandGradient(item: { vibeMin: number; vibeMax: number }): string {
-  if (item.vibeMin === item.vibeMax) return vibeToColor(item.vibeMin)
-  const span = Math.max(1, item.vibeMax - item.vibeMin)
-  const stops: string[] = []
-  for (let i = item.vibeMin; i <= item.vibeMax; i++) {
-    const pct = ((i - item.vibeMin) / span) * 100
-    stops.push(`${vibeToColor(i)} ${pct.toFixed(2)}%`)
-  }
-  return `linear-gradient(90deg, ${stops.join(', ')})`
-}
+// Band strips are rendered by <VibeMeter> (components/VibeMeter.tsx) — the
+// 11-segment stepped meter replaced the old vibeBandGradient CSS-gradient
+// helper in the 2026 redesign (zero call sites remained after the swap).
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 

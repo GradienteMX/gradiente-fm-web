@@ -1,7 +1,7 @@
 'use client'
 
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
-import { Reproductor3D } from './Reproductor3D'
+import { ParticleField3D } from './ParticleField3D'
 import { useAudioPlayer } from './AudioPlayerProvider'
 
 // Persistent NOW PLAYING block for the home rail. Reflects the global audio
@@ -152,35 +152,80 @@ export function NowPlayingHud() {
         </span>
       </div>
 
-      {/* ── 3D matrix viewport — portrait orientation for the narrow rail.
-           Camera is rolled 90° so frequency reads top-to-bottom (HIGH at the
-           top, LOW at the bottom). Non-interactive — drag-rotation in a
-           sidebar-sized viewport doesn't earn its keep. ── */}
+      {/* ── GPU particle field — portrait orientation for the narrow rail
+           (smaller particle budget, tighter framing). Non-interactive — drag-
+           rotation in a sidebar-sized viewport doesn't earn its keep; the
+           field slow-orbits itself.
+
+           CONTEXT HYGIENE: ParticleField3D opens ONE WebGL context (same as the
+           old Reproductor3D it replaces — net context count unchanged). Home
+           idle already runs CRTShader + VibeFluid, and Safari caps contexts per
+           page, so the field mounts ONLY when a track is loaded (audio.currentItem
+           != null → `has`). When it unmounts, the effect cleanup cancels its RAF
+           and disposes the GPUComputationRenderer / composer / bloom / geometries
+           / materials / renderer and removes its canvas — freeing the context.
+           When the rail is idle we render an honest non-canvas placeholder, so
+           home idle holds 2 contexts, not 3. ── */}
       <div className="relative h-[260px] overflow-hidden border border-border/40">
-        <Reproductor3D
-          data={audio.matrixActive ? audio.data : null}
-          sampleRate={audio.sampleRate}
-          orientation="portrait"
-          interactive={false}
-          className="absolute inset-0"
-        />
-        {/* Frequency scale, vertical along the LEFT edge — HIGH up top, LOW
-            at the bottom, matching the rolled camera. */}
-        <div className="pointer-events-none absolute bottom-1 left-1 top-1 flex flex-col justify-between font-mono text-[7px] tracking-widest text-muted">
-          <span>20K</span>
-          <span>2K</span>
-          <span>250</span>
-          <span>20</span>
-        </div>
-        {/* L / M / H legend, vertical along the RIGHT edge — H up top to
-            match the gradient direction in portrait mode. */}
-        <div className="pointer-events-none absolute right-1 top-1 flex flex-col gap-0.5">
-          <LegendDot color="#F97316" label="H" />
-          <LegendDot color="#D946EF" label="M" />
-          <LegendDot color="#0EA5E9" label="L" />
-        </div>
+        {has ? (
+          <>
+            <ParticleField3D
+              data={audio.matrixActive ? audio.data : null}
+              sampleRate={audio.sampleRate}
+              orientation="portrait"
+              interactive={false}
+              className="absolute inset-0"
+            />
+            {/* Color-position legend along the RIGHT edge — hot up top, glacial
+                at the bottom, matching the thermal ramp the field samples. */}
+            <div className="pointer-events-none absolute right-1 top-1 flex flex-col gap-0.5">
+              <LegendDot color="#FC6C0F" label="H" />
+              <LegendDot color="#948E85" label="M" />
+              <LegendDot color="#087487" label="L" />
+            </div>
+          </>
+        ) : (
+          <MatrixIdlePlaceholder />
+        )}
       </div>
     </section>
+  )
+}
+
+// Calm, honest "no signal" state for the matrix viewport when no track is
+// loaded. NOT a fake readout: it carries no spectrum and no RNG decoration —
+// it states plainly that the visualizer is offline because nothing is playing.
+// Pure CSS/DOM, zero WebGL context, no motion (so reduced-motion needs no
+// special-casing). Colors come only from the glacial end of the thermal ramp
+// (slot 0 #087487) plus the house idle grey #666666 — the dimmest, coolest
+// registers, matching "signal dying into static".
+function MatrixIdlePlaceholder() {
+  return (
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+      role="img"
+      aria-label="Matriz inactiva — sin señal"
+    >
+      {/* Dim baseline scanline: a single flat trace at the glacial floor of the
+          ramp, the visual rest-state of the waterfall when there's no audio. */}
+      <div
+        className="h-px w-3/5"
+        style={{ backgroundColor: '#087487', opacity: 0.35 }}
+        aria-hidden
+      />
+      <span
+        className="font-mono text-[9px] tracking-[0.3em]"
+        style={{ color: '#666666' }}
+      >
+        SIN·SEÑAL
+      </span>
+      <span
+        className="font-mono text-[7px] tracking-widest"
+        style={{ color: '#666666', opacity: 0.7 }}
+      >
+        MATRIZ EN ESPERA
+      </span>
+    </div>
   )
 }
 

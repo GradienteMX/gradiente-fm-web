@@ -15,6 +15,7 @@ interface CreateBody {
   intended_is_mod?: boolean
   intended_partner_id?: string | null
   intended_partner_admin?: boolean
+  card_name?: string | null
   expires_in_days?: number | null
 }
 
@@ -75,11 +76,26 @@ export async function POST(request: NextRequest) {
   const isMod = !!body.intended_is_mod
   const partnerId = body.intended_partner_id?.trim() || null
   const partnerAdmin = !!body.intended_partner_admin && !!partnerId
+  const cardName = body.card_name?.trim() || null
   const expiresInDays = body.expires_in_days ?? 30
   const expiresAt =
     expiresInDays === null
       ? null
       : new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+
+  // Folio = the beta member number (NNN/150) printed on the invitación-3d card.
+  // Assigned as the next free integer. The roster bulk-import sets folios 1..N
+  // in sheet order explicitly; one-off codes minted here continue the run. The
+  // partial unique index (folio where not null) is the real guard against a rare
+  // concurrent-mint collision — it surfaces as an error the admin can just retry.
+  const { data: maxRow } = await supabase
+    .from('invite_codes')
+    .select('folio')
+    .not('folio', 'is', null)
+    .order('folio', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const folio = (maxRow?.folio ?? 0) + 1
 
   // Random opaque token. INV- prefix distinguishes from BOOT- bootstrap codes.
   const code = 'INV-' + randomBytes(8).toString('hex')
@@ -92,6 +108,8 @@ export async function POST(request: NextRequest) {
       intended_is_mod: isMod,
       intended_partner_id: partnerId,
       intended_partner_admin: partnerAdmin,
+      card_name: cardName,
+      folio,
       created_by: user.id,
       expires_at: expiresAt,
     })
