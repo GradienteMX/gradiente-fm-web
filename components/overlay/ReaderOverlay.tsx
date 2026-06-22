@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { ContentItem } from '@/lib/types'
+import type {
+  ContentItem,
+  EntityKind,
+  EntityRef,
+  ItemFormat,
+} from '@/lib/types'
 import {
   fmtDateFull,
   vibeToColor,
@@ -20,6 +25,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
+import { EntityChipButton } from '@/components/entity/EntityChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
 import { VibeMeter } from '@/components/VibeMeter'
@@ -37,6 +43,43 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   partner: 'PARTNER',
 }
 
+const FORMAT_LABEL: Record<ItemFormat, string> = {
+  vinyl: 'Vinyl',
+  cassette: 'Cassette',
+  cd: 'CD',
+  digital: 'Digital',
+  mix: 'Mix',
+  other: 'Otro',
+}
+
+// One CONTEXTO row of clickable entity chips. Renders nothing when empty so
+// callers can list all kinds unconditionally. Emits a <dt>/<dd> pair to slot
+// into the parent key/value <dl> grid.
+function EntityRow({
+  label,
+  entities,
+  color,
+}: {
+  label: string
+  entities: EntityRef[]
+  color: string
+}) {
+  if (entities.length === 0) return null
+  return (
+    <>
+      <dt className="text-muted">{label}</dt>
+      <dd className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        <span className="text-muted">:</span>
+        {entities.map((e) => (
+          <EntityChipButton key={e.id} entity={e} style={{ color }}>
+            {e.name}
+          </EntityChipButton>
+        ))}
+      </dd>
+    </>
+  )
+}
+
 interface ReaderOverlayProps {
   item: ContentItem
 }
@@ -50,6 +93,30 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     name: getGenreById(id)?.name ?? id,
   }))
   const tags = getTagNames(item.tags)
+
+  // Scene entities attached as `subject` (the CONTEXTO rail). Grouped by kind
+  // so each gets its own labeled row of clickable chips.
+  const subjectEntities = (item.entities ?? []).filter(
+    (e) => (e.relation ?? 'subject') === 'subject',
+  )
+  const entitiesOf = (kind: EntityKind) =>
+    subjectEntities.filter((e) => e.kind === kind)
+  const artists = entitiesOf('artist')
+  const labels = entitiesOf('label')
+  const venues = entitiesOf('venue')
+  const promoters = entitiesOf('promoter')
+
+  // Whether the CONTEXTO block has anything real to show — drives the empty
+  // fallback instead of a box with only a label.
+  const hasContext =
+    artists.length > 0 ||
+    labels.length > 0 ||
+    venues.length > 0 ||
+    promoters.length > 0 ||
+    !!item.format ||
+    !!item.venue ||
+    !!item.venueCity ||
+    !!item.author
 
   // Comments state from the surrounding shell — drives the in-body
   // DISCUSIÓN entry + the [C] footer legend.
@@ -289,36 +356,59 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
             </ArchivalBlock>
           )}
 
-          {/* CONTEXTO — key/value */}
+          {/* CONTEXTO — real scene metadata. Entity rows are clickable chips
+              that lead to the entity's page; legacy free-text venue/city/firma
+              fall through for items predating the entity registry. */}
           <ArchivalBlock index="02" label="CONTEXTO">
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
-              {item.venue && (
-                <>
-                  <dt className="text-muted">VENUE</dt>
-                  <dd className="text-primary">: {item.venue}</dd>
-                </>
-              )}
-              {item.venueCity && (
-                <>
-                  <dt className="text-muted">CIUDAD</dt>
-                  <dd className="text-secondary">: {item.venueCity}</dd>
-                </>
-              )}
-              {item.author && (
-                <>
-                  <dt className="text-muted">FIRMA</dt>
-                  <dd className="text-primary">: {item.author}</dd>
-                </>
-              )}
-              <dt className="text-muted">ESTADO</dt>
-              <dd className="text-sys-green">: PUBLICADO</dd>
-              <dt className="text-muted">SEÑAL</dt>
-              <dd className="flex items-center gap-1.5">
-                <span>:</span>
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-                <span className="text-sys-green">ACTIVA</span>
-              </dd>
-            </dl>
+            {hasContext ? (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
+                <EntityRow
+                  label={artists.length > 1 ? 'ARTISTAS' : 'ARTISTA'}
+                  entities={artists}
+                  color={vibeColor}
+                />
+                <EntityRow label="LABEL" entities={labels} color={vibeColor} />
+                {item.format && (
+                  <>
+                    <dt className="text-muted">FORMATO</dt>
+                    <dd className="text-secondary">
+                      : {FORMAT_LABEL[item.format]}
+                    </dd>
+                  </>
+                )}
+                {venues.length > 0 ? (
+                  <EntityRow label="VENUE" entities={venues} color={vibeColor} />
+                ) : (
+                  item.venue && (
+                    <>
+                      <dt className="text-muted">VENUE</dt>
+                      <dd className="text-primary">: {item.venue}</dd>
+                    </>
+                  )
+                )}
+                {item.venueCity && (
+                  <>
+                    <dt className="text-muted">CIUDAD</dt>
+                    <dd className="text-secondary">: {item.venueCity}</dd>
+                  </>
+                )}
+                <EntityRow
+                  label="PROMOTORA"
+                  entities={promoters}
+                  color={vibeColor}
+                />
+                {item.author && (
+                  <>
+                    <dt className="text-muted">FIRMA</dt>
+                    <dd className="text-primary">: {item.author}</dd>
+                  </>
+                )}
+              </dl>
+            ) : (
+              <p className="font-mono text-[11px] text-muted">
+                Sin metadata de contexto.
+              </p>
+            )}
           </ArchivalBlock>
 
           {/* ETIQUETAS */}

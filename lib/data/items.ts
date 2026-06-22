@@ -438,6 +438,56 @@ export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]
     .map((i) => attachEntities(i, entities.get(i.id)))
 }
 
+// Items that reference a given scene entity (any relation) — drives the
+// per-entity page `/e/[slug]`. Two-query: resolve the item ids from the
+// join, then load the items with the same merge chain as `getItems`.
+export async function getItemsByEntity(entityId: string): Promise<ContentItem[]> {
+  const supabase = createClient()
+  const { data: links, error: linkErr } = await supabase
+    .from('item_entities')
+    .select('item_id')
+    .eq('entity_id', entityId)
+  if (linkErr) {
+    console.error('[getItemsByEntity] links error:', linkErr)
+    return []
+  }
+  const itemIds = Array.from(
+    new Set(((links ?? []) as { item_id: string }[]).map((l) => l.item_id)),
+  )
+  if (itemIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEMS_SELECT)
+    .in('id', itemIds)
+    .eq('published', true)
+    .order('published_at', { ascending: false })
+  if (error) {
+    console.error('[getItemsByEntity] items error:', error)
+    return []
+  }
+  const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+  if (items.length === 0) return items
+
+  const partnerIds = Array.from(
+    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  )
+  const creatorIds = Array.from(
+    new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
+  )
+  const [aggregates, partners, creators, entities] = await Promise.all([
+    fetchVibeCheckAggregates(items.map((i) => i.id)),
+    fetchPartnersByIds(partnerIds),
+    fetchCreatorsByIds(creatorIds),
+    fetchEntitiesByItemIds(items.map((i) => i.id)),
+  ])
+  return items
+    .map((i) => attachAggregate(i, aggregates.get(i.id)))
+    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
+    .map((i) => attachEntities(i, entities.get(i.id)))
+}
+
 // ── Creator attribution merge ──────────────────────────────────────────────
 //
 // Same shape as fetchPartnersByIds: pull all referenced users in one query,
