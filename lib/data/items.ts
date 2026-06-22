@@ -3,6 +3,9 @@ import type { Database } from '@/lib/supabase/database.types'
 import type {
   ArticleBlock,
   ContentItem,
+  EntityKind,
+  EntityRef,
+  EntityRelation,
   Footnote,
   MarketplaceListing,
   MixEmbed,
@@ -121,6 +124,7 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     vibe_max: item.vibeMax,
     genres: item.genres ?? [],
     tags: item.tags ?? [],
+    format: item.format ?? null,
     image_url: item.imageUrl ?? null,
     published_at: item.publishedAt,
     date: tsOrNull(item.date),
@@ -191,6 +195,7 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     vibeMax: row.vibe_max,
     genres: row.genres,
     tags: row.tags,
+    format: row.format ?? undefined,
     imageUrl: row.image_url ?? undefined,
     publishedAt: row.published_at,
     date: row.date ?? undefined,
@@ -380,15 +385,17 @@ export async function getItems(): Promise<ContentItem[]> {
   const creatorIds = Array.from(
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
-  const [aggregates, partners, creators] = await Promise.all([
+  const [aggregates, partners, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
     fetchPartnersByIds(partnerIds),
     fetchCreatorsByIds(creatorIds),
+    fetchEntitiesByItemIds(items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
     .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
+    .map((i) => attachEntities(i, entities.get(i.id)))
 }
 
 // Items authored by a specific user — drives `/u/[username]`'s PUBLICADOS
@@ -418,15 +425,67 @@ export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]
     new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
   )
   // All items here share the same creator (`userId`), so resolve once.
-  const [aggregates, partners, creators] = await Promise.all([
+  const [aggregates, partners, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
     fetchPartnersByIds(partnerIds),
     fetchCreatorsByIds([userId]),
+    fetchEntitiesByItemIds(items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
     .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
+    .map((i) => attachEntities(i, entities.get(i.id)))
+}
+
+// Items that reference a given scene entity (any relation) — drives the
+// per-entity page `/e/[slug]`. Two-query: resolve the item ids from the
+// join, then load the items with the same merge chain as `getItems`.
+export async function getItemsByEntity(entityId: string): Promise<ContentItem[]> {
+  const supabase = createClient()
+  const { data: links, error: linkErr } = await supabase
+    .from('item_entities')
+    .select('item_id')
+    .eq('entity_id', entityId)
+  if (linkErr) {
+    console.error('[getItemsByEntity] links error:', linkErr)
+    return []
+  }
+  const itemIds = Array.from(
+    new Set(((links ?? []) as { item_id: string }[]).map((l) => l.item_id)),
+  )
+  if (itemIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEMS_SELECT)
+    .in('id', itemIds)
+    .eq('published', true)
+    .order('published_at', { ascending: false })
+  if (error) {
+    console.error('[getItemsByEntity] items error:', error)
+    return []
+  }
+  const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+  if (items.length === 0) return items
+
+  const partnerIds = Array.from(
+    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  )
+  const creatorIds = Array.from(
+    new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
+  )
+  const [aggregates, partners, creators, entities] = await Promise.all([
+    fetchVibeCheckAggregates(items.map((i) => i.id)),
+    fetchPartnersByIds(partnerIds),
+    fetchCreatorsByIds(creatorIds),
+    fetchEntitiesByItemIds(items.map((i) => i.id)),
+  ])
+  return items
+    .map((i) => attachAggregate(i, aggregates.get(i.id)))
+    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
+    .map((i) => attachEntities(i, entities.get(i.id)))
 }
 
 // ── Creator attribution merge ──────────────────────────────────────────────
@@ -471,6 +530,80 @@ function attachCreator(
   }
 }
 
+// ── Scene-entity attribution merge ──────────────────────────────────────────
+//
+// Same two-query pattern as partners/creators (more resilient than a
+// PostgREST embed right after a migration, when the FK may lag the schema
+// cache). Pulls item_entities for the given items, resolves the referenced
+// entities, and returns a Map<itemId, EntityRef[]>. Powers the CONTEXTO rail
+// chips + the per-entity filter. See migration 0029.
+
+async function fetchEntitiesByItemIds(
+  itemIds: string[],
+): Promise<Map<string, EntityRef[]>> {
+  const out = new Map<string, EntityRef[]>()
+  if (itemIds.length === 0) return out
+  const supabase = createClient()
+
+  const { data: links, error: linkError } = await supabase
+    .from('item_entities')
+    .select('item_id, entity_id, relation')
+    .in('item_id', itemIds)
+  if (linkError) {
+    console.error('[fetchEntitiesByItemIds] links error:', linkError)
+    return out
+  }
+  const linkRows = (links ?? []) as {
+    item_id: string
+    entity_id: string
+    relation: EntityRelation
+  }[]
+  if (linkRows.length === 0) return out
+
+  const entityIds = Array.from(new Set(linkRows.map((l) => l.entity_id)))
+  const { data: ents, error: entError } = await supabase
+    .from('entities')
+    .select('id, kind, name, slug')
+    .in('id', entityIds)
+  if (entError) {
+    console.error('[fetchEntitiesByItemIds] entities error:', entError)
+    return out
+  }
+  const byId = new Map<string, { id: string; kind: EntityKind; name: string; slug: string }>()
+  for (const e of (ents ?? []) as {
+    id: string
+    kind: EntityKind
+    name: string
+    slug: string
+  }[]) {
+    byId.set(e.id, e)
+  }
+
+  for (const link of linkRows) {
+    const e = byId.get(link.entity_id)
+    if (!e) continue
+    const ref: EntityRef = {
+      id: e.id,
+      kind: e.kind,
+      name: e.name,
+      slug: e.slug,
+      relation: link.relation,
+    }
+    const list = out.get(link.item_id)
+    if (list) list.push(ref)
+    else out.set(link.item_id, [ref])
+  }
+  return out
+}
+
+function attachEntities(
+  item: ContentItem,
+  entities: EntityRef[] | undefined,
+): ContentItem {
+  if (!entities || entities.length === 0) return item
+  return { ...item, entities }
+}
+
 // Single item by slug — used by overlay deep-links and `/[type]/[slug]` pages.
 export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   const supabase = createClient()
@@ -486,12 +619,14 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   }
   if (!data) return null
   const item = rowToContentItem(data as unknown as ItemRowWithPoll)
-  const [aggregates, partners, creators] = await Promise.all([
+  const [aggregates, partners, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates([item.id]),
     item.partnerId ? fetchPartnersByIds([item.partnerId]) : Promise.resolve(new Map()),
     item.createdById ? fetchCreatorsByIds([item.createdById]) : Promise.resolve(new Map()),
+    fetchEntitiesByItemIds([item.id]),
   ])
   const withAgg = attachAggregate(item, aggregates.get(item.id))
   const withPartner = attachPartner(withAgg, item.partnerId ? partners.get(item.partnerId) : undefined)
-  return attachCreator(withPartner, item.createdById ? creators.get(item.createdById) : undefined)
+  const withCreator = attachCreator(withPartner, item.createdById ? creators.get(item.createdById) : undefined)
+  return attachEntities(withCreator, entities.get(item.id))
 }

@@ -156,6 +156,13 @@ export interface ContentItem {
   vibeCheckMedianMax?: VibeScore
   genres: string[]        // genre ids
   tags: string[]          // tag ids
+  // Scene entities attached to this item (artists/labels/venues/promoters).
+  // Resolved server-side from the item_entities join (migration 0029) by
+  // `attachEntities` in lib/data/items.ts. The composer sends these on
+  // publish; the items API writes the join rows. Drives the CONTEXTO rail.
+  entities?: EntityRef[]
+  // Physical/digital format the item is about (reviews). Closed enum.
+  format?: ItemFormat
   imageUrl?: string
   publishedAt: string     // ISO — when published
   date?: string           // ISO — event start / article featured date
@@ -301,6 +308,53 @@ export interface Tag {
   id: string
   name: string
 }
+
+// ── Scene entities (artists / labels / venues / promoters) ──────────────────
+//
+// First-class rows in the `entities` table (migration 0029). Unlike genres
+// (a closed taxonomy in lib/genres.ts), entities grow as the scene does:
+// content authors create them on the fly via composer type-ahead. Each entity
+// gets a per-kind browse + a per-entity filter ("everything about Ro Pax").
+// A single table keyed by `kind` keeps cross-references one mechanism.
+
+export type EntityKind = 'artist' | 'label' | 'venue' | 'promoter'
+
+// How an item relates to an entity. `subject` rows render in the CONTEXTO
+// rail of the overlay; `mention` rows are inline references inside body text
+// (authored in a later phase). Both feed the same per-entity filter.
+export type EntityRelation = 'subject' | 'mention'
+
+export interface EntityLink {
+  label: string   // "Bandcamp", "Instagram", "Sitio"
+  url: string
+}
+
+// Full entity record — the browse/profile shape.
+export interface Entity {
+  id: string
+  kind: EntityKind
+  name: string
+  slug: string
+  bio?: string
+  imageUrl?: string
+  city?: string          // mostly meaningful for venue
+  links?: EntityLink[]
+}
+
+// Lightweight reference carried on a ContentItem — enough to render a
+// clickable chip without a second fetch. Resolved server-side by
+// `attachEntities` in lib/data/items.ts (same pattern as `partner`/`creator`).
+export interface EntityRef {
+  id: string
+  kind: EntityKind
+  name: string
+  slug: string
+  relation?: EntityRelation   // default 'subject'
+}
+
+// Physical/digital format an item (review mainly) is about. Closed enum —
+// see items.format column (migration 0029).
+export type ItemFormat = 'vinyl' | 'cassette' | 'cd' | 'digital' | 'mix' | 'other'
 
 export type VibeRange = [number, number]
 
