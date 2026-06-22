@@ -148,6 +148,36 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // 2b. Sync scene-entity links (migration 0029). The composer sends resolved
+  //     entities (already created via /api/entities, so each carries an id).
+  //     Delete-then-insert keeps re-publish idempotent: an edit that drops an
+  //     artist removes its link. Entities themselves are never deleted here —
+  //     only the join rows. A failure is non-fatal to the publish (the item is
+  //     already saved); we log and continue so a links hiccup can't strand a
+  //     published item.
+  if (Array.isArray(item.entities)) {
+    await supabase.from('item_entities').delete().eq('item_id', item.id)
+    const links = item.entities
+      .filter((e) => typeof e?.id === 'string' && e.id)
+      .map((e) => ({
+        item_id: item.id,
+        entity_id: e.id,
+        relation: e.relation ?? ('subject' as const),
+      }))
+    if (links.length > 0) {
+      const { error: linkError } = await supabase
+        .from('item_entities')
+        .insert(links)
+      if (linkError) {
+        console.error('[POST /api/items] item_entities sync failed', {
+          code: linkError.code,
+          message: linkError.message,
+          itemId: item.id,
+        })
+      }
+    }
+  }
+
   // 3. Delete the corresponding draft(s) for this user. Match on id OR slug:
   //    the composer occasionally regenerates the item id between draft-save
   //    and publish, leaving an orphan draft with the same slug as the now-

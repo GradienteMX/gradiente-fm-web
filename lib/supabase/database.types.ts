@@ -439,6 +439,7 @@ export type Database = {
           expires_at: string | null
           external_id: string | null
           footnotes: Json
+          format: Database["public"]["Enums"]["item_format"] | null
           genres: string[]
           harvested_amount: number | null
           harvested_at: string | null
@@ -502,6 +503,7 @@ export type Database = {
           expires_at?: string | null
           external_id?: string | null
           footnotes?: Json
+          format?: Database["public"]["Enums"]["item_format"] | null
           genres?: string[]
           harvested_amount?: number | null
           harvested_at?: string | null
@@ -565,6 +567,7 @@ export type Database = {
           expires_at?: string | null
           external_id?: string | null
           footnotes?: Json
+          format?: Database["public"]["Enums"]["item_format"] | null
           genres?: string[]
           harvested_amount?: number | null
           harvested_at?: string | null
@@ -1034,6 +1037,95 @@ export type Database = {
           },
         ]
       }
+      entities: {
+        Row: {
+          bio: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string | null
+          kind: Database["public"]["Enums"]["entity_kind"]
+          links: Json
+          merged_into: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          kind: Database["public"]["Enums"]["entity_kind"]
+          links?: Json
+          merged_into?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          kind?: Database["public"]["Enums"]["entity_kind"]
+          links?: Json
+          merged_into?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_entities: {
+        Row: {
+          created_at: string
+          entity_id: string
+          item_id: string
+          relation: Database["public"]["Enums"]["entity_relation"]
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          item_id: string
+          relation?: Database["public"]["Enums"]["entity_relation"]
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          item_id?: string
+          relation?: Database["public"]["Enums"]["entity_relation"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_entities_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_entities_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       user_rank_signals: {
@@ -1156,6 +1248,9 @@ export type Database = {
         | "articulo"
         | "listicle"
         | "partner"
+      entity_kind: "artist" | "label" | "venue" | "promoter"
+      entity_relation: "subject" | "mention"
+      item_format: "vinyl" | "cassette" | "cd" | "digital" | "mix" | "other"
       mix_status: "disponible" | "exclusivo" | "archivo" | "proximamente"
       partner_kind:
         | "promo"
@@ -1306,6 +1401,9 @@ export const Constants = {
         "listicle",
         "partner",
       ],
+      entity_kind: ["artist", "label", "venue", "promoter"],
+      entity_relation: ["subject", "mention"],
+      item_format: ["vinyl", "cassette", "cd", "digital", "mix", "other"],
       mix_status: ["disponible", "exclusivo", "archivo", "proximamente"],
       partner_kind: [
         "promo",

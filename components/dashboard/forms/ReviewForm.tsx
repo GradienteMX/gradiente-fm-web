@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
-import type { ContentItem } from '@/lib/types'
+import type { ContentItem, ItemFormat } from '@/lib/types'
 import { LivePreview } from '@/components/dashboard/LivePreview'
 import {
   Section,
@@ -14,12 +14,24 @@ import {
   VibeField,
   GenreMultiSelect,
   ImageUrlField,
+  EmbedList,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
+
+// Closed format set — see items.format (migration 0029). Single-select chips.
+const FORMATS: { id: ItemFormat; label: string }[] = [
+  { id: 'vinyl', label: 'VINYL' },
+  { id: 'cassette', label: 'TAPE' },
+  { id: 'cd', label: 'CD' },
+  { id: 'digital', label: 'DIGITAL' },
+  { id: 'mix', label: 'MIX' },
+  { id: 'other', label: 'OTRO' },
+]
 
 const DRAFT_KEY = 'gradiente:dashboard:review-draft'
 
@@ -35,6 +47,9 @@ function emptyDraft(): ContentItem {
     vibeMin: 5, vibeMax: 5,
     genres: [],
     tags: [],
+    entities: [],
+    format: undefined,
+    embeds: [],
     imageUrl: '',
     publishedAt: new Date().toISOString(),
     author: '',
@@ -170,7 +185,63 @@ export function ReviewForm() {
           />
         </Section>
 
-        <Section label="04" title="MEDIA">
+        <Section label="04" title="CONTEXTO">
+          <EntityMultiSelect
+            kind="artist"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="label"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="venue"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="promoter"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+
+          <div className="flex flex-col gap-2">
+            <span className="sys-label">FORMATO</span>
+            <div className="flex flex-wrap gap-1.5">
+              {FORMATS.map((f) => {
+                const isOn = draft.format === f.id
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() =>
+                      patch({ format: isOn ? undefined : f.id })
+                    }
+                    className="border px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
+                    style={{
+                      borderColor: isOn ? '#F97316' : '#242424',
+                      color: isOn ? '#F97316' : '#888',
+                      backgroundColor: isOn
+                        ? 'rgba(249,115,22,0.12)'
+                        : 'transparent',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <EmbedList
+            embeds={draft.embeds ?? []}
+            onChange={(embeds) => patch({ embeds })}
+          />
+        </Section>
+
+        <Section label="05" title="MEDIA">
           <ImageUrlField
             value={draft.imageUrl ?? ''}
             onChange={(v) => patch({ imageUrl: v })}
@@ -178,7 +249,7 @@ export function ReviewForm() {
           />
         </Section>
 
-        <Section label="05" title="ENCUESTA (opcional)">
+        <Section label="06" title="ENCUESTA (opcional)">
           <PollFieldset
             type={draft.type}
             poll={draft.poll}
