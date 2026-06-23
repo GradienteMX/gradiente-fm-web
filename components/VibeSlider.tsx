@@ -325,10 +325,7 @@ function VibeSliderImpl() {
             <span className="font-mono text-[10px] font-bold tracking-widest text-primary">
               //VIBE
             </span>
-            <span className="inline-block min-w-[24ch] whitespace-nowrap font-mono text-[10px] tracking-wider tabular-nums">
-              <span className="text-secondary">
-                {String(minSlot).padStart(2, '0')}-{String(maxSlot).padStart(2, '0')} ·{' '}
-              </span>
+            <span className="inline-block min-w-[24ch] whitespace-nowrap font-mono text-[10px] tracking-wider">
               <span style={{ color: VIBE_SLOT_COLORS[minSlot] }}>
                 {VIBE_SLOT_NAMES[minSlot]}
               </span>
@@ -456,12 +453,6 @@ function VibeSliderImpl() {
                   className={`mx-auto mb-px h-[3px] w-px transition-colors ${lit ? 'bg-secondary' : 'bg-muted'}`}
                   style={duration}
                 />
-                <div
-                  className={`font-mono text-[9px] leading-tight tabular-nums transition-colors ${lit ? 'text-secondary' : 'text-muted'}`}
-                  style={duration}
-                >
-                  {String(i).padStart(2, '0')}
-                </div>
                 <div
                   className={`hidden font-mono text-[8px] leading-tight tracking-wider transition-colors md:block ${lit ? 'text-secondary' : 'text-muted'}`}
                   style={duration}

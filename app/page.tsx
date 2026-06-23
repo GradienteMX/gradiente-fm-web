@@ -87,7 +87,6 @@ export default async function HomePage() {
           {/* Main feed header */}
           <div className="mb-4 flex items-start justify-between">
             <FeedHeader totalCount={gridItems.length} />
-            <span className="sys-label hidden text-sys-green md:block">▶ FEED ACTIVO</span>
           </div>
 
           {/* Prominence-driven mosaic — wrapper merges any session drafts */}

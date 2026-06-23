@@ -361,7 +361,7 @@ export function EventosRail({ items }: EventosRailProps) {
             className={`h-1.5 w-1.5 rounded-full ${empty ? '' : 'animate-pulse bg-sys-green'}`}
             style={empty ? { backgroundColor: '#6B7280' } : undefined}
           />
-          {empty ? 'SIN PRÓXIMOS EVENTOS' : `${sorted.length} EVENTOS · LIVE FEED · RA`}
+          {empty ? 'SIN PRÓXIMOS EVENTOS' : `${sorted.length} EVENTOS · RED`}
         </span>
       </div>
       <p className="sys-label mb-2">

@@ -45,7 +45,7 @@ export function FeedHeader({ totalCount }: FeedHeaderProps) {
           </span>
         </div>
         <p className="sys-label">
-          {totalCount} ENTRADAS · PROMINENCIA ORGÁNICA · SEÑAL + FRESCURA
+          {totalCount} ENTRADAS
         </p>
       </div>
     )
