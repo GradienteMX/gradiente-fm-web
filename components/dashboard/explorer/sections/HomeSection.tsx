@@ -6,6 +6,7 @@ import {
   FileText,
   User,
   Archive,
+  Store,
   type LucideIcon,
 } from 'lucide-react'
 import type { ExplorerSection } from '../types'
@@ -14,6 +15,9 @@ interface Props {
   username: string | null
   draftCount: number
   publishedCount: number
+  // When true, surface the Marketplace tile (user belongs to a partner/store
+  // team). Mirrors the left-explorer's `mi-partner` visibility.
+  showMarketplace?: boolean
   onPick: (section: ExplorerSection) => void
 }
 
@@ -26,7 +30,7 @@ interface Tile {
   color: string
 }
 
-export function HomeSection({ username, draftCount, publishedCount, onPick }: Props) {
+export function HomeSection({ username, draftCount, publishedCount, showMarketplace, onPick }: Props) {
   const tiles: Tile[] = [
     {
       section: 'nuevo',
@@ -58,6 +62,17 @@ export function HomeSection({ username, draftCount, publishedCount, onPick }: Pr
       blurb: 'Identidad editorial. Bio, firma, pronombres, ciudad.',
       color: '#A78BFA',
     },
+    ...(showMarketplace
+      ? [
+          {
+            section: 'mi-partner' as ExplorerSection,
+            Icon: Store,
+            label: 'Marketplace',
+            blurb: 'Tu tienda: listados, precios, fotos y links de venta de tu partner.',
+            color: '#FB923C',
+          },
+        ]
+      : []),
   ]
 
   return (
