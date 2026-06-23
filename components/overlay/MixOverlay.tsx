@@ -243,7 +243,7 @@ export function MixOverlay({ item }: Props) {
             statusDetail={statusDetail}
           />
         ) : (
-          <Panel index="01" title="AUDIO EMBED // REPRODUCTOR">
+          <Panel title="REPRODUCTOR">
             <p className="font-mono text-[11px] text-muted">
               Sin fuente de SoundCloud configurada para este mix.
             </p>
@@ -252,7 +252,7 @@ export function MixOverlay({ item }: Props) {
 
         {/* 02 CONTEXTO. (The single analyzer is now the GPU particle field in
             panel 01 — the old canvas-2D ESPECTRO panel was removed.) */}
-        <Panel index="02" title="CONTEXTO">
+        <Panel title="CONTEXTO">
           <dl className="grid grid-cols-[max-content_auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
             {item.mixSeries && (
               <ContextRow label="SERIE" value={item.mixSeries} />
@@ -290,7 +290,7 @@ export function MixOverlay({ item }: Props) {
         </Panel>
 
         {/* 03 TRACKLIST / ETIQUETAS */}
-        <Panel index="03" title="TRACKLIST / ETIQUETAS">
+        <Panel title="TRACKLIST / ETIQUETAS">
           {item.tracklist && item.tracklist.length > 0 ? (
             <div className="flex flex-col gap-1.5 font-mono text-[11px]">
               <div className="grid grid-cols-[28px_1fr_1.4fr_48px] gap-2 border-b border-border pb-1 text-[10px] tracking-widest text-muted">
@@ -344,15 +344,12 @@ export function MixOverlay({ item }: Props) {
         {item.poll && <PollSection item={item} />}
 
         {/* Hotkeys hint footer */}
-        <div className="flex items-center justify-between border-t border-border pt-2 font-mono text-[10px] tracking-widest text-muted">
-          <span>MODO ESCUCHA <span style={{ color: '#F97316' }}>ACTIVO</span></span>
-          <span className="flex gap-3">
-            <span>
-              <span style={{ color: '#F97316' }}>O</span> ABRIR FUENTE
-            </span>
-            <span>
-              <span style={{ color: '#F97316' }}>ESC</span> CERRAR
-            </span>
+        <div className="flex items-center justify-end gap-3 border-t border-border pt-2 font-mono text-[10px] tracking-widest text-muted">
+          <span>
+            <span style={{ color: '#F97316' }}>O</span> ABRIR FUENTE
+          </span>
+          <span>
+            <span style={{ color: '#F97316' }}>ESC</span> CERRAR
           </span>
         </div>
 
@@ -398,13 +395,9 @@ function RelatedMixes({ item }: Props) {
 
   return (
     <section className="mt-2 border border-border bg-base/40 p-3">
-      <header className="mb-3 flex items-center justify-between border-b border-dashed border-border pb-2">
-        <div className="flex items-center gap-2.5 font-mono text-[11px] tracking-widest">
-          <span style={{ color: '#F97316' }}>04</span>
-          <span className="text-primary">SIGUIENTES MIXES</span>
-        </div>
-        <span className="font-mono text-[9px] tracking-widest text-muted">
-          {related.length} · CURADO
+      <header className="mb-3 border-b border-dashed border-border pb-2">
+        <span className="font-mono text-[11px] tracking-widest text-primary">
+          SIGUIENTES MIXES
         </span>
       </header>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -419,11 +412,9 @@ function RelatedMixes({ item }: Props) {
 }
 
 function Panel({
-  index,
   title,
   children,
 }: {
-  index: string
   title: string
   children: React.ReactNode
 }) {
@@ -432,12 +423,10 @@ function Panel({
       className="relative border bg-base/40 p-3"
       style={{ borderColor: '#F97316' }}
     >
-      <header className="mb-3 flex items-center justify-between border-b border-dashed border-border pb-2">
-        <div className="flex items-center gap-2.5 font-mono text-[11px] tracking-widest">
-          <span style={{ color: '#F97316' }}>{index}</span>
-          <span className="text-primary">{title}</span>
-        </div>
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" aria-hidden />
+      <header className="mb-3 border-b border-dashed border-border pb-2">
+        <span className="font-mono text-[11px] tracking-widest text-primary">
+          {title}
+        </span>
       </header>
       {children}
     </section>
