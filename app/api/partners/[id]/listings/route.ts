@@ -40,6 +40,10 @@ interface CreateBody {
   shipping_mode?: ValidShipping | null
   images?: string[]
   embeds?: unknown
+  sale_url?: string | null
+  whatsapp?: string | null
+  contact_email?: string | null
+  related_links?: unknown
   published_at?: string
 }
 
@@ -145,6 +149,10 @@ export async function POST(
       shipping_mode: body.shipping_mode ?? null,
       images: body.images ?? [],
       embeds: (body.embeds ?? []) as never,
+      sale_url: body.sale_url?.trim() || null,
+      whatsapp: body.whatsapp?.trim() || null,
+      contact_email: body.contact_email?.trim() || null,
+      related_links: (body.related_links ?? []) as never,
       published_at: body.published_at ?? new Date().toISOString(),
     })
     .select()

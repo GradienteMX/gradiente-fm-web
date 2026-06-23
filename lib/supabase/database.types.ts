@@ -634,6 +634,7 @@ export type Database = {
         Row: {
           category: string
           condition: string
+          contact_email: string | null
           description: string | null
           embeds: Json
           id: string
@@ -641,16 +642,20 @@ export type Database = {
           partner_id: string
           price: number
           published_at: string
+          related_links: Json
+          sale_url: string | null
           shipping_mode: string | null
           status: string
           subcategory: string | null
           tags: string[]
           title: string
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           category: string
           condition: string
+          contact_email?: string | null
           description?: string | null
           embeds?: Json
           id: string
@@ -658,16 +663,20 @@ export type Database = {
           partner_id: string
           price?: number
           published_at?: string
+          related_links?: Json
+          sale_url?: string | null
           shipping_mode?: string | null
           status?: string
           subcategory?: string | null
           tags?: string[]
           title: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           category?: string
           condition?: string
+          contact_email?: string | null
           description?: string | null
           embeds?: Json
           id?: string
@@ -675,12 +684,15 @@ export type Database = {
           partner_id?: string
           price?: number
           published_at?: string
+          related_links?: Json
+          sale_url?: string | null
           shipping_mode?: string | null
           status?: string
           subcategory?: string | null
           tags?: string[]
           title?: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {

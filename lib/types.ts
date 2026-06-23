@@ -116,6 +116,14 @@ export interface MarketplaceListing {
   tags?: string[]                     // free-form chip input (e.g. "limited", "white-label")
   shippingMode?: MarketplaceShippingMode  // default left undefined = unspecified
   embeds?: MixEmbed[]                 // optional streaming/preview embeds (SC/YT/Spotify/Bandcamp/Mixcloud)
+  // Contact + routing (migration 0032). All optional — a listing can route
+  // a buyer via any combination of external sale link, WhatsApp, or email.
+  saleUrl?: string                    // external buy/listen link (Discogs, Bandcamp, store…)
+  whatsapp?: string                   // WhatsApp number or wa.me link
+  email?: string                      // contact email for the transaction
+  // Links to related Gradiente content (editorials / lists / articles) — the
+  // marketplace↔content cross-link. { label, url } pairs (reuses EntityLink).
+  relatedLinks?: EntityLink[]
   publishedAt: string                 // ISO — drives "RECIENTES" ordering
 }
 
