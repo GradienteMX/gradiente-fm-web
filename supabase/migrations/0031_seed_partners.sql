@@ -3,7 +3,7 @@
 -- collectives, promoters, festivals, media, dealers). Generated from
 -- data/partners.csv. Primary link (partner_url) follows the per-type rule:
 -- labels -> Bandcamp, venues -> Instagram, collectives/mix-series -> SoundCloud.
--- 14 have a logo in public/partners/ (image_url); the rest render the
+-- 21 have a logo in public/partners/ (image_url); the rest render the
 -- placeholder box until logos are added (many sources are Instagram, which
 -- can't be scraped automatically — upload those via the admin composer).
 --
@@ -45,17 +45,17 @@ values
   ('pa-rei-room', 'rei-room', 'partner', 'rei room', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'venue', null, '2026-06-22T12:00:00+00:00', true, false),
   ('pa-relink-data', 'relink-data', 'partner', 'relink data', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'venue', null, '2026-06-22T12:00:00+00:00', true, false),
   ('pa-deposito-sonoro', 'deposito-sonoro', 'partner', 'deposito sonoro', 5, 5, '{}', '{}', '/partners/deposito-sonoro.jpg', '2026-06-22T12:00:00+00:00', 'medios', 'https://depositosonoro.com/', '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-mwamwa', 'mwamwa', 'partner', 'mwamwa', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-cjantal', 'cjantal', 'partner', 'cjantal', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-mwamwa', 'mwamwa', 'partner', 'mwamwa', 5, 5, '{}', '{}', '/partners/mwamwa.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://mwamwa.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-cjantal', 'cjantal', 'partner', 'cjantal', 5, 5, '{}', '{}', '/partners/cjantal.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://cjantal.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-raxtion-music', 'raxtion-music', 'partner', 'Raxtion Music', 5, 5, '{}', '{}', '/partners/raxtion-music.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://raxtion.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-artistas-desconocidos', 'artistas-desconocidos', 'partner', 'Artistas Desconocidos', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
   ('pa-infinite-machine', 'infinite-machine', 'partner', 'infinite machine', 5, 5, '{}', '{}', '/partners/infinite-machine.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://infinitemachine.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-maricas-records', 'maricas-records', 'partner', 'maricas records', 5, 5, '{}', '{}', '/partners/maricas-records.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://maricasrecords.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-ensamble', 'ensamble', 'partner', 'ensamble', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-duro', 'duro', 'partner', 'duro', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-uauh', 'uauh', 'partner', 'UAUH', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-ten-toes', 'ten-toes', 'partner', 'TEN TOES', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-tra-tra', 'tra-tra', 'partner', 'tra tra', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-ensamble', 'ensamble', 'partner', 'ensamble', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', 'https://ensamblerecords.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-duro', 'duro', 'partner', 'duro', 5, 5, '{}', '{}', '/partners/duro.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://durolabel.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-uauh', 'uauh', 'partner', 'UAUH', 5, 5, '{}', '{}', '/partners/uauh.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://uauhwow.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-ten-toes', 'ten-toes', 'partner', 'TEN TOES', 5, 5, '{}', '{}', '/partners/ten-toes.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://tentoesturbo.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-tra-tra', 'tra-tra', 'partner', 'tra tra', 5, 5, '{}', '{}', '/partners/tra-tra.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://tratratrax.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-dark-side-records-mx', 'dark-side-records-mx', 'partner', 'dark side records mx', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
   ('pa-cdisidente', 'cdisidente', 'partner', 'CDisidente', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'label', null, '2026-06-22T12:00:00+00:00', true, false),
   ('pa-tumba-7', 'tumba-7', 'partner', 'Tumba 7', 5, 5, '{}', '{}', '/partners/tumba-7.jpg', '2026-06-22T12:00:00+00:00', 'label', 'https://tumba7tapes.bandcamp.com/', '2026-06-22T12:00:00+00:00', true, false),
@@ -71,7 +71,7 @@ values
   ('pa-sin-ap-sis', 'sin-ap-sis', 'partner', 'sin.ap.sis', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'colectivo', 'https://www.instagram.com/sin.ap.sis', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-winona', 'winona', 'partner', 'Winona', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'venue', 'https://www.instagram.com/winona_por_siempre', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-sonidero-sabotaje', 'sonidero-sabotaje', 'partner', 'Sonidero Sabotaje', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'colectivo', null, '2026-06-22T12:00:00+00:00', true, false),
-  ('pa-encarta-97', 'encarta-97', 'partner', 'Encarta 97', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'mix-series', null, '2026-06-22T12:00:00+00:00', true, false),
+  ('pa-encarta-97', 'encarta-97', 'partner', 'Encarta 97', 5, 5, '{}', '{}', '/partners/encarta-97.jpg', '2026-06-22T12:00:00+00:00', 'mix-series', 'https://soundcloud.com/encarta-97', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-maquina-simple-ediciones', 'maquina-simple-ediciones', 'partner', 'Maquina Simple Ediciones', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'medios', 'https://www.instagram.com/maquinasimpleediciones', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-vaneechi', 'vaneechi', 'partner', 'Vaneechi', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'medios', 'https://www.instagram.com/vaneechi', '2026-06-22T12:00:00+00:00', true, false),
   ('pa-las-clementinas', 'las-clementinas', 'partner', 'Las Clementinas', 5, 5, '{}', '{}', null, '2026-06-22T12:00:00+00:00', 'venue', 'https://www.instagram.com/lasclementinas', '2026-06-22T12:00:00+00:00', true, false),
