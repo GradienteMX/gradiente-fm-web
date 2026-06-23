@@ -171,7 +171,7 @@ export function envelopeFrontTexture(invite) {
   letterSpaced(ctx, invite.name.toUpperCase(), 96, 546, 3);
   ctx.font = `500 19px ${FONT_MONO}`;
   ctx.fillStyle = "rgba(28,24,19,0.62)";
-  letterSpaced(ctx, "DE: LOS CUSTODIOS · GRADIENTE MX", 96, 588, 3);
+  letterSpaced(ctx, "DE: LOS CUSTODIOS · GRADIENTE", 96, 588, 3);
 
   // sello rectangular BETA CERRADA (queda bajo la solapa: se revela al abrir)
   ctx.save();

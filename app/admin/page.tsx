@@ -7,7 +7,7 @@ import { AdminPartnersComposer } from '@/components/admin/AdminPartnersComposer'
 import { AdminTabNav, type AdminTab } from '@/components/admin/AdminTabNav'
 import type { Database } from '@/lib/supabase/database.types'
 
-export const metadata: Metadata = { title: 'Admin · Gradiente FM' }
+export const metadata: Metadata = { title: 'Admin · Gradiente' }
 export const dynamic = 'force-dynamic'
 
 type InviteCodeRow = Database['public']['Tables']['invite_codes']['Row']

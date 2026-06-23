@@ -114,7 +114,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             //ARTÍCULO
           </span>
           <span className="font-mono text-[10px] tracking-widest text-muted">
-            GRADIENTE·FM // DISPATCH·LONGFORM
+            GRADIENTE // DISPATCH·LONGFORM
           </span>
         </div>
 
@@ -307,7 +307,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             />
             <p className="font-mono text-[11px] tracking-widest text-muted">
               FIN·DEL·ARTÍCULO //{' '}
-              <span style={{ color }}>GRADIENTE·FM·#{item.id}</span>
+              <span style={{ color }}>GRADIENTE·#{item.id}</span>
             </p>
           </div>
         </article>

@@ -133,7 +133,7 @@ export default function NotFound() {
       <div className="hazard-stripe h-1 w-24" aria-hidden />
 
       <p className="font-mono text-[10px] tracking-widest text-muted">
-        SUBSISTEMA·UNIT-10 · GRADIENTE·FM · CDMX
+        SUBSISTEMA·UNIT-10 · GRADIENTE · CDMX
       </p>
     </div>
   )

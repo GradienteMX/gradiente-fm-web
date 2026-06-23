@@ -25,8 +25,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const user = await getUserByUsername(decodeURIComponent(params.username))
   if (!user) return { title: 'Usuario no encontrado' }
   return {
-    title: `@${user.username} — Gradiente FM`,
-    description: user.bio ?? `Perfil público de @${user.username} en Gradiente FM.`,
+    title: `@${user.username} — Gradiente`,
+    description: user.bio ?? `Perfil público de @${user.username} en Gradiente.`,
   }
 }
 

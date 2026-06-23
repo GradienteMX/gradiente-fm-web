@@ -22,9 +22,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const entity = await getEntityBySlug(decodeURIComponent(params.slug))
   if (!entity) return { title: 'Entidad no encontrada' }
   return {
-    title: `${entity.name} — Gradiente FM`,
+    title: `${entity.name} — Gradiente`,
     description:
-      entity.bio ?? `Todo lo que toca ${entity.name} en Gradiente FM.`,
+      entity.bio ?? `Todo lo que toca ${entity.name} en Gradiente.`,
   }
 }
 

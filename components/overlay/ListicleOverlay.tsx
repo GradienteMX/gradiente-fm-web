@@ -81,7 +81,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             //LISTA
           </span>
           <span className="font-mono text-[10px] tracking-widest text-muted">
-            GRADIENTE·FM // DISPATCH·RANKED
+            GRADIENTE // DISPATCH·RANKED
           </span>
           {trackBlocks.length > 0 && (
             <span
@@ -224,7 +224,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             />
             <p className="font-mono text-[11px] tracking-widest text-muted">
               FIN·DE·LA·LISTA //{' '}
-              <span style={{ color }}>GRADIENTE·FM·#{item.id}</span>
+              <span style={{ color }}>GRADIENTE·#{item.id}</span>
             </p>
           </div>
         </article>

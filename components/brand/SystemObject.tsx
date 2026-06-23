@@ -5,7 +5,7 @@
 // A slowly rotating icosahedron — the canonical "transmission node" lattice —
 // projected to 2D each frame and rasterized into a small MONO CHARACTER GRID
 // inside a canvas-2D (NO WebGL: the geometry is projected by hand and sampled to
-// a glyph ramp). It sits in the Navigation logo lockup beside GRADIENTE·MX,
+// a glyph ramp). It sits in the Navigation logo lockup beside GRADIENTE,
 // replacing dead chrome with a living, data-true brand object.
 //
 // TRUE DATA drives it. `signalStrength` is the live count of pieces in the feed

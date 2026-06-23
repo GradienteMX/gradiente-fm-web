@@ -43,8 +43,8 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'GRADIENTE FM',
-    template: '%s · GRADIENTE FM',
+    default: 'GRADIENTE',
+    template: '%s · GRADIENTE',
   },
   description:
     'Música electrónica, eventos, mixes y cultura desde adentro de la escena mexicana.',
@@ -95,7 +95,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <Link href="/equipo" className="hover:text-sys-orange">/EQUIPO</Link>
                       </nav>
                       <p className="hidden font-mono text-[9px] tracking-[0.18em] text-muted md:block">
-                        // GRADIENTE·FM · CULTURA ELECTRÓNICA DESDE MÉXICO · DESDE 2088
+                        // GRADIENTE · CULTURA ELECTRÓNICA DESDE MÉXICO · DESDE 2088
                       </p>
                       <div className="flex items-center gap-4 font-mono text-[9px] tabular-nums text-muted">
                         <span>LAT 19.4326</span>

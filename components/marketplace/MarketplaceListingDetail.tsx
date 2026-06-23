@@ -303,7 +303,7 @@ export function MarketplaceListingDetail({
 
             <p className="border-t border-border/40 pt-3 font-mono text-[9px] leading-relaxed text-muted">
               //CONSEJO — escríbele al partner por su web o redes para
-              comprar. GRADIENTE FM no procesa pagos ni envíos.
+              comprar. GRADIENTE no procesa pagos ni envíos.
             </p>
           </section>
         </div>
