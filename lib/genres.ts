@@ -12,7 +12,7 @@ import type { Genre, Tag } from './types'
 // entries so existing DB rows stay resolvable. New items should adopt the
 // new ids; `LEGACY_ALIASES` maps the closest semantic equivalents.
 
-// ── Top-level categories (21 roots) ────────────────────────────────────────
+// ── Top-level categories (22 roots) ────────────────────────────────────────
 
 const ROOTS: Genre[] = [
   { id: 'techno', name: 'Techno', parents: [] },
@@ -36,6 +36,7 @@ const ROOTS: Genre[] = [
   { id: 'arab-swana', name: 'Árabe / SWANA', parents: [] },
   { id: 'traditional-folk', name: 'Tradicional / Folclórica', parents: [] },
   { id: 'world', name: 'World / Músicas del Mundo', parents: [] },
+  { id: 'latin-electronica', name: 'Electrónica Latina', parents: [] },
 ]
 
 // ── Subgenres (leaves) ─────────────────────────────────────────────────────
@@ -238,15 +239,15 @@ const SUBGENRES: Genre[] = [
   { id: 'afroelectronico', name: 'Afroelectrónico', parents: ['world-bass'] },
   { id: 'global-bass', name: 'Global Bass', parents: ['world-bass'] },
   { id: 'kuduro', name: 'Kuduro', parents: ['world-bass'] },
-  { id: 'baile-funk', name: 'Baile Funk', parents: ['world-bass'] },
-  { id: 'dembow', name: 'Dembow', parents: ['world-bass'] },
-  { id: 'sonidero', name: 'Sonidero', parents: ['world-bass'] },
-  { id: 'tropical-bass', name: 'Tropical Bass', parents: ['world-bass'] },
-  { id: 'folktronica', name: 'Folktronica', parents: ['world-bass'] },
-  { id: 'cumbia-digital', name: 'Cumbia Digital', parents: ['world-bass'] },
+  { id: 'baile-funk', name: 'Baile Funk', parents: ['world-bass', 'latin-electronica'] },
+  { id: 'dembow', name: 'Dembow', parents: ['world-bass', 'latin-electronica'] },
+  { id: 'sonidero', name: 'Sonidero', parents: ['world-bass', 'latin-electronica'] },
+  { id: 'tropical-bass', name: 'Tropical Bass', parents: ['world-bass', 'latin-electronica'] },
+  { id: 'folktronica', name: 'Folktronica', parents: ['world-bass', 'latin-electronica'] },
+  { id: 'cumbia-digital', name: 'Cumbia Digital', parents: ['world-bass', 'latin-electronica'] },
   { id: 'cumbia-sonidera', name: 'Cumbia Sonidera', parents: ['world-bass'] },
   { id: 'cumbia-villera', name: 'Cumbia Villera', parents: ['world-bass'] },
-  { id: 'cumbia-experimental', name: 'Cumbia Experimental', parents: ['world-bass'] },
+  { id: 'cumbia-experimental', name: 'Cumbia Experimental', parents: ['world-bass', 'latin-electronica'] },
   { id: 'raga-electronico', name: 'Raga Electrónico', parents: ['world-bass'] },
   { id: 'gagaku-contemporaneo', name: 'Gagaku Contemporáneo', parents: ['world-bass'] },
   { id: 'banda-contemporanea', name: 'Música de Banda (contemporánea)', parents: ['world-bass'] },
@@ -277,6 +278,19 @@ const SUBGENRES: Genre[] = [
   { id: 'musicas-africanas', name: 'Músicas Africanas', parents: ['world'] },
   { id: 'musicas-asiaticas', name: 'Músicas Asiáticas', parents: ['world'] },
   { id: 'balkan-romani', name: 'Balcánica / Romani', parents: ['world', 'traditional-folk'] },
+
+  // ELECTRÓNICA LATINA
+  { id: 'neoperreo', name: 'Neoperreo', parents: ['latin-electronica', 'world-bass'] },
+  { id: 'perreo-experimental', name: 'Perreo / Reggaetón Experimental', parents: ['latin-electronica'] },
+  { id: 'guaracha-aleteo', name: 'Guaracha / Aleteo', parents: ['latin-electronica'] },
+  { id: 'tribal-guarachero', name: 'Tribal Guarachero / 3Ball', parents: ['latin-electronica'] },
+  { id: 'changa-tuki', name: 'Changa Tuki', parents: ['latin-electronica'] },
+  { id: 'nu-cumbia', name: 'Nu Cumbia', parents: ['latin-electronica', 'world-bass'] },
+  { id: 'electro-tropical', name: 'Electro Tropical', parents: ['latin-electronica', 'world-bass'] },
+  { id: 'latin-bass', name: 'Latin Bass', parents: ['latin-electronica', 'world-bass'] },
+  { id: 'electronica-andina', name: 'Electrónica Andina', parents: ['latin-electronica', 'world'] },
+  { id: 'latin-club', name: 'Latin Club', parents: ['latin-electronica'] },
+  { id: 'electronica-experimental-latam', name: 'Electrónica Experimental LatAm', parents: ['latin-electronica', 'electronica-idm'] },
 ]
 
 // ── Legacy ids ─────────────────────────────────────────────────────────────
@@ -317,8 +331,8 @@ const LEGACY: Genre[] = [
   { id: 'trance-raw', name: 'Trance (Raw / Deep)', parents: ['techno'], legacy: true },
   { id: 'ukg', name: 'UKG / Garage / Grime', parents: ['dubstep-uk'], legacy: true },
   { id: 'wave', name: 'Wave', parents: ['lofi-bedroom'], legacy: true },
-  { id: 'cumbia-electronica', name: 'Cumbia Electrónica', parents: ['world-bass'], legacy: true },
-  { id: 'latin-electronic', name: 'Latin Electronic', parents: ['world-bass'], legacy: true },
+  { id: 'cumbia-electronica', name: 'Cumbia Electrónica', parents: ['world-bass', 'latin-electronica'], legacy: true },
+  { id: 'latin-electronic', name: 'Latin Electronic', parents: ['world-bass', 'latin-electronica'], legacy: true },
   { id: 'trap', name: 'Trap / Future Bass', parents: ['hip-hop-rap'], legacy: true },
   { id: 'ballroom', name: 'Ballroom / Voguing', parents: ['hyperpop-deconstructed'], legacy: true },
   { id: 'gqom', name: 'Gqom', parents: ['world-bass'] /* high-vibe */, legacy: true },
@@ -530,6 +544,11 @@ export const GENRE_VIBE: Record<string, number> = {
   'musica-tradicional': 2, 'folk': 2, 'folclore-latinoamericano': 3,
   'son-jarocho': 4, 'musica-andina': 2, 'world-music': 3,
   'musicas-africanas': 5, 'musicas-asiaticas': 3, 'balkan-romani': 7,
+  // Electrónica Latina
+  'neoperreo': 7, 'perreo-experimental': 7, 'guaracha-aleteo': 8,
+  'tribal-guarachero': 8, 'changa-tuki': 8, 'nu-cumbia': 5,
+  'electro-tropical': 6, 'latin-bass': 7, 'electronica-andina': 3,
+  'latin-club': 7, 'electronica-experimental-latam': 6,
 }
 
 export function vibeForGenre(id: string): number | null {
