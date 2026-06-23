@@ -323,7 +323,7 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
         <aside className="flex flex-col gap-4 md:col-span-4 md:sticky md:top-4 md:self-start">
           {/* Flyer — image as evidence, not hero */}
           {item.imageUrl && (
-            <ArchivalBlock index="01" label="FLYER">
+            <ArchivalBlock index="01" label="ARCHIVO VISUAL">
               <div className="relative overflow-hidden border border-border bg-elevated">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
