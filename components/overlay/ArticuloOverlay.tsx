@@ -111,10 +111,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             }}
           >
             {item.editorial && <span>★</span>}
-            //ARTÍCULO
-          </span>
-          <span className="font-mono text-[10px] tracking-widest text-muted">
-            GRADIENTE // DISPATCH·LONGFORM
+            ARTÍCULO
           </span>
         </div>
 
@@ -186,15 +183,11 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               style={{ backgroundColor: color }}
             />
           </div>
-          <figcaption className="mt-2 flex items-center justify-between font-mono text-[10px] tracking-widest text-muted">
-            <span>
-              IMG·01 //{' '}
-              <span className="text-secondary">
-                {item.heroCaption ?? 'MATERIAL DE ARCHIVO'}
-              </span>
-            </span>
-            <span style={{ color }}>//ARTÍCULO</span>
-          </figcaption>
+          {item.heroCaption && (
+            <figcaption className="mt-2 font-mono text-[10px] tracking-widest text-secondary">
+              {item.heroCaption}
+            </figcaption>
+          )}
         </figure>
       )}
 
@@ -306,8 +299,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               aria-hidden
             />
             <p className="font-mono text-[11px] tracking-widest text-muted">
-              FIN·DEL·ARTÍCULO //{' '}
-              <span style={{ color }}>GRADIENTE·#{item.id}</span>
+              FIN DEL ARTÍCULO
             </p>
           </div>
         </article>
@@ -327,9 +319,6 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
                   <div className="min-w-0">
                     <p className="font-grotesk text-sm text-primary">
                       {item.author}
-                    </p>
-                    <p className="font-mono text-[10px] text-muted">
-                      DISPATCH · LONGFORM
                     </p>
                   </div>
                 </div>

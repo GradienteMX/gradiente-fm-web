@@ -78,10 +78,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             }}
           >
             {item.editorial && <span>★</span>}
-            //LISTA
-          </span>
-          <span className="font-mono text-[10px] tracking-widest text-muted">
-            GRADIENTE // DISPATCH·RANKED
+            LISTA
           </span>
           {trackBlocks.length > 0 && (
             <span
@@ -157,8 +154,8 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             />
           </div>
           {item.heroCaption && (
-            <figcaption className="mt-2 font-mono text-[10px] tracking-widest text-muted">
-              IMG·01 // <span className="text-secondary">{item.heroCaption}</span>
+            <figcaption className="mt-2 font-mono text-[10px] tracking-widest text-secondary">
+              {item.heroCaption}
             </figcaption>
           )}
         </figure>
@@ -223,8 +220,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
               aria-hidden
             />
             <p className="font-mono text-[11px] tracking-widest text-muted">
-              FIN·DE·LA·LISTA //{' '}
-              <span style={{ color }}>GRADIENTE·#{item.id}</span>
+              FIN DE LA LISTA
             </p>
           </div>
         </article>

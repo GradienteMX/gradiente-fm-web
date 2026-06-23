@@ -321,13 +321,9 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
 
         {/* Archival rail — 4 cols on desktop, stacked above article on mobile */}
         <aside className="flex flex-col gap-4 md:col-span-4 md:sticky md:top-4 md:self-start">
-          {/* ARCHIVO VISUAL — flyer as evidence, not hero */}
+          {/* Flyer — image as evidence, not hero */}
           {item.imageUrl && (
-            <ArchivalBlock
-              index="01"
-              label="ARCHIVO VISUAL"
-              sublabel="FLYER ORIGINAL"
-            >
+            <ArchivalBlock index="01" label="FLYER">
               <div className="relative overflow-hidden border border-border bg-elevated">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -341,16 +337,13 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   className="absolute bottom-0 left-0"
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between font-mono text-[10px]">
-                <span className="text-muted">
-                  FUENTE VISUAL · MATERIAL DE ARCHIVO
-                </span>
+              <div className="mt-2 flex items-center justify-end font-mono text-[10px]">
                 <button
                   onClick={() => setFlyerOpen(true)}
                   className="flex items-center gap-1 text-sys-red transition-colors hover:text-primary"
                 >
                   <Expand size={10} />
-                  [VER AMPLIADO]
+                  VER AMPLIADO
                 </button>
               </div>
             </ArchivalBlock>
