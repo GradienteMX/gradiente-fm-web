@@ -1259,6 +1259,11 @@ export type Database = {
         | "venue"
         | "sponsored"
         | "dealer"
+        | "colectivo"
+        | "festival"
+        | "club"
+        | "medios"
+        | "mix-series"
       poll_kind: "from-list" | "from-tracklist" | "attendance" | "freeform"
       reaction_kind: "provocative" | "signal"
       user_role: "user" | "curator" | "guide" | "insider" | "admin"
@@ -1412,6 +1417,11 @@ export const Constants = {
         "venue",
         "sponsored",
         "dealer",
+        "colectivo",
+        "festival",
+        "club",
+        "medios",
+        "mix-series",
       ],
       poll_kind: ["from-list", "from-tracklist", "attendance", "freeform"],
       reaction_kind: ["provocative", "signal"],

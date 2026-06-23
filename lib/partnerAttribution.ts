@@ -9,6 +9,8 @@ import type { PartnerKind } from './types'
 //   promo     → PROMOTORA  (alias for promoter)
 //   dealer    → DEALER     (Fhauna stocks this listing)
 //   sponsored → PRESENTA   (neutral — paid placements use the venue-style verb)
+//   colectivo → COLECTIVO  (a crew puts on this event)
+//   festival/club/medios/mix-series → PRESENTA (venue-style verb)
 export function partnerAttributionPrefix(kind: PartnerKind): string {
   switch (kind) {
     case 'venue':
@@ -21,6 +23,13 @@ export function partnerAttributionPrefix(kind: PartnerKind): string {
     case 'dealer':
       return 'DEALER'
     case 'sponsored':
+      return 'PRESENTA'
+    case 'colectivo':
+      return 'COLECTIVO'
+    case 'festival':
+    case 'club':
+    case 'medios':
+    case 'mix-series':
       return 'PRESENTA'
   }
 }

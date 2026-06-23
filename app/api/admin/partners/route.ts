@@ -28,6 +28,11 @@ const VALID_KINDS: readonly PartnerKind[] = [
   'venue',
   'sponsored',
   'dealer',
+  'colectivo',
+  'festival',
+  'club',
+  'medios',
+  'mix-series',
 ]
 
 async function gateAdmin(supabase: ReturnType<typeof createClient>) {

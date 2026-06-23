@@ -14,6 +14,11 @@ const PARTNER_LABEL: Record<PartnerKind, string> = {
   venue: 'VENUE',
   sponsored: 'PATROCINIO',
   dealer: 'DEALER',
+  colectivo: 'COLECTIVO',
+  festival: 'FESTIVAL',
+  club: 'CLUB',
+  medios: 'MEDIO',
+  'mix-series': 'MIX SERIES',
 }
 
 function partnerTime(item: ContentItem): number {

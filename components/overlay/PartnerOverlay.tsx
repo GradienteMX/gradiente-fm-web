@@ -36,6 +36,11 @@ const KIND_LABEL: Record<PartnerKind, string> = {
   venue: 'VENUE',
   sponsored: 'PATROCINIO',
   dealer: 'DEALER',
+  colectivo: 'COLECTIVO',
+  festival: 'FESTIVAL',
+  club: 'CLUB',
+  medios: 'MEDIO',
+  'mix-series': 'MIX SERIES',
 }
 
 const TYPE_LABEL: Record<ContentType, string> = {
@@ -88,6 +93,31 @@ const KIND_SLOT: Record<PartnerKind, KindSlot | null> = {
     upcomingOnly: false,
     emptyHint: 'Revisa el marketplace de este dealer para ver disponibilidad.',
   },
+  colectivo: {
+    header: 'PRÓXIMAS FIESTAS',
+    types: ['evento'],
+    upcomingOnly: true,
+    emptyHint: 'Sin fiestas vinculadas por ahora.',
+  },
+  festival: {
+    header: 'PRÓXIMAS EDICIONES',
+    types: ['evento'],
+    upcomingOnly: true,
+    emptyHint: 'Sin ediciones anunciadas por ahora.',
+  },
+  club: {
+    header: 'PRÓXIMOS EVENTOS EN ESTE CLUB',
+    types: ['evento'],
+    upcomingOnly: true,
+    emptyHint: 'Sin eventos vinculados a este club por ahora.',
+  },
+  'mix-series': {
+    header: 'EPISODIOS / MIXES',
+    types: ['mix'],
+    upcomingOnly: false,
+    emptyHint: 'Sin episodios vinculados por ahora.',
+  },
+  medios: null,
   sponsored: null,
 }
 
