@@ -161,7 +161,7 @@ function PartnerAttributionChip({ item }: { item: ContentItem }) {
   // normalize). Skip rendering rather than crash.
   if (!item.partner || !item.partner.title) return null
   const { partner } = item
-  const label = `//${partnerAttributionPrefix(partner.kind)} · ${partner.title.toUpperCase()}`
+  const label = `${partnerAttributionPrefix(partner.kind)} · ${partner.title.toUpperCase()}`
   const chipStyle: CSSProperties = {
     borderColor: '#FF8800',
     color: '#FF8800',
@@ -338,7 +338,7 @@ function CardImage({
             }}
             title="Borrador local — solo visible en esta sesión"
           >
-            [DRAFT·SESIÓN]
+            BORRADOR
           </span>
         )}
         <PartnerAttributionChip item={item} />

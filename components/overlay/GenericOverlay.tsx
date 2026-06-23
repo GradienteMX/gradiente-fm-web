@@ -125,12 +125,6 @@ export function GenericOverlay({ item }: Props) {
             ))}
           </div>
         )}
-
-        <div className="mt-2 border-t border-dashed border-border pt-3">
-          <p className="sys-label text-muted">
-            OVERLAY GENÉRICO · {item.type.toUpperCase()} · PENDIENTE DE VISUAL DEDICADO
-          </p>
-        </div>
       </div>
     </article>
   )
