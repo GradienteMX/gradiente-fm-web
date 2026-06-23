@@ -10,8 +10,8 @@ import { useFeedPulse } from '@/lib/hooks/useFeedPulse'
 // Header destinations. Trimmed from 9 → 5 on 2026-05-12 to break the visual
 // equivalence with the SECCIÓN rail (beta testers were ignoring FORO +
 // MARKETPLACE because they read as duplicates of //NOTICIA / //MIX / etc
-// filter rows). QUÉ ES GRADIENTE added 2026-05-21 to surface the
-// invitation-as-about page that now lives at /about.
+// filter rows). The /about entry (labeled EMPIEZA AQUÍ) surfaces the
+// invitation-as-about page — the orientation/guide for new visitors.
 // Every item renders in sys-orange by default; only the *active* item
 // switches to an orange → red gradient + glow. The differentiation is
 // "selected vs not," not "this item is its own color."
@@ -20,8 +20,14 @@ const NAV_LINKS = [
   { href: '/agenda',      label: 'AGENDA' },
   { href: '/foro',        label: 'FORO' },
   { href: '/marketplace', label: 'MARKETPLACE' },
-  { href: '/about',       label: 'QUÉ ES GRADIENTE' },
+  { href: '/about',       label: 'EMPIEZA AQUÍ' },
 ]
+
+// Beta feedback form — external Google Form, opens in a new tab. Rendered as
+// a distinct amber CTA chip (not a section link) so it reads as "give us
+// feedback" rather than another destination.
+const FEEDBACK_URL =
+  'https://docs.google.com/forms/d/e/1FAIpQLSc71uI_yNHJW0z-iN2KVughYGURNQGl-wY7vTz8Q_03RzQfuw/viewform'
 
 // Active-state gradient — sys-orange → sys-red, matching the header's top
 // accent bar so the "this is where you are" cue is visually rhymed with the
@@ -40,7 +46,7 @@ function agoLabel(minutes: number): string {
 // state it can't verify (the feed heartbeat at the right edge is the one
 // honest live readout on this row).
 const DATA_STRIP = [
-  'GRADIENTE·MX·SUBSISTEMA·CULTURAL', '//', 'TRANSMISIÓN·CDMX', '//',
+  'GRADIENTE·SUBSISTEMA·CULTURAL', '//', 'TRANSMISIÓN·CDMX', '//',
   'FRECUENCIA·ABIERTA', '//', 'MÚSICA·ELECTRÓNICA', '//', 'ARCHIVO·VIVO', '//',
   'GUÍAS·NO·GATEKEEPERS', '//', 'SIN·ALGORITMO', '//',
   '00·GLACIAL····10·VOLCÁN', '//', 'CDMX·UNDERGROUND', '//',
@@ -98,7 +104,7 @@ export function Navigation() {
           <SystemObject signalStrength={activeCount} size={40} />
           <div className="flex flex-col gap-[3px]">
             <span className="font-syne text-[17px] font-black leading-none tracking-tighter text-sys-orange">
-              GRADIENTE<span className="text-sys-amber">·</span>MX
+              GRADIENTE
             </span>
             <span className="font-mono text-[6px] tracking-[0.2em] text-muted">
               // SUBSISTEMA·CULTURAL·CDMX
@@ -185,6 +191,19 @@ export function Navigation() {
             </span>
           </div>
         </div>
+
+        {/* Feedback (beta) — external Google Form, new tab. Amber chip so it
+            reads as a distinct CTA, not another section. */}
+        <a
+          href={FEEDBACK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden items-center border-l border-border-subtle px-3 md:flex"
+        >
+          <span className="border border-sys-amber/60 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-sys-amber transition-colors hover:bg-sys-amber/10">
+            FEEDBACK BETA
+          </span>
+        </a>
 
         {/* Auth badge — LOGIN / DASHBOARD slot */}
         <AuthBadge />
@@ -298,6 +317,19 @@ export function Navigation() {
               </Link>
             )
           })}
+          {/* Feedback (beta) — external, opens new tab */}
+          <a
+            href={FEEDBACK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-3 border-b border-border-subtle px-4 py-3"
+          >
+            <span className="font-mono text-[10px] text-sys-amber">·</span>
+            <span className="font-syne text-xs font-bold tracking-widest text-sys-amber">
+              FEEDBACK BETA
+            </span>
+          </a>
         </nav>
       )}
     </header>
