@@ -916,7 +916,7 @@ export default function AboutPage() {
             </span>
           </div>
           <div className="topbar-right">
-            <span className="show-md">GRADIENTE·MX</span>
+            <span className="show-md">GRADIENTE</span>
             <span className="sep show-md">·</span>
             <span>BETA·150</span>
             <span className="sep">·</span>
@@ -1026,7 +1026,7 @@ export default function AboutPage() {
             </p>
 
             <p>
-              Te invitamos a la beta cerrada de Gradiente MX: un espacio para la música construido para ser
+              Te invitamos a la beta cerrada de Gradiente: un espacio para la música construido para ser
               democrático, descentralizado y propiamente nuestro. Un lugar para estar más cerca de tu
               comunidad, sin depender de redes que consumen tu trabajo sin devolver nada.
             </p>
@@ -1040,12 +1040,12 @@ export default function AboutPage() {
           <section id="s01" className="dossier-section">
             <header className="section-head">
               <span className="section-num">01</span>
-              <h2 className="section-title">Qué es Gradiente MX</h2>
+              <h2 className="section-title">Qué es Gradiente</h2>
             </header>
             <p className="section-motto">PERSONAS, NO PLATAFORMAS</p>
             <div className="prose">
               <p>
-                Gradiente MX es infraestructura y memoria para la escena underground de música y arte sonoro
+                Gradiente es infraestructura y memoria para la escena underground de música y arte sonoro
                 en México. Un foro descentralizado, refugio y respuesta a la cultura del algoritmo: listado de
                 eventos, periodismo musical, reseñas, mixes, foro y marketplace. Debajo hay un sistema
                 técnicamente sofisticado que posibilita un ecosistema vivo: los contenidos suben, bajan,
@@ -1726,7 +1726,7 @@ export default function AboutPage() {
 
                 <p>Todo tiene un centro.</p>
                 <p>
-                  Gradiente MX es infraestructura digital para la escena underground de música y arte sonoro
+                  Gradiente es infraestructura digital para la escena underground de música y arte sonoro
                   en México. Un foro descentralizado, inspirado en los message boards de los 90 y 2000, que
                   funciona como refugio y respuesta a la cultura del algoritmo.
                 </p>
@@ -1962,7 +1962,7 @@ export default function AboutPage() {
         <div className="footer-inner">
           <div className="group">
             <span className="sys-dot" aria-hidden="true" />
-            <span className="unit">GRADIENTE MX</span>
+            <span className="unit">GRADIENTE</span>
             <span className="sep">·</span>
             <span>BETA 150</span>
             <span className="sep">·</span>

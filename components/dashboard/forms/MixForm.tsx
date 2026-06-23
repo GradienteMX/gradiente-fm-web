@@ -121,7 +121,7 @@ export function MixForm() {
             label="TÍTULO"
             value={draft.title}
             onChange={(v) => patch({ title: v })}
-            placeholder="ESPECTRO MIX 010"
+            placeholder="GRADIENTE MIX 010"
             required
           />
           <TextField
@@ -137,7 +137,7 @@ export function MixForm() {
               setSlugManuallyEdited(true)
               patch({ slug: slugify(v) })
             }}
-            placeholder="espectro-mix-010-retrospective-perception"
+            placeholder="gradiente-mix-010-retrospective-perception"
             mono
             required
           />
@@ -167,7 +167,7 @@ export function MixForm() {
             value={draft.bodyPreview ?? ''}
             onChange={(v) => patch({ bodyPreview: v })}
             rows={6}
-            placeholder="Espectro Mix 010 es una sesión continua grabada en vivo…"
+            placeholder="Gradiente Mix 010 es una sesión continua grabada en vivo…"
           />
         </Section>
 
@@ -228,7 +228,7 @@ export function MixForm() {
               label="SERIE"
               value={draft.mixSeries ?? ''}
               onChange={(v) => patch({ mixSeries: v })}
-              placeholder="Espectro Mix"
+              placeholder="Gradiente Mix"
             />
             <TextField
               label="GRABADO EN"

@@ -111,10 +111,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             }}
           >
             {item.editorial && <span>★</span>}
-            //ARTÍCULO
-          </span>
-          <span className="font-mono text-[10px] tracking-widest text-muted">
-            GRADIENTE·FM // DISPATCH·LONGFORM
+            ARTÍCULO
           </span>
         </div>
 
@@ -186,15 +183,11 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               style={{ backgroundColor: color }}
             />
           </div>
-          <figcaption className="mt-2 flex items-center justify-between font-mono text-[10px] tracking-widest text-muted">
-            <span>
-              IMG·01 //{' '}
-              <span className="text-secondary">
-                {item.heroCaption ?? 'MATERIAL DE ARCHIVO'}
-              </span>
-            </span>
-            <span style={{ color }}>//ARTÍCULO</span>
-          </figcaption>
+          {item.heroCaption && (
+            <figcaption className="mt-2 font-mono text-[10px] tracking-widest text-secondary">
+              {item.heroCaption}
+            </figcaption>
+          )}
         </figure>
       )}
 
@@ -306,8 +299,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               aria-hidden
             />
             <p className="font-mono text-[11px] tracking-widest text-muted">
-              FIN·DEL·ARTÍCULO //{' '}
-              <span style={{ color }}>GRADIENTE·FM·#{item.id}</span>
+              FIN DEL ARTÍCULO
             </p>
           </div>
         </article>
@@ -316,7 +308,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
         <aside className="md:col-span-3 md:sticky md:top-4 md:self-start">
           <div className="flex flex-col gap-4">
             {item.author && (
-              <RailBlock index="01" label="FIRMA">
+              <RailBlock label="FIRMA">
                 <div className="flex items-start gap-3">
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center border border-border bg-elevated font-syne text-sm font-black"
@@ -328,15 +320,12 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
                     <p className="font-grotesk text-sm text-primary">
                       {item.author}
                     </p>
-                    <p className="font-mono text-[10px] text-muted">
-                      DISPATCH · LONGFORM
-                    </p>
                   </div>
                 </div>
               </RailBlock>
             )}
 
-            <RailBlock index="02" label="CONTEXTO">
+            <RailBlock label="CONTEXTO">
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
                 <dt className="text-muted">TIPO</dt>
                 <dd style={{ color }}>: //ARTÍCULO</dd>
@@ -358,7 +347,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             </RailBlock>
 
             {(genres.length > 0 || tags.length > 0) && (
-              <RailBlock index="03" label="ETIQUETAS">
+              <RailBlock label="ETIQUETAS">
                 <ul className="flex flex-col gap-1.5 font-mono text-xs">
                   {genres.map(({ id, name }) => (
                     <li key={id} className="flex items-center gap-2">
@@ -823,22 +812,16 @@ function renderBold(text: string, keyPrefix: string): React.ReactNode {
 
 // ── Rail block (mirrors ReaderOverlay's ArchivalBlock idiom) ────────────────
 function RailBlock({
-  index,
   label,
   children,
 }: {
-  index: string
   label: string
   children: React.ReactNode
 }) {
   return (
     <section className="border border-border bg-surface">
-      <header className="flex items-center justify-between border-b border-border px-3 py-1.5">
-        <div className="flex items-center gap-2">
-          <span className="sys-label text-muted">{index}</span>
-          <span className="sys-label text-primary">{label}</span>
-        </div>
-        <span className="h-1.5 w-1.5 rounded-full bg-sys-green" aria-hidden />
+      <header className="border-b border-border px-3 py-1.5">
+        <span className="sys-label text-primary">{label}</span>
       </header>
       <div className="p-3">{children}</div>
     </section>

@@ -321,13 +321,9 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
 
         {/* Archival rail — 4 cols on desktop, stacked above article on mobile */}
         <aside className="flex flex-col gap-4 md:col-span-4 md:sticky md:top-4 md:self-start">
-          {/* ARCHIVO VISUAL — flyer as evidence, not hero */}
+          {/* Flyer — image as evidence, not hero */}
           {item.imageUrl && (
-            <ArchivalBlock
-              index="01"
-              label="ARCHIVO VISUAL"
-              sublabel="FLYER ORIGINAL"
-            >
+            <ArchivalBlock label="ARCHIVO VISUAL">
               <div className="relative overflow-hidden border border-border bg-elevated">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -341,16 +337,13 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   className="absolute bottom-0 left-0"
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between font-mono text-[10px]">
-                <span className="text-muted">
-                  FUENTE VISUAL · MATERIAL DE ARCHIVO
-                </span>
+              <div className="mt-2 flex items-center justify-end font-mono text-[10px]">
                 <button
                   onClick={() => setFlyerOpen(true)}
                   className="flex items-center gap-1 text-sys-red transition-colors hover:text-primary"
                 >
                   <Expand size={10} />
-                  [VER AMPLIADO]
+                  VER AMPLIADO
                 </button>
               </div>
             </ArchivalBlock>
@@ -359,7 +352,7 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
           {/* CONTEXTO — real scene metadata. Entity rows are clickable chips
               that lead to the entity's page; legacy free-text venue/city/firma
               fall through for items predating the entity registry. */}
-          <ArchivalBlock index="02" label="CONTEXTO">
+          <ArchivalBlock label="CONTEXTO">
             {hasContext ? (
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
                 <EntityRow
@@ -413,7 +406,7 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
 
           {/* ETIQUETAS */}
           {(genres.length > 0 || tags.length > 0) && (
-            <ArchivalBlock index="03" label="ETIQUETAS">
+            <ArchivalBlock label="ETIQUETAS">
               <ul className="flex flex-col gap-1.5 font-mono text-xs">
                 {genres.map(({ id, name }) => (
                   <li key={id} className="flex items-center gap-2">
@@ -507,33 +500,16 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
 
 // ── Archival block module ────────────────────────────────────────────────────
 function ArchivalBlock({
-  index,
   label,
-  sublabel,
   children,
 }: {
-  index: string
   label: string
-  sublabel?: string
   children: React.ReactNode
 }) {
   return (
     <section className="border border-border bg-surface">
-      <header className="flex items-center justify-between border-b border-border px-3 py-1.5">
-        <div className="flex items-center gap-2">
-          <span className="sys-label text-muted">{index}</span>
-          <span className="sys-label text-primary">{label}</span>
-          {sublabel && (
-            <>
-              <span className="font-mono text-[10px] text-sys-red">//</span>
-              <span className="sys-label text-muted">{sublabel}</span>
-            </>
-          )}
-        </div>
-        <span
-          className="h-1.5 w-1.5 rounded-full bg-sys-green"
-          aria-hidden
-        />
+      <header className="border-b border-border px-3 py-1.5">
+        <span className="sys-label text-primary">{label}</span>
       </header>
       <div className="p-3">{children}</div>
     </section>

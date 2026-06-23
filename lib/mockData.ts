@@ -1243,7 +1243,7 @@ const RAW_ITEMS: ContentItem[] = [
     articleBody: [
       {
         kind: "lede",
-        text: "Gradiente FM agrega este reportaje publicado originalmente por Shawn Reynaldo en su newsletter First Floor. Lo traemos acá porque su tema — la concentración corporativa detrás del ecosistema europeo de festivales — entra de lleno en la conversación que venimos teniendo en torno a la infraestructura, la dependencia y la soberanía cultural de la escena latinoamericana.",
+        text: "Gradiente agrega este reportaje publicado originalmente por Shawn Reynaldo en su newsletter First Floor. Lo traemos acá porque su tema — la concentración corporativa detrás del ecosistema europeo de festivales — entra de lleno en la conversación que venimos teniendo en torno a la infraestructura, la dependencia y la soberanía cultural de la escena latinoamericana.",
       },
       {
         kind: "p",

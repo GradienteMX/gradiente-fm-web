@@ -213,7 +213,7 @@ function DisabledState() {
         </span>
         <p>
           Este partner aún no tiene marketplace activo. Pídele al equipo de
-          GRADIENTE FM que lo apruebe desde el panel de admin.
+          GRADIENTE que lo apruebe desde el panel de admin.
         </p>
       </div>
     </div>
@@ -308,7 +308,7 @@ function Body({
         <p className="font-mono text-[9px] leading-relaxed text-muted">
           //CONSEJO — los precios y la disponibilidad se actualizan
           directamente desde el equipo del partner. Si te interesa un item,
-          escríbele al partner por su web o redes; GRADIENTE FM no procesa
+          escríbele al partner por su web o redes; GRADIENTE no procesa
           pagos.
         </p>
       </aside>
