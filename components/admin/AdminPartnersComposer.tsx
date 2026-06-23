@@ -14,10 +14,15 @@ type PartnerKind = Database['public']['Enums']['partner_kind']
 const PARTNER_KIND_LABEL: Record<PartnerKind, string> = {
   promo: 'PROMO · promoción general',
   label: 'LABEL · sello discográfico',
-  promoter: 'PROMOTER · evento / colectivo',
+  promoter: 'PROMOTER · evento / promotora',
   venue: 'VENUE · espacio físico',
   sponsored: 'SPONSORED · patrocinador pagado',
   dealer: 'DEALER · vinilos / equipo / merch',
+  colectivo: 'COLECTIVO · crew / colectivo',
+  festival: 'FESTIVAL · festival',
+  club: 'CLUB · club nocturno',
+  medios: 'MEDIOS · medio / prensa',
+  'mix-series': 'MIX-SERIES · serie de mixes',
 }
 
 const PARTNER_KIND_COLOR: Record<PartnerKind, string> = {
@@ -27,6 +32,11 @@ const PARTNER_KIND_COLOR: Record<PartnerKind, string> = {
   venue: '#FB923C',
   sponsored: '#EAB308',
   dealer: '#10B981',
+  colectivo: '#F472B6',
+  festival: '#34D399',
+  club: '#60A5FA',
+  medios: '#FBBF24',
+  'mix-series': '#C084FC',
 }
 
 interface ExistingPartner {

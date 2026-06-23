@@ -12,7 +12,7 @@ import type { Genre, Tag } from './types'
 // entries so existing DB rows stay resolvable. New items should adopt the
 // new ids; `LEGACY_ALIASES` maps the closest semantic equivalents.
 
-// ── Top-level categories (18 roots) ────────────────────────────────────────
+// ── Top-level categories (21 roots) ────────────────────────────────────────
 
 const ROOTS: Genre[] = [
   { id: 'techno', name: 'Techno', parents: [] },
@@ -33,6 +33,9 @@ const ROOTS: Genre[] = [
   { id: 'hip-hop-rap', name: 'Hip Hop / Rap', parents: [] },
   { id: 'musique-concrete', name: 'Música Concreta / Académica', parents: [] },
   { id: 'world-bass', name: 'World / Global Bass / Latinoamérica', parents: [] },
+  { id: 'arab-swana', name: 'Árabe / SWANA', parents: [] },
+  { id: 'traditional-folk', name: 'Tradicional / Folclórica', parents: [] },
+  { id: 'world', name: 'World / Músicas del Mundo', parents: [] },
 ]
 
 // ── Subgenres (leaves) ─────────────────────────────────────────────────────
@@ -248,6 +251,32 @@ const SUBGENRES: Genre[] = [
   { id: 'gagaku-contemporaneo', name: 'Gagaku Contemporáneo', parents: ['world-bass'] },
   { id: 'banda-contemporanea', name: 'Música de Banda (contemporánea)', parents: ['world-bass'] },
   { id: 'corrido-tumbado', name: 'Corrido Tumbado / Norteño-Trap', parents: ['world-bass'] },
+
+  // ÁRABE / SWANA (South West Asia & North Africa)
+  { id: 'arab-maqam', name: 'Maqam / Tarab', parents: ['arab-swana', 'traditional-folk'] },
+  { id: 'arab-andalusi', name: 'Música Andalusí', parents: ['arab-swana', 'traditional-folk'] },
+  { id: 'arab-gnawa', name: 'Gnawa', parents: ['arab-swana', 'traditional-folk'] },
+  { id: 'arab-dabke', name: 'Dabke', parents: ['arab-swana'] },
+  { id: 'arab-rai', name: 'Raï', parents: ['arab-swana'] },
+  { id: 'arab-shaabi', name: 'Shaabi', parents: ['arab-swana'] },
+  { id: 'arab-chaabi', name: 'Chaabi (Magrebí)', parents: ['arab-swana', 'traditional-folk'] },
+  { id: 'arab-khaleeji', name: 'Khaleeji (Golfo)', parents: ['arab-swana'] },
+  { id: 'arab-pop', name: 'Pop Árabe', parents: ['arab-swana'] },
+  { id: 'arab-mahraganat', name: 'Mahraganat / Electro-Chaabi', parents: ['arab-swana', 'electronica-idm'] },
+  { id: 'arab-electronic', name: 'Electrónica Árabe / SWANA', parents: ['arab-swana', 'electronica-idm'] },
+
+  // TRADICIONAL / FOLCLÓRICA
+  { id: 'musica-tradicional', name: 'Música Tradicional', parents: ['traditional-folk'] },
+  { id: 'folk', name: 'Folk', parents: ['traditional-folk'] },
+  { id: 'folclore-latinoamericano', name: 'Folclore Latinoamericano', parents: ['traditional-folk', 'world-bass'] },
+  { id: 'son-jarocho', name: 'Son Jarocho', parents: ['traditional-folk', 'world-bass'] },
+  { id: 'musica-andina', name: 'Música Andina', parents: ['traditional-folk', 'world'] },
+
+  // WORLD / MÚSICAS DEL MUNDO
+  { id: 'world-music', name: 'World Music', parents: ['world'] },
+  { id: 'musicas-africanas', name: 'Músicas Africanas', parents: ['world'] },
+  { id: 'musicas-asiaticas', name: 'Músicas Asiáticas', parents: ['world'] },
+  { id: 'balkan-romani', name: 'Balcánica / Romani', parents: ['world', 'traditional-folk'] },
 ]
 
 // ── Legacy ids ─────────────────────────────────────────────────────────────
@@ -493,6 +522,14 @@ export const GENRE_VIBE: Record<string, number> = {
   'cloud-rap': 4, 'drill': 7, 'trap-experimental': 6, 'jazz-rap': 4,
   'musique-concrete-music': 5, 'electroacustica': 4,
   'afrobeat': 5, 'baile-funk': 7, 'dembow': 6, 'cumbia-digital': 5,
+  // Árabe / SWANA
+  'arab-maqam': 2, 'arab-andalusi': 2, 'arab-gnawa': 4, 'arab-dabke': 7,
+  'arab-rai': 5, 'arab-shaabi': 6, 'arab-chaabi': 4, 'arab-khaleeji': 4,
+  'arab-pop': 5, 'arab-mahraganat': 8, 'arab-electronic': 6,
+  // Tradicional / World
+  'musica-tradicional': 2, 'folk': 2, 'folclore-latinoamericano': 3,
+  'son-jarocho': 4, 'musica-andina': 2, 'world-music': 3,
+  'musicas-africanas': 5, 'musicas-asiaticas': 3, 'balkan-romani': 7,
 }
 
 export function vibeForGenre(id: string): number | null {

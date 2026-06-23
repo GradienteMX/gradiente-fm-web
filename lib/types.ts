@@ -54,7 +54,18 @@ export interface MixTrack {
 
 export type MixStatus = 'disponible' | 'exclusivo' | 'archivo' | 'proximamente'
 
-export type PartnerKind = 'promo' | 'label' | 'promoter' | 'venue' | 'sponsored' | 'dealer'
+export type PartnerKind =
+  | 'promo'
+  | 'label'
+  | 'promoter'
+  | 'venue'
+  | 'sponsored'
+  | 'dealer'
+  | 'colectivo'
+  | 'festival'
+  | 'club'
+  | 'medios'
+  | 'mix-series'
 
 // ── Marketplace listing (lives on a partner ContentItem) ──────────────────
 //
