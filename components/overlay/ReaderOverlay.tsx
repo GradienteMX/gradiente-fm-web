@@ -50,6 +50,10 @@ const FORMAT_LABEL: Record<ItemFormat, string> = {
   digital: 'Digital',
   mix: 'Mix',
   other: 'Otro',
+  hardcover: 'Tapa dura',
+  paperback: 'Rústica',
+  ebook: 'E-book',
+  zine: 'Zine',
 }
 
 // One CONTEXTO row of clickable entity chips. Renders nothing when empty so
