@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
-import type { ContentItem, ItemFormat } from '@/lib/types'
+import type { ContentItem, ItemFormat, ItemSubjectKind } from '@/lib/types'
 import { LivePreview } from '@/components/dashboard/LivePreview'
 import {
   Section,
@@ -23,15 +23,41 @@ import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
-// Closed format set — see items.format (migration 0029). Single-select chips.
-const FORMATS: { id: ItemFormat; label: string }[] = [
-  { id: 'vinyl', label: 'VINYL' },
-  { id: 'cassette', label: 'TAPE' },
-  { id: 'cd', label: 'CD' },
-  { id: 'digital', label: 'DIGITAL' },
-  { id: 'mix', label: 'MIX' },
-  { id: 'other', label: 'OTRO' },
+// What the review is *about*. Drives which CONTEXTO fields show (migration
+// 0036). DISCO/LIBRO are objects with a format; EVENTO/EXPOSICIÓN are happenings
+// with a venue/promoter instead.
+const SUBJECTS: { id: ItemSubjectKind; label: string }[] = [
+  { id: 'record', label: 'DISCO' },
+  { id: 'book', label: 'LIBRO' },
+  { id: 'event', label: 'EVENTO' },
+  { id: 'exhibition', label: 'EXPOSICIÓN' },
 ]
+
+// Format chips per subject — see items.format (migrations 0029 + 0036).
+// Single-select. Happenings (event/exhibition) carry no format.
+const FORMATS_BY_SUBJECT: Record<ItemSubjectKind, { id: ItemFormat; label: string }[]> = {
+  record: [
+    { id: 'vinyl', label: 'VINYL' },
+    { id: 'cassette', label: 'TAPE' },
+    { id: 'cd', label: 'CD' },
+    { id: 'digital', label: 'DIGITAL' },
+    { id: 'mix', label: 'MIX' },
+    { id: 'other', label: 'OTRO' },
+  ],
+  book: [
+    { id: 'hardcover', label: 'TAPA DURA' },
+    { id: 'paperback', label: 'RÚSTICA' },
+    { id: 'ebook', label: 'E-BOOK' },
+    { id: 'zine', label: 'ZINE' },
+    { id: 'other', label: 'OTRO' },
+  ],
+  event: [],
+  exhibition: [],
+}
+
+// Whether the subject is a happening (venue/promoter) vs an object (format).
+const isHappening = (s: ItemSubjectKind | undefined) =>
+  s === 'event' || s === 'exhibition'
 
 const DRAFT_KEY = 'gradiente:dashboard:review-draft'
 
@@ -48,7 +74,10 @@ function emptyDraft(): ContentItem {
     genres: [],
     tags: [],
     entities: [],
+    subjectKind: 'record',
     format: undefined,
+    country: '',
+    year: undefined,
     embeds: [],
     imageUrl: '',
     publishedAt: new Date().toISOString(),
@@ -186,6 +215,39 @@ export function ReviewForm() {
         </Section>
 
         <Section label="04" title="CONTEXTO">
+          {/* Subject switch — what the review is *about*. Toggles which fields
+              below make sense (object → formato; happening → venue/promotora). */}
+          <div className="flex flex-col gap-2">
+            <span className="sys-label">RESEÑA DE</span>
+            <div className="flex flex-wrap gap-1.5">
+              {SUBJECTS.map((s) => {
+                const isOn = (draft.subjectKind ?? 'record') === s.id
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        subjectKind: s.id,
+                        // Clearing format when switching to a happening keeps a
+                        // stale vinyl/paperback from leaking onto an event.
+                        format: isHappening(s.id) ? undefined : draft.format,
+                      })
+                    }
+                    className="border px-2.5 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
+                    style={{
+                      borderColor: isOn ? '#F97316' : '#242424',
+                      color: isOn ? '#F97316' : '#888',
+                      backgroundColor: isOn ? 'rgba(249,115,22,0.12)' : 'transparent',
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <EntityMultiSelect
             kind="artist"
             value={draft.entities ?? []}
@@ -196,44 +258,71 @@ export function ReviewForm() {
             value={draft.entities ?? []}
             onChange={(entities) => patch({ entities })}
           />
-          <EntityMultiSelect
-            kind="venue"
-            value={draft.entities ?? []}
-            onChange={(entities) => patch({ entities })}
-          />
-          <EntityMultiSelect
-            kind="promoter"
-            value={draft.entities ?? []}
-            onChange={(entities) => patch({ entities })}
-          />
+          {/* Venue/promotora only matter for happenings. */}
+          {isHappening(draft.subjectKind) && (
+            <>
+              <EntityMultiSelect
+                kind="venue"
+                value={draft.entities ?? []}
+                onChange={(entities) => patch({ entities })}
+              />
+              <EntityMultiSelect
+                kind="promoter"
+                value={draft.entities ?? []}
+                onChange={(entities) => patch({ entities })}
+              />
+            </>
+          )}
 
-          <div className="flex flex-col gap-2">
-            <span className="sys-label">FORMATO</span>
-            <div className="flex flex-wrap gap-1.5">
-              {FORMATS.map((f) => {
-                const isOn = draft.format === f.id
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() =>
-                      patch({ format: isOn ? undefined : f.id })
-                    }
-                    className="border px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
-                    style={{
-                      borderColor: isOn ? '#F97316' : '#242424',
-                      color: isOn ? '#F97316' : '#888',
-                      backgroundColor: isOn
-                        ? 'rgba(249,115,22,0.12)'
-                        : 'transparent',
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                )
-              })}
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <TextField
+              label="PAÍS"
+              value={draft.country ?? ''}
+              onChange={(v) => patch({ country: v })}
+              placeholder="Reino Unido"
+            />
+            <TextField
+              label="AÑO"
+              value={draft.year?.toString() ?? ''}
+              onChange={(v) =>
+                patch({ year: v === '' ? undefined : Number(v) })
+              }
+              type="number"
+              placeholder="2026"
+              mono
+            />
           </div>
+
+          {/* Format chips — object subjects only. */}
+          {!isHappening(draft.subjectKind) && (
+            <div className="flex flex-col gap-2">
+              <span className="sys-label">FORMATO</span>
+              <div className="flex flex-wrap gap-1.5">
+                {FORMATS_BY_SUBJECT[draft.subjectKind ?? 'record'].map((f) => {
+                  const isOn = draft.format === f.id
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() =>
+                        patch({ format: isOn ? undefined : f.id })
+                      }
+                      className="border px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
+                      style={{
+                        borderColor: isOn ? '#F97316' : '#242424',
+                        color: isOn ? '#F97316' : '#888',
+                        backgroundColor: isOn
+                          ? 'rgba(249,115,22,0.12)'
+                          : 'transparent',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <EmbedList
             embeds={draft.embeds ?? []}
