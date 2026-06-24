@@ -16,6 +16,7 @@ import { canModerate } from '@/lib/permissions'
 import { vibeToColor } from '@/lib/utils'
 import { useResolvedUser } from '@/lib/userOverrides'
 import { usePrompt } from '@/components/prompt/usePrompt'
+import { ForoLightbox } from './ForoLightbox'
 import { PostHeader } from './PostHeader'
 import { ReplyComposer } from './ReplyComposer'
 import type { ForoDeletion, ForoReply } from '@/lib/types'
@@ -220,8 +221,11 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div ref={scrollerRef} className="flex-1 overflow-y-auto">
+        {/* Scrollable body. `min-h-0` is load-bearing: without it the flex
+            child keeps its implicit `min-height:auto`, grows past the panel
+            on long OPs, and the panel's overflow-hidden clips the tail — so
+            the bottom of a long post became unreachable. */}
+        <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-4 p-4">
             {/* OP */}
             <article
@@ -517,13 +521,16 @@ function PostBody({
   isQuoteToMe: (id: string) => boolean
 }) {
   const [cover, ...rest] = images
+  // Index of the image currently open in the lightbox, or null when closed.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   return (
     <div className="font-mono text-[12px] leading-relaxed text-secondary">
       {cover && (
         <img
           src={cover}
           alt={imageRequired ? 'imagen del hilo' : 'adjunto'}
-          className="float-left mb-2 mr-3 max-h-48 max-w-[200px] border border-border object-cover sm:max-h-64 sm:max-w-[260px]"
+          onClick={() => setLightboxIndex(0)}
+          className="float-left mb-2 mr-3 max-h-48 max-w-[200px] cursor-zoom-in border border-border object-cover sm:max-h-64 sm:max-w-[260px]"
         />
       )}
       <BodyText body={body} onQuoteClick={onQuoteClick} isQuoteToMe={isQuoteToMe} />
@@ -537,10 +544,19 @@ function PostBody({
               key={url}
               src={url}
               alt={`imagen ${i + 2}`}
-              className="h-20 w-20 border border-border object-cover sm:h-24 sm:w-24"
+              onClick={() => setLightboxIndex(i + 1)}
+              className="h-20 w-20 cursor-zoom-in border border-border object-cover sm:h-24 sm:w-24"
             />
           ))}
         </div>
+      )}
+      {lightboxIndex !== null && (
+        <ForoLightbox
+          images={images}
+          index={lightboxIndex}
+          onIndex={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
     </div>
   )
