@@ -120,6 +120,8 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     !!item.format ||
     !!item.venue ||
     !!item.venueCity ||
+    !!item.country ||
+    !!item.year ||
     !!item.author
 
   // Comments state from the surrounding shell — drives the in-body
@@ -387,6 +389,18 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   <>
                     <dt className="text-muted">CIUDAD</dt>
                     <dd className="text-secondary">: {item.venueCity}</dd>
+                  </>
+                )}
+                {item.country && (
+                  <>
+                    <dt className="text-muted">PAÍS</dt>
+                    <dd className="text-secondary">: {item.country}</dd>
+                  </>
+                )}
+                {item.year && (
+                  <>
+                    <dt className="text-muted">AÑO</dt>
+                    <dd className="text-secondary">: {item.year}</dd>
                   </>
                 )}
                 <EntityRow
