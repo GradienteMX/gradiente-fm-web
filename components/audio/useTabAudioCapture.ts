@@ -1,11 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { FFT_SIZE, FREQUENCY_BIN_COUNT, getOrCreateAudioContext } from './audioContext'
 import type { AudioSourceStatus } from './types'
 
 export interface UseTabAudioCaptureResult {
-  data: Uint8Array | null
+  // Latest FFT magnitudes, exposed as a STABLE ref (identity never changes).
+  // Updated in place every frame while live; null when not sampling. Consumers
+  // read dataRef.current inside their own render loop — the analyser never
+  // pushes React state, so it can't churn the AudioPlayerProvider context.
+  dataRef: RefObject<Uint8Array | null>
   status: AudioSourceStatus
   errorMessage?: string
   sampleRate: number
@@ -20,8 +24,11 @@ export function useTabAudioCapture(): UseTabAudioCaptureResult {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const rafRef = useRef<number>(0)
+  // Latest FFT magnitudes, updated in place each frame (no per-frame setState
+  // or allocation — was a 60Hz re-render storm + GC pressure). null when not
+  // sampling.
+  const dataRef = useRef<Uint8Array | null>(null)
 
-  const [data, setData] = useState<Uint8Array | null>(null)
   const [status, setStatus] = useState<AudioSourceStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
   const [sampleRate, setSampleRate] = useState(44100)
@@ -66,19 +73,21 @@ export function useTabAudioCapture(): UseTabAudioCaptureResult {
       }
       analyserRef.current = null
     }
-    setData(null)
+    dataRef.current = null
     setStatus('idle')
   }, [stopSampling])
 
   const startSampling = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
+    // One reusable buffer, refreshed in place each frame and exposed via
+    // dataRef. No `new Uint8Array` per frame and no setState; the visualizer
+    // reads dataRef.current in its own rAF. rAFs are main-thread-serialized, so
+    // a reader never sees a half-written buffer.
     const buffer = new Uint8Array(FREQUENCY_BIN_COUNT)
+    dataRef.current = buffer
     const tick = () => {
       const a = analyserRef.current
-      if (a) {
-        a.getByteFrequencyData(buffer)
-        setData(new Uint8Array(buffer))
-      }
+      if (a) a.getByteFrequencyData(buffer)
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -171,7 +180,7 @@ export function useTabAudioCapture(): UseTabAudioCaptureResult {
   }, [stop])
 
   return {
-    data,
+    dataRef,
     status,
     errorMessage,
     sampleRate,

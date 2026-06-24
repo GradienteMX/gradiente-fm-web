@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from 'react'
 import type { ContentItem } from '@/lib/types'
 import type { EmbedTrackMeta } from './types'
@@ -46,8 +47,10 @@ export interface AudioPlayerState {
   matrixSupported: boolean
   matrixStatus: string
   matrixErrorMessage?: string
-  // Analyser feed.
-  data: Uint8Array | null
+  // Analyser feed. STABLE ref (identity never changes) — the FFT is written in
+  // place each frame, so consuming it never re-renders this context. Read
+  // dataRef.current inside a render loop; null when capture isn't live.
+  dataRef: RefObject<Uint8Array | null>
   sampleRate: number
 
   // Methods.
@@ -171,7 +174,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       matrixSupported: tab.isSupported,
       matrixStatus: tab.status,
       matrixErrorMessage: tab.errorMessage,
-      data: tab.status === 'live' ? tab.data : null,
+      dataRef: tab.dataRef,
       sampleRate: tab.sampleRate,
       loadAndPlay,
       toggle: widget.toggle,
@@ -193,7 +196,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       tab.isSupported,
       tab.errorMessage,
       tab.sampleRate,
-      tab.data,
+      tab.dataRef,
       loadAndPlay,
       isItemActive,
     ],

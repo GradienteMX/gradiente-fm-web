@@ -43,7 +43,7 @@
 // Reproductor3D opened — so the net context count is unchanged (home idle stays
 // at 2: CRTShader + VibeFluid; this mounts only when a track is loaded).
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js'
@@ -64,8 +64,14 @@ import {
 // ── Prop interface — IDENTICAL to Reproductor3DProps (mechanical swap) ────────
 export interface ParticleField3DProps {
   // Latest FFT magnitudes from an AnalyserNode.getByteFrequencyData call.
-  // When null, the field runs its at-rest procedural flow.
-  data: Uint8Array | null
+  // When null/absent, the field runs its at-rest procedural flow. Used by the
+  // /lab/audio (audio-element) path.
+  data?: Uint8Array | null
+  // Preferred for the live tab-capture path: a STABLE ref whose .current holds
+  // the latest FFT (updated in place each frame). Lets the provider expose the
+  // feed without re-rendering 60×/s — the field reads dataRef.current in its
+  // render loop. Takes precedence over `data` when both are present.
+  dataRef?: RefObject<Uint8Array | null>
   // Sample rate of the AudioContext that produced `data`. Defaults to 44100.
   sampleRate?: number
   className?: string
@@ -124,6 +130,7 @@ const RAMP_COLORS: THREE.Color[] = VIBE_SLOT_COLORS.map((hex) => new THREE.Color
 
 export function ParticleField3D({
   data,
+  dataRef,
   sampleRate = 44100,
   className,
   orientation = 'landscape',
@@ -131,7 +138,12 @@ export function ParticleField3D({
 }: ParticleField3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   // Stable refs to latest inputs so the render loop reads them without remount.
-  const dataRef = useRef<Uint8Array | null>(data)
+  // dataPropRef mirrors the `data` prop (the /lab path); the external `dataRef`
+  // prop, when provided, takes precedence in the render loop.
+  const dataPropRef = useRef<Uint8Array | null>(data ?? null)
+  // Stable holder for the external dataRef prop (the live tab-capture feed) so
+  // the WebGL effect reads it without depending on the prop identity.
+  const externalDataRef = useRef(dataRef)
   const sampleRateRef = useRef(sampleRate)
   const [mounted, setMounted] = useState(false)
 
@@ -139,8 +151,11 @@ export function ParticleField3D({
     setMounted(true)
   }, [])
   useEffect(() => {
-    dataRef.current = data
+    dataPropRef.current = data ?? null
   }, [data])
+  useEffect(() => {
+    externalDataRef.current = dataRef
+  }, [dataRef])
   useEffect(() => {
     sampleRateRef.current = sampleRate
   }, [sampleRate])
@@ -462,7 +477,7 @@ export function ParticleField3D({
       posUniforms.u_time.value = elapsedSec
       particleMat.uniforms.u_time.value = elapsedSec
 
-      const liveData = dataRef.current
+      const liveData = externalDataRef.current?.current ?? dataPropRef.current
       const bands = liveData
         ? extractBands(liveData, sampleRateRef.current)
         : IDLE_BANDS

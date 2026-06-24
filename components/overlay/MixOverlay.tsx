@@ -223,7 +223,7 @@ export function MixOverlay({ item }: Props) {
             HUD in the sidebar. */}
         {scCanonicalUrl ? (
           <AudioPlayer3D
-            data={audio.data}
+            dataRef={audio.dataRef}
             sampleRate={audio.sampleRate}
             title={item.title}
             subtitle={item.subtitle}

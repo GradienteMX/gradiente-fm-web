@@ -1,6 +1,7 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
+import type { RefObject } from "react";
 import {
   Play,
   Pause,
@@ -19,8 +20,11 @@ const ParticleField3D = nextDynamic(
 );
 
 export interface AudioPlayer3DProps {
-  // Visualization input.
-  data: Uint8Array | null;
+  // Visualization input. `data` is the /lab audio-element path; `dataRef` is
+  // the live tab-capture path (stable ref, read in the field's render loop so
+  // the provider context doesn't churn). dataRef takes precedence.
+  data?: Uint8Array | null;
+  dataRef?: RefObject<Uint8Array | null>;
   sampleRate: number;
 
   // Display metadata.
@@ -74,6 +78,7 @@ const TONE_COLOR: Record<
 
 export function AudioPlayer3D({
   data,
+  dataRef,
   sampleRate,
   title,
   subtitle,
@@ -203,6 +208,7 @@ export function AudioPlayer3D({
       <div className="relative mx-5 mt-4 h-[440px] overflow-hidden">
         <ParticleField3D
           data={data}
+          dataRef={dataRef}
           sampleRate={sampleRate}
           orientation="landscape"
           interactive

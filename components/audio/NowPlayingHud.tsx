@@ -180,7 +180,7 @@ export function NowPlayingHud() {
         {has ? (
           <>
             <ParticleField3D
-              data={audio.matrixActive ? audio.data : null}
+              dataRef={audio.dataRef}
               sampleRate={audio.sampleRate}
               orientation="portrait"
               interactive={false}

@@ -30,8 +30,11 @@ export default function AudioLabPage() {
 
   const [mode, setMode] = useState<Mode>('embed')
 
-  const data = tab.status === 'live' ? tab.data : mode === 'file' ? file.data : null
-  const sampleRate = tab.status === 'live' ? tab.sampleRate : file.sampleRate
+  const tabLive = tab.status === 'live'
+  const fileData = mode === 'file' ? file.data : null
+  // Point-in-time snapshot for the BINS/PEAK diagnostics (not a 60fps feed).
+  const diagData = tabLive ? tab.dataRef.current : fileData
+  const sampleRate = tabLive ? tab.sampleRate : file.sampleRate
 
   const handleFilePick = (f: File | null) => {
     if (!f) return
@@ -206,7 +209,8 @@ export default function AudioLabPage() {
 
       {/* Player */}
       <AudioPlayer3D
-        data={data}
+        data={tabLive ? null : fileData}
+        dataRef={tabLive ? tab.dataRef : undefined}
         sampleRate={sampleRate}
         title={playerTitle}
         subtitle={playerSubtitle}
@@ -230,10 +234,10 @@ export default function AudioLabPage() {
         <Stat label="MATRIZ" value={tab.status === 'live' ? 'LIVE' : 'INACTIVA'} tone={tab.status === 'live' ? 'live' : 'idle'} />
         <Stat label="WIDGET" value={widget.ready ? 'READY' : 'BOOT'} />
         <Stat label="SAMPLE RATE" value={`${sampleRate} Hz`} />
-        <Stat label="BINS" value={data ? String(data.length) : '—'} />
+        <Stat label="BINS" value={diagData ? String(diagData.length) : '—'} />
         <Stat
           label="PEAK"
-          value={data ? String(Math.max(...Array.from(data))) : '—'}
+          value={diagData ? String(Math.max(...Array.from(diagData))) : '—'}
         />
       </section>
 
