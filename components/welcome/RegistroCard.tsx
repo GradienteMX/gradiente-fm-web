@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
+import { BetaTermsModal } from '@/components/welcome/BetaTermsModal'
 import type { InviteCard, InviteRole } from '@/lib/invitations'
 
 const ROLE_LABEL: Record<InviteRole, string> = {
@@ -28,13 +29,31 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [justAuthed, setJustAuthed] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
 
-  const submit = async (e: React.FormEvent) => {
+  // Step 1 — validate the fields locally, then gate on the T&C popup. The
+  // account isn't created until the user accepts the terms (step 2).
+  const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (!email.trim() || !username.trim() || !password) {
+      setError('COMPLETA TODOS LOS CAMPOS')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('LAS CONTRASEÑAS NO COINCIDEN')
+      return
+    }
+    setShowTerms(true)
+  }
+
+  // Step 2 — runs only after the user accepts the Terms & Conditions.
+  const acceptTermsAndRegister = async () => {
+    setShowTerms(false)
     setSubmitting(true)
     const result = await signup({
       email: email.trim(),
@@ -93,6 +112,7 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
           <Field label="EMAIL" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={locked} />
           <Field label="USERNAME" value={username} onChange={setUsername} autoComplete="username" disabled={locked} />
           <Field label="PASSWORD" type="password" value={password} onChange={setPassword} autoComplete="new-password" disabled={locked} />
+          <Field label="CONFIRMAR PASSWORD" type="password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" disabled={locked} />
 
           {error && (
             <div
@@ -133,6 +153,12 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
           </button>
         </p>
       </div>
+
+      <BetaTermsModal
+        open={showTerms}
+        onAccept={acceptTermsAndRegister}
+        onClose={() => setShowTerms(false)}
+      />
     </div>
   )
 }

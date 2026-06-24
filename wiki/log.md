@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-06-23 · INGEST · Invite signup — password-confirm field + Terms & Conditions gate
+
+Two adds to the invite-registration form ([[RegistroCard]] — the one form shared by BOTH the 3D invite unbox and the no-WebGL fallback, so a single edit covers both paths).
+
+- **Confirm-password field** ([RegistroCard.tsx](../components/welcome/RegistroCard.tsx)) — new `CONFIRMAR PASSWORD` input. Submit now validates presence + `password === confirmPassword` client-side before anything else; a mismatch shows `LAS CONTRASEÑAS NO COINCIDEN` and does NOT proceed (guards against a typo'd password locking someone out).
+- **T&C gate** — new [BetaTermsModal.tsx](../components/welcome/BetaTermsModal.tsx). Submit is now two-step: validate → open the Terms popup → account is created ONLY after the user clicks `ACEPTO Y CONTINÚO` (`acceptTermsAndRegister` calls `signup()`; CANCELAR/ESC returns to the form). Modal is `createPortal`'d to `document.body` (z-80) so it escapes the 3D experience's `pointer-events:none` overlay + `overflow:hidden` stacking. Closed-beta boilerplate copy (8 sections) lives in `BETA_TERMS` at the top of the file.
+- **Verified** in preview by forcing the no-WebGL fallback (temp edit, reverted): 4 fields render; mismatch blocks with the error + no popup; matching → the T&C popup; signup only fires on accept (tested with a real unused code — left unconsumed). `tsc` clean.
+- **Open / deferred:** T&C copy is placeholder, NOT legal-vetted — fill in contact address, real Aviso de Privacidad link, governing law, age threshold before relying on it. Acceptance is a UI gate only — NOT persisted (no `terms_accepted_at`); add a column + signup-payload field if an audit trail is wanted.
+
+---
+
 ## 2026-06-23 · INGEST · Partner logos — landed on static-file scheme (`/partners/`) after collision with Johan's PR #6; 62/70 now have logos
 
 Iker: "we were supposed to add the partner/labels/etc but they haven't been added." Diagnosis: the partner **data** was never the gap — all 70 `items` rows (`type='partner'`) have been in prod since the 0030/0031 seed (2026-06-22). The gap was **logos**: 59/70 had `image_url = null`, and [[PartnersRail]] renders a logo-less partner as an empty dark box, so the rail *read* as "not added" even though every record existed.
