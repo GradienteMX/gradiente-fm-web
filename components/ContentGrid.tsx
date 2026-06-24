@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useMemo, useEffect, type CSSProperties } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { parseISO } from 'date-fns'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { ContentItem } from '@/lib/types'
@@ -162,6 +162,33 @@ const MosaicItem = forwardRef<
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
   const { vibeRange, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
 
+  // Coalesce the feed re-rank to ONE update per animation frame. The vibe
+  // slider fires setVibeRange on every pointermove; without this, filterByVibe
+  // + rankItems (O(n log n), with parseISO/Math.exp per item) + the Framer
+  // reflow would run per dragged pixel across the ~140-card grid. The needle
+  // still tracks 1:1 (VibeSlider reads vibeRange directly, unthrottled); only
+  // this downstream re-rank is throttled. The settled result is identical for
+  // every viewer — this changes render cadence, not what's ranked (No-Algorithm
+  // holds: same vibeRange → same filterByVibe → same rankItems for all).
+  const [rankVibeRange, setRankVibeRange] = useState(vibeRange)
+  const latestVibeRef = useRef(vibeRange)
+  const rankRafRef = useRef(0)
+  useEffect(() => {
+    latestVibeRef.current = vibeRange
+    if (rankRafRef.current === 0) {
+      rankRafRef.current = requestAnimationFrame(() => {
+        rankRafRef.current = 0
+        setRankVibeRange(latestVibeRef.current)
+      })
+    }
+  }, [vibeRange])
+  useEffect(
+    () => () => {
+      if (rankRafRef.current) cancelAnimationFrame(rankRafRef.current)
+    },
+    [],
+  )
+
   // Bridge server-rendered items into the slug-keyed client cache so the
   // OverlayRouter can resolve `?item=<slug>` for real DB rows (it used to
   // only know about MOCK_ITEMS + drafts).
@@ -176,7 +203,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
   // appear when the slider is at 2 even though GENRE_VIBE['techno'] = 6.
   // Computed off the same effective band that filterByVibe uses.
   const feedGenres = useMemo(() => {
-    const vibeFiltered = filterByVibe(items, vibeRange)
+    const vibeFiltered = filterByVibe(items, rankVibeRange)
     const scoped =
       mode === 'home' && categoryFilter
         ? vibeFiltered.filter((i) => i.type === categoryFilter)
@@ -186,7 +213,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
       for (const g of item.genres) set.add(g)
     }
     return Array.from(set).sort()
-  }, [items, vibeRange, categoryFilter, mode])
+  }, [items, rankVibeRange, categoryFilter, mode])
 
   useEffect(() => {
     setVisibleGenres(feedGenres)
@@ -200,7 +227,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
   }, [setVisibleGenres])
 
   const ranked = useMemo(() => {
-    const vibeFiltered = filterByVibe(items, vibeRange)
+    const vibeFiltered = filterByVibe(items, rankVibeRange)
     // Category + genre filters only apply on the home feed — type-specific
     // pages already filter at the route level.
     const categoryFiltered =
@@ -243,7 +270,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
         parseISO(b.item.date ?? b.item.publishedAt).getTime() -
         parseISO(a.item.date ?? a.item.publishedAt).getTime(),
     )
-  }, [items, vibeRange, categoryFilter, genreFilter, mode])
+  }, [items, rankVibeRange, categoryFilter, genreFilter, mode])
 
   // Re-curation sweep signature — the identity+order of the visible set plus
   // the active filter signature. Changes ONLY on a genuine re-rank/filter
@@ -251,15 +278,15 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
   // monitor should "retune". Cheap string join; `ranked` is already memoized.
   const sweepSignature = useMemo(
     () =>
-      `${vibeRange[0]}-${vibeRange[1]}|${categoryFilter ?? '*'}|${genreFilter.join(',')}|${mode}|` +
+      `${rankVibeRange[0]}-${rankVibeRange[1]}|${categoryFilter ?? '*'}|${genreFilter.join(',')}|${mode}|` +
       ranked.map((r) => r.item.id).join(','),
-    [ranked, vibeRange, categoryFilter, genreFilter, mode],
+    [ranked, rankVibeRange, categoryFilter, genreFilter, mode],
   )
 
   // A hint of the active vibe to tint the sweep band — midpoint of the active
   // filter range, mapped through the canonical thermal ramp. Carries true
   // filter state (not decoration).
-  const sweepColor = vibeToColor(vibeMid({ vibeMin: vibeRange[0], vibeMax: vibeRange[1] }))
+  const sweepColor = vibeToColor(vibeMid({ vibeMin: rankVibeRange[0], vibeMax: rankVibeRange[1] }))
 
   const gridStyle: CSSProperties = {
     containerType: 'inline-size',
