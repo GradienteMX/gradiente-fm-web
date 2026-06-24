@@ -260,6 +260,11 @@ export interface ContentItem {
   // References a partner ContentItem.id (e.g. "pa-club-japan-ppur"). See
   // [[Partner Authoring]] for the trust-via-attribution model.
   partnerId?: string
+  // Composer opt-out (transient — not a DB column). When a partner-team member
+  // publishes a stamped type, the items API attributes it to their partner
+  // UNLESS this is explicitly false, letting a seller post as a personal/
+  // unbranded contribution. Default (undefined) = attribute. See /api/items.
+  attributePartner?: boolean
   // Minimal partner attribution data — resolved server-side via a self-join
   // when `partnerId` is set. Populated by `rowToContentItem` in lib/data/items.ts.
   // Cards + overlay read these fields directly so no prop-drilling or context

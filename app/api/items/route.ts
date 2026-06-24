@@ -73,8 +73,13 @@ export async function POST(request: NextRequest) {
   const PARTNER_STAMPED_TYPES: ContentItem['type'][] = [
     'evento', 'mix', 'noticia', 'opinion', 'listicle',
   ]
+  // Composer opt-out: a partner-team member can publish a stamped type as a
+  // personal/unbranded post by setting attributePartner === false. Default
+  // (undefined) keeps the existing always-attribute behavior.
   const stampAsPartner =
-    !!userPartnerId && PARTNER_STAMPED_TYPES.includes(item.type)
+    !!userPartnerId &&
+    PARTNER_STAMPED_TYPES.includes(item.type) &&
+    item.attributePartner !== false
 
   const row = contentItemToRow(item)
   const partnerOverrides = stampAsPartner
