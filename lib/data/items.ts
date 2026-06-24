@@ -74,6 +74,13 @@ function rowToMarketplaceListing(row: MarketplaceListingRow): MarketplaceListing
     shippingMode: (row.shipping_mode as MarketplaceListing['shippingMode']) ?? undefined,
     images: row.images ?? [],
     embeds: (row.embeds as unknown as MarketplaceListing['embeds']) ?? undefined,
+    saleUrl: row.sale_url ?? undefined,
+    whatsapp: row.whatsapp ?? undefined,
+    email: row.contact_email ?? undefined,
+    relatedLinks: Array.isArray(row.related_links)
+      ? (row.related_links as unknown as MarketplaceListing['relatedLinks'])
+      : undefined,
+    views: typeof row.views === 'number' ? row.views : 0,
     publishedAt: row.published_at,
   }
 }

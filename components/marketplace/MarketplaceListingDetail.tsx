@@ -16,6 +16,7 @@ import type {
   MarketplaceShippingMode,
 } from '@/lib/types'
 import { PLATFORM_LABELS } from '@/components/embed/platforms'
+import { ListingComments } from './ListingComments'
 
 // ── MarketplaceListingDetail ───────────────────────────────────────────────
 //
@@ -82,6 +83,23 @@ const SHIPPING_ICON: Record<MarketplaceShippingMode, typeof Truck> = {
   both: Package,
 }
 
+// Extract an 11-char YouTube video id from the common URL shapes so the embed
+// can play inline (watch?v= / youtu.be/ / embed/ / shorts/).
+function youtubeId(url: string): string | null {
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/,
+  )
+  return m ? m[1] : null
+}
+
+// Build a WhatsApp deep link. Accepts a full wa.me/api link verbatim or a bare
+// number (strips non-digits) and attaches a prefilled message.
+function waHref(raw: string, text: string): string {
+  if (/^https?:\/\//i.test(raw)) return raw
+  const digits = raw.replace(/[^\d]/g, '')
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
+}
+
 interface Props {
   listing: MarketplaceListing
   partner: ContentItem
@@ -113,6 +131,13 @@ export function MarketplaceListingDetail({
     setActiveImage(0)
   }, [listing.id])
 
+  // Bump the view counter on open — best-effort, feeds invisible feed order.
+  useEffect(() => {
+    void fetch(`/api/listings/${encodeURIComponent(listing.id)}/view`, {
+      method: 'POST',
+    }).catch(() => {})
+  }, [listing.id])
+
   // Clamp activeImage if the partner team trimmed the gallery while open.
   const safeActive = Math.min(activeImage, Math.max(0, listing.images.length - 1))
 
@@ -120,6 +145,13 @@ export function MarketplaceListingDetail({
   const statusColor = STATUS_COLOR[status]
   const currency = partner.marketplaceCurrency ?? ''
   const Tag = listing.shippingMode ? SHIPPING_ICON[listing.shippingMode] : null
+
+  // First YouTube embed → inline player. Other embeds stay as link-out chips.
+  const ytId =
+    listing.embeds?.map((e) => youtubeId(e.url)).find((id): id is string => !!id) ??
+    null
+  const contactMsg = `Hola, me interesa "${listing.title}" en Gradiente.`
+  const hasContact = !!(listing.saleUrl || listing.whatsapp || listing.email)
 
   return (
     <div
@@ -206,6 +238,67 @@ export function MarketplaceListingDetail({
               </span>
             </div>
 
+            {/* Inline YouTube player — buyer hears the record before anything
+                else, Amazon-style media-first. */}
+            {ytId && (
+              <div className="flex flex-col gap-2">
+                <span className="font-mono text-[9px] tracking-widest text-muted">
+                  ESCUCHA
+                </span>
+                <div className="relative aspect-video w-full overflow-hidden border border-border bg-black">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${ytId}`}
+                    title={listing.title}
+                    className="absolute inset-0 h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Contact / buy routing — external sale link, WhatsApp, email. */}
+            {hasContact && (
+              <div className="flex flex-col gap-2">
+                <span className="font-mono text-[9px] tracking-widest text-muted">
+                  CONTACTO
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {listing.saleUrl && (
+                    <a
+                      href={listing.saleUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 border border-sys-orange bg-sys-orange/10 px-3 py-2 font-mono text-[11px] tracking-widest text-sys-orange transition-colors hover:bg-sys-orange/20"
+                    >
+                      COMPRAR / VER <ExternalLink size={12} />
+                    </a>
+                  )}
+                  {listing.whatsapp && (
+                    <a
+                      href={waHref(listing.whatsapp, contactMsg)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 border px-3 py-2 font-mono text-[11px] tracking-widest transition-colors hover:bg-elevated"
+                      style={{ borderColor: '#25D366', color: '#25D366' }}
+                    >
+                      WHATSAPP <ExternalLink size={12} />
+                    </a>
+                  )}
+                  {listing.email && (
+                    <a
+                      href={`mailto:${listing.email}?subject=${encodeURIComponent(
+                        `Gradiente · ${listing.title}`,
+                      )}&body=${encodeURIComponent(contactMsg)}`}
+                      className="inline-flex items-center gap-2 border border-border px-3 py-2 font-mono text-[11px] tracking-widest text-secondary transition-colors hover:border-sys-orange hover:text-sys-orange"
+                    >
+                      CORREO
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Embeds — link-out chips, mirrors the [[Embed Primitive]]
                 idiom used in [[ArticuloOverlay]]. Sits above description so
                 a buyer sees the SoundCloud preview first when present. */}
@@ -276,9 +369,36 @@ export function MarketplaceListingDetail({
               </div>
             )}
 
+            {/* Related Gradiente content — editorials / lists / articles that
+                touch this record. The marketplace↔content cross-link. */}
+            {listing.relatedLinks && listing.relatedLinks.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span className="font-mono text-[9px] tracking-widest text-muted">
+                  RELACIONADO EN GRADIENTE
+                </span>
+                <div className="flex flex-col gap-1">
+                  {listing.relatedLinks.map((l) => {
+                    const internal = l.url.startsWith('/')
+                    return (
+                      <a
+                        key={l.url}
+                        href={l.url}
+                        target={internal ? undefined : '_blank'}
+                        rel={internal ? undefined : 'noopener noreferrer'}
+                        className="inline-flex w-fit items-center gap-1.5 font-mono text-[10px] tracking-widest text-sys-orange transition-colors hover:text-primary"
+                      >
+                        → {l.label || l.url}
+                        {!internal && <ExternalLink size={9} />}
+                      </a>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <span className="font-mono text-[9px] tracking-widest text-muted">
-                //VENDEDOR
+                VENDEDOR
               </span>
               <button
                 type="button"
@@ -302,9 +422,12 @@ export function MarketplaceListingDetail({
             </div>
 
             <p className="border-t border-border/40 pt-3 font-mono text-[9px] leading-relaxed text-muted">
-              //CONSEJO — escríbele al partner por su web o redes para
-              comprar. GRADIENTE no procesa pagos ni envíos.
+              Los mensajes privados llegan pronto — por ahora contacta al
+              vendedor con los botones de arriba. Toda tu data está encriptada y
+              es privada. Gradiente no procesa pagos ni envíos.
             </p>
+
+            <ListingComments listingId={listing.id} />
           </section>
         </div>
       </div>

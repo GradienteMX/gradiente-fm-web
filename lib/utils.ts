@@ -110,10 +110,11 @@ export function vibeMid(item: { vibeMin: number; vibeMax: number }): number {
 // Display label for a vibe range. Collapses to the point form when min===max
 // so the common case stays compact. Used by card chips and overlay headers.
 export function vibeRangeLabel(item: { vibeMin: number; vibeMax: number }): string {
+  // Word labels only — no numeric values shown anywhere in the vibe UI.
   if (item.vibeMin === item.vibeMax) {
-    return `${item.vibeMin} · ${vibeToLabel(item.vibeMin)}`
+    return vibeToLabel(item.vibeMin)
   }
-  return `${item.vibeMin}-${item.vibeMax} · ${vibeToLabel(item.vibeMin)} → ${vibeToLabel(item.vibeMax)}`
+  return `${vibeToLabel(item.vibeMin)} → ${vibeToLabel(item.vibeMax)}`
 }
 
 // Band strips are rendered by <VibeMeter> (components/VibeMeter.tsx) — the

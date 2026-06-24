@@ -38,6 +38,10 @@ interface UpdateBody {
   shipping_mode?: ValidShipping | null
   images?: string[]
   embeds?: unknown
+  sale_url?: string | null
+  whatsapp?: string | null
+  contact_email?: string | null
+  related_links?: unknown
 }
 
 async function gatePartnerWrite(
@@ -144,6 +148,18 @@ export async function PATCH(
   }
   if (body.embeds !== undefined) {
     patch.embeds = body.embeds
+  }
+  if (body.sale_url !== undefined) {
+    patch.sale_url = body.sale_url?.trim() || null
+  }
+  if (body.whatsapp !== undefined) {
+    patch.whatsapp = body.whatsapp?.trim() || null
+  }
+  if (body.contact_email !== undefined) {
+    patch.contact_email = body.contact_email?.trim() || null
+  }
+  if (body.related_links !== undefined) {
+    patch.related_links = body.related_links
   }
 
   const { data, error } = await supabase

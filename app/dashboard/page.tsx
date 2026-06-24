@@ -414,6 +414,7 @@ export default function DashboardPage() {
             username={username}
             draftCount={draftCount}
             publishedCount={publishedCount}
+            showMarketplace={isPartnerTeam}
             draftItems={draftItems}
             allowedTypes={allowedTypes}
             onPickType={(t) =>
@@ -464,6 +465,7 @@ function SectionBody({
   username,
   draftCount,
   publishedCount,
+  showMarketplace,
   draftItems,
   allowedTypes,
   onPickType,
@@ -476,6 +478,7 @@ function SectionBody({
   username: string | null
   draftCount: number
   publishedCount: number
+  showMarketplace: boolean
   draftItems: DraftItem[]
   allowedTypes: SupportedType[]
   onPickType: (t: ContentType) => void
@@ -491,6 +494,7 @@ function SectionBody({
           username={username}
           draftCount={draftCount}
           publishedCount={publishedCount}
+          showMarketplace={showMarketplace}
           onPick={navigate}
         />
       )
