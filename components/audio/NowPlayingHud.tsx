@@ -3,6 +3,7 @@
 import nextDynamic from 'next/dynamic'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import { useAudioPlayer } from './AudioPlayerProvider'
+import { useExpandedVisualizerActive } from '@/lib/visualizerSlot'
 
 // Code-split the GPU visualizer: three.js + GPUComputationRenderer +
 // EffectComposer + UnrealBloomPass (~186 kB) now load only when a track is
@@ -32,6 +33,9 @@ function fmtTime(sec: number): string {
 export function NowPlayingHud() {
   const audio = useAudioPlayer()
   const has = !!audio.currentItem
+  // While an expanded player (open MixOverlay / lab) holds the visualizer slot,
+  // drop this HUD's WebGL field so the page never runs two particle contexts.
+  const expandedActive = useExpandedVisualizerActive()
   const progress =
     audio.duration > 0 ? Math.min(1, audio.currentTime / audio.duration) : 0
   const headerColor = audio.matrixActive
@@ -177,7 +181,7 @@ export function NowPlayingHud() {
            When the rail is idle we render an honest non-canvas placeholder, so
            home idle holds 2 contexts, not 3. ── */}
       <div className="relative h-[260px] overflow-hidden border border-border/40">
-        {has ? (
+        {has && !expandedActive ? (
           <>
             <ParticleField3D
               dataRef={audio.dataRef}
@@ -195,7 +199,7 @@ export function NowPlayingHud() {
             </div>
           </>
         ) : (
-          <MatrixIdlePlaceholder />
+          <MatrixIdlePlaceholder mode={has && expandedActive ? 'yielded' : 'idle'} />
         )}
       </div>
     </section>
@@ -209,12 +213,17 @@ export function NowPlayingHud() {
 // special-casing). Colors come only from the glacial end of the thermal ramp
 // (slot 0 #087487) plus the house idle grey #666666 — the dimmest, coolest
 // registers, matching "signal dying into static".
-function MatrixIdlePlaceholder() {
+function MatrixIdlePlaceholder({ mode = 'idle' }: { mode?: 'idle' | 'yielded' }) {
+  // 'idle'    — nothing loaded: honest "no signal".
+  // 'yielded' — a track is playing but the expanded overlay holds the WebGL
+  //             slot, so this HUD copy is intentionally offline. Truthful (not
+  //             "sin señal"): the matrix is live in the overlay.
+  const yielded = mode === 'yielded'
   return (
     <div
       className="absolute inset-0 flex flex-col items-center justify-center gap-2"
       role="img"
-      aria-label="Matriz inactiva — sin señal"
+      aria-label={yielded ? 'Matriz activa en el overlay' : 'Matriz inactiva — sin señal'}
     >
       {/* Dim baseline scanline: a single flat trace at the glacial floor of the
           ramp, the visual rest-state of the waterfall when there's no audio. */}
@@ -225,15 +234,15 @@ function MatrixIdlePlaceholder() {
       />
       <span
         className="font-mono text-[9px] tracking-[0.3em]"
-        style={{ color: '#666666' }}
+        style={{ color: yielded ? '#948E85' : '#666666' }}
       >
-        SIN·SEÑAL
+        {yielded ? 'MATRIZ·EN·OVERLAY' : 'SIN·SEÑAL'}
       </span>
       <span
         className="font-mono text-[7px] tracking-widest"
         style={{ color: '#666666', opacity: 0.7 }}
       >
-        MATRIZ EN ESPERA
+        {yielded ? 'VISUALIZADOR EN PANTALLA' : 'MATRIZ EN ESPERA'}
       </span>
     </div>
   )

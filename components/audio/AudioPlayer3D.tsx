@@ -1,7 +1,8 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
+import { claimExpandedVisualizer } from "@/lib/visualizerSlot";
 import {
   Play,
   Pause,
@@ -99,6 +100,11 @@ export function AudioPlayer3D({
 }: AudioPlayer3DProps) {
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
   const toneColor = TONE_COLOR[statusTone];
+
+  // Hold the shared visualizer slot while this expanded player is mounted, so
+  // the persistent NowPlayingHud drops its own WebGL field — one particle
+  // context at a time (never 4 on home). See lib/visualizerSlot.
+  useEffect(() => claimExpandedVisualizer(), []);
 
   return (
     <article
