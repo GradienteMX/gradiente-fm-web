@@ -14,7 +14,7 @@ import {
   addSavedItemIdLocal,
   isItemSavedSync,
   removeSavedItemIdLocal,
-  subscribeSavedItems,
+  subscribeSavedItem,
 } from './itemSavesCache'
 import { recordHpEvent } from './hpEvents'
 
@@ -50,15 +50,16 @@ export async function toggleSavedItem(itemId: string) {
 
 // ── Hooks ──────────────────────────────────────────────────────────────────
 
-// Tracks whether `itemId` is in the user's saved set. Subscribes to the
-// shared cache (lib/itemSavesCache) — re-renders when any save/unsave
-// fires, including those triggered elsewhere in the tree.
+// Tracks whether `itemId` is in the user's saved set. Subscribes PER-KEY to
+// the shared cache (lib/itemSavesCache) — re-renders only when THIS item's
+// saved state may have changed (its own toggle or a bulk auth replace), not on
+// every save/unsave elsewhere in the tree (the home grid has ~140 of these).
 export function useIsItemSaved(itemId: string): boolean {
   const [saved, setSaved] = useState(() => isItemSavedSync(itemId))
   useEffect(() => {
     const refresh = () => setSaved(isItemSavedSync(itemId))
     refresh()
-    return subscribeSavedItems(refresh)
+    return subscribeSavedItem(itemId, refresh)
   }, [itemId])
   return saved
 }

@@ -7,7 +7,7 @@ import { VibeMeter } from '@/components/VibeMeter'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useCardTilt, CARD_TILT_PERSPECTIVE_PX } from '@/lib/hooks/useCardTilt'
 import { useHeatReport } from '@/lib/hooks/useHeatReport'
@@ -630,7 +630,7 @@ function LgCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVar
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
+function ContentCardImpl({ item, size = 'sm' }: ContentCardProps) {
   const { open } = useOverlay()
   // Mutable element ref written by the merged setRootRef callback below. Typed
   // `| null` so `.current` is assignable (a bare useRef<HTMLDivElement>(null)
@@ -766,3 +766,11 @@ export function ContentCard({ item, size = 'sm' }: ContentCardProps) {
     </div>
   )
 }
+
+// Memoized: the home/agenda grid maps ~140 cards and re-renders on every
+// vibe-slider tick. Props are a stable `item` ref + a primitive `size`, so the
+// default shallow compare skips cards whose tier/content didn't change while
+// still re-rendering on a genuine re-tier (the `size` prop). Position changes
+// live on MosaicItem (grid style + Framer layout), not here — so the ranking
+// signal (size + position) is fully preserved.
+export const ContentCard = memo(ContentCardImpl)
