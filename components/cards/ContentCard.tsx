@@ -210,7 +210,7 @@ function CardImage({
           <img
             src={item.imageUrl}
             alt={item.title}
-            className={`h-full w-full object-cover object-top ${
+            className={`h-full w-full object-cover object-top transition-transform duration-300 ease-out group-hover:scale-105 ${
               isFresh ? 'fresh-cover-flicker' : ''
             }`}
             loading="lazy"

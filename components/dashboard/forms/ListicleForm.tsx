@@ -30,6 +30,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -54,6 +55,7 @@ function emptyDraft(): ContentItem {
     vibeMin: 7, vibeMax: 7,
     genres: [],
     tags: [],
+    entities: [],
     imageUrl: '',
     heroCaption: '',
     publishedAt: new Date().toISOString(),
@@ -151,7 +153,7 @@ export function ListicleForm() {
 
         <Section label="02" title="LEAD">
           <TextArea
-            label="EXCERPT · una o dos oraciones · el cuerpo va en 05"
+            label="EXCERPT · una o dos oraciones · el cuerpo va en 06"
             value={draft.excerpt ?? ''}
             onChange={(v) => patch({ excerpt: v })}
             rows={3}
@@ -174,7 +176,23 @@ export function ListicleForm() {
           />
         </Section>
 
-        <Section label="04" title="MEDIA">
+        <Section label="04" title="CONTEXTO">
+          {/* Scene entities the list references — surface in the CONTEXTO rail
+              and the per-entity filter. Track-level artists live in each TRACK
+              block; these are the list's headline artists/labels. */}
+          <EntityMultiSelect
+            kind="artist"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="label"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+        </Section>
+
+        <Section label="05" title="MEDIA">
           <ImageUrlField
             label="HERO URL"
             value={draft.imageUrl ?? ''}
@@ -189,11 +207,11 @@ export function ListicleForm() {
           />
         </Section>
 
-        <Section label="05" title="CUERPO">
+        <Section label="06" title="CUERPO">
           <BlocksEditor blocks={blocks} onChange={setBlocks} />
         </Section>
 
-        <Section label="06" title="ENCUESTA (opcional)">
+        <Section label="07" title="ENCUESTA (opcional)">
           <PollFieldset
             type={draft.type}
             poll={draft.poll}

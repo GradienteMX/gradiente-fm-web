@@ -20,6 +20,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -43,6 +44,10 @@ function emptyDraft(): ContentItem {
     venue: '',
     venueCity: '',
     artists: [],
+    entities: [],
+    subjectKind: 'event',
+    country: '',
+    year: undefined,
     ticketUrl: '',
     price: '',
     editorial: false,
@@ -184,11 +189,49 @@ export function EventoForm() {
             onChange={(v) => patch({ venueCity: v })}
             placeholder="CDMX · Monterrey 56, Roma Norte"
           />
+          {/* Entity links — venue/promotora as first-class scene rows. The
+              free-text fields above stay as a fallback for quick drafts and
+              legacy events; the CONTEXTO rail prefers these when present. */}
+          <EntityMultiSelect
+            kind="venue"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="promoter"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <TextField
+              label="PAÍS"
+              value={draft.country ?? ''}
+              onChange={(v) => patch({ country: v })}
+              placeholder="México"
+            />
+            <TextField
+              label="AÑO"
+              value={draft.year?.toString() ?? ''}
+              onChange={(v) =>
+                patch({ year: v === '' ? undefined : Number(v) })
+              }
+              type="number"
+              placeholder="2026"
+              mono
+            />
+          </div>
         </Section>
 
         <Section label="04" title="LINE-UP">
+          {/* Artist entities carry through to the CONTEXTO rail + per-artist
+              filter; the free-text list below is the quick-draft fallback. */}
+          <EntityMultiSelect
+            kind="artist"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
           <StringListField
-            label="ARTISTAS"
+            label="ARTISTAS (texto libre)"
             placeholder="Surgeon"
             values={draft.artists ?? []}
             onChange={(artists) => patch({ artists })}

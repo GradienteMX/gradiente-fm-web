@@ -50,6 +50,10 @@ const FORMAT_LABEL: Record<ItemFormat, string> = {
   digital: 'Digital',
   mix: 'Mix',
   other: 'Otro',
+  hardcover: 'Tapa dura',
+  paperback: 'Rústica',
+  ebook: 'E-book',
+  zine: 'Zine',
 }
 
 // One CONTEXTO row of clickable entity chips. Renders nothing when empty so
@@ -116,6 +120,8 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     !!item.format ||
     !!item.venue ||
     !!item.venueCity ||
+    !!item.country ||
+    !!item.year ||
     !!item.author
 
   // Comments state from the surrounding shell — drives the in-body
@@ -383,6 +389,18 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   <>
                     <dt className="text-muted">CIUDAD</dt>
                     <dd className="text-secondary">: {item.venueCity}</dd>
+                  </>
+                )}
+                {item.country && (
+                  <>
+                    <dt className="text-muted">PAÍS</dt>
+                    <dd className="text-secondary">: {item.country}</dd>
+                  </>
+                )}
+                {item.year && (
+                  <>
+                    <dt className="text-muted">AÑO</dt>
+                    <dd className="text-secondary">: {item.year}</dd>
                   </>
                 )}
                 <EntityRow

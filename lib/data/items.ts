@@ -7,6 +7,7 @@ import type {
   EntityRef,
   EntityRelation,
   Footnote,
+  ItemSubjectKind,
   MarketplaceListing,
   MixEmbed,
   MixTrack,
@@ -131,7 +132,13 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     vibe_max: item.vibeMax,
     genres: item.genres ?? [],
     tags: item.tags ?? [],
-    format: item.format ?? null,
+    // book formats added to item_format in 0038; cast past stale generated enum.
+    format: (item.format ?? null) as ItemInsert['format'],
+    // subject_kind / country / year added in migration 0038; cast bypasses
+    // stale generated types (same story as partner_id / harvest fields below).
+    ...(item.subjectKind !== undefined ? { subject_kind: item.subjectKind } : {}),
+    ...(item.country !== undefined ? { country: item.country || null } : {}),
+    ...(item.year !== undefined ? { year: item.year ?? null } : {}),
     image_url: item.imageUrl ?? null,
     published_at: item.publishedAt,
     date: tsOrNull(item.date),
@@ -203,6 +210,12 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     genres: row.genres,
     tags: row.tags,
     format: row.format ?? undefined,
+    // subject_kind / country / year added in migration 0038; cast bypasses
+    // stale generated types until `npx supabase gen types typescript` runs.
+    subjectKind:
+      (row as { subject_kind?: ItemSubjectKind | null }).subject_kind ?? undefined,
+    country: (row as { country?: string | null }).country ?? undefined,
+    year: (row as { year?: number | null }).year ?? undefined,
     imageUrl: row.image_url ?? undefined,
     publishedAt: row.published_at,
     date: row.date ?? undefined,

@@ -204,6 +204,14 @@ export interface ContentItem {
   entities?: EntityRef[]
   // Physical/digital format the item is about (reviews). Closed enum.
   format?: ItemFormat
+  // What the item is *about* — record / book / event / exhibition. Drives the
+  // composer's field set (the DISCO/LIBRO/EVENTO/EXPOSICIÓN switch) and the
+  // CONTEXTO rail. Distinct from `type` (editorial container). See 0038.
+  subjectKind?: ItemSubjectKind
+  // País of the reviewed work / event. Free-form. See migration 0038.
+  country?: string
+  // Release / edition / event year. See migration 0038.
+  year?: number
   imageUrl?: string
   publishedAt: string     // ISO — when published
   date?: string           // ISO — event start / article featured date
@@ -395,8 +403,14 @@ export interface EntityRef {
 }
 
 // Physical/digital format an item (review mainly) is about. Closed enum —
-// see items.format column (migration 0029).
-export type ItemFormat = 'vinyl' | 'cassette' | 'cd' | 'digital' | 'mix' | 'other'
+// see items.format column (migration 0029; book formats added in 0038).
+export type ItemFormat =
+  | 'vinyl' | 'cassette' | 'cd' | 'digital' | 'mix' | 'other'
+  | 'hardcover' | 'paperback' | 'ebook' | 'zine'
+
+// What an item documents — distinct from `type` (the editorial container).
+// Drives the composer's field set + CONTEXTO rendering. See migration 0038.
+export type ItemSubjectKind = 'record' | 'book' | 'event' | 'exhibition'
 
 export type VibeRange = [number, number]
 
