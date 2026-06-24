@@ -16,6 +16,7 @@ import type {
   MarketplaceShippingMode,
 } from '@/lib/types'
 import { PLATFORM_LABELS } from '@/components/embed/platforms'
+import { ListingComments } from './ListingComments'
 
 // ── MarketplaceListingDetail ───────────────────────────────────────────────
 //
@@ -128,6 +129,13 @@ export function MarketplaceListingDetail({
   // Reset gallery selection when the listing changes (deep-link revisit).
   useEffect(() => {
     setActiveImage(0)
+  }, [listing.id])
+
+  // Bump the view counter on open — best-effort, feeds invisible feed order.
+  useEffect(() => {
+    void fetch(`/api/listings/${encodeURIComponent(listing.id)}/view`, {
+      method: 'POST',
+    }).catch(() => {})
   }, [listing.id])
 
   // Clamp activeImage if the partner team trimmed the gallery while open.
@@ -418,6 +426,8 @@ export function MarketplaceListingDetail({
               vendedor con los botones de arriba. Toda tu data está encriptada y
               es privada. Gradiente no procesa pagos ni envíos.
             </p>
+
+            <ListingComments listingId={listing.id} />
           </section>
         </div>
       </div>

@@ -46,21 +46,31 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
     [partners],
   )
 
-  // Flat item feed — every listing across every store, newest first, capped
-  // at FEED_LIMIT. Buyers land on items, not stores (stores live below). HL-
-  // based ordering comes later (Fase 3); for now it's pure recency.
+  // Flat item feed — every listing across every store, capped at FEED_LIMIT.
+  // Buyers land on items, not stores (stores live below). Order is an invisible
+  // HL blend: recency (a fresh item gets a bonus that decays over RECENCY_DAYS)
+  // plus visit count. New items lead; popular older ones float back up. The
+  // number is never shown — Gradiente's "size/position only" rule holds.
   const feed = useMemo(() => {
+    const now = Date.now()
+    const RECENCY_DAYS = 30
+    const score = (l: MarketplaceListing) => {
+      let ageDays = RECENCY_DAYS
+      try {
+        ageDays = (now - parseISO(l.publishedAt).getTime()) / 86_400_000
+      } catch {
+        /* unparseable date → treated as old */
+      }
+      const recency = Math.max(0, RECENCY_DAYS - ageDays)
+      return (l.views ?? 0) + recency
+    }
     const all: { listing: MarketplaceListing; partner: ContentItem }[] = []
     for (const p of partners) {
       for (const l of p.marketplaceListings ?? []) {
         all.push({ listing: l, partner: p })
       }
     }
-    all.sort((a, b) => {
-      const ta = (() => { try { return parseISO(a.listing.publishedAt).getTime() } catch { return 0 } })()
-      const tb = (() => { try { return parseISO(b.listing.publishedAt).getTime() } catch { return 0 } })()
-      return tb - ta
-    })
+    all.sort((a, b) => score(b.listing) - score(a.listing))
     return all.slice(0, FEED_LIMIT)
   }, [partners])
 
