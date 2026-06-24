@@ -1,22 +1,26 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ImagePlus, X } from 'lucide-react'
+import { ImagePlus, Star, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { createThread } from '@/lib/foro'
 import { compressAndUploadImage } from '@/lib/imageUpload'
-import { GENRES, vibeForGenre } from '@/lib/genres'
+import { GENRES, TAGS, vibeForGenre } from '@/lib/genres'
 import { vibeToColor } from '@/lib/utils'
 import {
   FORO_THREAD_GENRES_MAX,
   FORO_THREAD_GENRES_MIN,
+  FORO_THREAD_IMAGES_MAX,
+  FORO_THREAD_TAGS_MAX,
+  FORO_THREAD_TAGS_MIN,
 } from '@/lib/types'
 
 // ── NewThreadOverlay ───────────────────────────────────────────────────────
 //
 // Modal composer for starting a new thread. Per spec:
 //   - Login required (caller gates the trigger button, but we re-check here).
-//   - Image is mandatory on OP — submit is disabled until set.
+//   - At least one image is mandatory on OP — submit disabled until set.
+//     Up to FORO_THREAD_IMAGES_MAX may be attached; the first is the cover.
 //   - 1–5 genres required so the catalog vibe-slider can filter the thread.
 //   - No anonymity: the author is the current user.
 
@@ -29,14 +33,14 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
   const { currentUser, isAuthed } = useAuth()
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
-  // The form holds the uploaded image's CDN URL (post-storage migration).
-  // Field name kept as `imageDataUrl` to keep the diff small — value is now
-  // a public Storage URL, not a base64 blob.
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
+  // Ordered gallery of uploaded Storage URLs. imageUrls[0] is the cover.
+  const [imageUrls, setImageUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [genres, setGenres] = useState<string[]>([])
   const [genreFilter, setGenreFilter] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagFilter, setTagFilter] = useState('')
   const [readError, setReadError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -64,6 +68,28 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     setGenres((g) => [...g, id])
   }
 
+  const tagSet = useMemo(() => new Set(tags), [tags])
+  const filteredTags = useMemo(() => {
+    const q = tagFilter.trim().toLowerCase()
+    if (!q) return TAGS
+    return TAGS.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.id.includes(q),
+    )
+  }, [tagFilter])
+
+  const toggleTag = (id: string) => {
+    if (tagSet.has(id)) {
+      setTags((t) => t.filter((x) => x !== id))
+      return
+    }
+    if (tags.length >= FORO_THREAD_TAGS_MAX) {
+      setSubmitError(`Máximo ${FORO_THREAD_TAGS_MAX} tags.`)
+      return
+    }
+    setSubmitError(null)
+    setTags((t) => [...t, id])
+  }
+
   // Lock body scroll while open.
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -82,37 +108,63 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const readFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setReadError('Solo imágenes (jpg, png, webp, gif).')
-      return
-    }
+  // Upload a batch of picked/dropped files in order, appending each to the
+  // gallery up to the cap. Uploads run sequentially so the resulting order
+  // matches the order the user selected them.
+  const readFiles = async (files: File[]) => {
     if (!currentUser) {
       setReadError('Inicia sesión para subir imágenes.')
       return
     }
-    setReadError(null)
-    setUploading(true)
-    const res = await compressAndUploadImage(file, currentUser.id)
-    setUploading(false)
-    if (res.ok) {
-      setImageDataUrl(res.url)
+    const images = files.filter((f) => f.type.startsWith('image/'))
+    if (images.length !== files.length) {
+      setReadError('Solo imágenes (jpg, png, webp, gif).')
     } else {
-      setReadError(res.error)
+      setReadError(null)
     }
+
+    let remaining = FORO_THREAD_IMAGES_MAX - imageUrls.length
+    if (remaining <= 0) {
+      setReadError(`Máximo ${FORO_THREAD_IMAGES_MAX} imágenes.`)
+      return
+    }
+    setUploading(true)
+    for (const file of images) {
+      if (remaining <= 0) {
+        setReadError(`Máximo ${FORO_THREAD_IMAGES_MAX} imágenes.`)
+        break
+      }
+      const res = await compressAndUploadImage(file, currentUser.id)
+      if (res.ok) {
+        setImageUrls((prev) =>
+          prev.length >= FORO_THREAD_IMAGES_MAX ? prev : [...prev, res.url],
+        )
+        remaining -= 1
+      } else {
+        setReadError(res.error)
+      }
+    }
+    setUploading(false)
   }
 
+  const removeImage = (url: string) =>
+    setImageUrls((prev) => prev.filter((u) => u !== url))
+
+  // Promote an image to the cover slot (index 0), preserving the rest's order.
+  const makeCover = (url: string) =>
+    setImageUrls((prev) => [url, ...prev.filter((u) => u !== url)])
+
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) void readFile(file)
+    const files = Array.from(e.target.files ?? [])
+    if (files.length > 0) void readFiles(files)
     e.target.value = ''
   }
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) void readFile(file)
+    const files = Array.from(e.dataTransfer.files ?? [])
+    if (files.length > 0) void readFiles(files)
   }
 
   const submit = async () => {
@@ -125,9 +177,12 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     const missing: string[] = []
     if (subj.length === 0) missing.push('asunto')
     if (bd.length === 0) missing.push('cuerpo')
-    if (!imageDataUrl) missing.push('imagen')
+    if (imageUrls.length === 0) missing.push('imagen')
     if (genres.length < FORO_THREAD_GENRES_MIN) {
       missing.push(`géneros (mín. ${FORO_THREAD_GENRES_MIN})`)
+    }
+    if (tags.length < FORO_THREAD_TAGS_MIN) {
+      missing.push(`tags (mín. ${FORO_THREAD_TAGS_MIN})`)
     }
     if (missing.length > 0) {
       setSubmitError(`Falta: ${missing.join(', ')}`)
@@ -138,8 +193,9 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     const res = await createThread({
       subject: subj,
       body: bd,
-      imageUrl: imageDataUrl!,
+      imageUrls,
       genres,
+      tags,
     })
     setSubmitting(false)
     if (res.ok) {
@@ -157,9 +213,11 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
   const canSubmit =
     subject.trim().length > 0 &&
     body.trim().length > 0 &&
-    imageDataUrl !== null &&
+    imageUrls.length > 0 &&
     genres.length >= FORO_THREAD_GENRES_MIN &&
-    genres.length <= FORO_THREAD_GENRES_MAX
+    genres.length <= FORO_THREAD_GENRES_MAX &&
+    tags.length >= FORO_THREAD_TAGS_MIN &&
+    tags.length <= FORO_THREAD_TAGS_MAX
 
   return (
     <div
@@ -321,30 +379,121 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
               </div>
             </div>
 
-            {/* Image upload — mandatory */}
+            {/* Tag picker — metadata keywords (lib/genres TAGS), min 1.
+                Transversal qualities, separate from the genre/vibe axis. */}
             <div className="flex flex-col gap-1.5">
               <span className="sys-label text-muted">
-                IMAGEN <span className="text-sys-orange">*</span>
-                <span className="ml-2 normal-case text-[9px] text-muted/80">
-                  obligatoria en el post original
+                TAGS <span className="text-sys-orange">*</span>
+                <span className="ml-2 normal-case text-[9px] text-muted">
+                  {tags.length}/{FORO_THREAD_TAGS_MAX} · mín {FORO_THREAD_TAGS_MIN} · keywords del metadata
                 </span>
               </span>
-              {imageDataUrl ? (
-                <div className="flex items-start gap-3">
-                  <img
-                    src={imageDataUrl}
-                    alt="vista previa"
-                    className="max-h-40 max-w-[200px] border border-border object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setImageDataUrl(null)}
-                    className="flex items-center gap-1.5 border border-sys-red px-2 py-1 font-mono text-[10px] tracking-widest text-sys-red transition-colors hover:bg-sys-red hover:text-black"
-                  >
-                    <X size={10} /> QUITAR
-                  </button>
+
+              {/* Selected chips */}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((id) => {
+                    const t = TAGS.find((x) => x.id === id)
+                    if (!t) return null
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleTag(id)}
+                        className="flex items-center gap-1 border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide text-secondary transition-colors hover:text-primary"
+                        style={{ borderColor: '#3a3a3a' }}
+                      >
+                        #{t.name}
+                        <X size={9} aria-hidden />
+                      </button>
+                    )
+                  })}
                 </div>
-              ) : (
+              )}
+
+              {/* Filter input + chip list */}
+              <input
+                type="text"
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                placeholder="filtrar tags…"
+                className="border bg-black px-3 py-1.5 font-mono text-xs text-primary outline-none transition-colors focus:border-sys-orange"
+                style={{ borderColor: '#242424' }}
+              />
+              <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-border p-2">
+                {filteredTags.map((t) => {
+                  const isOn = tagSet.has(t.id)
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleTag(t.id)}
+                      className="border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
+                      style={{
+                        borderColor: isOn ? '#9CA3AF' : '#242424',
+                        color: isOn ? '#E5E7EB' : '#888',
+                        backgroundColor: isOn ? 'rgba(156,163,175,0.12)' : 'transparent',
+                      }}
+                    >
+                      #{t.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Image upload — at least one mandatory, up to the cap. The
+                first image (cover) is badged; any other can be promoted. */}
+            <div className="flex flex-col gap-1.5">
+              <span className="sys-label text-muted">
+                IMÁGENES <span className="text-sys-orange">*</span>
+                <span className="ml-2 normal-case text-[9px] text-muted/80">
+                  {imageUrls.length}/{FORO_THREAD_IMAGES_MAX} · la 1ª es la portada
+                </span>
+              </span>
+
+              {imageUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {imageUrls.map((url, i) => (
+                    <div
+                      key={url}
+                      className="relative h-24 w-24 border"
+                      style={{ borderColor: i === 0 ? '#F97316' : '#242424' }}
+                    >
+                      <img
+                        src={url}
+                        alt={i === 0 ? 'portada' : `imagen ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {i === 0 ? (
+                        <span className="absolute left-0 top-0 flex items-center gap-0.5 bg-sys-orange px-1 py-px font-mono text-[8px] tracking-widest text-black">
+                          <Star size={8} fill="black" /> PORTADA
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makeCover(url)}
+                          title="Hacer portada"
+                          aria-label="Hacer portada"
+                          className="absolute left-0 top-0 flex items-center gap-0.5 bg-black/80 px-1 py-px font-mono text-[8px] tracking-widest text-muted transition-colors hover:text-sys-orange"
+                        >
+                          <Star size={8} /> PORTADA
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(url)}
+                        aria-label="Quitar imagen"
+                        className="absolute right-0 top-0 flex items-center justify-center border border-sys-red bg-black/85 p-0.5 text-sys-red transition-colors hover:bg-sys-red hover:text-black"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {imageUrls.length < FORO_THREAD_IMAGES_MAX && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -356,13 +505,20 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                   }}
                 >
                   <ImagePlus size={14} />
-                  <span>{uploading ? '◌ SUBIENDO…' : 'ELEGIR ARCHIVO · O ARRASTRA UNA IMAGEN AQUÍ'}</span>
+                  <span>
+                    {uploading
+                      ? '◌ SUBIENDO…'
+                      : imageUrls.length === 0
+                      ? 'ELEGIR ARCHIVOS · O ARRASTRA IMÁGENES AQUÍ'
+                      : 'AGREGAR MÁS · O ARRASTRA AQUÍ'}
+                  </span>
                 </button>
               )}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={onPick}
                 className="hidden"
               />

@@ -2,6 +2,7 @@
 
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { Reply } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { useUserRank } from '@/lib/hooks/useUserRank'
 import { useResolvedUser } from '@/lib/userOverrides'
@@ -15,18 +16,18 @@ import {
 // ── PostHeader ─────────────────────────────────────────────────────────────
 //
 // Imageboard-style post chrome: username, role/rank chip + mod/og flags,
-// timestamp, post id. Used at the top of both the OP and each reply.
+// timestamp, and a CITAR action. Used at the top of both the OP and each
+// reply. The raw post UUID is no longer shown — it was noise; the citing
+// action it used to back is now a labeled button.
 
 interface PostHeaderProps {
-  postId: string
   authorId: string
   createdAt: string
-  // When set, scrolls into view and pulses on click. Used for >>id quote-link
-  // navigation inside a thread.
+  // Quote this post into the composer. Rendered as a CITAR button.
   onIdClick?: () => void
 }
 
-export function PostHeader({ postId, authorId, createdAt, onIdClick }: PostHeaderProps) {
+export function PostHeader({ authorId, createdAt, onIdClick }: PostHeaderProps) {
   const author = useResolvedUser(authorId)
   const { currentUser } = useAuth()
   const rank = useUserRank(authorId)
@@ -61,14 +62,18 @@ export function PostHeader({ postId, authorId, createdAt, onIdClick }: PostHeade
       <span className="tabular-nums text-muted">
         {format(created, "dd MMM yyyy · HH:mm", { locale: es })}
       </span>
-      <button
-        type="button"
-        onClick={onIdClick}
-        className="ml-auto tabular-nums text-muted transition-colors hover:text-sys-orange"
-        aria-label={`Anclar a ${postId}`}
-      >
-        &gt;&gt;{postId}
-      </button>
+      {onIdClick && (
+        <button
+          type="button"
+          onClick={onIdClick}
+          className="ml-auto flex items-center gap-1 text-muted transition-colors hover:text-sys-orange"
+          aria-label="Citar este post"
+          title="Citar"
+        >
+          <Reply size={11} strokeWidth={1.5} />
+          <span>CITAR</span>
+        </button>
+      )}
     </div>
   )
 }

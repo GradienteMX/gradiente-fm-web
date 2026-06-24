@@ -20,7 +20,9 @@ function prefixImagePath(url: string | undefined): string | undefined {
   return url.startsWith('/') ? `${BASE_PATH}${url}` : url
 }
 
-const RAW_THREADS: ForoThread[] = [
+// imageUrls/tags (added in 0036) are derived in the MOCK_THREADS map below,
+// so the raw literals omit them.
+const RAW_THREADS: Omit<ForoThread, 'imageUrls' | 'tags'>[] = [
   {
     id: 'fr-001',
     authorId: 'u-og-loma',
@@ -103,10 +105,15 @@ const RAW_THREADS: ForoThread[] = [
   },
 ]
 
-export const MOCK_THREADS: ForoThread[] = RAW_THREADS.map((t) => ({
-  ...t,
-  imageUrl: prefixImagePath(t.imageUrl) ?? t.imageUrl,
-}))
+export const MOCK_THREADS: ForoThread[] = RAW_THREADS.map((t) => {
+  const cover = prefixImagePath(t.imageUrl) ?? t.imageUrl
+  return {
+    ...t,
+    imageUrl: cover,
+    imageUrls: [cover],
+    tags: [],
+  }
+})
 
 const RAW_REPLIES: ForoReply[] = [
   // fr-001 — after CDMX (3 replies)

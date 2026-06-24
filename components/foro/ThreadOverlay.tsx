@@ -11,11 +11,12 @@ import {
   useReplies,
   useThread,
 } from '@/lib/foro'
-import { getGenreById, vibeForGenre } from '@/lib/genres'
+import { getGenreById, getTagById, vibeForGenre } from '@/lib/genres'
 import { canModerate } from '@/lib/permissions'
 import { vibeToColor } from '@/lib/utils'
-import { useResolvedUser } from '@/lib/userOverrides'
+import { getResolvedUserById, useResolvedUser } from '@/lib/userOverrides'
 import { usePrompt } from '@/components/prompt/usePrompt'
+import { ForoLightbox } from './ForoLightbox'
 import { PostHeader } from './PostHeader'
 import { ReplyComposer } from './ReplyComposer'
 import type { ForoDeletion, ForoReply } from '@/lib/types'
@@ -107,6 +108,17 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
     (id: string) =>
       currentUser !== null && authorByPostId.get(id) === currentUser.id,
     [authorByPostId, currentUser],
+  )
+  // Human-friendly label for a cited post: the author's @username, falling
+  // back to a short id hash when the user isn't resolved yet. Replaces the
+  // raw `>>uuid` that used to surface in quote-links and backlinks.
+  const labelForPost = useCallback(
+    (id: string) => {
+      const authorId = authorByPostId.get(id)
+      const user = authorId ? getResolvedUserById(authorId) : undefined
+      return user?.username ? `@${user.username}` : `#${id.slice(0, 4)}`
+    },
+    [authorByPostId],
   )
   // When a user clicks `>>id` in a post, we want the reply composer to
   // pre-fill with that quote-link. Held here so PostBody can request it.
@@ -202,9 +214,6 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
             <span className="shrink-0 font-mono text-[10px] tracking-widest" style={{ color: '#F97316' }}>
               //FORO·HILO
             </span>
-            <span className="sys-label hidden truncate uppercase text-muted sm:inline">
-              {thread.id}
-            </span>
             <span className="sys-label tabular-nums text-muted">
               R·{String(replies.length).padStart(2, '0')}
             </span>
@@ -220,8 +229,11 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div ref={scrollerRef} className="flex-1 overflow-y-auto">
+        {/* Scrollable body. `min-h-0` is load-bearing: without it the flex
+            child keeps its implicit `min-height:auto`, grows past the panel
+            on long OPs, and the panel's overflow-hidden clips the tail — so
+            the bottom of a long post became unreachable. */}
+        <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-4 p-4">
             {/* OP */}
             <article
@@ -235,7 +247,6 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <PostHeader
-                    postId={thread.id}
                     authorId={thread.authorId}
                     createdAt={thread.createdAt}
                     onIdClick={() => quotePost(thread.id)}
@@ -245,7 +256,11 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                   <ModDeleteButton onClick={onTombstoneThread} label="BORRAR HILO" />
                 )}
               </div>
-              <Backlinks ids={inboundIndex.get(thread.id) ?? []} onClick={focusPost} />
+              <Backlinks
+                ids={inboundIndex.get(thread.id) ?? []}
+                onClick={focusPost}
+                labelForPost={labelForPost}
+              />
               {threadDeleted ? (
                 <Tombstone
                   deletion={thread.deletion!}
@@ -258,7 +273,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                   <h1 className="font-syne text-lg font-bold leading-tight text-primary">
                     {thread.subject}
                   </h1>
-                  {thread.genres.length > 0 && (
+                  {(thread.genres.length > 0 || thread.tags.length > 0) && (
                     <div className="flex flex-wrap items-center gap-1">
                       {thread.genres.map((id) => {
                         const g = getGenreById(id)
@@ -278,14 +293,29 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                           </span>
                         )
                       })}
+                      {/* Metadata tags — neutral chrome to read as a separate
+                          axis from the vibe-colored genres. */}
+                      {thread.tags.map((id) => {
+                        const t = getTagById(id)
+                        return (
+                          <span
+                            key={id}
+                            className="border border-dashed px-1.5 py-px font-mono text-[9px] tracking-widest text-muted"
+                            style={{ borderColor: '#3a3a3a' }}
+                          >
+                            #{(t?.name ?? id).toUpperCase()}
+                          </span>
+                        )
+                      })}
                     </div>
                   )}
                   <PostBody
-                    imageUrl={thread.imageUrl}
+                    images={thread.imageUrls}
                     imageRequired
                     body={thread.body}
                     onQuoteClick={focusPost}
                     isQuoteToMe={isQuoteToMe}
+                    labelForPost={labelForPost}
                   />
                 </>
               )}
@@ -302,6 +332,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                 onIdClick={() => quotePost(reply.id)}
                 onQuoteClick={focusPost}
                 isQuoteToMe={isQuoteToMe}
+                labelForPost={labelForPost}
                 onTombstone={onTombstoneReply}
               />
             ))}
@@ -343,6 +374,7 @@ function ReplyArticle({
   onIdClick,
   onQuoteClick,
   isQuoteToMe,
+  labelForPost,
   onTombstone,
 }: {
   reply: ForoReply
@@ -352,6 +384,7 @@ function ReplyArticle({
   onIdClick: () => void
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
+  labelForPost: (id: string) => string
   onTombstone: (reply: ForoReply) => void
 }) {
   const deleted = !!reply.deletion
@@ -366,7 +399,6 @@ function ReplyArticle({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <PostHeader
-            postId={reply.id}
             authorId={reply.authorId}
             createdAt={reply.createdAt}
             onIdClick={onIdClick}
@@ -376,7 +408,7 @@ function ReplyArticle({
           <ModDeleteButton onClick={() => onTombstone(reply)} label="BORRAR" />
         )}
       </div>
-      <Backlinks ids={inboundIds} onClick={onQuoteClick} />
+      <Backlinks ids={inboundIds} onClick={onQuoteClick} labelForPost={labelForPost} />
       {deleted ? (
         <Tombstone
           deletion={reply.deletion!}
@@ -386,10 +418,11 @@ function ReplyArticle({
         />
       ) : (
         <PostBody
-          imageUrl={reply.imageUrl}
+          images={reply.imageUrl ? [reply.imageUrl] : []}
           body={reply.body}
           onQuoteClick={onQuoteClick}
           isQuoteToMe={isQuoteToMe}
+          labelForPost={labelForPost}
         />
       )}
     </article>
@@ -479,9 +512,11 @@ function Tombstone({
 function Backlinks({
   ids,
   onClick,
+  labelForPost,
 }: {
   ids: string[]
   onClick: (id: string) => void
+  labelForPost: (id: string) => string
 }) {
   if (ids.length === 0) return null
   return (
@@ -494,7 +529,7 @@ function Backlinks({
           onClick={() => onClick(id)}
           className="text-sys-orange transition-colors hover:text-primary hover:underline"
         >
-          &gt;&gt;{id}
+          {labelForPost(id)}
         </button>
       ))}
     </div>
@@ -504,49 +539,124 @@ function Backlinks({
 // ── Post body — image float + body text with >>id quote-links ──────────────
 
 function PostBody({
-  imageUrl,
+  images,
   imageRequired,
   body,
   onQuoteClick,
   isQuoteToMe,
+  labelForPost,
 }: {
-  imageUrl?: string
+  images: string[]
   imageRequired?: boolean
   body: string
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
+  labelForPost: (id: string) => string
 }) {
+  const [cover, ...rest] = images
+  // Index of the image currently open in the lightbox, or null when closed.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   return (
     <div className="font-mono text-[12px] leading-relaxed text-secondary">
-      {imageUrl && (
+      {cover && (
         <img
-          src={imageUrl}
+          src={cover}
           alt={imageRequired ? 'imagen del hilo' : 'adjunto'}
-          className="float-left mb-2 mr-3 max-h-48 max-w-[200px] border border-border object-cover sm:max-h-64 sm:max-w-[260px]"
+          onClick={() => setLightboxIndex(0)}
+          className="float-left mb-2 mr-3 max-h-48 max-w-[200px] cursor-zoom-in border border-border object-cover sm:max-h-64 sm:max-w-[260px]"
         />
       )}
-      <BodyText body={body} onQuoteClick={onQuoteClick} isQuoteToMe={isQuoteToMe} />
+      <BodyText
+        body={body}
+        onQuoteClick={onQuoteClick}
+        isQuoteToMe={isQuoteToMe}
+        labelForPost={labelForPost}
+      />
       <div className="clear-both" />
+      {/* Additional images (threads can carry up to FORO_THREAD_IMAGES_MAX) —
+          a thumbnail strip under the floated cover + body. */}
+      {rest.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {rest.map((url, i) => (
+            <img
+              key={url}
+              src={url}
+              alt={`imagen ${i + 2}`}
+              onClick={() => setLightboxIndex(i + 1)}
+              className="h-20 w-20 cursor-zoom-in border border-border object-cover sm:h-24 sm:w-24"
+            />
+          ))}
+        </div>
+      )}
+      {lightboxIndex !== null && (
+        <ForoLightbox
+          images={images}
+          index={lightboxIndex}
+          onIndex={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   )
 }
 
-// Render body text with `>>id` tokens turned into clickable buttons.
-// When the cited id resolves to a post authored by the current user,
-// append a `[TÚ]` chip so the reader sees "this person is replying to me"
-// without scanning the thread.
+// Pull the 11-char video id out of any common YouTube URL shape
+// (watch?v=, youtu.be/, /embed/, /shorts/). Returns null for non-YouTube.
+function youtubeId(url: string): string | null {
+  const patterns = [
+    /youtube\.com\/watch\?(?:.*&)?v=([\w-]{11})/i,
+    /youtu\.be\/([\w-]{11})/i,
+    /youtube\.com\/embed\/([\w-]{11})/i,
+    /youtube\.com\/shorts\/([\w-]{11})/i,
+  ]
+  for (const re of patterns) {
+    const m = url.match(re)
+    if (m) return m[1]
+  }
+  return null
+}
+
+function YouTubeEmbed({ id }: { id: string }) {
+  return (
+    <span className="my-2 block w-full max-w-md">
+      <span
+        className="relative block w-full overflow-hidden border border-border bg-black"
+        style={{ aspectRatio: '16 / 9' }}
+      >
+        <iframe
+          src={`https://www.youtube.com/embed/${id}`}
+          title="Reproductor de YouTube"
+          loading="lazy"
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 h-full w-full"
+        />
+      </span>
+    </span>
+  )
+}
+
+// Render body text with three kinds of inline tokens promoted out of plain
+// text: `>>id` quote-links (clickable, with a `[TÚ]` chip when the cited post
+// is the reader's), bare URLs (clickable anchors), and YouTube URLs (inline
+// players right where they were pasted). Everything else stays literal text
+// with whitespace preserved.
 function BodyText({
   body,
   onQuoteClick,
   isQuoteToMe,
+  labelForPost,
 }: {
   body: string
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
+  labelForPost: (id: string) => string
 }) {
-  const parts = body.split(/(>>[a-z0-9-]+)/gi)
+  // Split on URLs first, then quote tokens — capturing groups keep the
+  // delimiters in the resulting array.
+  const parts = body.split(/(https?:\/\/[^\s]+|>>[a-z0-9-]+)/gi)
   return (
-    <p className="whitespace-pre-wrap break-words">
+    <div className="whitespace-pre-wrap break-words">
       {parts.map((part, i) => {
         if (/^>>[a-z0-9-]+$/i.test(part)) {
           const id = part.slice(2)
@@ -558,7 +668,7 @@ function BodyText({
                 onClick={() => onQuoteClick(id)}
                 className="font-mono text-sys-orange transition-colors hover:text-primary hover:underline"
               >
-                {part}
+                {labelForPost(id)}
               </button>
               {mine && (
                 <span
@@ -576,8 +686,23 @@ function BodyText({
             </span>
           )
         }
+        if (/^https?:\/\//i.test(part)) {
+          const vid = youtubeId(part)
+          if (vid) return <YouTubeEmbed key={i} id={vid} />
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="break-all text-sys-orange underline decoration-sys-orange/40 underline-offset-2 transition-colors hover:text-primary hover:decoration-primary"
+            >
+              {part}
+            </a>
+          )
+        }
         return <span key={i}>{part}</span>
       })}
-    </p>
+    </div>
   )
 }

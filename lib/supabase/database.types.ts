@@ -265,8 +265,10 @@ export type Database = {
           genres: string[]
           id: string
           image_url: string
+          image_urls: string[]
           seed: boolean
           subject: string
+          tags: string[]
         }
         Insert: {
           archived?: boolean
@@ -280,8 +282,10 @@ export type Database = {
           genres: string[]
           id?: string
           image_url: string
+          image_urls?: string[]
           seed?: boolean
           subject: string
+          tags?: string[]
         }
         Update: {
           archived?: boolean
@@ -295,8 +299,10 @@ export type Database = {
           genres?: string[]
           id?: string
           image_url?: string
+          image_urls?: string[]
           seed?: boolean
           subject?: string
+          tags?: string[]
         }
         Relationships: [
           {

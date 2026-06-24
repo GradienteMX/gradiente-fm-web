@@ -1,20 +1,38 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { FORO_THREAD_GENRES_MAX, FORO_THREAD_GENRES_MIN } from '@/lib/types'
+import {
+  FORO_THREAD_GENRES_MAX,
+  FORO_THREAD_GENRES_MIN,
+  FORO_THREAD_IMAGES_MAX,
+  FORO_THREAD_TAGS_MAX,
+  FORO_THREAD_TAGS_MIN,
+} from '@/lib/types'
 
-// POST /api/foro/threads { subject, body, imageUrl, genres }
+// POST /api/foro/threads { subject, body, imageUrls[], genres[], tags[] }
 //
-// Image is mandatory on OP (per spec, mirrored as `image_url not null` in
-// the schema). Genres array enforced 1–5 by the table check constraint;
-// we validate up front for clean 400s. RLS gates via
+// At least one image is mandatory on OP (per spec). imageUrls[0] is the
+// cover, mirrored into the legacy `image_url not null` column for cheap tile
+// reads; the full ordered gallery goes into `image_urls` (migration 0037).
+// Genres enforced 1–5; tags enforced 1–5 (metadata keywords). RLS gates via
 // foro_threads_authenticated_insert (any auth'd user, must set author_id =
 // auth.uid()).
+//
+// Back-compat: an older client sending a single `imageUrl` string still works
+// — it's folded into a one-element gallery.
 
 interface Body {
   subject?: unknown
   body?: unknown
   imageUrl?: unknown
+  imageUrls?: unknown
   genres?: unknown
+  tags?: unknown
+}
+
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v)
+    ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim())
+    : []
 }
 
 export async function POST(request: NextRequest) {
@@ -33,17 +51,34 @@ export async function POST(request: NextRequest) {
 
   const subject = typeof raw.subject === 'string' ? raw.subject.trim() : ''
   const body = typeof raw.body === 'string' ? raw.body.trim() : ''
-  const imageUrl = typeof raw.imageUrl === 'string' ? raw.imageUrl.trim() : ''
-  const genres = Array.isArray(raw.genres)
-    ? raw.genres.filter((g): g is string => typeof g === 'string' && g.length > 0)
-    : []
+  // Prefer the gallery array; fall back to the legacy single field.
+  const imageUrls = asStringArray(raw.imageUrls)
+  if (imageUrls.length === 0 && typeof raw.imageUrl === 'string' && raw.imageUrl.trim()) {
+    imageUrls.push(raw.imageUrl.trim())
+  }
+  const genres = asStringArray(raw.genres)
+  const tags = asStringArray(raw.tags)
 
   if (!subject) return NextResponse.json({ error: 'subject required' }, { status: 400 })
   if (!body) return NextResponse.json({ error: 'body required' }, { status: 400 })
-  if (!imageUrl) return NextResponse.json({ error: 'imageUrl required' }, { status: 400 })
+  if (imageUrls.length === 0) {
+    return NextResponse.json({ error: 'at least one image required' }, { status: 400 })
+  }
+  if (imageUrls.length > FORO_THREAD_IMAGES_MAX) {
+    return NextResponse.json(
+      { error: `max ${FORO_THREAD_IMAGES_MAX} images` },
+      { status: 400 },
+    )
+  }
   if (genres.length < FORO_THREAD_GENRES_MIN || genres.length > FORO_THREAD_GENRES_MAX) {
     return NextResponse.json(
       { error: `genres must be ${FORO_THREAD_GENRES_MIN}–${FORO_THREAD_GENRES_MAX}` },
+      { status: 400 },
+    )
+  }
+  if (tags.length < FORO_THREAD_TAGS_MIN || tags.length > FORO_THREAD_TAGS_MAX) {
+    return NextResponse.json(
+      { error: `tags must be ${FORO_THREAD_TAGS_MIN}–${FORO_THREAD_TAGS_MAX}` },
       { status: 400 },
     )
   }
@@ -54,8 +89,10 @@ export async function POST(request: NextRequest) {
       author_id: user.id,
       subject,
       body,
-      image_url: imageUrl,
+      image_url: imageUrls[0],
+      image_urls: imageUrls,
       genres,
+      tags,
     })
     .select('id, created_at, bumped_at')
     .single()

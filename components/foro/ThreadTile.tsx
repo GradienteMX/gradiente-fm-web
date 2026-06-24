@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale'
 import type { ForoThread } from '@/lib/types'
 import { getUserById } from '@/lib/mockUsers'
 import { useReplyCount } from '@/lib/foro'
-import { getGenreById, vibeForGenre } from '@/lib/genres'
+import { getGenreById, getTagById, vibeForGenre } from '@/lib/genres'
 import { vibeToColor } from '@/lib/utils'
 
 // ── ThreadTile ─────────────────────────────────────────────────────────────
@@ -57,11 +57,6 @@ export function ThreadTile({ thread }: ThreadTileProps) {
             SESIÓN
           </div>
         )}
-
-        {/* Thread id chip — bottom-left */}
-        <div className="absolute bottom-1 left-1 border border-border/60 bg-black/85 px-1 py-0.5 font-mono text-[9px] tracking-widest text-muted backdrop-blur-sm">
-          //{thread.id.toUpperCase()}
-        </div>
       </div>
 
       {/* Subject + meta */}
@@ -99,6 +94,29 @@ export function ThreadTile({ thread }: ThreadTileProps) {
             {thread.genres.length > 2 && (
               <span className="font-mono text-[8px] tracking-widest text-muted">
                 +{thread.genres.length - 2}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Metadata tags — first 2, neutral chrome (distinct from genres) */}
+        {thread.tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            {thread.tags.slice(0, 2).map((id) => {
+              const t = getTagById(id)
+              return (
+                <span
+                  key={id}
+                  className="border border-dashed px-1 py-px font-mono text-[8px] tracking-widest text-muted"
+                  style={{ borderColor: '#3a3a3a' }}
+                >
+                  #{(t?.name ?? id).toUpperCase()}
+                </span>
+              )
+            })}
+            {thread.tags.length > 2 && (
+              <span className="font-mono text-[8px] tracking-widest text-muted">
+                +{thread.tags.length - 2}
               </span>
             )}
           </div>
