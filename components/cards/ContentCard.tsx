@@ -244,8 +244,11 @@ function CardImage({
 
       {/* Type badge — top left */}
       <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-        <span className="bg-black/70 px-2 py-1 font-mono text-[10px] tracking-widest text-secondary backdrop-blur-sm">
-          //{TYPE_LABEL[item.type]}
+        <span
+          className="bg-black/70 px-2 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
+          style={{ color: typeColor }}
+        >
+          {TYPE_LABEL[item.type]}
         </span>
         {item.editorial && (
           <span className="bg-sys-red/90 px-1.5 py-1 font-mono text-[10px] tracking-widest text-white backdrop-blur-sm">
