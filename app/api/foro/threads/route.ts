@@ -5,6 +5,7 @@ import {
   FORO_THREAD_GENRES_MIN,
   FORO_THREAD_IMAGES_MAX,
   FORO_THREAD_TAGS_MAX,
+  FORO_THREAD_TAGS_MIN,
 } from '@/lib/types'
 
 // POST /api/foro/threads { subject, body, imageUrls[], genres[], tags[] }
@@ -12,9 +13,9 @@ import {
 // At least one image is mandatory on OP (per spec). imageUrls[0] is the
 // cover, mirrored into the legacy `image_url not null` column for cheap tile
 // reads; the full ordered gallery goes into `image_urls` (migration 0036).
-// Genres enforced 1–5; tags capped at 5 (min enforced once the composer
-// ships its picker). RLS gates via foro_threads_authenticated_insert (any
-// auth'd user, must set author_id = auth.uid()).
+// Genres enforced 1–5; tags enforced 1–5 (metadata keywords). RLS gates via
+// foro_threads_authenticated_insert (any auth'd user, must set author_id =
+// auth.uid()).
 //
 // Back-compat: an older client sending a single `imageUrl` string still works
 // — it's folded into a one-element gallery.
@@ -75,9 +76,9 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     )
   }
-  if (tags.length > FORO_THREAD_TAGS_MAX) {
+  if (tags.length < FORO_THREAD_TAGS_MIN || tags.length > FORO_THREAD_TAGS_MAX) {
     return NextResponse.json(
-      { error: `max ${FORO_THREAD_TAGS_MAX} tags` },
+      { error: `tags must be ${FORO_THREAD_TAGS_MIN}–${FORO_THREAD_TAGS_MAX}` },
       { status: 400 },
     )
   }

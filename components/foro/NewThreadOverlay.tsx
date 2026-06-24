@@ -5,12 +5,14 @@ import { ImagePlus, Star, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { createThread } from '@/lib/foro'
 import { compressAndUploadImage } from '@/lib/imageUpload'
-import { GENRES, vibeForGenre } from '@/lib/genres'
+import { GENRES, TAGS, vibeForGenre } from '@/lib/genres'
 import { vibeToColor } from '@/lib/utils'
 import {
   FORO_THREAD_GENRES_MAX,
   FORO_THREAD_GENRES_MIN,
   FORO_THREAD_IMAGES_MAX,
+  FORO_THREAD_TAGS_MAX,
+  FORO_THREAD_TAGS_MIN,
 } from '@/lib/types'
 
 // ── NewThreadOverlay ───────────────────────────────────────────────────────
@@ -37,6 +39,8 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
   const [submitting, setSubmitting] = useState(false)
   const [genres, setGenres] = useState<string[]>([])
   const [genreFilter, setGenreFilter] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagFilter, setTagFilter] = useState('')
   const [readError, setReadError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -62,6 +66,28 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     }
     setSubmitError(null)
     setGenres((g) => [...g, id])
+  }
+
+  const tagSet = useMemo(() => new Set(tags), [tags])
+  const filteredTags = useMemo(() => {
+    const q = tagFilter.trim().toLowerCase()
+    if (!q) return TAGS
+    return TAGS.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.id.includes(q),
+    )
+  }, [tagFilter])
+
+  const toggleTag = (id: string) => {
+    if (tagSet.has(id)) {
+      setTags((t) => t.filter((x) => x !== id))
+      return
+    }
+    if (tags.length >= FORO_THREAD_TAGS_MAX) {
+      setSubmitError(`Máximo ${FORO_THREAD_TAGS_MAX} tags.`)
+      return
+    }
+    setSubmitError(null)
+    setTags((t) => [...t, id])
   }
 
   // Lock body scroll while open.
@@ -155,6 +181,9 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     if (genres.length < FORO_THREAD_GENRES_MIN) {
       missing.push(`géneros (mín. ${FORO_THREAD_GENRES_MIN})`)
     }
+    if (tags.length < FORO_THREAD_TAGS_MIN) {
+      missing.push(`tags (mín. ${FORO_THREAD_TAGS_MIN})`)
+    }
     if (missing.length > 0) {
       setSubmitError(`Falta: ${missing.join(', ')}`)
       return
@@ -166,8 +195,7 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
       body: bd,
       imageUrls,
       genres,
-      // Tags picker ships in a later phase; threads start tag-less for now.
-      tags: [],
+      tags,
     })
     setSubmitting(false)
     if (res.ok) {
@@ -187,7 +215,9 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     body.trim().length > 0 &&
     imageUrls.length > 0 &&
     genres.length >= FORO_THREAD_GENRES_MIN &&
-    genres.length <= FORO_THREAD_GENRES_MAX
+    genres.length <= FORO_THREAD_GENRES_MAX &&
+    tags.length >= FORO_THREAD_TAGS_MIN &&
+    tags.length <= FORO_THREAD_TAGS_MAX
 
   return (
     <div
@@ -343,6 +373,69 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                       }}
                     >
                       {g.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Tag picker — metadata keywords (lib/genres TAGS), min 1.
+                Transversal qualities, separate from the genre/vibe axis. */}
+            <div className="flex flex-col gap-1.5">
+              <span className="sys-label text-muted">
+                TAGS <span className="text-sys-orange">*</span>
+                <span className="ml-2 normal-case text-[9px] text-muted">
+                  {tags.length}/{FORO_THREAD_TAGS_MAX} · mín {FORO_THREAD_TAGS_MIN} · keywords del metadata
+                </span>
+              </span>
+
+              {/* Selected chips */}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((id) => {
+                    const t = TAGS.find((x) => x.id === id)
+                    if (!t) return null
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleTag(id)}
+                        className="flex items-center gap-1 border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide text-secondary transition-colors hover:text-primary"
+                        style={{ borderColor: '#3a3a3a' }}
+                      >
+                        #{t.name}
+                        <X size={9} aria-hidden />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Filter input + chip list */}
+              <input
+                type="text"
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                placeholder="filtrar tags…"
+                className="border bg-black px-3 py-1.5 font-mono text-xs text-primary outline-none transition-colors focus:border-sys-orange"
+                style={{ borderColor: '#242424' }}
+              />
+              <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-border p-2">
+                {filteredTags.map((t) => {
+                  const isOn = tagSet.has(t.id)
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleTag(t.id)}
+                      className="border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
+                      style={{
+                        borderColor: isOn ? '#9CA3AF' : '#242424',
+                        color: isOn ? '#E5E7EB' : '#888',
+                        backgroundColor: isOn ? 'rgba(156,163,175,0.12)' : 'transparent',
+                      }}
+                    >
+                      #{t.name}
                     </button>
                   )
                 })}
