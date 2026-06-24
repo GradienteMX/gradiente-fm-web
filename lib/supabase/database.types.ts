@@ -650,6 +650,7 @@ export type Database = {
           tags: string[]
           title: string
           updated_at: string
+          views: number
           whatsapp: string | null
         }
         Insert: {
@@ -692,6 +693,7 @@ export type Database = {
           tags?: string[]
           title?: string
           updated_at?: string
+          views?: number
           whatsapp?: string | null
         }
         Relationships: [
@@ -700,6 +702,51 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          listing_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          listing_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          listing_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_comments_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "listing_comments"
             referencedColumns: ["id"]
           },
         ]
@@ -1180,6 +1227,7 @@ export type Database = {
       apply_user_hp_rollup: { Args: never; Returns: undefined }
       apply_vibe_check_bonuses: { Args: never; Returns: undefined }
       harvest_item: { Args: { p_item_id: string }; Returns: Json }
+      increment_listing_views: { Args: { p_listing_id: string }; Returns: undefined }
       ingest_scraped_event: {
         Args: {
           p_source: string

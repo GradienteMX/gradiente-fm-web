@@ -80,6 +80,7 @@ function rowToMarketplaceListing(row: MarketplaceListingRow): MarketplaceListing
     relatedLinks: Array.isArray(row.related_links)
       ? (row.related_links as unknown as MarketplaceListing['relatedLinks'])
       : undefined,
+    views: typeof row.views === 'number' ? row.views : 0,
     publishedAt: row.published_at,
   }
 }

@@ -124,7 +124,29 @@ export interface MarketplaceListing {
   // Links to related Gradiente content (editorials / lists / articles) — the
   // marketplace↔content cross-link. { label, url } pairs (reuses EntityLink).
   relatedLinks?: EntityLink[]
+  // Visit counter (migration 0033). Never displayed — only blends with recency
+  // to order the item feed (invisible HL). Absent on write-time drafts.
+  views?: number
   publishedAt: string                 // ISO — drives "RECIENTES" ordering
+}
+
+// Lightweight comment on a marketplace listing (migration 0033). Separate from
+// the editorial `Comment` type — no reactions, no rank effects. One level of
+// replies (parentId). `isSeller` flags comments by the listing's partner team.
+export interface ListingComment {
+  id: string
+  listingId: string
+  parentId: string | null
+  body: string
+  createdAt: string
+  editedAt?: string
+  author: {
+    id: string
+    username: string
+    displayName: string
+    avatarUrl?: string
+  }
+  isSeller: boolean
 }
 
 // Per-category subcategory catalog — drives the dependent <select> in the
