@@ -9,7 +9,6 @@ import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
-import { useCardTilt, CARD_TILT_PERSPECTIVE_PX } from '@/lib/hooks/useCardTilt'
 import { useHeatReport } from '@/lib/hooks/useHeatReport'
 import { recordHpEvent } from '@/lib/hpEvents'
 import { useAuth } from '@/components/auth/useAuth'
@@ -17,8 +16,6 @@ import { currentHp } from '@/lib/curation'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from './SavedBadge'
-import { useDecayState } from '@/lib/hooks/useDecayState'
-import { DecayErosion, useDissolveOnUnmount } from './DecayState'
 
 // ── Fresh-published chrome ─────────────────────────────────────────────────
 //
@@ -44,14 +41,10 @@ function genreEntries(ids: string[], limit: number) {
 
 export type CardSize = 'sm' | 'md' | 'lg'
 
-// Shared props for the three size variants. imageZStyle/chromeZStyle are the
-// tilt parallax depth layers from useCardTilt, threaded through to CardImage.
+// Shared props for the three size variants.
 interface CardVariantProps {
   item: ContentItem
   isFresh: boolean
-  mortality: number
-  imageZStyle?: CSSProperties
-  chromeZStyle?: CSSProperties
 }
 
 const TYPE_LABEL: Record<ContentItem['type'], string> = {
@@ -200,94 +193,37 @@ function CardImage({
   item,
   size,
   isFresh,
-  mortality,
-  imageZStyle,
-  chromeZStyle,
 }: {
   item: ContentItem
   size: CardSize
   isFresh: boolean
-  mortality: number
-  // Parallax depth layers from useCardTilt. The image plane recesses behind the
-  // chrome plane so a pointer-tilt reveals depth (panel-under-glass). When tilt
-  // is disabled (touch / reduced-motion) these are translateZ(0)-equivalent
-  // visually flat — they're harmless no-ops on a non-3D ancestor. Optional so
-  // any other caller of CardImage keeps working unchanged.
-  imageZStyle?: CSSProperties
-  chromeZStyle?: CSSProperties
 }) {
   const vibeColor = vibeToColor(vibeMid(item))
   const isDraftOnly = item._draftState === 'draft'
   const typeColor = categoryColor(item.type)
 
-  // Document-mount — archival at-rest treatment (redesign 2026). The flyer
-  // rests as a grayscale print tinted by the item's vibe temperature, under
-  // a halftone scrim; hover/focus "develops" it to full color (see
-  // .flyer-* in globals.css). Exceptions: fresh (<1h) items keep their
-  // glitch chrome untreated — fresh-cover-flicker owns `filter`, and a
-  // just-published item isn't archived yet — and drafts keep their existing
-  // draft treatment. Imageless cards never reach this branch.
-  const isMounted = !isFresh && !isDraftOnly
-
   return (
-    // 3D depth root for the tilt parallax. NOT overflow-hidden (that would
-    // flatten the translateZ planes). The image plane below carries the clip
-    // instead. transform-style is preserve-3d so the two planes separate into
-    // real depth under the inner tilt wrapper. When tilt is off the planes are
-    // visually coplanar (no perspective ancestor → translateZ has no visible
-    // effect), so the flat designed state is unchanged.
-    <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }}>
-      {/* ── Recessed IMAGE plane — sits behind the chrome ────────────────── */}
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={imageZStyle}
-      >
-      {item.imageUrl ? (
-        isMounted ? (
-          <div className="flyer-mount">
-            <img
-              src={item.imageUrl}
-              alt={item.title}
-              className="flyer-img h-full w-full object-cover object-top group-hover:scale-105"
-              loading="lazy"
-            />
-            {/* Slot-tint — the item's true vibe temperature, inline because
-                the color is per-item data (vibeToColor 11-slot ramp). */}
-            <div
-              className="flyer-tint"
-              style={{ backgroundColor: vibeColor }}
-              aria-hidden
-            />
-            {/* Halftone scrim — print grain, the at-rest/archived marker. */}
-            <div className="flyer-halftone" aria-hidden />
-          </div>
-        ) : (
+    <div className="absolute inset-0">
+      {/* Image — full color, static (no grayscale/halftone develop, no tilt). */}
+      <div className="absolute inset-0 overflow-hidden">
+        {item.imageUrl ? (
           <img
             src={item.imageUrl}
             alt={item.title}
-            className={`h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+            className={`h-full w-full object-cover object-top ${
               isFresh ? 'fresh-cover-flicker' : ''
             }`}
             loading="lazy"
           />
-        )
-      ) : (
-        <div className="h-full w-full bg-elevated" />
-      )}
+        ) : (
+          <div className="h-full w-full bg-elevated" />
+        )}
 
-      {/* HP death ritual — decay erosion. Sits over the image, under the text
-          scrim + chrome below. Data-true (mortality from currentHp), CSS-only,
-          static. Renders only when the item is in the dying tail. Never on
-          fresh items (the fresh-cover-flicker owns `filter`). */}
-      {!isFresh && mortality > 0 && <DecayErosion mortality={mortality} />}
-
-      {/* Gradient: stronger at bottom where text lives */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
+        {/* Gradient: stronger at bottom where text lives */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
       </div>
-      {/* ── /Recessed IMAGE plane ──────────────────────────────────────── */}
-
-      {/* ── Lifted CHROME plane — frame, meter + badges float above image ─ */}
-      <div className="absolute inset-0" style={chromeZStyle}>
+      {/* Chrome — frame, meter, badges over the image */}
+      <div className="absolute inset-0">
 
       {/* Vibe meter — top strip. Full 11-slot scale; the lit segments are
           the item's band reading. */}
@@ -364,13 +300,13 @@ function CardImage({
 }
 
 // ── SM card — 1×1 ────────────────────────────────────────────────────────────
-function SmCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVariantProps) {
+function SmCard({ item, isFresh }: CardVariantProps) {
   const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 2)
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
-      <CardImage item={item} size="sm" isFresh={isFresh} mortality={mortality} imageZStyle={imageZStyle} chromeZStyle={chromeZStyle} />
+      <CardImage item={item} size="sm" isFresh={isFresh} />
 
       {item.type === 'evento' && item.date && (
         <div className="absolute right-2 top-3 flex flex-col items-center border border-white/20 bg-black/70 px-2 py-1 backdrop-blur-sm">
@@ -420,7 +356,7 @@ function SmCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVar
 }
 
 // ── MD card — 2×1 (wide) or 1×2 (tall) ──────────────────────────────────────
-function MdCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVariantProps) {
+function MdCard({ item, isFresh }: CardVariantProps) {
   const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 3)
   const tags = getTagNames(item.tags).slice(0, 3)
@@ -429,7 +365,7 @@ function MdCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVar
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
-      <CardImage item={item} size="md" isFresh={isFresh} mortality={mortality} imageZStyle={imageZStyle} chromeZStyle={chromeZStyle} />
+      <CardImage item={item} size="md" isFresh={isFresh} />
 
       {item.type === 'evento' && item.date && (
         <div className="absolute right-2 top-3 flex flex-col items-center border border-white/20 bg-black/70 px-2 py-1.5 backdrop-blur-sm">
@@ -504,7 +440,7 @@ function MdCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVar
 }
 
 // ── LG card — 2×2 (big featured) ─────────────────────────────────────────────
-function LgCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVariantProps) {
+function LgCard({ item, isFresh }: CardVariantProps) {
   const vibeColor = vibeToColor(vibeMid(item))
   const genres = genreEntries(item.genres, 4)
   const tags = getTagNames(item.tags).slice(0, 4)
@@ -512,7 +448,7 @@ function LgCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVar
 
   return (
     <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
-      <CardImage item={item} size="lg" isFresh={isFresh} mortality={mortality} imageZStyle={imageZStyle} chromeZStyle={chromeZStyle} />
+      <CardImage item={item} size="lg" isFresh={isFresh} />
 
       {/* Date block for events — top right inside image */}
       {item.type === 'evento' && item.date && (
@@ -632,39 +568,13 @@ function LgCard({ item, isFresh, mortality, imageZStyle, chromeZStyle }: CardVar
 // ── Main export ───────────────────────────────────────────────────────────────
 function ContentCardImpl({ item, size = 'sm' }: ContentCardProps) {
   const { open } = useOverlay()
-  // Mutable element ref written by the merged setRootRef callback below. Typed
-  // `| null` so `.current` is assignable (a bare useRef<HTMLDivElement>(null)
-  // infers a read-only RefObject).
+  // Root ref — feeds getBoundingClientRect for the overlay open-origin.
   const ref = useRef<HTMLDivElement | null>(null)
 
-  // Signal-panel tilt — subtle 3D pointer-tilt + parallax depth. Pure visual
-  // layer: applies its transform to an INNER wrapper (never the MosaicItem
-  // Framer controls), wires pointer/focus on the host (this root), and is a
-  // no-op on touch / reduced-motion (flat designed state). See useCardTilt.
-  const { hostProps, tiltProps, imageZStyle, chromeZStyle } = useCardTilt()
-  // Merge the tilt host's callback ref with our object ref (the root needs BOTH
-  // — `ref` feeds getBoundingClientRect for the overlay origin + the
-  // dissolve-on-unmount observer; the tilt host needs the node to measure the
-  // pointer position). One callback writes both.
-  const setRootRef = (node: HTMLDivElement | null) => {
-    ref.current = node
-    hostProps.ref(node)
-  }
-
   // Thermal coupling — a hot card (high vibe temperature) reports its live
-  // viewport position + heat to the shared heatField; VibeFluid warms the
-  // signal field in the gutters around it. Cold cards + non-desktop are no-ops
-  // (the hook gates internally). Heat = the card's vibe temperature 0..1.
+  // viewport position + heat to the shared heatField; VibeFluid (background)
+  // warms the signal field around it. Cold cards + non-desktop are no-ops.
   useHeatReport(ref, item.id, vibeMid(item) / 10)
-
-  // HP death ritual — live mortality readout (0 = healthy, 1 = about to die).
-  // Drives the always-on erosion treatment and arms the dissolve-on-unmount.
-  const { mortality, isDying, reducedMotion } = useDecayState(item)
-  // The dissolve only fires when the card is genuinely dying AND not a past
-  // evento (past eventos already get the //PASADO chrome + grayscale demote;
-  // their exit is the calendar, not the ritual). computeMortality already
-  // returns 0 for past eventos, so `isDying` is sufficient here.
-  useDissolveOnUnmount(ref, isDying, reducedMotion)
 
   // Compute initial fresh state from the item's age. Editor-composed items
   // (source !== 'scraper:ra') glitch for the first hour after publish.
@@ -712,49 +622,27 @@ function ContentCardImpl({ item, size = 'sm' }: ContentCardProps) {
   // Past evento (within filterForHome's grace window). Visually demoted so
   // it doesn't compete with upcoming items for the eye.
   const past = item.type === 'evento' && isExpired(item)
-  // Set the type color as a CSS custom property so the keyframe animations
-  // (border pulse, scanline, chip glow) inherit it without needing a
-  // per-instance class. `perspective` establishes the 3D viewing frustum the
-  // inner tilt wrapper rotates within — harmless when tilt is disabled (the
-  // wrapper stays flat, so no perspective distortion is ever visible).
-  const wrapperStyle: CSSProperties = {
-    perspective: `${CARD_TILT_PERSPECTIVE_PX}px`,
-    ...(isFresh
-      ? ({ borderWidth: 1, '--glitch-color': categoryColor(item.type) } as CSSProperties)
-      : {}),
-  }
+  // Type color as a CSS custom property so the fresh-publish keyframes (border
+  // pulse, scanline, chip glow) inherit it. Only set while fresh.
+  const wrapperStyle: CSSProperties = isFresh
+    ? ({ borderWidth: 1, '--glitch-color': categoryColor(item.type) } as CSSProperties)
+    : {}
 
   return (
     <div
-      ref={setRootRef}
+      ref={ref}
       data-card-id={item.id}
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
-      onPointerMove={hostProps.onPointerMove}
-      onPointerLeave={hostProps.onPointerLeave}
-      onFocus={hostProps.onFocus}
-      onBlur={hostProps.onBlur}
       role="button"
       tabIndex={0}
       aria-label={`Abrir ${item.title}`}
-      className={`flyer-scope relative h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red ${
+      className={`relative h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red ${
         isFresh ? 'fresh-glitch border' : ''
       } ${past ? 'opacity-70 grayscale-[30%]' : ''}`}
       style={wrapperStyle}
     >
-      {/* Inner tilt wrapper — the element that actually rotateX/Y's. Kept
-          SEPARATE from this host (the host owns perspective + listeners) and
-          from MosaicItem (Framer's layout transform). preserve-3d here lets the
-          image plane recess behind the chrome plane (parallax). */}
-      <div {...tiltProps}>
-        <Inner
-          item={item}
-          isFresh={isFresh}
-          mortality={mortality}
-          imageZStyle={imageZStyle}
-          chromeZStyle={chromeZStyle}
-        />
-      </div>
+      <Inner item={item} isFresh={isFresh} />
       {past && (
         <span
           className="pointer-events-none absolute bottom-3 right-3 z-10 border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
