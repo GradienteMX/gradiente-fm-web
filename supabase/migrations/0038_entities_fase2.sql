@@ -1,4 +1,4 @@
--- 0036_entities_fase2.sql
+-- 0038_entities_fase2.sql
 -- ============================================================================
 -- Scene-entity registry, Fase 2. Extends the entity-attribution work from
 -- migration 0029 to events + listicles and adds the editorial metadata the

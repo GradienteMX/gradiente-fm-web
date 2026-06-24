@@ -132,9 +132,9 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     vibe_max: item.vibeMax,
     genres: item.genres ?? [],
     tags: item.tags ?? [],
-    // book formats added to item_format in 0036; cast past stale generated enum.
+    // book formats added to item_format in 0038; cast past stale generated enum.
     format: (item.format ?? null) as ItemInsert['format'],
-    // subject_kind / country / year added in migration 0036; cast bypasses
+    // subject_kind / country / year added in migration 0038; cast bypasses
     // stale generated types (same story as partner_id / harvest fields below).
     ...(item.subjectKind !== undefined ? { subject_kind: item.subjectKind } : {}),
     ...(item.country !== undefined ? { country: item.country || null } : {}),
@@ -210,7 +210,7 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     genres: row.genres,
     tags: row.tags,
     format: row.format ?? undefined,
-    // subject_kind / country / year added in migration 0036; cast bypasses
+    // subject_kind / country / year added in migration 0038; cast bypasses
     // stale generated types until `npx supabase gen types typescript` runs.
     subjectKind:
       (row as { subject_kind?: ItemSubjectKind | null }).subject_kind ?? undefined,

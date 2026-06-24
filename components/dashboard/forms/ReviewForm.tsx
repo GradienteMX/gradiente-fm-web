@@ -24,7 +24,7 @@ import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
 // What the review is *about*. Drives which CONTEXTO fields show (migration
-// 0036). DISCO/LIBRO are objects with a format; EVENTO/EXPOSICIÓN are happenings
+// 0038). DISCO/LIBRO are objects with a format; EVENTO/EXPOSICIÓN are happenings
 // with a venue/promoter instead.
 const SUBJECTS: { id: ItemSubjectKind; label: string }[] = [
   { id: 'record', label: 'DISCO' },
@@ -33,7 +33,7 @@ const SUBJECTS: { id: ItemSubjectKind; label: string }[] = [
   { id: 'exhibition', label: 'EXPOSICIÓN' },
 ]
 
-// Format chips per subject — see items.format (migrations 0029 + 0036).
+// Format chips per subject — see items.format (migrations 0029 + 0038).
 // Single-select. Happenings (event/exhibition) carry no format.
 const FORMATS_BY_SUBJECT: Record<ItemSubjectKind, { id: ItemFormat; label: string }[]> = {
   record: [
