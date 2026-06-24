@@ -671,6 +671,9 @@ function MarketplaceTab({
   onPartnerPatched: (next: PartnerData) => void
 }) {
   const listings = partner.marketplaceListings
+  // Profile editor starts collapsed — sellers land on their listings, not on
+  // the store-profile form. The "Editar perfil de tienda" button reveals it.
+  const [editingProfile, setEditingProfile] = useState(false)
 
   return (
     <div className="flex flex-col gap-4">
@@ -681,27 +684,43 @@ function MarketplaceTab({
         >
           //MARKETPLACE·INACTIVO — el card no aparece en{' '}
           <span className="text-secondary">/marketplace</span> hasta que el
-          marketplace esté habilitado. Podés activarlo abajo si tenés permisos
-          o pedirle a un admin del sitio que lo haga.
+          marketplace esté habilitado. Podés activarlo en{' '}
+          <span className="text-secondary">Editar perfil de tienda</span> si
+          tenés permisos, o pedirle a un admin del sitio que lo haga.
         </p>
       )}
 
-      <ProfileEditor
-        partner={partner}
-        canManage={canManage}
-        currentUserId={currentUserId}
-        onSaved={(next) => {
-          onPartnerPatched(next)
-          void onRefetch()
-        }}
-      />
-
+      {/* Listings first — the seller's actual work surface. */}
       <ListingsManager
         partner={partner as unknown as ContentItem}
         canManage={canManage}
         listings={listings}
         onChanged={onRefetch}
       />
+
+      {/* Store profile (card description / location / currency / enable)
+          behind a toggle so it's not always open above the listings. */}
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        <button
+          type="button"
+          onClick={() => setEditingProfile((v) => !v)}
+          className="inline-flex w-fit items-center gap-2 border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-sys-orange hover:text-sys-orange"
+          aria-expanded={editingProfile}
+        >
+          {editingProfile ? '▾' : '▸'} EDITAR PERFIL DE TIENDA
+        </button>
+        {editingProfile && (
+          <ProfileEditor
+            partner={partner}
+            canManage={canManage}
+            currentUserId={currentUserId}
+            onSaved={(next) => {
+              onPartnerPatched(next)
+              void onRefetch()
+            }}
+          />
+        )}
+      </div>
     </div>
   )
 }
