@@ -1,5 +1,6 @@
 "use client";
 
+import nextDynamic from "next/dynamic";
 import {
   Play,
   Pause,
@@ -8,7 +9,14 @@ import {
   Shuffle,
   Repeat,
 } from "lucide-react";
-import { ParticleField3D } from "./ParticleField3D";
+
+// Code-split the GPU visualizer (three.js + addons, ~186 kB): load it only when
+// this player actually renders inside an open MixOverlay, never via a static
+// import. ssr:false — WebGL canvas.
+const ParticleField3D = nextDynamic(
+  () => import("./ParticleField3D").then((m) => m.ParticleField3D),
+  { ssr: false },
+);
 
 export interface AudioPlayer3DProps {
   // Visualization input.

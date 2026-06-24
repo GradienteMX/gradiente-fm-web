@@ -1,8 +1,18 @@
 'use client'
 
+import nextDynamic from 'next/dynamic'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
-import { ParticleField3D } from './ParticleField3D'
 import { useAudioPlayer } from './AudioPlayerProvider'
+
+// Code-split the GPU visualizer: three.js + GPUComputationRenderer +
+// EffectComposer + UnrealBloomPass (~186 kB) now load only when a track is
+// actually playing (the `has` gate below) instead of riding in the home
+// first-load chain via a static import. ssr:false — it's a WebGL canvas. The
+// runtime mount gate is unchanged, so home idle still holds exactly 2 contexts.
+const ParticleField3D = nextDynamic(
+  () => import('./ParticleField3D').then((m) => m.ParticleField3D),
+  { ssr: false },
+)
 
 // Persistent NOW PLAYING block for the home rail. Reflects the global audio
 // state — currently loaded mix, transport, and live spectrum visualization.
