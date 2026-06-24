@@ -281,7 +281,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                     </div>
                   )}
                   <PostBody
-                    imageUrl={thread.imageUrl}
+                    images={thread.imageUrls}
                     imageRequired
                     body={thread.body}
                     onQuoteClick={focusPost}
@@ -386,7 +386,7 @@ function ReplyArticle({
         />
       ) : (
         <PostBody
-          imageUrl={reply.imageUrl}
+          images={reply.imageUrl ? [reply.imageUrl] : []}
           body={reply.body}
           onQuoteClick={onQuoteClick}
           isQuoteToMe={isQuoteToMe}
@@ -504,29 +504,44 @@ function Backlinks({
 // ── Post body — image float + body text with >>id quote-links ──────────────
 
 function PostBody({
-  imageUrl,
+  images,
   imageRequired,
   body,
   onQuoteClick,
   isQuoteToMe,
 }: {
-  imageUrl?: string
+  images: string[]
   imageRequired?: boolean
   body: string
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
 }) {
+  const [cover, ...rest] = images
   return (
     <div className="font-mono text-[12px] leading-relaxed text-secondary">
-      {imageUrl && (
+      {cover && (
         <img
-          src={imageUrl}
+          src={cover}
           alt={imageRequired ? 'imagen del hilo' : 'adjunto'}
           className="float-left mb-2 mr-3 max-h-48 max-w-[200px] border border-border object-cover sm:max-h-64 sm:max-w-[260px]"
         />
       )}
       <BodyText body={body} onQuoteClick={onQuoteClick} isQuoteToMe={isQuoteToMe} />
       <div className="clear-both" />
+      {/* Additional images (threads can carry up to FORO_THREAD_IMAGES_MAX) —
+          a thumbnail strip under the floated cover + body. */}
+      {rest.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {rest.map((url, i) => (
+            <img
+              key={url}
+              src={url}
+              alt={`imagen ${i + 2}`}
+              className="h-20 w-20 border border-border object-cover sm:h-24 sm:w-24"
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

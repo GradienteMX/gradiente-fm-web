@@ -40,8 +40,10 @@ export { useThreads, useThread, useReplies, useReplyCount }
 export interface CreateThreadInput {
   subject: string
   body: string
-  imageUrl: string
+  // Ordered gallery — at least one. imageUrls[0] becomes the cover.
+  imageUrls: string[]
   genres: string[]
+  tags: string[]
 }
 
 export type CreateResult =
