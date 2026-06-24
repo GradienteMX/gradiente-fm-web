@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus, Search, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { useVibe } from '@/context/VibeContext'
 import { FORO_THREAD_CAP, useThreads } from '@/lib/foro'
-import { genresIntersectVibeRange } from '@/lib/genres'
+import { genresIntersectVibeRange, getGenreById, getTagById } from '@/lib/genres'
+import type { ForoThread } from '@/lib/types'
 import { ThreadTile } from './ThreadTile'
 import { ThreadOverlay } from './ThreadOverlay'
 import { NewThreadOverlay } from './NewThreadOverlay'
@@ -22,6 +23,21 @@ import { NewThreadOverlay } from './NewThreadOverlay'
 // URL-driven so threads + composer are deep-linkable. Closing either modal
 // strips its param via router.replace.
 
+// Build the lowercased search haystack for a thread: subject + genre and
+// tag names *and* ids, so a query matches whether the user types the
+// display name ("techno") or the raw id.
+function threadHaystack(t: ForoThread): string {
+  return [
+    t.subject,
+    ...t.genres,
+    ...t.genres.map((id) => getGenreById(id)?.name ?? ''),
+    ...t.tags,
+    ...t.tags.map((id) => getTagById(id)?.name ?? ''),
+  ]
+    .join(' ')
+    .toLowerCase()
+}
+
 export function ForoCatalog() {
   const threads = useThreads()
   const { vibeRange } = useVibe()
@@ -29,15 +45,24 @@ export function ForoCatalog() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [query, setQuery] = useState('')
 
   // Filter threads by the slider's vibe range — a thread passes if any of
   // its tagged genres falls in [min, max]. Untagged genres (not in
   // GENRE_VIBE) are ignored. See genresIntersectVibeRange in lib/genres.
-  const visibleThreads = useMemo(() => {
+  const vibeThreads = useMemo(() => {
     const [min, max] = vibeRange
     if (min === 0 && max === 10) return threads
     return threads.filter((t) => genresIntersectVibeRange(t.genres, min, max))
   }, [threads, vibeRange])
+
+  // Then narrow by the search query over subject/genres/tags. Empty query is
+  // a pass-through. Search composes on top of the vibe filter.
+  const visibleThreads = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return vibeThreads
+    return vibeThreads.filter((t) => threadHaystack(t).includes(q))
+  }, [vibeThreads, query])
 
   const openThreadId = searchParams?.get('thread') ?? null
   const composeOpen = searchParams?.get('compose') === '1'
@@ -93,7 +118,7 @@ export function ForoCatalog() {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="sys-label">
             HILOS · {isFiltered
-              ? `${String(visibleCount).padStart(2, '0')}/${String(totalCount).padStart(2, '0')} EN RANGO`
+              ? `${String(visibleCount).padStart(2, '0')}/${String(totalCount).padStart(2, '0')} ${query.trim() ? 'EN BÚSQUEDA' : 'EN RANGO'}`
               : `${String(totalCount).padStart(2, '0')}/${FORO_THREAD_CAP}`}
             {' '}· ORDEN POR BUMP
           </p>
@@ -109,6 +134,34 @@ export function ForoCatalog() {
           >
             <Plus size={11} /> NUEVO HILO
           </button>
+        </div>
+
+        {/* Search — narrows the (already vibe-filtered) catalog by
+            subject / genre / tag, client-side over the loaded threads. */}
+        <div className="relative mt-2">
+          <Search
+            size={13}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="buscar en el foro · asunto, género o tag…"
+            aria-label="Buscar hilos"
+            className="w-full border bg-black py-1.5 pl-8 pr-8 font-mono text-[11px] tracking-wide text-primary outline-none transition-colors focus:border-sys-orange"
+            style={{ borderColor: '#242424' }}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-primary"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
         {atCap && (
           <p className="mt-1 font-mono text-[10px] tracking-widest text-muted">
@@ -127,12 +180,25 @@ export function ForoCatalog() {
         </div>
       ) : visibleCount === 0 ? (
         <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 border border-dashed border-border/50 p-8 text-center">
-          <p className="font-mono text-[11px] tracking-widest text-muted">
-            // SIN HILOS EN ESTE RANGO DE VIBE
-          </p>
-          <p className="font-mono text-[10px] tracking-widest text-muted/80">
-            ajusta el slider para ver más
-          </p>
+          {query.trim() ? (
+            <>
+              <p className="font-mono text-[11px] tracking-widest text-muted">
+                // SIN RESULTADOS PARA «{query.trim()}»
+              </p>
+              <p className="font-mono text-[10px] tracking-widest text-muted/80">
+                prueba otro término o limpia la búsqueda
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-mono text-[11px] tracking-widest text-muted">
+                // SIN HILOS EN ESTE RANGO DE VIBE
+              </p>
+              <p className="font-mono text-[10px] tracking-widest text-muted/80">
+                ajusta el slider para ver más
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 md:gap-3 lg:grid-cols-5 xl:grid-cols-6">
