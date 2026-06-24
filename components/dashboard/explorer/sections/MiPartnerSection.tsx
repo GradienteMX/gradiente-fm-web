@@ -39,6 +39,7 @@ import { SUBCATEGORIES_BY_CATEGORY } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
 import { compressAndUploadImage } from '@/lib/imageUpload'
+import { EmbedList } from '@/components/dashboard/forms/shared/Fields'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { PARTNER_PUBLISHABLE_TYPES } from '@/lib/permissions'
 import { NuevoSection } from '@/components/dashboard/explorer/sections/NuevoSection'
@@ -1178,6 +1179,10 @@ function ListingsManager({
         shipping_mode: draft.shippingMode ?? null,
         images: draft.images ?? [],
         embeds: draft.embeds ?? [],
+        sale_url: draft.saleUrl ?? null,
+        whatsapp: draft.whatsapp ?? null,
+        contact_email: draft.email ?? null,
+        related_links: draft.relatedLinks ?? [],
         published_at: draft.publishedAt,
       }
       if (isNew) {
@@ -1443,6 +1448,55 @@ function ListingComposer({
             />
           </FormField>
 
+          <FormField label="ESCUCHA · EMBEDS (YouTube / SoundCloud)">
+            <EmbedList
+              embeds={listing.embeds ?? []}
+              onChange={(embeds) =>
+                onPatch({ embeds: embeds.length ? embeds : undefined })
+              }
+            />
+          </FormField>
+
+          <FormField label="LINK DE VENTA">
+            <CharCountedInput
+              value={listing.saleUrl ?? ''}
+              onChange={(v) => onPatch({ saleUrl: v || undefined })}
+              max={300}
+              disabled={!canManage}
+              placeholder="https://… (Discogs, Bandcamp, tu tienda)"
+            />
+          </FormField>
+
+          <FormField label="WHATSAPP">
+            <CharCountedInput
+              value={listing.whatsapp ?? ''}
+              onChange={(v) => onPatch({ whatsapp: v || undefined })}
+              max={40}
+              disabled={!canManage}
+              placeholder="+52 55… o link wa.me"
+            />
+          </FormField>
+
+          <FormField label="CORREO">
+            <CharCountedInput
+              value={listing.email ?? ''}
+              onChange={(v) => onPatch({ email: v || undefined })}
+              max={120}
+              disabled={!canManage}
+              placeholder="ventas@tutienda.mx"
+            />
+          </FormField>
+
+          <FormField label="RELACIONADO EN GRADIENTE">
+            <RelatedLinksInput
+              links={listing.relatedLinks ?? []}
+              disabled={!canManage}
+              onChange={(rl) =>
+                onPatch({ relatedLinks: rl.length ? rl : undefined })
+              }
+            />
+          </FormField>
+
           <ActionRow
             canManage={canManage}
             flash={flash}
@@ -1513,6 +1567,67 @@ function CharCountedInput({
       >
         {value.length} / {max}
       </span>
+    </div>
+  )
+}
+
+// Repeatable { label, url } editor for the listing's related-content links
+// (editorials / lists / articles in Gradiente, or any external URL).
+function RelatedLinksInput({
+  links,
+  disabled,
+  onChange,
+}: {
+  links: { label: string; url: string }[]
+  disabled?: boolean
+  onChange: (links: { label: string; url: string }[]) => void
+}) {
+  const inputCls =
+    'border bg-base px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none disabled:cursor-default disabled:opacity-60'
+  const update = (i: number, patch: Partial<{ label: string; url: string }>) =>
+    onChange(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
+  return (
+    <div className="flex flex-col gap-2">
+      {links.map((l, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={l.label}
+            disabled={disabled}
+            onChange={(e) => update(i, { label: e.target.value })}
+            placeholder="Etiqueta (ej. Top dubs 2026)"
+            className={`w-2/5 ${inputCls}`}
+            style={{ borderColor: '#242424' }}
+          />
+          <input
+            type="text"
+            value={l.url}
+            disabled={disabled}
+            onChange={(e) => update(i, { url: e.target.value })}
+            placeholder="/articulo/… o https://…"
+            className={`flex-1 ${inputCls}`}
+            style={{ borderColor: '#242424' }}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(links.filter((_, idx) => idx !== i))}
+            disabled={disabled}
+            aria-label="Quitar link"
+            className="px-1.5 font-mono text-[13px] text-muted transition-colors hover:text-sys-red disabled:opacity-40"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      {!disabled && (
+        <button
+          type="button"
+          onClick={() => onChange([...links, { label: '', url: '' }])}
+          className="self-start border border-dashed border-border px-2 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+        >
+          + AGREGAR LINK
+        </button>
+      )}
     </div>
   )
 }
