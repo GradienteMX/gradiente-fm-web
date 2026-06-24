@@ -1093,6 +1093,24 @@ function ListingsManager({
   })
   const [flash, setFlash] = useState<ComposerFlash>(null)
 
+  // INBOX/OFERTA — set of listing ids with an unanswered buyer comment/offer.
+  // Refetched when the listing set changes (e.g. after an edit/refresh).
+  const [unansweredIds, setUnansweredIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/partners/${encodeURIComponent(partner.id)}/inbox`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!cancelled && Array.isArray(j?.unanswered)) {
+          setUnansweredIds(new Set(j.unanswered as string[]))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [partner.id, listings])
+
   // Seed the draft from the source listing whenever editingId changes (and
   // we're editing an existing listing, not creating a new one). Refetch
   // updates `listings`; if the row currently being edited gets a server-
@@ -1286,27 +1304,30 @@ function ListingsManager({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Top: composer + preview side by side */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ListingComposer
-          listing={draft}
-          partner={partner}
-          canManage={canManage && !saving}
-          flash={flash}
-          onPatch={onPatch}
-          onPreview={onPreview}
-          onSaveDraft={() => persistDraft('draft')}
-          onPublish={() => persistDraft('published')}
-        />
-        <ListingPreviewPane
-          listing={draft}
-          partner={partner}
-          mode={previewMode}
-          onModeChange={setPreviewMode}
-        />
-      </div>
+      {/* Composer + preview appear ONLY while creating or editing a listing —
+          no empty panes when just browsing the list. */}
+      {draft && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <ListingComposer
+            listing={draft}
+            partner={partner}
+            canManage={canManage && !saving}
+            flash={flash}
+            onPatch={onPatch}
+            onPreview={onPreview}
+            onSaveDraft={() => persistDraft('draft')}
+            onPublish={() => persistDraft('published')}
+          />
+          <ListingPreviewPane
+            listing={draft}
+            partner={partner}
+            mode={previewMode}
+            onModeChange={setPreviewMode}
+          />
+        </div>
+      )}
 
-      {/* Bottom: paginated table */}
+      {/* The listings table — the seller's main view */}
       <ListingsTable
         partner={partner}
         rows={pageRows}
@@ -1322,6 +1343,7 @@ function ListingsManager({
         onAdd={onAdd}
         onDuplicate={onDuplicate}
         onDelete={onDelete}
+        unansweredIds={unansweredIds}
       />
     </div>
   )
@@ -2478,6 +2500,7 @@ function ListingsTable({
   onAdd,
   onDuplicate,
   onDelete,
+  unansweredIds,
 }: {
   partner: ContentItem
   rows: MarketplaceListing[]
@@ -2493,6 +2516,7 @@ function ListingsTable({
   onAdd: () => void
   onDuplicate: (id: string) => void
   onDelete: (id: string) => void
+  unansweredIds: Set<string>
 }) {
   const currency = partner.marketplaceCurrency ?? ''
   return (
@@ -2575,6 +2599,7 @@ function ListingsTable({
                 isEditing={editingId === l.id}
                 canManage={canManage}
                 currency={currency}
+                unanswered={unansweredIds.has(l.id)}
                 onSelect={() => onSelect(l.id)}
                 onDuplicate={() => onDuplicate(l.id)}
                 onDelete={() => onDelete(l.id)}
@@ -2652,6 +2677,7 @@ function ListingTableRow({
   isEditing,
   canManage,
   currency,
+  unanswered,
   onSelect,
   onDuplicate,
   onDelete,
@@ -2660,6 +2686,8 @@ function ListingTableRow({
   isEditing: boolean
   canManage: boolean
   currency: string
+  // INBOX/OFERTA — true when a buyer comment/offer is awaiting the seller.
+  unanswered?: boolean
   onSelect: () => void
   onDuplicate: () => void
   onDelete: () => void
@@ -2672,18 +2700,34 @@ function ListingTableRow({
         backgroundColor: isEditing ? 'rgba(249,115,22,0.05)' : undefined,
       }}
     >
-      <div className="relative h-8 w-8 overflow-hidden border border-border/60 bg-base">
-        {hasImage ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={listing.images[0]}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted/40">
-            <ImageIcon size={12} strokeWidth={1.25} />
-          </div>
+      <div className="relative h-8 w-8 border border-border/60 bg-base">
+        <div className="h-full w-full overflow-hidden">
+          {hasImage ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={listing.images[0]}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-muted/40">
+              <ImageIcon size={12} strokeWidth={1.25} />
+            </div>
+          )}
+        </div>
+        {/* INBOX/OFERTA — unanswered buyer message. Big, pulsing, hard to miss. */}
+        {unanswered && (
+          <span
+            className="absolute -right-1.5 -top-1.5 z-10 flex h-4 w-4 items-center justify-center rounded-full font-syne text-[11px] font-black leading-none text-white motion-safe:animate-pulse"
+            style={{
+              backgroundColor: '#E63329',
+              boxShadow: '0 0 8px rgba(230,51,41,0.9)',
+            }}
+            title="INBOX/OFERTA — mensaje sin responder"
+            aria-label="Mensaje sin responder"
+          >
+            !
+          </span>
         )}
       </div>
 
