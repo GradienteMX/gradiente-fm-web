@@ -73,6 +73,15 @@ const FPS_CAP = 30
 const PRESSURE_ITERATIONS = 20
 // Fixed sim timestep (decoupled from real frame time for stability).
 const SIM_DT = 0.016
+// At-rest throttle. When neither the pointer nor any hot card has touched the
+// field for REST_DELAY_MS, the loop drops to REST_FPS + REST_PRESSURE_ITERATIONS.
+// The carrier wave still animates the field (it never freezes unless
+// prefers-reduced-motion), and the teletext mosaic hides the lower sim fidelity
+// at rest — a pure GPU/battery saving, invisible by design. Activity (pointer
+// stir / hot-card heat) snaps it back to full FPS_CAP + PRESSURE_ITERATIONS.
+const REST_FPS = 12
+const REST_PRESSURE_ITERATIONS = 8
+const REST_DELAY_MS = 2500
 
 // ── Card↔fluid thermal coupling (ADDITIVE — heatField consumer) ───────────────
 // Each sim frame we poll lib/heatField for the live set of hot DOM cards and
@@ -396,6 +405,9 @@ export default function VibeFluid() {
       moved: false,
       has: false,
     }
+    // Last time the field was genuinely active (pointer stir or hot-card heat).
+    // Drives the at-rest throttle in the loop below.
+    let lastActivityMs = performance.now()
     const onPointerMove = (e: PointerEvent) => {
       const w = window.innerWidth
       const h = window.innerHeight
@@ -409,6 +421,7 @@ export default function VibeFluid() {
       pointer.y = ny
       pointer.has = true
       pointer.moved = true
+      lastActivityMs = performance.now()
     }
     window.addEventListener('pointermove', onPointerMove, { passive: true })
 
@@ -476,10 +489,13 @@ export default function VibeFluid() {
         splat(velocity, px, py, (ox / olen) * push, (oy / olen) * push, 0)
         processed++
       }
+      // Hot cards present → the field is active; keep full cadence so the warm
+      // halos render smoothly.
+      if (processed > 0) lastActivityMs = performance.now()
       splatMat.uniforms.u_radius.value = radiusWas
     }
 
-    const step = (time: number) => {
+    const step = (time: number, pressureIterations: number) => {
       // 1. Advect velocity along itself.
       advectMat.uniforms.u_velocity.value = velocity.read.texture
       advectMat.uniforms.u_source.value = velocity.read.texture
@@ -529,7 +545,7 @@ export default function VibeFluid() {
       renderer.setRenderTarget(pressure.read)
       renderer.clearColor()
       pressureMat.uniforms.u_divergence.value = divergenceRT.texture
-      for (let i = 0; i < PRESSURE_ITERATIONS; i++) {
+      for (let i = 0; i < pressureIterations; i++) {
         pressureMat.uniforms.u_pressure.value = pressure.read.texture
         blit(pressureMat, pressure.write)
         pressure.swap()
@@ -551,6 +567,7 @@ export default function VibeFluid() {
 
     // ── Loop ──────────────────────────────────────────────────────────────────────
     const targetFrameMs = 1000 / FPS_CAP
+    const restFrameMs = 1000 / REST_FPS
     const start = performance.now()
     let lastDraw = 0
     let raf = 0
@@ -576,7 +593,7 @@ export default function VibeFluid() {
             [0.74, 0.66, 0.45],
           ]
           for (const [sx, sy, sh] of seeds) splat(dye, sx, sy, sh, sh, sh)
-          for (let i = 0; i < 90; i++) step(i * SIM_DT * 4)
+          for (let i = 0; i < 90; i++) step(i * SIM_DT * 4, PRESSURE_ITERATIONS)
           draw()
           staticRendered = true
         }
@@ -584,10 +601,16 @@ export default function VibeFluid() {
       }
       staticRendered = false
 
-      if (now - lastDraw < targetFrameMs) return
+      // At-rest throttle: idle past REST_DELAY_MS → cheaper cadence + fewer
+      // pressure iterations (the carrier still animates; the mosaic hides it).
+      const atRest = now - lastActivityMs > REST_DELAY_MS
+      if (now - lastDraw < (atRest ? restFrameMs : targetFrameMs)) return
       lastDraw = now
 
-      step((now - start) / 1000)
+      step(
+        (now - start) / 1000,
+        atRest ? REST_PRESSURE_ITERATIONS : PRESSURE_ITERATIONS,
+      )
       draw()
     }
     raf = requestAnimationFrame(loop)
