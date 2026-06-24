@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
+import { useAuth } from '@/components/auth/useAuth'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import type { ContentItem } from '@/lib/types'
 import { LivePreview } from '@/components/dashboard/LivePreview'
@@ -45,6 +46,7 @@ function emptyDraft(): ContentItem {
     ticketUrl: '',
     price: '',
     editorial: false,
+    attributePartner: true,
   }
 }
 
@@ -72,6 +74,7 @@ export function EventoForm() {
   const search = useSearchParams()
   const editItemId = search?.get('edit') ?? null
   const { setCategoryFilter } = useVibe()
+  const { currentUser } = useAuth()
   const { openConfirm } = usePublishConfirm()
   const workbench = useDraftWorkbench({
     draftKey: DRAFT_KEY,
@@ -141,6 +144,13 @@ export function EventoForm() {
             value={!!draft.editorial}
             onChange={(v) => patch({ editorial: v })}
           />
+          {currentUser?.partnerId && (
+            <Toggle
+              label="MOSTRAR MI PROMOTORA EN EL GRID"
+              value={draft.attributePartner !== false}
+              onChange={(v) => patch({ attributePartner: v })}
+            />
+          )}
         </Section>
 
         <Section label="02" title="FECHAS">
