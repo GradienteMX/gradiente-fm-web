@@ -305,7 +305,10 @@ function SmCard({ item, isFresh }: CardVariantProps) {
   const genres = genreEntries(item.genres, 2)
 
   return (
-    <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
+    <article
+      className="group relative h-full overflow-hidden border cursor-pointer"
+      style={{ borderColor: `${categoryColor(item.type)}40` }}
+    >
       <CardImage item={item} size="sm" isFresh={isFresh} />
 
       {item.type === 'evento' && item.date && (
@@ -364,7 +367,10 @@ function MdCard({ item, isFresh }: CardVariantProps) {
   const isMix = item.type === 'mix'
 
   return (
-    <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
+    <article
+      className="group relative h-full overflow-hidden border cursor-pointer"
+      style={{ borderColor: `${categoryColor(item.type)}40` }}
+    >
       <CardImage item={item} size="md" isFresh={isFresh} />
 
       {item.type === 'evento' && item.date && (
@@ -447,7 +453,10 @@ function LgCard({ item, isFresh }: CardVariantProps) {
   const time = item.date ? fmtTime(item.date) : ''
 
   return (
-    <article className="group relative h-full overflow-hidden border border-border cursor-pointer">
+    <article
+      className="group relative h-full overflow-hidden border cursor-pointer"
+      style={{ borderColor: `${categoryColor(item.type)}40` }}
+    >
       <CardImage item={item} size="lg" isFresh={isFresh} />
 
       {/* Date block for events — top right inside image */}
