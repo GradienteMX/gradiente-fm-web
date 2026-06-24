@@ -39,7 +39,11 @@ function rowToThread(row: ThreadRow): ForoThread {
     subject: row.subject,
     body: row.body,
     imageUrl: row.image_url,
+    // Old rows pre-0036 backfill carry an empty array — fall back to the
+    // single cover so the gallery always has at least one image.
+    imageUrls: row.image_urls?.length ? row.image_urls : [row.image_url],
     genres: row.genres,
+    tags: row.tags ?? [],
     createdAt: row.created_at,
     bumpedAt: row.bumped_at,
   }

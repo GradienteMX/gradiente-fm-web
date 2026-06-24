@@ -556,8 +556,10 @@ export interface ForoThread {
   authorId: string         // references User.id
   subject: string          // shown big in catalog tile + thread header
   body: string             // OP body
-  imageUrl: string         // mandatory — data URL or /flyers/* path
+  imageUrl: string         // cover — mirrors imageUrls[0], kept for cheap tile reads
+  imageUrls: string[]      // full ordered gallery — at least one; [0] is the cover
   genres: string[]         // 1–5 genre ids — drives vibe-slider filtering
+  tags: string[]           // 1–5 metadata keywords (lib/genres TAGS) — transversal, no vibe
   createdAt: string        // ISO
   bumpedAt: string         // ISO — last reply, or createdAt when no replies
   deletion?: ForoDeletion  // tombstone — when set, hidden from catalog + body replaced with mod stub
@@ -565,6 +567,9 @@ export interface ForoThread {
 
 export const FORO_THREAD_GENRES_MIN = 1
 export const FORO_THREAD_GENRES_MAX = 5
+export const FORO_THREAD_TAGS_MIN = 1
+export const FORO_THREAD_TAGS_MAX = 5
+export const FORO_THREAD_IMAGES_MAX = 5
 
 export interface ForoReply {
   id: string
