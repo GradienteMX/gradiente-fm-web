@@ -562,10 +562,47 @@ function PostBody({
   )
 }
 
-// Render body text with `>>id` tokens turned into clickable buttons.
-// When the cited id resolves to a post authored by the current user,
-// append a `[TÚ]` chip so the reader sees "this person is replying to me"
-// without scanning the thread.
+// Pull the 11-char video id out of any common YouTube URL shape
+// (watch?v=, youtu.be/, /embed/, /shorts/). Returns null for non-YouTube.
+function youtubeId(url: string): string | null {
+  const patterns = [
+    /youtube\.com\/watch\?(?:.*&)?v=([\w-]{11})/i,
+    /youtu\.be\/([\w-]{11})/i,
+    /youtube\.com\/embed\/([\w-]{11})/i,
+    /youtube\.com\/shorts\/([\w-]{11})/i,
+  ]
+  for (const re of patterns) {
+    const m = url.match(re)
+    if (m) return m[1]
+  }
+  return null
+}
+
+function YouTubeEmbed({ id }: { id: string }) {
+  return (
+    <span className="my-2 block w-full max-w-md">
+      <span
+        className="relative block w-full overflow-hidden border border-border bg-black"
+        style={{ aspectRatio: '16 / 9' }}
+      >
+        <iframe
+          src={`https://www.youtube.com/embed/${id}`}
+          title="Reproductor de YouTube"
+          loading="lazy"
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 h-full w-full"
+        />
+      </span>
+    </span>
+  )
+}
+
+// Render body text with three kinds of inline tokens promoted out of plain
+// text: `>>id` quote-links (clickable, with a `[TÚ]` chip when the cited post
+// is the reader's), bare URLs (clickable anchors), and YouTube URLs (inline
+// players right where they were pasted). Everything else stays literal text
+// with whitespace preserved.
 function BodyText({
   body,
   onQuoteClick,
@@ -575,9 +612,11 @@ function BodyText({
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
 }) {
-  const parts = body.split(/(>>[a-z0-9-]+)/gi)
+  // Split on URLs first, then quote tokens — capturing groups keep the
+  // delimiters in the resulting array.
+  const parts = body.split(/(https?:\/\/[^\s]+|>>[a-z0-9-]+)/gi)
   return (
-    <p className="whitespace-pre-wrap break-words">
+    <div className="whitespace-pre-wrap break-words">
       {parts.map((part, i) => {
         if (/^>>[a-z0-9-]+$/i.test(part)) {
           const id = part.slice(2)
@@ -607,8 +646,23 @@ function BodyText({
             </span>
           )
         }
+        if (/^https?:\/\//i.test(part)) {
+          const vid = youtubeId(part)
+          if (vid) return <YouTubeEmbed key={i} id={vid} />
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="break-all text-sys-orange underline decoration-sys-orange/40 underline-offset-2 transition-colors hover:text-primary hover:decoration-primary"
+            >
+              {part}
+            </a>
+          )
+        }
         return <span key={i}>{part}</span>
       })}
-    </p>
+    </div>
   )
 }
