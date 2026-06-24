@@ -61,7 +61,6 @@ interface VibeContextValue {
 | Reader | Fields used |
 |---|---|
 | [[ContentGrid]] | `vibeRange`, `categoryFilter`, `genreFilter` (filter), `setVisibleGenres` (push) |
-| [[ContentFeed]] | `vibeRange` |
 | [[VibeSlider]] | `vibeRange`, `setVibeRange`, `genreFilter`, `toggleGenre`, `visibleGenres` |
 | [[VibeFader]] | (none — uses [[useAuth]] + [[vibeChecks]] hooks instead) |
 | [[CategoryRail]] | `categoryFilter`, `setCategoryFilter` |

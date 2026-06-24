@@ -62,7 +62,7 @@ Adds a `▋` blinking cursor glyph at the end of an element. Unused currently bu
 
 ## `animate-fade-up`
 
-Custom keyframe: 6px translate-Y + opacity, 250ms `ease-out`. Used on [[ContentFeed]] for cascading entries.
+Custom keyframe: 6px translate-Y + opacity, 250ms `ease-out`. Was used on the linear `ContentFeed` for cascading entries (removed 2026-06-23 — dead code deleted); the class itself is still defined.
 
 ## Tailwind-defined animations
 

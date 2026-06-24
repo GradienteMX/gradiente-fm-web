@@ -487,3 +487,30 @@ body {
   }
 }
 
+/* Reduced-motion backstop — neutralize the remaining infinite/looping CSS
+   animations that aren't already branched in JS. Targets named classes ONLY:
+   a blanket `* { animation: none }` would fight the CRTShader / VibeFader /
+   SignalTransition / VibeSlider JS reduced-motion paths and kill the one-shot
+   overlay reveals. The CRT static scanline is a shader step(), not a CSS
+   animation, so it is unaffected. (cursor-blink / animate-scanline are
+   currently unused but neutralized here for safety.) */
+@media (prefers-reduced-motion: reduce) {
+  .fresh-glitch,
+  .fresh-scanline,
+  .fresh-cover-flicker,
+  .fresh-chip-flicker,
+  .animate-scanline,
+  .animate-pulse,
+  .cursor-blink::after {
+    animation: none !important;
+  }
+  /* fresh-cover-flicker modulates brightness() on its keyframes; ensure no
+     residual filter is left applied, and hide the now-static scanline bar. */
+  .fresh-cover-flicker {
+    filter: none !important;
+  }
+  .fresh-scanline {
+    opacity: 0 !important;
+  }
+}
+

@@ -8,9 +8,12 @@
 --   2. sweep_old_foro_threads()— daily: hard-delete foro_threads with
 --                                bumped_at < now() - 30 days (cascades to replies)
 --
--- The HP write path (interaction → hp_events insert) isn't built yet, so the
--- rollup runs as a no-op until that lands. Migration now so the schedule + math
--- are in place when signals start flowing.
+-- HISTORICAL NOTE (corrected 2026-06-23): this header originally claimed the
+-- HP write path "isn't built yet" so the rollup ran as a no-op. That is STALE.
+-- The HP write path is LIVE in production (interactions → record_hp_event →
+-- hp_events / user_hp_events) and pg_cron runs apply_hp_rollup() every 5 min
+-- (verified: cron.job jobid 1 active). See migration 0024. SQL body below is
+-- the original V1, kept as historical record — the live function differs.
 
 -- ── pg_cron extension ──────────────────────────────────────────────────────
 -- Lives in `cron` schema by Supabase convention; `cron.schedule()` is the
@@ -23,11 +26,11 @@ create extension if not exists pg_cron;
 -- Re-anchors hp_last_updated_at to now() so subsequent reads decay from the
 -- new snapshot.
 --
--- Half-lives match ATTENTION_HALF_LIFE_HOURS in lib/curation.ts. Event-
--- imminence modulation (slow decay near doors, paused live window) is NOT
--- ported here — V2 once we see how aggressive that needs to be in practice.
--- Worst case for V1: events near their start get slightly over-decayed at
--- rollup time. Read-side rendering still uses the full TS-side math.
+-- Half-lives match ATTENTION_HALF_LIFE_HOURS in lib/curation.ts. NOTE
+-- (corrected 2026-06-23): this 0008 version did NOT port event-imminence
+-- modulation — but migration 0024 (apply_hp_rollup imminence) later DID, and
+-- the 0024 definition is what runs in production. Treat the body below as the
+-- original V1 (historical record), not the live function.
 --
 -- Concurrency: snapshots event IDs upfront so inserts arriving DURING the
 -- rollup land in the next batch (not lost, not double-counted).

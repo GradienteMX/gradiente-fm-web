@@ -36,6 +36,11 @@ export default function NotFound() {
   // Continuous corruption pass — scramble most chars, settle for a beat,
   // re-scramble. Mimics signal hunting in old terminals.
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    // Respect prefers-reduced-motion: skip the continuous scramble loop and
+    // leave the path static. With tick frozen at 0 the effect below renders
+    // `glitched` = `path` (intensity 0 → no corruption).
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const id = setInterval(() => {
       setTick((t) => t + 1)
     }, 220)

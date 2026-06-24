@@ -184,11 +184,22 @@ export async function POST(request: NextRequest) {
   //    published row. Without the slug-side match, the orphan persists and
   //    the next publish attempt hits a `items_slug_key` unique-constraint
   //    violation. Idempotent — no matching draft, no-op.
+  // Two author-scoped .eq() deletes instead of a single string-interpolated
+  // .or(): client-supplied id/slug now flow through PostgREST value-encoding
+  // and can no longer inject filter-grammar syntax. Each is idempotent
+  // (no matching draft → no-op); the second only runs when slug != id.
   await supabase
     .from('drafts')
     .delete()
     .eq('author_id', user.id)
-    .or(`item_payload->>id.eq.${item.id},item_payload->>slug.eq.${item.slug}`)
+    .eq('item_payload->>id', item.id)
+  if (item.slug !== item.id) {
+    await supabase
+      .from('drafts')
+      .delete()
+      .eq('author_id', user.id)
+      .eq('item_payload->>slug', item.slug)
+  }
 
   return NextResponse.json({ ok: true, itemId: item.id })
 }

@@ -18,7 +18,7 @@ updated: 2026-04-25
 - ~~**`/opinion` route is missing**~~ — **fixed 2026-04-22.** Created `app/opinion/page.tsx`.
 - ~~**Agenda tagline "HOY → PASADO"**~~ — **fixed 2026-04-22.** Changed to `FUTURO → PASADO` to match actual DESC-by-date sort.
 - ~~**[[Editorial]] tagline says "TEXTOS & OPINIÓN"**~~ — **fixed 2026-04-22.** Now `TEXTOS` only; `/opinion` exists as its own page.
-- ~~**[[ArticleCard]] `TYPE_LABEL` map**~~ — **fixed 2026-04-22.** Added `opinion` and `partner` entries to satisfy `Record<ContentType, string>`.
+- ~~**`ArticleCard` `TYPE_LABEL` map**~~ — **fixed 2026-04-22.** Added `opinion` and `partner` entries to satisfy `Record<ContentType, string>`. (Component since removed 2026-06-23 — dead code deleted.)
 - ~~**Every `cursor-pointer` card doesn't link anywhere**~~ — **resolved 2026-04-23.** Cards no longer "link" — they open overlays via [[Overlay System]]. Dedicated routes were explicitly rejected in [[Contained Single Surface]].
 - **Tailwind `base` color collision with `text-base` font-size utility** — the config in [tailwind.config.ts](../../tailwind.config.ts) declares `colors.base: '#000000'`, which makes Tailwind generate `.text-base { color: #000000 }` in addition to the default font-size rule. Anywhere `text-base` or `md:text-base` is used alongside another color class (e.g. `text-secondary`), the black color can override at matching breakpoints and render text invisible on the black background. Hit once in [[MixOverlay]] (fixed locally with `md:text-[15px]`). Root fix is to rename the `base` color token — see spawned task. A spot-check of [[GenericOverlay]] at `text-base` usage is also warranted.
 - **[[ContentGrid]] has no exit fade for filtered-out cards** — `<AnimatePresence>` was removed 2026-04-25 (Chunk 3-B) because it was keeping filtered-out cards mounted at full opacity, silently breaking the in-page category + genre filters. Cards now unmount immediately when the filter drops them. The mount/reflow animation still fires via `motion.div`'s `layout` prop. If a smooth exit fade is wanted later, the path forward is to find a Framer Motion 12 incantation for `popLayout` + the mosaic's `layoutId` that actually lets exits complete (forwardRef on `MosaicItem` was added but didn't fix it on its own).
@@ -26,7 +26,7 @@ updated: 2026-04-25
 
 ## Architectural / design decisions pending
 
-- **[[Dual Feed Systems]]** — delete the orphan [[ContentFeed]] + row cards, or resurrect as a toggleable list view?
+- ~~**[[Dual Feed Systems]]** — delete the orphan `ContentFeed` + row cards, or resurrect as a toggleable list view?~~ — **decided 2026-06-23.** Deleted as dead code. `ContentGrid` mosaic is the sole feed system.
 - **[[Vibe Gradient]] reconciliation** — three color scales overlap. Consolidate into one module?
 - ~~**[[mockData]]** — when do we commit to [[Supabase Migration]]?~~ — **decided 2026-05-02.** Visual MVP is feature-complete enough; backend is now the next major arc. Plan in [[Backend Plan]] (supersedes the older [[Supabase Migration]] draft). Mock data migrates with a `seed=true` flag that RLS hides from public reads — admins keep visibility for testing, real content can swap in incrementally, batch-delete when ready.
 - ~~**Card click → detail view**~~ — **decided 2026-04-23.** Overlay, not route. See [[Contained Single Surface]] and [[Overlay System]].

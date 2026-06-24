@@ -36,7 +36,7 @@ The 1995 Evangelion HUD language made concrete in web components:
 
 These aren't stickers — they're structural. For example:
 
-- The **hazard stripe** is the empty-state frame everywhere ([[ContentGrid]], [[ContentFeed]]). It's how nothing is communicated.
+- The **hazard stripe** is the empty-state frame in [[ContentGrid]]. It's how nothing is communicated.
 - The **`//` divider** on `.nge-divider` is the standard section break. Removing it would leave no section break.
 - **`sys-label`** is the unit for all "system voice" metadata — dates, durations, counts, badges. Without it, the information hierarchy collapses.
 

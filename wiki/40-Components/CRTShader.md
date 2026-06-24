@@ -83,5 +83,4 @@ To tune: `cornerRadius` is the curvature dial. `halfSize` controls how much of t
 ## See also
 
 - [[CRT Approach]] — the A-vs-B decision that frames this component's role
-- [[Waveform]] — companion HUD component; both together form the "analog chrome" layer
 - [[Navigation]] — the existing EVA header; the CRT overlay sits above it at `z-[100]`

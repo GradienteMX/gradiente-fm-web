@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react'
@@ -59,24 +60,28 @@ export function VibeProvider({ children }: { children: ReactNode }) {
     setGenreFilter([])
   }, [])
 
-  return (
-    <VibeContext.Provider
-      value={{
-        vibeRange,
-        setVibeRange,
-        categoryFilter,
-        setCategoryFilter,
-        genreFilter,
-        setGenreFilter,
-        toggleGenre,
-        clearGenres,
-        visibleGenres,
-        setVisibleGenres,
-      }}
-    >
-      {children}
-    </VibeContext.Provider>
+  // Stable context-value identity: the state setters + toggleGenre/clearGenres
+  // are already stable, so the value object only needs to change when one of
+  // the four state slices does. Without this memo a fresh object literal every
+  // render re-renders every useVibe() consumer on any vibe state change
+  // (e.g. the per-pointermove setVibeRange during a slider drag).
+  const value = useMemo<VibeContextValue>(
+    () => ({
+      vibeRange,
+      setVibeRange,
+      categoryFilter,
+      setCategoryFilter,
+      genreFilter,
+      setGenreFilter,
+      toggleGenre,
+      clearGenres,
+      visibleGenres,
+      setVisibleGenres,
+    }),
+    [vibeRange, categoryFilter, genreFilter, visibleGenres, toggleGenre, clearGenres],
   )
+
+  return <VibeContext.Provider value={value}>{children}</VibeContext.Provider>
 }
 
 export function useVibe(): VibeContextValue {

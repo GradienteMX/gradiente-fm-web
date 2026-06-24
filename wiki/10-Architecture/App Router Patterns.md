@@ -37,7 +37,6 @@ Every page renders inside this shell. See [app/layout.tsx](../../app/layout.tsx)
 - [[Navigation]] — needs `usePathname`, `useState`, clock interval
 - [[VibeSlider]] — pointer events, refs, state
 - [[ContentGrid]] — reads context, Framer Motion layout
-- [[ContentFeed]] — reads context (not currently wired to any page)
 - [[PartnersRail]] — uses `useMemo` (could be server, marked client defensively)
 - [[VibeContext]] — the Provider itself
 

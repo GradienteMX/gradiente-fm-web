@@ -16,7 +16,7 @@
 - [[Data Flow]] — mockData → filters → curation → pages → UI
 - [[Folder Structure]] — how `/app`, `/components`, `/lib`, `/context` divide
 - [[App Router Patterns]] — server-by-default, client islands, `@/` aliases
-- [[Dual Feed Systems]] — why `ContentGrid` and `ContentFeed` both exist
+- [[Dual Feed Systems]] — historical note: linear `ContentFeed` removed 2026-06-23; `ContentGrid` mosaic is the sole feed
 - [[Overlay System]] — card click → full-screen overlay, URL sync, type dispatch
 
 ## 20 — Domain
@@ -79,10 +79,6 @@
 - [[SearchOverlay]] — `/`-invoked terminal command-bar; pure substring search across mocked + drafts
 - [[GenreChipButton]] — clickable genre-chip wrapper; sets `genreFilter` + closes overlay + lands on home
 - [[BrandPageShell]] — shared chrome + section helpers for the static identity routes (`/about`, `/manifesto`, `/equipo`)
-- [[ContentFeed]] — alternative linear date-grouped feed (not wired to pages)
-- [[EventCard]] — linear event card (used by ContentFeed)
-- [[MixCard]] — linear mix card with fake waveform
-- [[ArticleCard]] — linear article card for text content
 - [[CommentsColumn]] — split-screen right rail inside overlays; chrome + scroll body + composer footer
 - [[CommentList]] — threaded renderer with role badges, ASCII reactions, depth cap, tombstones, focus pulse
 - [[CommentComposer]] — login-gated dual-variant composer (`root` / `reply`); Enter posts

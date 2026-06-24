@@ -3,14 +3,21 @@ import { createClient } from '@/lib/supabase/server'
 
 // /api/partners/[id]/team
 // GET    → list team members (users with partner_id = [id])
-// POST   → add a user to the team (sets users.partner_id = [id])
+// POST   → add a user to the team
 // PATCH  → toggle partner_admin flag on a team member
-// DELETE → kick a team member (sets users.partner_id = null,
-//          users.partner_admin = false)
+// DELETE → kick a team member
 //
-// All four are gated on canManagePartnerTeam: site admin OR a team member
-// of this partner whose users.partner_admin = true. Regular team members
-// can READ via GET but not modify.
+// Reads are gated by gateTeamAccess (site admin OR any team member). WRITES go
+// through SECURITY DEFINER RPCs (partner_team_add / _set_admin / _remove —
+// migration 0033) which re-authorize server-side from auth.uid() and scope
+// every mutation to THIS partner, never touching role/is_mod/is_og.
+//
+// Why RPCs and not a direct users UPDATE: the caller's RLS-bound client can't
+// write another user's row (users_self_update pins partner_id/partner_admin;
+// users_admin_all needs a site admin), so the old direct UPDATE was a silent
+// no-op for partner-admins. "Fixing" that with a broad users policy or the
+// service-role client would let a partner-admin rewrite ANY user's role —
+// privilege escalation. The definer RPCs are the safe middle path.
 
 interface AddBody {
   user_id: string
@@ -24,6 +31,9 @@ interface PatchBody {
 interface DeleteBody {
   user_id: string
 }
+
+const TEAM_FIELDS =
+  'id, username, display_name, role, is_mod, is_og, partner_admin, joined_at'
 
 async function gateTeamAccess(
   supabase: ReturnType<typeof createClient>,
@@ -56,6 +66,23 @@ async function gateTeamAccess(
   return { user, profile }
 }
 
+// Map a SECURITY DEFINER RPC exception to an HTTP status. The functions raise
+// 'not authenticated' / 'forbidden' / '… not found' / 'user not on this
+// partner team'.
+function mapRpcError(error: { message?: string | null }) {
+  const m = error?.message ?? ''
+  if (m.includes('not authenticated')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (m.includes('forbidden')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (m.includes('not found') || m.includes('not on this partner team')) {
+    return NextResponse.json({ error: m }, { status: 404 })
+  }
+  return NextResponse.json({ error: m || 'Server error' }, { status: 500 })
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } },
@@ -66,7 +93,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, username, display_name, role, is_mod, is_og, partner_admin, joined_at')
+    .select(TEAM_FIELDS)
     .eq('partner_id', params.id)
     .order('joined_at', { ascending: true })
 
@@ -92,30 +119,21 @@ export async function POST(
     return NextResponse.json({ error: 'user_id required' }, { status: 400 })
   }
 
-  // Verify the partner exists (defensive — partner could've been deleted
-  // mid-flow). Otherwise the FK on users.partner_id would 23503.
-  const { data: partner } = await supabase
-    .from('items')
-    .select('id')
-    .eq('id', params.id)
-    .eq('type', 'partner')
-    .maybeSingle()
-  if (!partner) {
-    return NextResponse.json({ error: 'Partner not found' }, { status: 404 })
-  }
+  const { error } = await supabase.rpc('partner_team_add', {
+    p_partner_id: params.id,
+    p_user_id: body.user_id,
+  })
+  if (error) return mapRpcError(error)
 
-  // Adding a user already on another partner overwrites the assignment.
-  // Matches the existing behavior — we don't enforce one-team-per-user
-  // across the whole site, just on the active membership row.
-  const { data, error } = await supabase
+  // Re-select the public team fields for the response — the SECURITY DEFINER
+  // function returns the whole users row (incl. private columns like hp), so
+  // never echo its return value straight back to the client.
+  const { data: member } = await supabase
     .from('users')
-    .update({ partner_id: params.id, partner_admin: false })
+    .select(TEAM_FIELDS)
     .eq('id', body.user_id)
-    .select('id, username, display_name, role, is_mod, is_og, partner_admin, joined_at')
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ member: data })
+    .maybeSingle()
+  return NextResponse.json({ member })
 }
 
 export async function PATCH(
@@ -139,21 +157,19 @@ export async function PATCH(
     return NextResponse.json({ error: 'partner_admin must be boolean' }, { status: 400 })
   }
 
-  // Only mutate users actually on this partner — protects against
-  // promoting a user assigned to a different partner via a forged id.
-  const { data, error } = await supabase
-    .from('users')
-    .update({ partner_admin: body.partner_admin })
-    .eq('id', body.user_id)
-    .eq('partner_id', params.id)
-    .select('id, username, display_name, role, is_mod, is_og, partner_admin, joined_at')
-    .maybeSingle()
+  const { error } = await supabase.rpc('partner_team_set_admin', {
+    p_partner_id: params.id,
+    p_user_id: body.user_id,
+    p_admin: body.partner_admin,
+  })
+  if (error) return mapRpcError(error)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) {
-    return NextResponse.json({ error: 'User not on this partner team' }, { status: 404 })
-  }
-  return NextResponse.json({ member: data })
+  const { data: member } = await supabase
+    .from('users')
+    .select(TEAM_FIELDS)
+    .eq('id', body.user_id)
+    .maybeSingle()
+  return NextResponse.json({ member })
 }
 
 export async function DELETE(
@@ -174,19 +190,11 @@ export async function DELETE(
     return NextResponse.json({ error: 'user_id required' }, { status: 400 })
   }
 
-  // Same scoped-update guard as PATCH — only kick if the user is actually
-  // on this partner team.
-  const { data, error } = await supabase
-    .from('users')
-    .update({ partner_id: null, partner_admin: false })
-    .eq('id', body.user_id)
-    .eq('partner_id', params.id)
-    .select('id')
-    .maybeSingle()
+  const { error } = await supabase.rpc('partner_team_remove', {
+    p_partner_id: params.id,
+    p_user_id: body.user_id,
+  })
+  if (error) return mapRpcError(error)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) {
-    return NextResponse.json({ error: 'User not on this partner team' }, { status: 404 })
-  }
   return NextResponse.json({ ok: true })
 }

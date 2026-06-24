@@ -1266,6 +1266,18 @@ export type Database = {
       }
       publish_partner_event: { Args: { p_item_id: string }; Returns: Json }
       discard_partner_event: { Args: { p_item_id: string }; Returns: Json }
+      partner_team_add: {
+        Args: { p_partner_id: string; p_user_id: string }
+        Returns: Json
+      }
+      partner_team_set_admin: {
+        Args: { p_partner_id: string; p_user_id: string; p_admin: boolean }
+        Returns: Json
+      }
+      partner_team_remove: {
+        Args: { p_partner_id: string; p_user_id: string }
+        Returns: Json
+      }
       update_partner_event: {
         Args: {
           p_item_id: string

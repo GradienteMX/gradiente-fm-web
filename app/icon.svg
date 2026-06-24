@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Gradiente">
+  <rect width="32" height="32" rx="6" fill="#0D0D0D"/>
+  <!-- Vibe thermal ramp (glacial -> estatica -> volcan): the product's
+       dominant brand motif, rendered as a 5-step instrument scale. -->
+  <rect x="9" y="5.5"  width="14" height="3.2" rx="0.8" fill="#087487"/>
+  <rect x="9" y="11"   width="14" height="3.2" rx="0.8" fill="#2E7E8C"/>
+  <rect x="9" y="16.5" width="14" height="3.2" rx="0.8" fill="#948E85"/>
+  <rect x="9" y="22"   width="14" height="3.2" rx="0.8" fill="#FC6C0F"/>
+  <rect x="9" y="26"   width="14" height="2.4" rx="0.8" fill="#FEB225"/>
+</svg>

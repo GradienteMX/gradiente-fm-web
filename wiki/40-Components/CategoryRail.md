@@ -67,7 +67,7 @@ The rail is passed `gridItems` (already filtered for home — upcoming, non-part
 
 ## Bottom panels
 
-Two decorative subsystem panels below the nav: a `WAVEFORM·10-A` placeholder ([[Waveform]]) and an `ANALIZANDO·ESPECTRO` SVG curve. Static for now — will become reactive when the audio session lands. See [[Open Questions]] (audio-context session).
+Two decorative subsystem panels below the nav: a `WAVEFORM·10-A` placeholder and an `ANALIZANDO·ESPECTRO` SVG curve. Static for now — will become reactive when the audio session lands. See [[Open Questions]] (audio-context session). (The standalone `Waveform` component was removed 2026-06-23 — dead code deleted.)
 
 ## Links
 

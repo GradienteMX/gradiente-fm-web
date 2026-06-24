@@ -148,6 +148,7 @@ export function CommentComposer({
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={onKeyDown}
+        aria-label={variant === 'root' ? 'Escribe un comentario' : 'Escribe una respuesta'}
         placeholder={placeholder}
         rows={variant === 'root' ? 2 : 3}
         disabled={submitting}

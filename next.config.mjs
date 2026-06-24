@@ -23,6 +23,11 @@ const nextConfig = {
       { protocol: 'https', hostname: 'i.discogs.com' },
     ],
   },
+  // Guarantees per-icon tree-shaking for lucide-react (imported across ~58
+  // source files) so only the icons actually used land in each bundle.
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
 }
 
 export default nextConfig

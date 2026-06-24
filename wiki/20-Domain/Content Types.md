@@ -77,7 +77,7 @@ As of 2026-04-24, mix has a rich metadata profile driven by [[MixOverlay]] and t
 
 Audio playback is currently a visual prototype only: transport controls are present but non-functional, ABRIR FUENTE / `O` hotkey opens the active source in a new tab. Real playback is deferred to the audio-context session — see [[Open Questions]].
 
-[[MixCard]] (linear list) still uses a decorative fake waveform. [[ContentCard]] (mosaic) is unchanged.
+[[ContentCard]] (mosaic) renders mixes. (The old linear `MixCard` with its decorative fake waveform was removed 2026-06-23 — dead code deleted.)
 
 ### noticia / review / editorial / opinion
 

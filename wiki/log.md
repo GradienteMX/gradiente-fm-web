@@ -8,6 +8,29 @@
 
 ---
 
+## 2026-06-23 · OPT · Full-spectrum optimization — Phase 0 baselines + Phase 1 quick-wins + security pass (branch `opt/phase1-quickwins`, UNMERGED)
+
+Started executing `GRADIENTE_OPTIMIZATION_PROMPT.md` (repo-root brief: faster/lighter/safer without changing what Gradiente is). All work on **`opt/phase1-quickwins`** — NOT merged, NOT pushed (`main` auto-deploys). Two production builds clean (`✓ Compiled successfully`, only 2 pre-existing exhaustive-deps warnings).
+
+**Phase 0 — measured baselines (no app-code changes):**
+- **Bundle:** home `/` = **423 kB** First Load JS vs **237 kB** for every type page → the ~186 kB premium is the static `CategoryRail → NowPlayingHud → ParticleField3D` three.js chain (VibeFluid is already `dynamic ssr:false`). Splitting ParticleField3D → ~237 kB (−44%); the runtime mount gate is import-independent (zero-risk).
+- **DB:** feed read 1.25 ms / `vibe_check_aggregates` 0.9 ms (latency is a non-issue at beta scale); `select *` payload 511 kB. Advisors: 92 multiple_permissive, 27 auth_rls_initplan, 15 unused_index, 11 unindexed_fk. **pg_cron: 3 jobs ACTIVE** (hp + user-hp rollup /5 min, foro sweep daily) — the `0008` "no-op" header was stale (corrected). `users` RLS = 3 policies; the partner-team route is a **silent no-op** for partner-admins (no escalation exists today).
+- **Home grid ≈ 140 cards** (39 non-evento + ~103 recently-past eventos + ~13 elevated; no cap; scales with scraper volume).
+- **Index reality:** `items_hp_idx` is HOT (37k scans — never drop); `items_search_idx` (568 kB GIN) is the genuinely dead one (0 scans).
+- **New security surface:** ~20 `SECURITY DEFINER` funcs were anon/authenticated-EXECUTE-able (incl. `ingest_scraped_event`, `peek_invite_card`); `uploads` bucket allows listing; leaked-password protection off.
+
+**Phase 1 — quick-wins (landed):** [[VibeContext]] value memoized · reduced-motion CSS backstop (named `.fresh-*`/scanline/pulse classes — never a blanket `*`) · `optimizePackageImports:['lucide-react']` · deleted dead code (Waveform.tsx, [[Dual Feed Systems|ContentFeed]] + EventCard/MixCard/ArticleCard, `_pendingConfirm`) · dotenv→devDeps · `app/error.tsx` + `global-error.tsx` + `/api/health` (unauth probe) · `app/icon.svg` (favicon 404 gone) · comment/reply textarea `aria-label` · `not-found.tsx` honors reduced-motion · `@next/next/no-img-element` off (Vercel warning flood gone) · stale docs fixed (`CLAUDE.md` mockData line, `0008` header) · removed `out/` + `public/.nojekyll`. Wiki truthed: 13 files + [[Dual Feed Systems]] rewritten + 4 dead component pages deleted.
+
+**Security pass — code (landed):** `.or()` filter-injection in `app/api/items/route.ts` → two author-scoped `.eq()` deletes. Partner-team route rewritten to call 3 RLS-first `SECURITY DEFINER` RPCs (`partner_team_add`/`_set_admin`/`_remove`) + typed in `database.types.ts`.
+
+**Security pass — SQL (PENDING, apply via SQL editor — never `db push`):** `supabase/migrations/0033_security_hardening.sql` — touch_entities search_path; close anon RPC surface (`revoke … all functions … from anon` + re-grant `peek_invite_card`; cron/trigger funcs also revoked from authenticated); the 3 `partner_team_*` RPCs. **Apply 0033 BEFORE the route change deploys**, or site-admin team writes break until the functions exist.
+
+**PENDING — Iker dashboard (not code):** rotate the service-role key (+ Vercel + scripts), enable leaked-password protection, decide the `uploads` bucket listing policy.
+
+**NEXT phases (not started):** split ParticleField3D (−186 kB); React.memo cards + per-key cache + slider rAF-batch; DB advisor hygiene (`(select auth.uid())`, merge permissive policies); a11y (VibeFader keyboard, dialog semantics, contrast at render layer); structural bets (shared ParticleField3D → GL singleton → curation p90 → virtualization). Brief corrections recorded in the `optimization-recon-corrections` memory.
+
+---
+
 ## 2026-06-23 · INGEST · Invite signup — real T&C swapped into the modal (placeholder → reviewed acuerdo)
 
 Replaced the placeholder `BETA_TERMS` in [BetaTermsModal.tsx](../components/welcome/BetaTermsModal.tsx) with the Iker-reviewed closed-beta acuerdo (10 clauses + preamble + firma-electrónica closing). Each clause carries a plain-Spanish *"En claro"* line so it reads human, not adversarial. Two intents written in firmly: **cl. 4** — content stays the user's, NEVER sold/licensed to third parties, monetization retribuye-a-ti, + explicit right to delete content anytime; **cl. 5** (new) — content responsibility sits with the uploader (owner), Gradiente is a neutral host. Softened over-promises (acceso "sin costo durante la beta" not free-forever; payouts = "trabajar de buena fe"), added beta as-is + age/capacity, narrowed the non-compete, toned down cl. 8 (dropped the criminal/daño-moral headline), referenced Aviso de Privacidad + ARCO. Render verified via the forced-fallback path (temp edit, reverted); `tsc` clean. Source draft kept at `Downloads/Gradiente - T&C revisado (borrador).md`. **`BETA_TERMS.version = '2026-06-23'`** is the consent-version anchor.

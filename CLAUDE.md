@@ -19,7 +19,7 @@ The repo folder is still named `espectro-fm-web` for historical reasons; the UI 
 - Animation: Framer Motion 12
 - Icons: Lucide React
 - Date handling: date-fns 3 + `date-fns/locale/es`
-- Backend: Supabase (Postgres + RLS + Auth + Storage + Realtime), live in production on Vercel at gradiente.org. `lib/mockData.ts` is retained as dev seed data only. See [`wiki/70-Roadmap/Backend Plan.md`](./wiki/70-Roadmap/Backend Plan.md).
+- Backend: Supabase (Postgres + RLS + Auth + Storage + Realtime), live in production on Vercel at gradiente.org. `lib/mockData.ts` is the dev seed dataset — but NOT dead: it is still statically imported by some client overlays (`SearchOverlay`, `Mix`/`Articulo`/`Listicle` overlays, `OverlayRouter` fallback), which search/relate against `MOCK_ITEMS` rather than the live DB (a known decommission target). Its `mockUsers`/`mockComments` *helper functions* (`badgeFor`/`flagsFor`/`descendantCount`/…) are also live in `CommentList`/`PostHeader` — when decommissioning, delete the data arrays, not the modules. See [`wiki/70-Roadmap/Backend Plan.md`](./wiki/70-Roadmap/Backend Plan.md).
 
 ## Folder structure
 

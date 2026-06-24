@@ -323,10 +323,6 @@ export interface ContentItem {
   // Set by the dashboard prototype (see lib/drafts.ts) so cards/overlays can
   // distinguish session-only items from real published content.
   _draftState?: 'draft' | 'published'
-  // Frontend-only — set transiently when the editor is reviewing a draft for
-  // publication (see [[Publish Confirmation Flow]]). Drives the glitch +
-  // corner-confirm UI on the card.
-  _pendingConfirm?: boolean
 }
 
 export interface Genre {

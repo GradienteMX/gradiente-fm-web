@@ -14,7 +14,7 @@ updated: 2026-04-22
 A boolean field on `ContentItem`. When `true`:
 
 1. **Spawn HP boost.** `spawnHp(item) = 50` instead of `20`. See [curation.ts:41](../../lib/curation.ts).
-2. **Visual badge.** A red ★ appears on the card corner via [[ContentCard]], and a `//EDITORIAL` tag on [[EventCard]]/[[MixCard]]/[[ArticleCard]].
+2. **Visual badge.** A red ★ appears on the card corner via [[ContentCard]]. (The old linear cards also carried a `//EDITORIAL` tag, but those were removed 2026-06-23 — dead code deleted.)
 3. **Pinned hero eligibility.** [`getPinnedHero`](../../components/HeroCard.tsx) falls back to the most recent `editorial: true` item (among editorial/review/noticia/opinion) when no `pinned: true` exists. See [[Pinned Hero]].
 
 ## Why

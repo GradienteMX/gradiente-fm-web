@@ -24,7 +24,6 @@ Every band strip that used to be a `vibeBandGradient` CSS gradient:
 - [[ContentCard]] — top strip (`size="sm"`)
 - [[HeroCard]] — left edge, **vertical** (`size="sm" vertical`)
 - [[EventoOverlay]] / [[GenericOverlay]] / [[ReaderOverlay]] — overlay headers
-- [[MixCard]] / [[ArticleCard]] — orphan linear cards (`size="xs"`)
 
 ## What it shows
 

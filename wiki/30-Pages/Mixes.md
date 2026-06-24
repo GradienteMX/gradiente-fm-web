@@ -26,7 +26,7 @@ Empty: `// SIN MIXES EN ESTE RANGO`
 
 - No player. `mixUrl` opens in a new tab via the card; in-page playback would be a meaningful feature. See [[Open Questions]].
 - `tracklist` data exists on items but isn't rendered anywhere yet.
-- [[MixCard]] (the linear variant with fake waveform) isn't wired — [[ContentCard]] handles mixes the same as anything else in the mosaic. See [[Dual Feed Systems]].
+- [[ContentCard]] handles mixes the same as anything else in the mosaic. (The old linear `MixCard` variant with its fake waveform was removed 2026-06-23 — dead code deleted. See [[Dual Feed Systems]].)
 
 ## Links
 

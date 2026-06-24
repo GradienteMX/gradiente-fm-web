@@ -1256,8 +1256,8 @@ export function useDraftWorkbench<T extends ContentItem>({
     if (editItemId) {
       const existing = getItemById(editItemId)
       if (existing) {
-        // Strip the frontend-only flags before slotting into form state.
-        const { _draftState, _pendingConfirm, ...clean } = existing
+        // Strip the frontend-only flag before slotting into form state.
+        const { _draftState, ...clean } = existing
         // Double-cast through `unknown` because TS can't prove the runtime
         // narrowing matches the form's specific T (e.g. MixDraft) — at this
         // point we know the existing item's `type` matches the form.

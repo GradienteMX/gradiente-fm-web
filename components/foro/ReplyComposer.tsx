@@ -123,6 +123,7 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={onKeyDown}
+        aria-label="Responder al hilo"
         placeholder="responder al hilo · usa >>id para citar"
         rows={3}
         className="resize-y border bg-black px-3 py-2 font-mono text-[12px] leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange"
