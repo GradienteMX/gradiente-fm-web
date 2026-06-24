@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-06-23 · INGEST · Invite signup — real T&C swapped into the modal (placeholder → reviewed acuerdo)
+
+Replaced the placeholder `BETA_TERMS` in [BetaTermsModal.tsx](../components/welcome/BetaTermsModal.tsx) with the Iker-reviewed closed-beta acuerdo (10 clauses + preamble + firma-electrónica closing). Each clause carries a plain-Spanish *"En claro"* line so it reads human, not adversarial. Two intents written in firmly: **cl. 4** — content stays the user's, NEVER sold/licensed to third parties, monetization retribuye-a-ti, + explicit right to delete content anytime; **cl. 5** (new) — content responsibility sits with the uploader (owner), Gradiente is a neutral host. Softened over-promises (acceso "sin costo durante la beta" not free-forever; payouts = "trabajar de buena fe"), added beta as-is + age/capacity, narrowed the non-compete, toned down cl. 8 (dropped the criminal/daño-moral headline), referenced Aviso de Privacidad + ARCO. Render verified via the forced-fallback path (temp edit, reverted); `tsc` clean. Source draft kept at `Downloads/Gradiente - T&C revisado (borrador).md`. **`BETA_TERMS.version = '2026-06-23'`** is the consent-version anchor.
+
+**Still open (NOT blocking the text, flagged to Iker):** consent NOT persisted — to back the firma-electrónica clause, store user + `BETA_TERMS.version` + timestamp at signup (recommended next build); Aviso de Privacidad needs a real doc + link (cl. 7 references it, no URL yet); a Mexican attorney should validate secreto-industrial / firma / liability claims; *la carta* (welcome letter, Part 1 of the draft) not yet placed on /welcome.
+
+---
+
 ## 2026-06-23 · INGEST · Invite signup — password-confirm field + Terms & Conditions gate
 
 Two adds to the invite-registration form ([[RegistroCard]] — the one form shared by BOTH the 3D invite unbox and the no-WebGL fallback, so a single edit covers both paths).
