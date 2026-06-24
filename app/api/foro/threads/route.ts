@@ -12,7 +12,7 @@ import {
 //
 // At least one image is mandatory on OP (per spec). imageUrls[0] is the
 // cover, mirrored into the legacy `image_url not null` column for cheap tile
-// reads; the full ordered gallery goes into `image_urls` (migration 0036).
+// reads; the full ordered gallery goes into `image_urls` (migration 0037).
 // Genres enforced 1–5; tags enforced 1–5 (metadata keywords). RLS gates via
 // foro_threads_authenticated_insert (any auth'd user, must set author_id =
 // auth.uid()).

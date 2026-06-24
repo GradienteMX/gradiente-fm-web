@@ -39,7 +39,7 @@ The home grid is curated content (events, mixes, editorial). The foro is user-ge
 [[NewThreadOverlay]] enforces:
 
 - **Login required** — anon posting is rejected by design. The "+ NUEVO HILO" button opens [[LoginOverlay]] when logged out.
-- **Images: 1–`FORO_THREAD_IMAGES_MAX` (5)** — OP must include at least one image; pick/drag several at once, remove any, promote any to cover. The first image is the cover (`image_url`); the full ordered gallery is stored in `image_urls` (migration `0036`). Cover renders floated in the OP, the rest as a thumbnail strip; any image opens in the [[ForoLightbox]].
+- **Images: 1–`FORO_THREAD_IMAGES_MAX` (5)** — OP must include at least one image; pick/drag several at once, remove any, promote any to cover. The first image is the cover (`image_url`); the full ordered gallery is stored in `image_urls` (migration `0037`). Cover renders floated in the OP, the rest as a thumbnail strip; any image opens in the [[ForoLightbox]].
 - **Genres: 1–5** — `FORO_THREAD_GENRES_MIN = 1`, `MAX = 5`. Drives the vibe filter; without a genre tag a thread can't be filtered out, but the picker still requires at least one for consistency.
 - **Tags: 1–5** — `FORO_THREAD_TAGS_MIN/MAX`. Metadata keywords from `TAGS` in [[genres]] (transversal qualities, no vibe), stored in `foro_threads.tags`. Required, enforced in the composer and the POST route.
 - **No anonymity** — author is `currentUser.id`, no toggle.

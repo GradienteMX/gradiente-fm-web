@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0036_foro_overhaul — multi-image threads + metadata tags
+-- 0037_foro_overhaul — multi-image threads + metadata tags
 -- ============================================================================
 --
 -- Foro overhaul, schema layer. Two additive columns on foro_threads:
