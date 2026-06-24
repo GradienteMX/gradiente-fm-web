@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { mapScrapedGenres, seedVibeFromGenreIds } from '@/lib/scrapedGenres'
 
 // POST /api/ingest { events: ScrapedEventInput[] }
 //
@@ -130,6 +131,14 @@ export async function POST(request: NextRequest) {
         ? await rehostImage(supabase, user.id, raw.externalId, rawImage)
         : rawImage
 
+    // Map coarse scraper genres (e.g. RA's "Tech House") onto our taxonomy ids,
+    // then derive a provisional vibe band from them. Both are starting points:
+    // the ingest RPC seeds vibe on insert and only re-seeds while the row is
+    // still ungraded — an editor regrade or crowd Vibe Check takes over. See
+    // lib/scrapedGenres.ts.
+    const genres = mapScrapedGenres(raw.genres)
+    const seed = seedVibeFromGenreIds(genres)
+
     const { data, error } = await supabase.rpc('ingest_scraped_event', {
       p_source: raw.source,
       p_external_id: raw.externalId,
@@ -147,7 +156,9 @@ export async function POST(request: NextRequest) {
       p_ticket_url: raw.ticketUrl ?? '',
       p_price: raw.price ?? '',
       p_image_url: imageUrl,
-      p_genres: raw.genres ?? [],
+      p_genres: genres,
+      p_vibe_min: seed?.vibeMin ?? 5,
+      p_vibe_max: seed?.vibeMax ?? 5,
     })
 
     if (error) {
