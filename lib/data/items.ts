@@ -418,6 +418,77 @@ export async function getItems(): Promise<ContentItem[]> {
     .map((i) => attachEntities(i, entities.get(i.id)))
 }
 
+// All events for the admin events editor (/admin?tab=events). Unlike getItems
+// this returns UNPUBLISHED rows too (admins edit drafts) and resolves each
+// event's entities WITH the venue street address (entities.address, migration
+// 0039). The address fetch is local to this function — NOT folded into the
+// shared fetchEntitiesByItemIds — so the public home feed stays decoupled from
+// 0039 being applied. Admin-read RLS (items_staff_read) covers the items query.
+export async function getAllEventsAdmin(): Promise<ContentItem[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEMS_SELECT)
+    .eq('type', 'evento')
+    .order('date', { ascending: true })
+  if (error) {
+    console.error('[getAllEventsAdmin] Supabase error:', error)
+    return []
+  }
+  const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+  if (items.length === 0) return items
+
+  // Resolve entity links + the entities themselves (with address).
+  const { data: links } = await supabase
+    .from('item_entities')
+    .select('item_id, entity_id, relation')
+    .in(
+      'item_id',
+      items.map((i) => i.id),
+    )
+  const linkRows = (links ?? []) as {
+    item_id: string
+    entity_id: string
+    relation: EntityRelation
+  }[]
+  const entityIds = Array.from(new Set(linkRows.map((l) => l.entity_id)))
+  const byId = new Map<string, EntityRef>()
+  if (entityIds.length > 0) {
+    const { data: ents, error: entErr } = await supabase
+      .from('entities')
+      .select('id, kind, name, slug, address')
+      .in('id', entityIds)
+    if (entErr) {
+      console.error('[getAllEventsAdmin] entities error:', entErr)
+    }
+    for (const e of (ents ?? []) as {
+      id: string
+      kind: EntityKind
+      name: string
+      slug: string
+      address: string | null
+    }[]) {
+      byId.set(e.id, {
+        id: e.id,
+        kind: e.kind,
+        name: e.name,
+        slug: e.slug,
+        address: e.address ?? undefined,
+      })
+    }
+  }
+  const refsByItem = new Map<string, EntityRef[]>()
+  for (const link of linkRows) {
+    const base = byId.get(link.entity_id)
+    if (!base) continue
+    const ref: EntityRef = { ...base, relation: link.relation }
+    const list = refsByItem.get(link.item_id)
+    if (list) list.push(ref)
+    else refsByItem.set(link.item_id, [ref])
+  }
+  return items.map((i) => attachEntities(i, refsByItem.get(i.id)))
+}
+
 // Items authored by a specific user — drives `/u/[username]`'s PUBLICADOS
 // grid. Mirrors `getItems` minus filters/order tweaks for the profile
 // surface: own published, non-seed items, newest first. RLS lets any

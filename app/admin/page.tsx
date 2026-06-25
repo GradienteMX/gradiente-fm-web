@@ -5,6 +5,9 @@ import { AdminInviteCodes } from '@/components/admin/AdminInviteCodes'
 import { AdminUsersEditor } from '@/components/admin/AdminUsersEditor'
 import { AdminPartnersComposer } from '@/components/admin/AdminPartnersComposer'
 import { AdminTabNav, type AdminTab } from '@/components/admin/AdminTabNav'
+import { AdminEventsEditor } from '@/components/admin/AdminEventsEditor'
+import { getAllEventsAdmin } from '@/lib/data/items'
+import type { ContentItem } from '@/lib/types'
 import type { Database } from '@/lib/supabase/database.types'
 
 export const metadata: Metadata = { title: 'Admin · Gradiente' }
@@ -52,6 +55,8 @@ export default async function AdminPage({
       ? 'users'
       : searchParams.tab === 'partners'
       ? 'partners'
+      : searchParams.tab === 'events'
+      ? 'events'
       : 'invites'
 
   // Partners are needed by BOTH tabs (invite-code partner dropdown +
@@ -72,8 +77,11 @@ export default async function AdminPage({
   let totalUsers = 0
   let roleCounts: Partial<Record<string, number>> = {}
   let modCount = 0
+  let events: ContentItem[] = []
 
-  if (tab === 'invites') {
+  if (tab === 'events') {
+    events = await getAllEventsAdmin()
+  } else if (tab === 'invites') {
     const { data } = await supabase
       .from('invite_codes')
       .select('*')
@@ -179,6 +187,7 @@ export default async function AdminPage({
           existing={(partners as PartnerOption[] | null) ?? []}
         />
       )}
+      {tab === 'events' && <AdminEventsEditor initialEvents={events} />}
     </div>
   )
 }
