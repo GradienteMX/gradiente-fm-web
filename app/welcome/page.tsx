@@ -670,10 +670,16 @@ function VinylAscii() {
   }, [])
 
   return (
+    // pointer-events-none is load-bearing, not hygiene: the `filter` below makes
+    // this <pre> a stacking context that paints OVER later non-positioned
+    // siblings (the código form + CTAs), and on short viewports the fixed-size
+    // grid overflows its flex-1 box down onto them. Without this, the overflow
+    // silently swallows clicks on the form (keyboard TAB/ENTER still works) —
+    // reproduced on laptop-height screens, fine on tall desktops/iPad.
     <pre
       ref={ref}
       aria-hidden
-      className="select-none font-mono leading-[0.95] text-sys-orange/90"
+      className="pointer-events-none select-none font-mono leading-[0.95] text-sys-orange/90"
       style={{
         fontSize: 'clamp(6px, 0.85vw, 10px)',
         filter: 'drop-shadow(0 0 14px rgba(249,115,22,0.28))',
