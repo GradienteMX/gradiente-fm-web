@@ -18,6 +18,7 @@ import {
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { PartnerAttributionField } from './shared/PartnerAttributionField'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -185,6 +186,11 @@ export function OpinionForm() {
             onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
+
+        <PartnerAttributionField
+          draft={draft}
+          onChange={(v) => patch({ attributePartner: v })}
+        />
 
         <SubmitFooter
           canSubmit={canSubmit}

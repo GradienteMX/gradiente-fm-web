@@ -14,6 +14,7 @@ import { GENRES } from '@/lib/genres'
 import { LivePreview } from '@/components/dashboard/LivePreview'
 import { EmbedList, useDraftWorkbench, VibeField } from './shared/Fields'
 import { SubmitFooter } from './shared/Fields'
+import { PartnerAttributionField } from './shared/PartnerAttributionField'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -284,6 +285,11 @@ export function MixForm() {
             onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
+
+        <PartnerAttributionField
+          draft={draft}
+          onChange={(v) => patch({ attributePartner: v })}
+        />
 
         <SubmitFooter
           canSubmit={canSubmit}
