@@ -250,7 +250,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
     if (mode === 'agenda') {
       const ranked = rankItems(genreFiltered)
       const nowMs = Date.now()
-      return ranked.sort((a, b) => {
+      const sorted = ranked.sort((a, b) => {
         const ta = parseISO(a.item.date ?? a.item.publishedAt).getTime()
         const tb = parseISO(b.item.date ?? b.item.publishedAt).getTime()
         const aPast = ta < nowMs ? 1 : 0
@@ -263,6 +263,15 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
         // Same-day tiebreak: prominence (HP + freshness + imminenceBonus)
         return b.prominence - a.prominence
       })
+      // Strip the home-feed colStart pins. Those anchor cards to fixed columns
+      // for the mosaic's deliberate scatter — wrong for the agenda, where the
+      // grid flows in non-dense source (chronological) order. Leaving them in
+      // forces column jumps that break the date sequence visually.
+      return sorted.map((r) =>
+        r.layout.colStart === undefined
+          ? r
+          : { ...r, layout: { ...r.layout, colStart: undefined } },
+      )
     }
 
     return rankItems(genreFiltered).sort(
@@ -293,7 +302,11 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gridAutoRows: 'minmax(220px, auto)',
-    gridAutoFlow: 'dense',
+    // Home/category mosaic packs densely (deliberate scatter, fills gaps with
+    // later cards). Agenda must read in chronological order, so it flows in
+    // strict source order — `dense` would backfill gaps with out-of-date cards
+    // (e.g. a Jul 2 card landing next to a Jun 20 one).
+    gridAutoFlow: mode === 'agenda' ? 'row' : 'dense',
     gap: 'clamp(8px, 1vw, 16px)',
     // Positioning context so RecurationSweep's transient canvas (absolute,
     // inset-0) clips to the mosaic. Does not affect the grid layout itself.
