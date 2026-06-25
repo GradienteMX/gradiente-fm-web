@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import { ContentGrid } from '@/components/ContentGrid'
+import { AgendaBrowser } from '@/components/AgendaBrowser'
 import { getItems } from '@/lib/data/items'
-import { filterForCategory } from '@/lib/utils'
+import { filterForCategory, isUpcoming } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Agenda' }
 export const dynamic = 'force-dynamic'
@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic'
 export default async function AgendaPage() {
   const allItems = await getItems()
   const items = filterForCategory(allItems, 'evento')
+  const upcomingCount = items.filter((i) => isUpcoming(i)).length
 
   return (
     <>
@@ -16,10 +17,12 @@ export default async function AgendaPage() {
         <div className="nge-divider mb-1">
           <span className="font-mono text-xs tracking-widest text-primary">AGENDA</span>
         </div>
-        <p className="sys-label">EVENTOS · {items.length} ENTRADAS · PRÓXIMOS · ARCHIVO ABAJO</p>
+        <p className="sys-label">
+          EVENTOS · {upcomingCount} PRÓXIMOS · ARCHIVO BAJO DEMANDA
+        </p>
       </div>
 
-      <ContentGrid items={items} mode="agenda" emptyLabel="// SIN EVENTOS EN ESTE RANGO" />
+      <AgendaBrowser items={items} />
     </>
   )
 }

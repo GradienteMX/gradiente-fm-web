@@ -9,7 +9,6 @@ import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
-import { isSameDay, parseISO } from 'date-fns'
 
 // SHOWPIECE — teletext signal-field background. Client-only (raw WebGL),
 // loaded with ssr:false so it never touches LCP; the component self-gates to
@@ -48,16 +47,13 @@ export default async function HomePage() {
   // events section. The rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO".
   const isRailEvent = (i: ContentItem) =>
     i.type === 'evento' && !i.elevated && isUpcoming(i, now)
-  // True if the event starts today — these surface in the mosaic regardless of
-  // flags, so a few of tonight's parties land among the first contents.
-  const isEventToday = (i: ContentItem) =>
-    i.type === 'evento' && !!i.date && isSameDay(parseISO(i.date), now)
-  // Upcoming events enter the mosaic when they're (a) today, or (b) flagged
-  // editorial/elevated. Past events never enter — no archive filler in home.
+  // ALL upcoming events enter the mosaic — they fill the sparse home grid with
+  // future nights, sprinkled soonest → furthest by prominence (imminence bonus
+  // lifts the closest dates). Past events NEVER enter (archive lives in
+  // /agenda). They still also appear in the rail; the duplication is fine — the
+  // rail is a quick chronological strip, the mosaic is the browse surface.
   const isMosaicEvent = (i: ContentItem) =>
-    i.type === 'evento' &&
-    isUpcoming(i, now) &&
-    (isEventToday(i) || i.editorial === true || i.elevated === true)
+    i.type === 'evento' && isUpcoming(i, now)
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>
