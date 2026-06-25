@@ -414,5 +414,87 @@ export function rankItems(
     if (!changed) break
   }
 
+  // Lever 3 — tail variety. Past the big zone the feed decays to a wall of
+  // identical 1×1 sm squares (HP scores fall below MD_THRESHOLD, so every
+  // remaining item is sm). That reads as a spreadsheet, not a mosaic. Walk
+  // the sm tail and promote roughly every SM_BEAT-th card to an md cell,
+  // alternating wide (2×1) and tall (1×2) so the page keeps a "one big, many
+  // small" rhythm to the very bottom. Deterministic (index-driven, no random),
+  // so the layout is identical for every viewer — No-Algorithm holds. We honor
+  // a type's natural orientation when it's strong (visual → wide, text → tall)
+  // but force alternation when the tail is monotype (e.g. all events) so we
+  // don't get a column of identical wide bars.
+  // Two drivers, so the tail is alive instead of a static grid of squares:
+  //
+  //   a. ACTIVITY — `layout.intensity` is the sub-threshold score (0→1: how
+  //      close this sm item is to crossing into md). Items with real activity
+  //      that simply haven't accrued enough HP to jump a full tier still grow:
+  //      above ACTIVE_HI they go wide (2×1, "this is moving"); above ACTIVE_LO
+  //      they go tall (1×2, "this has some pull"). Because intensity tracks the
+  //      live HP/freshness, these change as the cron tick + realtime re-rank
+  //      flow in — the same card breathes between sm → tall → wide over its
+  //      life. Deterministic per snapshot (same data → same layout for all
+  //      viewers): No-Algorithm holds.
+  //   b. RHYTHM — even a dead-quiet tail (all intensities low, e.g. an
+  //      all-past-events archive) gets a promotion every SM_BEAT-th card,
+  //      alternating orientation, so the page never decays to a wall of 1×1s.
+  const ACTIVE_HI = 0.66
+  const ACTIVE_LO = 0.4
+  // Hard variety guarantees:
+  //   - MAX_SM_RUN: never let this many 1×1 squares pass in a row without a
+  //     bigger cell breaking them up. ~3 cols/row, so 5 ≈ never three full
+  //     lines of squares. Tighter inside the first FOCUS_COUNT items where the
+  //     eye actually lingers.
+  //   - SHAPE_CYCLE: when we force a break (or hit the activity bands), we pull
+  //     the next shape from a rotating cycle so the structure keeps shifting
+  //     instead of repeating the same md over and over. Includes the 2×2 lg for
+  //     the occasional big punch in the mid-feed.
+  const FOCUS_COUNT = 50
+  const SHAPE_CYCLE: { tier: CardTier; colSpan: 1 | 2; rowSpan: 1 | 2 }[] = [
+    { tier: 'md', colSpan: 2, rowSpan: 1 }, // wide
+    { tier: 'md', colSpan: 1, rowSpan: 2 }, // tall
+    { tier: 'md', colSpan: 2, rowSpan: 1 }, // wide
+    { tier: 'lg', colSpan: 2, rowSpan: 2 }, // big punch
+    { tier: 'md', colSpan: 1, rowSpan: 2 }, // tall
+  ]
+  let cycleIdx = 0
+  let smRun = 0
+  for (let i = TOP_KEEP; i < out.length; i++) {
+    const r = out[i]
+    if (r.layout.tier !== 'sm') {
+      smRun = 0
+      continue
+    }
+
+    const activity = r.layout.intensity
+    const maxRun = i < FOCUS_COUNT ? 4 : 6
+    let shape: { tier: CardTier; colSpan: 1 | 2; rowSpan: 1 | 2 } | null = null
+
+    if (activity >= ACTIVE_HI) {
+      shape = { tier: 'md', colSpan: 2, rowSpan: 1 } // hot → horizontal
+    } else if (activity >= ACTIVE_LO) {
+      shape = { tier: 'md', colSpan: 1, rowSpan: 2 } // warm → vertical
+    } else if (smRun >= maxRun) {
+      // Run got too long — force a break, pulling the next shape from the
+      // rotating cycle so consecutive breaks don't look identical.
+      shape = SHAPE_CYCLE[cycleIdx % SHAPE_CYCLE.length]
+      cycleIdx++
+    }
+
+    if (!shape) {
+      smRun++
+      continue
+    }
+
+    r.layout = {
+      tier: shape.tier,
+      colSpan: shape.colSpan,
+      rowSpan: shape.rowSpan,
+      intensity: r.layout.intensity,
+    }
+    r.tier = shape.tier
+    smRun = 0
+  }
+
   return out
 }
