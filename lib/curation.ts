@@ -516,3 +516,87 @@ export function rankItems(
 
   return out
 }
+
+// ── Agenda ranking — democratic mosaic ───────────────────────────────────────
+//
+// The /agenda surface is NOT the HP-prominence mosaic. Its job is a dense,
+// fully-packed wall of events read in chronological order, with a rich mix of
+// shapes (wide, tall, square, the occasional big block). HP is deliberately
+// almost ignored here — the listing is democratic — with ONE exception: a
+// genuinely hot event (HP at/above its type peak) earns a big 2×2 so the truly
+// popular nights still pop.
+//
+// Ordering: upcoming first (soonest → furthest), past at the bottom (most
+// recent → oldest). Shapes come from a rotating palette weighted toward squares
+// so dense auto-flow fills cleanly, with run-breaking so no shape repeats
+// back-to-back. It's deterministic per snapshot (No-Algorithm holds) yet shifts
+// naturally day to day: as events pass, draw closer, and gain/lose HP, both the
+// chronological index and the hot-event set move — so the wall re-tiles itself.
+const AGENDA_PALETTE: { tier: CardTier; colSpan: 1 | 2; rowSpan: 1 | 2 }[] = [
+  { tier: 'sm', colSpan: 1, rowSpan: 1 }, // square
+  { tier: 'md', colSpan: 2, rowSpan: 1 }, // wide
+  { tier: 'sm', colSpan: 1, rowSpan: 1 }, // square
+  { tier: 'md', colSpan: 1, rowSpan: 2 }, // tall
+  { tier: 'md', colSpan: 2, rowSpan: 1 }, // wide
+  { tier: 'sm', colSpan: 1, rowSpan: 1 }, // square
+  { tier: 'md', colSpan: 1, rowSpan: 2 }, // tall
+]
+
+export function rankAgenda(
+  items: ContentItem[],
+  now: Date = new Date(),
+): RankedItem[] {
+  const peaks = computePeakByType(items, now)
+  const nowMs = now.getTime()
+
+  const sorted: RankedItem[] = items
+    .map((item) => ({
+      item,
+      score: score(item, peaks, now),
+      prominence: prominence(item, peaks, now),
+      tier: 'sm' as CardTier,
+      layout: { tier: 'sm', colSpan: 1, rowSpan: 1, intensity: 0 } as CardLayout,
+    }))
+    .sort((a, b) => {
+      const ta = parseISO(a.item.date ?? a.item.publishedAt).getTime()
+      const tb = parseISO(b.item.date ?? b.item.publishedAt).getTime()
+      const aPast = ta < nowMs ? 1 : 0
+      const bPast = tb < nowMs ? 1 : 0
+      // Upcoming block first (soonest → furthest); past block last
+      // (most-recent → oldest).
+      if (aPast !== bPast) return aPast - bPast
+      if (aPast) return tb - ta
+      if (ta !== tb) return ta - tb
+      return b.prominence - a.prominence
+    })
+
+  const keyOf = (s: { colSpan: number; rowSpan: number }) =>
+    `${s.colSpan}x${s.rowSpan}`
+  let prevKey = ''
+  let p = 0
+  for (const r of sorted) {
+    // Hot-event exception: HP at/above the type peak → big 2×2 block.
+    if (r.score >= LG_THRESHOLD) {
+      r.layout = { tier: 'lg', colSpan: 2, rowSpan: 2, intensity: 1 }
+      r.tier = 'lg'
+      prevKey = '2x2'
+      continue
+    }
+    let shape = AGENDA_PALETTE[p % AGENDA_PALETTE.length]
+    if (keyOf(shape) === prevKey) {
+      p++
+      shape = AGENDA_PALETTE[p % AGENDA_PALETTE.length]
+    }
+    p++
+    r.layout = {
+      tier: shape.tier,
+      colSpan: shape.colSpan,
+      rowSpan: shape.rowSpan,
+      intensity: 0,
+    }
+    r.tier = shape.tier
+    prevKey = keyOf(shape)
+  }
+
+  return sorted
+}

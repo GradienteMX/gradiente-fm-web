@@ -7,7 +7,7 @@ import type { ContentItem } from '@/lib/types'
 import { useVibe } from '@/context/VibeContext'
 import { filterByVibe, vibeMid, vibeToColor } from '@/lib/utils'
 import { itemMatchesGenreFilter } from '@/lib/genres'
-import { rankItems, type CardLayout } from '@/lib/curation'
+import { rankItems, rankAgenda, type CardLayout } from '@/lib/curation'
 import { recordItems } from '@/lib/itemsCache'
 import { ContentCard } from './cards/ContentCard'
 import { RecurationSweep } from './grid/RecurationSweep'
@@ -248,21 +248,9 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
     }
 
     if (mode === 'agenda') {
-      const ranked = rankItems(genreFiltered)
-      const nowMs = Date.now()
-      return ranked.sort((a, b) => {
-        const ta = parseISO(a.item.date ?? a.item.publishedAt).getTime()
-        const tb = parseISO(b.item.date ?? b.item.publishedAt).getTime()
-        const aPast = ta < nowMs ? 1 : 0
-        const bPast = tb < nowMs ? 1 : 0
-        // Future block first; within future, soonest at top.
-        // Past block at bottom; within past, most-recent at top.
-        if (aPast !== bPast) return aPast - bPast
-        if (aPast) return tb - ta
-        if (ta !== tb) return ta - tb
-        // Same-day tiebreak: prominence (HP + freshness + imminenceBonus)
-        return b.prominence - a.prominence
-      })
+      // Democratic, fully-packed chronological mosaic — its own ranker, not the
+      // HP-prominence one. See lib/curation.ts::rankAgenda.
+      return rankAgenda(genreFiltered)
     }
 
     return rankItems(genreFiltered).sort(
