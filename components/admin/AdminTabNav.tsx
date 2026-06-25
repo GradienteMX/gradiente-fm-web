@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-export type AdminTab = 'invites' | 'users' | 'partners'
+export type AdminTab = 'invites' | 'users' | 'partners' | 'events'
 
 const TABS: { id: AdminTab; label: string; color: string }[] = [
   { id: 'invites', label: 'INVITACIONES', color: '#F97316' },
   { id: 'users', label: 'USUARIOS', color: '#A78BFA' },
   { id: 'partners', label: 'PARTNERS', color: '#FB923C' },
+  { id: 'events', label: 'EVENTOS', color: '#EF4444' },
 ]
 
 // Tab strip for /admin. Driven by ?tab= search param so navigation is

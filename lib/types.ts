@@ -400,6 +400,7 @@ export interface EntityRef {
   name: string
   slug: string
   relation?: EntityRelation   // default 'subject'
+  address?: string            // venue street address (entities.address, 0039)
 }
 
 // Physical/digital format an item (review mainly) is about. Closed enum —
