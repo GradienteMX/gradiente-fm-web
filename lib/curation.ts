@@ -140,47 +140,43 @@ export function freshness(item: ContentItem, now: Date = new Date()): number {
   return Math.exp(-λ * ageHours)
 }
 
-function imminenceBonus(item: ContentItem, now: Date = new Date()): number {
+// Date-proximity gradient for an upcoming event: 1.0 on the day-of, decaying as
+// the date recedes into the future (1 / (1 + daysUntil) → ~0.5 tomorrow, ~0.14
+// a week out). This is what "closer date = higher" means in practice. Past /
+// already-started events return 0; they're filtered off the home before ranking
+// and keep their stored HP for cultivation regardless.
+function eventDateProximity(item: ContentItem, now: Date): number {
   if (item.type !== 'evento' || !item.date) return 0
-  const start = parseISO(item.date)
-  const end = item.endDate ? parseISO(item.endDate) : start
-  const hoursUntilStart = hoursBetween(now, start)
-  const hoursPastEnd = hoursBetween(end, now)
-
-  // Live window: between 1h pre-doors and 1h post-end
-  if (hoursUntilStart <= 1 && hoursPastEnd <= 1) return 1.0
-  // Within 24h before doors
-  if (hoursUntilStart > 0 && hoursUntilStart <= 24) return 0.5
-  return 0
+  const daysUntil = hoursBetween(now, parseISO(item.date)) / 24
+  if (daysUntil < 0) return 0
+  return 1 / (1 + daysUntil)
 }
 
-// Past/upcoming bias for eventos. Two-sided so the home feed reads as
-// "upcoming first, then everything else, then archive" without users seeing
-// review/mix/articulo cards pushed above tonight's party.
+// Prominence drives ORDER in the home mosaic (size is separate — see cardLayout,
+// which reads `score`). Two regimes:
 //
-//   - Upcoming eventos get a flat +0.6 lift, putting them above non-event
-//     content (which sits in the 0.5–1.0 prominence band thanks to the
-//     review/articulo/listicle 1.3× type multipliers).
-//   - Past eventos take -1.0 — they live in the mosaic as filler / archive,
-//     but always rank below upcoming items. Recent-past still beats
-//     old-past via HP+freshness, just at the bottom of the page.
-function eventTimingAdjustment(item: ContentItem, now: Date = new Date()): number {
-  if (item.type !== 'evento' || !item.date) return 0
-  const end = item.endDate ? parseISO(item.endDate) : parseISO(item.date)
-  return hoursBetween(end, now) > 0 ? -1.0 : 0.6
-}
-
+//   - Non-events sit in a ≥0 band from HP freshness + score.
+//   - Events live in a band strictly BELOW that, so the home reads as "the
+//     normal posts first, then the upcoming-events block". Within that block,
+//     date proximity orders them: today's cluster, then tomorrow's, … Past
+//     events sink to the very bottom (they're normally filtered off home). The
+//     stored HP is never touched here — only placement changes — so an event
+//     can still accrue/keep HP for cultivation.
 export function prominence(
   item: ContentItem,
   peaks: PeakByType,
   now: Date = new Date(),
 ): number {
-  return (
-    0.5 * freshness(item, now) +
-    0.5 * score(item, peaks, now) +
-    imminenceBonus(item, now) +
-    eventTimingAdjustment(item, now)
-  )
+  if (item.type === 'evento') {
+    const end = item.endDate
+      ? parseISO(item.endDate)
+      : item.date
+        ? parseISO(item.date)
+        : now
+    const isPast = !!item.date && hoursBetween(end, now) > 0
+    return isPast ? -2 : -1 + eventDateProximity(item, now)
+  }
+  return 0.5 * freshness(item, now) + 0.5 * score(item, peaks, now)
 }
 
 // ── Size tier from score ─────────────────────────────────────────────────────
@@ -496,6 +492,10 @@ export function rankItems(
       smRun = 0
       continue
     }
+    // Events stay clean 1×1 squares — the upcoming-events block at the tail
+    // reads like a calendar grid, not a mosaic of mixed bars. (Don't reset the
+    // run counter: a stretch of event squares shouldn't itself force a break.)
+    if (r.item.type === 'evento') continue
 
     const activity = r.layout.intensity
     const maxRun = i < FOCUS_COUNT ? 4 : 6

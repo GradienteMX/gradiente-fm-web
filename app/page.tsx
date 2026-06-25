@@ -48,26 +48,31 @@ export default async function HomePage() {
   // events section. The rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO".
   const isRailEvent = (i: ContentItem) =>
     i.type === 'evento' && !i.elevated && isUpcoming(i, now)
-  // Only a FEW upcoming events seed the mosaic — the soonest ones, chosen
-  // chronologically (closest date first), capped so the home never floods with
-  // event cards. Editorial/elevated events always make the cut (curator intent);
-  // the rest fill remaining slots up to the cap. Past events NEVER enter (the
-  // archive lives in /agenda); the full upcoming list still lives in the rail.
-  const HOME_EVENT_CAP = 6
+  // Events form a block AFTER the normal posts (see curation prominence: an
+  // upcoming event always ranks below non-event content, and nearer dates rank
+  // higher among events). To keep that block readable we cap it per DAY — a few
+  // of today's, then a few of tomorrow's, and so on down the calendar. Past
+  // events never enter the mosaic (archive lives in /agenda); they keep their HL
+  // so they can still be cultivated. The full upcoming list lives in the rail.
+  const EVENTS_PER_DAY = 3
   const eventChrono = (a: ContentItem, b: ContentItem) =>
     parseISO(a.date ?? a.publishedAt).getTime() -
     parseISO(b.date ?? b.publishedAt).getTime()
   const upcomingEvents = homeItems
     .filter((i) => i.type === 'evento' && isUpcoming(i, now))
     .sort(eventChrono)
-  const mosaicEventIds = new Set<string>(
-    [
-      ...upcomingEvents.filter((i) => i.editorial || i.elevated),
-      ...upcomingEvents.filter((i) => !i.editorial && !i.elevated),
-    ]
-      .slice(0, HOME_EVENT_CAP)
-      .map((i) => i.id),
-  )
+  const perDayCount = new Map<string, number>()
+  const mosaicEventIds = new Set<string>()
+  for (const ev of upcomingEvents) {
+    const dayKey = (ev.date ?? ev.publishedAt).slice(0, 10) // YYYY-MM-DD
+    const seen = perDayCount.get(dayKey) ?? 0
+    // Editorial/elevated always make the cut (curator intent); otherwise honor
+    // the per-day cap.
+    if (ev.editorial || ev.elevated || seen < EVENTS_PER_DAY) {
+      mosaicEventIds.add(ev.id)
+      perDayCount.set(dayKey, seen + 1)
+    }
+  }
   const isMosaicEvent = (i: ContentItem) => mosaicEventIds.has(i.id)
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
