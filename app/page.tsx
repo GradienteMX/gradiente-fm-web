@@ -9,6 +9,7 @@ import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
+import { parseISO } from 'date-fns'
 
 // SHOWPIECE — teletext signal-field background. Client-only (raw WebGL),
 // loaded with ssr:false so it never touches LCP; the component self-gates to
@@ -47,13 +48,32 @@ export default async function HomePage() {
   // events section. The rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO".
   const isRailEvent = (i: ContentItem) =>
     i.type === 'evento' && !i.elevated && isUpcoming(i, now)
-  // ALL upcoming events enter the mosaic — they fill the sparse home grid with
-  // future nights, sprinkled soonest → furthest by prominence (imminence bonus
-  // lifts the closest dates). Past events NEVER enter (archive lives in
-  // /agenda). They still also appear in the rail; the duplication is fine — the
-  // rail is a quick chronological strip, the mosaic is the browse surface.
-  const isMosaicEvent = (i: ContentItem) =>
-    i.type === 'evento' && isUpcoming(i, now)
+  // Events form a block AFTER the normal posts (see curation prominence: an
+  // upcoming event always ranks below non-event content, and nearer dates rank
+  // higher among events). To keep that block readable we cap it per DAY — a few
+  // of today's, then a few of tomorrow's, and so on down the calendar. Past
+  // events never enter the mosaic (archive lives in /agenda); they keep their HL
+  // so they can still be cultivated. The full upcoming list lives in the rail.
+  const EVENTS_PER_DAY = 3
+  const eventChrono = (a: ContentItem, b: ContentItem) =>
+    parseISO(a.date ?? a.publishedAt).getTime() -
+    parseISO(b.date ?? b.publishedAt).getTime()
+  const upcomingEvents = homeItems
+    .filter((i) => i.type === 'evento' && isUpcoming(i, now))
+    .sort(eventChrono)
+  const perDayCount = new Map<string, number>()
+  const mosaicEventIds = new Set<string>()
+  for (const ev of upcomingEvents) {
+    const dayKey = (ev.date ?? ev.publishedAt).slice(0, 10) // YYYY-MM-DD
+    const seen = perDayCount.get(dayKey) ?? 0
+    // Editorial/elevated always make the cut (curator intent); otherwise honor
+    // the per-day cap.
+    if (ev.editorial || ev.elevated || seen < EVENTS_PER_DAY) {
+      mosaicEventIds.add(ev.id)
+      perDayCount.set(dayKey, seen + 1)
+    }
+  }
+  const isMosaicEvent = (i: ContentItem) => mosaicEventIds.has(i.id)
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>
