@@ -457,6 +457,23 @@ export function rankItems(
     { tier: 'lg', colSpan: 2, rowSpan: 2 }, // big punch
     { tier: 'md', colSpan: 1, rowSpan: 2 }, // tall
   ]
+  // Anchor columns a shape can sit in (3-col grid). Rotating colStart per shape
+  // means two identical cells never stack in the same column — so the eye never
+  // sees more than ~2 identical rows in the same place before the unit shifts.
+  const ANCHORS: Record<string, (1 | 2 | 3)[]> = {
+    '2x1': [1, 2],    // wide bar → left or center
+    '1x2': [1, 2, 3], // tall column → any of three
+    '2x2': [1, 2],    // big punch → left or right block
+  }
+  const anchorIdx: Record<string, number> = { '2x1': 0, '1x2': 0, '2x2': 0 }
+  const nextColStart = (colSpan: number, rowSpan: number): 1 | 2 | 3 => {
+    const key = `${colSpan}x${rowSpan}`
+    const cols = ANCHORS[key] ?? [1]
+    const c = cols[anchorIdx[key] % cols.length]
+    anchorIdx[key] = (anchorIdx[key] ?? 0) + 1
+    return c
+  }
+
   let cycleIdx = 0
   let smRun = 0
   for (let i = TOP_KEEP; i < out.length; i++) {
@@ -490,6 +507,7 @@ export function rankItems(
       tier: shape.tier,
       colSpan: shape.colSpan,
       rowSpan: shape.rowSpan,
+      colStart: nextColStart(shape.colSpan, shape.rowSpan),
       intensity: r.layout.intensity,
     }
     r.tier = shape.tier
