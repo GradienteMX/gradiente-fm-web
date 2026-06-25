@@ -140,28 +140,29 @@ export function freshness(item: ContentItem, now: Date = new Date()): number {
   return Math.exp(-λ * ageHours)
 }
 
-// Date-proximity gradient for an upcoming event: 1.0 on the day-of, decaying as
-// the date recedes into the future (1 / (1 + daysUntil) → ~0.5 tomorrow, ~0.14
-// a week out). This is what "closer date = higher" means in practice. Past /
-// already-started events return 0; they're filtered off the home before ranking
-// and keep their stored HP for cultivation regardless.
-function eventDateProximity(item: ContentItem, now: Date): number {
+// Time-urgency presence for an upcoming event, on the SAME scale as a piece of
+// content's HP prominence (≈0–1.2). Peaks on the day-of and decays as the date
+// recedes (1.2·e^(−daysUntil/10) → ~1.1 tomorrow, ~0.6 a week out, ~0.06 a month
+// out). This is what lets a party tonight rank alongside hot content while a
+// party in three weeks sinks toward the bottom. Past / already-started events
+// return 0; they're filtered off the home and keep their stored HP regardless.
+function eventDateUrgency(item: ContentItem, now: Date): number {
   if (item.type !== 'evento' || !item.date) return 0
   const daysUntil = hoursBetween(now, parseISO(item.date)) / 24
   if (daysUntil < 0) return 0
-  return 1 / (1 + daysUntil)
+  return 1.2 * Math.exp(-daysUntil / 10)
 }
 
 // Prominence drives ORDER in the home mosaic (size is separate — see cardLayout,
-// which reads `score`). Two regimes:
+// which reads `score`). One unified scale so events and content INTERLEAVE by
+// how present each is right now:
 //
-//   - Non-events sit in a ≥0 band from HP freshness + score.
-//   - Events live in a band strictly BELOW that, so the home reads as "the
-//     normal posts first, then the upcoming-events block". Within that block,
-//     date proximity orders them: today's cluster, then tomorrow's, … Past
-//     events sink to the very bottom (they're normally filtered off home). The
-//     stored HP is never touched here — only placement changes — so an event
-//     can still accrue/keep HP for cultivation.
+//   - Content: HP freshness + score (≈0–1.2).
+//   - Events: a date-urgency curve centered on the event date (≈0–1.2) plus a
+//     modest cultivation lift from the event's own HP — so a tonight's party
+//     rises into the hot band, a far-off one settles among older content, and a
+//     cultivated event nudges up. Past events sink hard (and are filtered off
+//     the home anyway). Stored HP is never touched here — only placement.
 export function prominence(
   item: ContentItem,
   peaks: PeakByType,
@@ -174,7 +175,8 @@ export function prominence(
         ? parseISO(item.date)
         : now
     const isPast = !!item.date && hoursBetween(end, now) > 0
-    return isPast ? -2 : -1 + eventDateProximity(item, now)
+    if (isPast) return -2
+    return eventDateUrgency(item, now) + 0.3 * score(item, peaks, now)
   }
   return 0.5 * freshness(item, now) + 0.5 * score(item, peaks, now)
 }

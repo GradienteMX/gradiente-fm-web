@@ -48,12 +48,13 @@ export default async function HomePage() {
   // events section. The rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO".
   const isRailEvent = (i: ContentItem) =>
     i.type === 'evento' && !i.elevated && isUpcoming(i, now)
-  // Events form a block AFTER the normal posts (see curation prominence: an
-  // upcoming event always ranks below non-event content, and nearer dates rank
-  // higher among events). To keep that block readable we cap it per DAY — a few
-  // of today's, then a few of tomorrow's, and so on down the calendar. Past
-  // events never enter the mosaic (archive lives in /agenda); they keep their HL
-  // so they can still be cultivated. The full upcoming list lives in the rail.
+  // Events INTERLEAVE with content by time-urgency (see curation prominence: an
+  // event's presence peaks on its date and decays, on the same scale as content
+  // HP — so tonight's party rises into the hot band and a far-off one settles
+  // among older posts). The per-DAY cap here is just a flood guard: at most a
+  // few of any single day's events surface into the mosaic; the rest stay in the
+  // chronological rail. Past events never enter (archive lives in /agenda) and
+  // keep their HL so they can still be cultivated.
   const EVENTS_PER_DAY = 3
   const eventChrono = (a: ContentItem, b: ContentItem) =>
     parseISO(a.date ?? a.publishedAt).getTime() -
