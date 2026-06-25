@@ -210,8 +210,11 @@ const MD_GEOMETRY: Record<ContentItem['type'], { colSpan: 1 | 2; rowSpan: 1 | 2 
   editorial: { colSpan: 1, rowSpan: 2 },
   opinion:   { colSpan: 1, rowSpan: 2 },
   noticia:   { colSpan: 1, rowSpan: 2 },
+  // Events stay a 1×1 square at md — a plain listing shouldn't become a big
+  // horizontal bar just from spawn HP. Popular (editorial/elevated) events still
+  // earn a 2×2 via the lg path below; everything else reads as a compact tile.
+  evento:    { colSpan: 1, rowSpan: 1 },
   // Visual → wide landscape (flyer / cover art reads better at width)
-  evento:    { colSpan: 2, rowSpan: 1 },
   mix:       { colSpan: 2, rowSpan: 1 },
   partner:   { colSpan: 2, rowSpan: 1 },
 }
@@ -294,6 +297,17 @@ export function rankItems(
   let lgAssigned = 0
   for (const r of ranked) {
     if (r.layout.tier !== 'lg') continue
+
+    // Events earn a big cell only by curator intent (editorial/elevated). A
+    // freshly-created event sits at its type's HP peak and would otherwise grab
+    // an lg/xl slot purely from spawn HP — which floods the home with big
+    // horizontal event bars. Plain events drop to md (a 1×1 square).
+    if (r.item.type === 'evento' && !r.item.editorial && !r.item.elevated) {
+      const geom = MD_GEOMETRY['evento']
+      r.layout = { tier: 'md', colSpan: geom.colSpan, rowSpan: geom.rowSpan, intensity: 1 }
+      r.tier = 'md'
+      continue
+    }
 
     if (!xlAssigned) {
       r.layout = { tier: 'xl', colSpan: 3, rowSpan: 2, colStart: 1, intensity: 1 }

@@ -9,6 +9,7 @@ import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
+import { parseISO } from 'date-fns'
 
 // SHOWPIECE — teletext signal-field background. Client-only (raw WebGL),
 // loaded with ssr:false so it never touches LCP; the component self-gates to
@@ -47,13 +48,27 @@ export default async function HomePage() {
   // events section. The rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO".
   const isRailEvent = (i: ContentItem) =>
     i.type === 'evento' && !i.elevated && isUpcoming(i, now)
-  // ALL upcoming events enter the mosaic — they fill the sparse home grid with
-  // future nights, sprinkled soonest → furthest by prominence (imminence bonus
-  // lifts the closest dates). Past events NEVER enter (archive lives in
-  // /agenda). They still also appear in the rail; the duplication is fine — the
-  // rail is a quick chronological strip, the mosaic is the browse surface.
-  const isMosaicEvent = (i: ContentItem) =>
-    i.type === 'evento' && isUpcoming(i, now)
+  // Only a FEW upcoming events seed the mosaic — the soonest ones, chosen
+  // chronologically (closest date first), capped so the home never floods with
+  // event cards. Editorial/elevated events always make the cut (curator intent);
+  // the rest fill remaining slots up to the cap. Past events NEVER enter (the
+  // archive lives in /agenda); the full upcoming list still lives in the rail.
+  const HOME_EVENT_CAP = 6
+  const eventChrono = (a: ContentItem, b: ContentItem) =>
+    parseISO(a.date ?? a.publishedAt).getTime() -
+    parseISO(b.date ?? b.publishedAt).getTime()
+  const upcomingEvents = homeItems
+    .filter((i) => i.type === 'evento' && isUpcoming(i, now))
+    .sort(eventChrono)
+  const mosaicEventIds = new Set<string>(
+    [
+      ...upcomingEvents.filter((i) => i.editorial || i.elevated),
+      ...upcomingEvents.filter((i) => !i.editorial && !i.elevated),
+    ]
+      .slice(0, HOME_EVENT_CAP)
+      .map((i) => i.id),
+  )
+  const isMosaicEvent = (i: ContentItem) => mosaicEventIds.has(i.id)
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>
