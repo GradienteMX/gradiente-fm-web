@@ -8,10 +8,11 @@ import { ContentGrid } from './ContentGrid'
 
 // Client browser around the agenda mosaic. Two controls layered on top of
 // ContentGrid (which still owns vibe/genre filtering + rankAgenda):
-//   - Live text search over title / artists / venue / city.
-//   - Past events hidden by default; a "VER ARCHIVO" toggle reveals them.
-// Search is scoped to the visible set — reveal the archive to search past
-// nights too.
+//   - Live text search over title / artists / venue / city. An active query
+//     searches EVERYTHING — upcoming and past — so you can find an old night
+//     without flipping the archive on. Past hits still render gray + //PASADO
+//     (ContentCard derives that from the date itself).
+//   - With no query, past events are hidden until the "VER ARCHIVO" toggle.
 export function AgendaBrowser({ items }: { items: ContentItem[] }) {
   const [query, setQuery] = useState('')
   const [showArchive, setShowArchive] = useState(false)
@@ -25,13 +26,16 @@ export function AgendaBrowser({ items }: { items: ContentItem[] }) {
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
-      if (!showArchive && !isUpcoming(i)) return false
-      if (!q) return true
-      const haystack = [i.title, i.venue, i.venueCity, ...(i.artists ?? [])]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(q)
+      if (q) {
+        // Active search spans everything (upcoming + past).
+        const haystack = [i.title, i.venue, i.venueCity, ...(i.artists ?? [])]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        return haystack.includes(q)
+      }
+      // No query: hide past until the archive is toggled on.
+      return showArchive || isUpcoming(i)
     })
   }, [items, q, showArchive])
 
