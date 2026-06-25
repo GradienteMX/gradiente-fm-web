@@ -73,13 +73,19 @@ export async function POST(request: NextRequest) {
   const PARTNER_STAMPED_TYPES: ContentItem['type'][] = [
     'evento', 'mix', 'noticia', 'opinion', 'listicle',
   ]
-  // Composer opt-out: a partner-team member can publish a stamped type as a
-  // personal/unbranded post by setting attributePartner === false. Default
-  // (undefined) keeps the existing always-attribute behavior.
-  const stampAsPartner =
-    !!userPartnerId &&
-    PARTNER_STAMPED_TYPES.includes(item.type) &&
-    item.attributePartner !== false
+  // Partner attribution is now an explicit, reversible per-item choice
+  // (attributePartner). It used to default ON, which branded EVERYTHING a
+  // partner-team member published with their promotora and gave no way to
+  // remove it. The three cases:
+  //   - attributePartner === true  → stamp it (partner_id + source + editorial).
+  //   - attributePartner === false → clear any prior stamp (used to turn a
+  //     previously-branded item OFF on re-publish / edit).
+  //   - undefined (toggle untouched) → leave as-is. On edit the loaded item
+  //     already carries partner_id, so omitting the override preserves it; new
+  //     items carry no partner_id, so they stay unbranded (opt-in default).
+  const isPartnerStampableType =
+    !!userPartnerId && PARTNER_STAMPED_TYPES.includes(item.type)
+  const stampAsPartner = isPartnerStampableType && item.attributePartner === true
 
   const row = contentItemToRow(item)
   const partnerOverrides = stampAsPartner
@@ -88,7 +94,9 @@ export async function POST(request: NextRequest) {
         source: 'manual:partner' as const,
         editorial: true,
       }
-    : {}
+    : isPartnerStampableType && item.attributePartner === false
+      ? { partner_id: null, source: null }
+      : {}
   const { error: itemError } = await supabase
     .from('items')
     .upsert(

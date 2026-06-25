@@ -31,6 +31,7 @@ import {
   useDraftWorkbench,
 } from './shared/Fields'
 import { EntityMultiSelect } from './shared/EntityMultiSelect'
+import { PartnerAttributionField } from './shared/PartnerAttributionField'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -218,6 +219,11 @@ export function ListicleForm() {
             onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
+
+        <PartnerAttributionField
+          draft={draft}
+          onChange={(v) => patch({ attributePartner: v })}
+        />
 
         <SubmitFooter
           canSubmit={canSubmit}
