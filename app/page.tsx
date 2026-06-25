@@ -51,11 +51,19 @@ export default async function HomePage() {
   // Events INTERLEAVE with content by time-urgency (see curation prominence: an
   // event's presence peaks on its date and decays, on the same scale as content
   // HP — so tonight's party rises into the hot band and a far-off one settles
-  // among older posts). The per-DAY cap here is just a flood guard: at most a
-  // few of any single day's events surface into the mosaic; the rest stay in the
-  // chronological rail. Past events never enter (archive lives in /agenda) and
-  // keep their HL so they can still be cultivated.
+  // among older posts). Two flood guards keep the mosaic from becoming an event
+  // listing — the full upcoming firehose lives in the chronological rail:
+  //   - EVENTS_PER_DAY  — spread: at most a few of any single day's events.
+  //   - MAX_MOSAIC_EVENTS — total ceiling: the nearest-date N scraped events
+  //     surface; the rest stay rail-only. This is an ABSOLUTE cap, not a ratio,
+  //     so as community uploads grow the grid, the event share shrinks on its
+  //     own (8 of 39 ≈ 17% today → 8 of 300 ≈ 3% later) with no re-tuning. A
+  //     ratio would do the opposite — more scraper noise the busier the site.
+  // Curator picks (editorial/elevated) bypass BOTH caps — that's deliberate
+  // intent, and there are few of them. Past events never enter (archive lives
+  // in /agenda) and keep their HL so they can still be cultivated.
   const EVENTS_PER_DAY = 3
+  const MAX_MOSAIC_EVENTS = 8
   const eventChrono = (a: ContentItem, b: ContentItem) =>
     parseISO(a.date ?? a.publishedAt).getTime() -
     parseISO(b.date ?? b.publishedAt).getTime()
@@ -64,14 +72,20 @@ export default async function HomePage() {
     .sort(eventChrono)
   const perDayCount = new Map<string, number>()
   const mosaicEventIds = new Set<string>()
+  let cappedEventCount = 0 // non-curated events counted against the global cap
   for (const ev of upcomingEvents) {
+    // Curator intent always surfaces, bypassing both caps.
+    if (ev.editorial || ev.elevated) {
+      mosaicEventIds.add(ev.id)
+      continue
+    }
+    if (cappedEventCount >= MAX_MOSAIC_EVENTS) continue
     const dayKey = (ev.date ?? ev.publishedAt).slice(0, 10) // YYYY-MM-DD
     const seen = perDayCount.get(dayKey) ?? 0
-    // Editorial/elevated always make the cut (curator intent); otherwise honor
-    // the per-day cap.
-    if (ev.editorial || ev.elevated || seen < EVENTS_PER_DAY) {
+    if (seen < EVENTS_PER_DAY) {
       mosaicEventIds.add(ev.id)
       perDayCount.set(dayKey, seen + 1)
+      cappedEventCount++
     }
   }
   const isMosaicEvent = (i: ContentItem) => mosaicEventIds.has(i.id)
