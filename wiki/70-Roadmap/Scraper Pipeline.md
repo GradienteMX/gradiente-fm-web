@@ -2,7 +2,7 @@
 type: roadmap
 status: in-progress
 tags: [roadmap, scraper, ingestion, ra, automation]
-updated: 2026-05-01
+updated: 2026-06-25
 ---
 
 # Scraper Pipeline
@@ -20,7 +20,7 @@ User-acquisition is event-listing-driven (see [[Event-listing-first MVP]] in per
 - Scraped events appear in the home grid alongside editorial content. HP curation does the sorting; editorial still gets spawn-HP advantage.
 - Ingest is direct: RA GraphQL → script → typed `lib/scrapedEvents.ts` (or equivalent) → imported next to `mockData.ts`. **No Excel intermediate, no Supabase.** The Excel step in the original v1 scraper is being skipped — it was a debugging artifact, not a load-bearing part of the design.
 - Editor review is post-hoc / out-of-band: the team reviews scraped output by reading the generated TS file (or a small admin surface later) and editing `vibe_min`/`vibe_max`, `editorial`, etc. in-place.
-- **Vibe field shape (post 2026-05-03)**: scraped events are point items by default — emit `vibeMin === vibeMax === default` (currently 5). Editors widen the range in-place. The regenerator MUST treat `vibe_min`/`vibe_max` as editor-owned (off-limits to re-scrape) — same allowlist as `editorial`/`elevated`/`pinned`/`hp`. See [[log]] vibe range arc entry.
+- **Vibe field shape (post 2026-05-03; seeding added 2026-06-25)**: scraped events used to emit a flat `vibeMin === vibeMax === 5`; they're now seeded to a **genre-derived band** on insert (decision #2). Either way the rule that matters is unchanged: `vibe_min`/`vibe_max` are editor-owned and **off-limits to re-scrape once graded** — same allowlist as `editorial`/`elevated`/`pinned`/`hp`. The `0036` RPC enforces this in SQL (re-seeds only while still the untouched `5/5`). See [[log]] vibe range arc + 2026-06-25 entries.
 
 ### Phase 2 — Editorial / community matures (PARTIALLY ARRIVED EARLY · 2026-05-01)
 
@@ -81,9 +81,9 @@ Cron-driven scraper runs into Supabase, full review queue at `/admin`, notificat
 
 Scraper writes `published: false`. Only editor approval flips the flag. Prevents bad data from showing up on the public site without review.
 
-### 2. Vibe is always editor-assigned
+### 2. Vibe seeds from genre, stays editor/crowd-owned (updated 2026-06-25)
 
-RA doesn't know the scene. Scraper leaves `vibe` empty or sets a safe default (5 = NEUTRAL); editor sets the real value on review. See [[Vibe Spectrum]].
+RA doesn't know the scene — but it DOES tag genre. On ingest the route derives a provisional vibe band from the mapped genres (`seedVibeFromGenreIds` in [lib/scrapedGenres.ts](../../lib/scrapedGenres.ts)) — a stereotype starting point, not a claim ([[Vibe Philosophy]] idea 2). It's set on insert and re-seeded on re-scrape ONLY while the row is still the untouched default `5/5`; an editor grade or the crowd [[Vibe Checks]] median (read-time override) wins from then on. Migration `0036` added `p_vibe_min`/`p_vibe_max` to `ingest_scraped_event`. Supersedes the old "scraper leaves vibe at a flat 5" behavior. See [[log]] 2026-06-25. (Genre tags themselves come straight from RA's `event.genres`, mapped to the [[genres|taxonomy]].)
 
 ### 3. `source` field on every item
 
