@@ -4,6 +4,7 @@ import type {
   ArticleBlock,
   ContentItem,
   EntityKind,
+  EntityLink,
   EntityRef,
   EntityRelation,
   Footnote,
@@ -139,6 +140,12 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     ...(item.subjectKind !== undefined ? { subject_kind: item.subjectKind } : {}),
     ...(item.country !== undefined ? { country: item.country || null } : {}),
     ...(item.year !== undefined ? { year: item.year ?? null } : {}),
+    // links jsonb (migration 0041, applied). Conditional spread + cast bypasses
+    // the stale generated types. Sent whenever defined so emptying the list
+    // writes [] and clears the column; undefined (untouched) leaves it alone.
+    ...(item.links !== undefined
+      ? { links: item.links as unknown as object }
+      : {}),
     image_url: item.imageUrl ?? null,
     published_at: item.publishedAt,
     date: tsOrNull(item.date),
@@ -236,6 +243,8 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     price: row.price ?? undefined,
     mixUrl: row.mix_url ?? undefined,
     embeds: (row.embeds as MixEmbed[] | null) ?? [],
+    // links jsonb added in migration 0041; cast bypasses stale generated types.
+    links: (row as { links?: EntityLink[] | null }).links ?? undefined,
     duration: row.duration ?? undefined,
     tracklist: (row.tracklist as MixTrack[] | null) ?? [],
     mixSeries: row.mix_series ?? undefined,

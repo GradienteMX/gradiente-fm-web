@@ -31,6 +31,7 @@ updated: 2026-05-07
 - `GenreMultiSelect` — searchable chip multi-select against `lib/genres`
 - `StringListField` — flat list editor with `PEGAR LISTA` bulk paste; per-row paste also splits multi-line
 - `EmbedList` — multi-source URL editor; live platform detection from URL; smart multi-URL paste
+- `LinkListField` — outbound labeled-link editor (`EntityLink { label, url }[]`) with per-form preset chips (Bandcamp/Discogs/Spotify/Sitio/Fuente/RSVP/Referencia). Powers the **ENLACES** CONTEXTO field — "where to buy / listen / read more". Distinct from `EmbedList` (playable sources) and `EntityMultiSelect` (browsable scene rows). See the CONTEXTO section below.
 - `ImageUrlField` — URL input + inline thumbnail preview
 - `SubmitFooter` — sticky bottom bar with `⚠ FALTA: …` chip when `errors[]` is non-empty + RESETEAR + ▣ GUARDAR DRAFT + ▶ PUBLICAR (both disabled while errors present)
 
@@ -75,6 +76,30 @@ Three places use bulk paste, each tuned to its content shape:
 - **MixForm tracklist** — recognizes 4 line formats (numbered, em-dash, parenthesized BPM, bracketed BPM, trailing BPM, plain "Artist - Title"). Skips `#` comments. Live "N pistas detectadas" counter.
 - **EmbedList** — multi-URL paste splits across rows with per-platform detection.
 - **StringListField** — generic line-per-entry paste.
+
+## CONTEXTO — outbound links + scene entities (2026-06-26)
+
+Every form now exposes a context-appropriate **CONTEXTO** block. Two mechanisms, deliberately kept separate:
+
+- **Scene entities** (`EntityMultiSelect` → `entities[]` → `item_entities` join) — browsable, filterable rows (`/e/[slug]`): `artist` / `label` / `venue` / `promoter`.
+- **Outbound links** (`LinkListField` → `links[]` → `items.links` jsonb, migration `0041`) — plain labeled URLs. Reuses the `EntityLink` shape.
+
+| Form | CONTEXTO contents | ENLACES placement / presets |
+|---|---|---|
+| **review** | subject switch + artist/label (+ venue/promoter if happening) + format + embeds | existing CONTEXTO · Bandcamp·Discogs·Spotify·Sitio·Fuente |
+| **listicle** | artist + label | existing CONTEXTO · Bandcamp·Spotify·Sitio·Fuente |
+| **mix** | metadata (serie/grabado/formato/…) + **artist/label/venue** | existing CONTEXTO · Bandcamp·Discogs·Sitio |
+| **evento** | venue/promoter (UBICACIÓN) + artist (LINE-UP) | MEDIA + BOLETOS · Sitio·RSVP·Fuente |
+| **noticia** | **artist + label** | new CONTEXTO · Fuente·Sitio |
+| **editorial** | **artist + label** | new CONTEXTO · Fuente·Sitio·Referencia |
+| **opinion** | **artist + label** | new CONTEXTO · Fuente·Sitio |
+| **articulo** | (links only) | new CONTEXTO · Fuente·Sitio·Referencia |
+
+**Display side.** [[ReaderOverlay]] (review/editorial/opinion/noticia) renders entities via its `EntityRow` and links via an inline `LinkRow`. The other four overlays — [[MixOverlay]], [[ListicleOverlay]], [[EventoOverlay]], [[ArticuloOverlay]] — use two shared, self-contained blocks: `components/overlay/OverlayEntities.tsx` (subject entities → `EntityChipButton` chips) and `components/overlay/OverlayLinks.tsx` (external anchors). This closed a pre-existing gap where those overlays showed no entities at all (ListicleForm had collected artist/label that never displayed).
+
+**Persistence.** Drafts carry `links` for free in the `item_payload` jsonb; published items use `items.links` (0041). `contentItemToRow` writes it whenever defined (emptying clears the column); `rowToContentItem` reads it.
+
+**Deferred:** a `collective` `entity_kind` for crews/colectivos — needs a migration (enum value) + `KIND_LABEL`/placeholder. Distinct from the `colectivo` `partner_kind`.
 
 ## Out of scope
 

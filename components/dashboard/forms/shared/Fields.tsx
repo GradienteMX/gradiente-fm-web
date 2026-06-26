@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Trash2, ExternalLink, ClipboardPaste } from 'lucide-react'
-import type { ContentItem, EmbedPlatform, MixEmbed } from '@/lib/types'
+import type { ContentItem, EmbedPlatform, EntityLink, MixEmbed } from '@/lib/types'
 import { GENRES } from '@/lib/genres'
 import { vibeToColor, vibeToLabel } from '@/lib/utils'
 import { compressAndUploadImage } from '@/lib/imageUpload'
@@ -504,6 +504,99 @@ export function GenreMultiSelect({
 }
 
 // ── String list editor (used for tags / artists / etc.) ─────────────────────
+
+// Labeled outbound-link editor for the CONTEXTO block — "where to buy / listen /
+// read more" (Bandcamp, Discogs, official site, news source…). Edits an
+// EntityLink[] { label, url } in place. Preset chips pre-fill the label so the
+// common destinations are one click; the label itself stays free-text. Distinct
+// from EmbedList (playable sources) and EntityMultiSelect (browsable scene rows).
+const LINK_PRESETS = ['Bandcamp', 'Discogs', 'Spotify', 'Sitio', 'Fuente']
+
+export function LinkListField({
+  label,
+  values,
+  onChange,
+  addLabel = 'AÑADIR ENLACE',
+  presets = LINK_PRESETS,
+}: {
+  label: string
+  values: EntityLink[]
+  onChange: (v: EntityLink[]) => void
+  addLabel?: string
+  presets?: string[]
+}) {
+  const add = (preset?: string) =>
+    onChange([...values, { label: preset ?? '', url: '' }])
+  const update = (i: number, patch: Partial<EntityLink>) =>
+    onChange(values.map((x, idx) => (idx === i ? { ...x, ...patch } : x)))
+  const remove = (i: number) =>
+    onChange(values.filter((_, idx) => idx !== i))
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="sys-label">
+        {label} ({values.length})
+      </span>
+
+      {values.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {values.map((link, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={link.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                placeholder="Bandcamp"
+                aria-label={`Etiqueta del enlace ${i + 1}`}
+                className="w-28 shrink-0 border bg-black px-2 py-1.5 font-mono text-[11px] text-primary outline-none transition-colors focus:border-sys-orange"
+                style={{ borderColor: '#242424' }}
+              />
+              <input
+                type="url"
+                value={link.url}
+                onChange={(e) => update(i, { url: e.target.value })}
+                placeholder="https://artista.bandcamp.com/album/…"
+                aria-label={`URL del enlace ${i + 1}`}
+                className="min-w-0 flex-1 border bg-black px-2 py-1.5 font-mono text-[11px] text-primary outline-none transition-colors focus:border-sys-orange"
+                style={{ borderColor: '#242424' }}
+              />
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                aria-label={`Quitar enlace ${i + 1}`}
+                className="shrink-0 p-1 text-muted transition-colors hover:text-sys-orange"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => add()}
+          className="flex items-center gap-1 border border-dashed border-border px-2 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+        >
+          <Plus size={10} />
+          {addLabel}
+        </button>
+        {presets.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => add(p)}
+            className="border px-2 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+            style={{ borderColor: '#242424' }}
+          >
+            + {p}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function StringListField({
   label,

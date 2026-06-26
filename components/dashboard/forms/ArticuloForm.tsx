@@ -28,6 +28,7 @@ import {
   VibeField,
   GenreMultiSelect,
   ImageUrlField,
+  LinkListField,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
@@ -241,7 +242,17 @@ export function ArticuloForm() {
           />
         </Section>
 
-        <Section label="07" title="ENCUESTA (opcional)">
+        <Section label="07" title="CONTEXTO">
+          {/* Reference / source links → //ENLACES row in the overlay CONTEXTO. */}
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
+            presets={['Fuente', 'Sitio', 'Referencia']}
+          />
+        </Section>
+
+        <Section label="08" title="ENCUESTA (opcional)">
           <PollFieldset
             type={draft.type}
             poll={draft.poll}

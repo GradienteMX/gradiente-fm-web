@@ -14,10 +14,12 @@ import {
   VibeField,
   GenreMultiSelect,
   ImageUrlField,
+  LinkListField,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PartnerAttributionField } from './shared/PartnerAttributionField'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
@@ -136,6 +138,10 @@ export function OpinionForm() {
             value={!!draft.editorial}
             onChange={(v) => patch({ editorial: v })}
           />
+          <PartnerAttributionField
+            draft={draft}
+            onChange={(v) => patch({ attributePartner: v })}
+          />
         </Section>
 
         <Section label="02" title="COPY">
@@ -179,18 +185,34 @@ export function OpinionForm() {
           />
         </Section>
 
-        <Section label="05" title="ENCUESTA (opcional)">
+        <Section label="05" title="CONTEXTO">
+          {/* Scene entities the piece is about (→ CONTEXTO rail chips + per-entity
+              filter) plus reference / source links (→ //ENLACES row). */}
+          <EntityMultiSelect
+            kind="artist"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="label"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
+            presets={['Fuente', 'Sitio']}
+          />
+        </Section>
+
+        <Section label="06" title="ENCUESTA (opcional)">
           <PollFieldset
             type={draft.type}
             poll={draft.poll}
             onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
-
-        <PartnerAttributionField
-          draft={draft}
-          onChange={(v) => patch({ attributePartner: v })}
-        />
 
         <SubmitFooter
           canSubmit={canSubmit}

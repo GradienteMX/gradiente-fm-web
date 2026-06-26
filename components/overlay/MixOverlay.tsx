@@ -9,6 +9,8 @@ import { ContentCard } from '@/components/cards/ContentCard'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
+import { OverlayLinks } from './OverlayLinks'
+import { OverlayEntities } from './OverlayEntities'
 import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 
@@ -287,6 +289,8 @@ export function MixOverlay({ item }: Props) {
                 </div>
               )}
           </dl>
+          <OverlayEntities entities={item.entities} color="#F97316" />
+          <OverlayLinks links={item.links} color="#F97316" />
         </Panel>
 
         {/* 03 TRACKLIST / ETIQUETAS */}

@@ -202,6 +202,13 @@ export interface ContentItem {
   // `attachEntities` in lib/data/items.ts. The composer sends these on
   // publish; the items API writes the join rows. Drives the CONTEXTO rail.
   entities?: EntityRef[]
+  // Free-form outbound links surfaced in the CONTEXTO block — "where to buy /
+  // listen / read more" (Bandcamp, Discogs, official site, news source…).
+  // Distinct from `entities` (browsable scene rows) and `embeds` (playable
+  // sources): these are plain labeled URLs that don't deserve their own row.
+  // Stored as `items.links` jsonb (migration 0041); rides the drafts payload
+  // for free. Reuses the EntityLink { label, url } shape. See [[Dashboard Forms]].
+  links?: EntityLink[]
   // Physical/digital format the item is about (reviews). Closed enum.
   format?: ItemFormat
   // What the item is *about* — record / book / event / exhibition. Drives the

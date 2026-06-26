@@ -9,6 +9,10 @@ import { Toggle } from './Fields'
 // explicitly link (or unlink) a piece with their promotora — and flip it later
 // by re-publishing/editing.
 //
+// Renders a bare Toggle: every form drops it inside the IDENTIDAD section right
+// below the EDITORIAL toggle, so it shares that card's chrome. Returns null for
+// non-partner users (no stray control).
+//
 // Value reflects reality: an explicit choice wins; otherwise it mirrors whether
 // the item is currently partner-stamped (so editing a branded item shows ON and
 // can be turned OFF, while a brand-new item shows OFF until opted in). The

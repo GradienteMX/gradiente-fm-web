@@ -12,8 +12,9 @@ import type {
 } from '@/lib/types'
 import { GENRES } from '@/lib/genres'
 import { LivePreview } from '@/components/dashboard/LivePreview'
-import { EmbedList, useDraftWorkbench, VibeField } from './shared/Fields'
+import { EmbedList, LinkListField, useDraftWorkbench, VibeField } from './shared/Fields'
 import { SubmitFooter } from './shared/Fields'
+import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PartnerAttributionField } from './shared/PartnerAttributionField'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
@@ -153,6 +154,10 @@ export function MixForm() {
             value={!!draft.editorial}
             onChange={(v) => patch({ editorial: v })}
           />
+          <PartnerAttributionField
+            draft={draft}
+            onChange={(v) => patch({ attributePartner: v })}
+          />
         </Section>
 
         <Section label="02" title="COPY">
@@ -269,6 +274,31 @@ export function MixForm() {
             value={draft.mixStatus ?? 'disponible'}
             onChange={(v) => patch({ mixStatus: v })}
           />
+          {/* Scene entities — the DJ/artist, label, and host venue. The free-text
+              GRABADO EN above stays as the quick-draft fallback; these are the
+              clickable CONTEXTO-rail rows + per-entity filter. */}
+          <EntityMultiSelect
+            kind="artist"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="label"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="venue"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          {/* Outbound buy/site links (the playable sources live in EMBEDS). */}
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
+            presets={['Bandcamp', 'Discogs', 'Sitio']}
+          />
         </Section>
 
         <Section label="07" title="TRACKLIST">
@@ -285,11 +315,6 @@ export function MixForm() {
             onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
-
-        <PartnerAttributionField
-          draft={draft}
-          onChange={(v) => patch({ attributePartner: v })}
-        />
 
         <SubmitFooter
           canSubmit={canSubmit}

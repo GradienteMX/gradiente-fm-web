@@ -16,6 +16,8 @@ import { PLATFORM_LABELS } from '@/components/embed/platforms'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
+import { OverlayLinks } from './OverlayLinks'
+import { OverlayEntities } from './OverlayEntities'
 
 interface ArticuloOverlayProps {
   item: ContentItem
@@ -344,6 +346,8 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
                   <span className="text-sys-green">ACTIVA</span>
                 </dd>
               </dl>
+              <OverlayEntities entities={item.entities} color={vibeColor} />
+              <OverlayLinks links={item.links} color={vibeColor} />
             </RailBlock>
 
             {(genres.length > 0 || tags.length > 0) && (

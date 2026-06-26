@@ -16,6 +16,8 @@ import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
 import { VibeMeter } from '@/components/VibeMeter'
+import { OverlayLinks } from './OverlayLinks'
+import { OverlayEntities } from './OverlayEntities'
 
 interface Props {
   item: ContentItem
@@ -150,6 +152,9 @@ export function EventoOverlay({ item }: Props) {
             <VibeFader item={item} />
           </dd>
         </dl>
+
+        <OverlayEntities entities={item.entities} color={vibeColor} />
+        <OverlayLinks links={item.links} color={vibeColor} />
 
         {/* Artists */}
         {item.artists && item.artists.length > 0 && (

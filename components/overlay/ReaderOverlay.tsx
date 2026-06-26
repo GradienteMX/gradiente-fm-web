@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type {
   ContentItem,
   EntityKind,
+  EntityLink,
   EntityRef,
   ItemFormat,
 } from '@/lib/types'
@@ -23,6 +24,7 @@ import {
   Clock,
   Activity,
   MessageSquare,
+  ExternalLink,
 } from 'lucide-react'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { EntityChipButton } from '@/components/entity/EntityChipButton'
@@ -84,6 +86,44 @@ function EntityRow({
   )
 }
 
+// One CONTEXTO row of outbound links — "where to buy / listen / read more".
+// Renders nothing when empty (callers list it unconditionally). Links open in a
+// new tab; a blank/relative href is skipped so a half-filled draft never emits a
+// dead anchor. Emits a <dt>/<dd> pair to slot into the parent key/value <dl>.
+function LinkRow({
+  label,
+  links,
+  color,
+}: {
+  label: string
+  links: EntityLink[]
+  color: string
+}) {
+  const valid = links.filter((l) => l.url.trim() && l.label.trim())
+  if (valid.length === 0) return null
+  return (
+    <>
+      <dt className="text-muted">{label}</dt>
+      <dd className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        <span className="text-muted">:</span>
+        {valid.map((l, i) => (
+          <a
+            key={`${l.url}-${i}`}
+            href={l.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 underline-offset-2 transition-opacity hover:underline hover:opacity-80"
+            style={{ color }}
+          >
+            {l.label}
+            <ExternalLink size={10} aria-hidden />
+          </a>
+        ))}
+      </dd>
+    </>
+  )
+}
+
 interface ReaderOverlayProps {
   item: ContentItem
 }
@@ -122,7 +162,8 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
     !!item.venueCity ||
     !!item.country ||
     !!item.year ||
-    !!item.author
+    !!item.author ||
+    (item.links?.some((l) => l.url?.trim() && l.label?.trim()) ?? false)
 
   // Comments state from the surrounding shell — drives the in-body
   // DISCUSIÓN entry + the [C] footer legend.
@@ -414,6 +455,11 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                     <dd className="text-primary">: {item.author}</dd>
                   </>
                 )}
+                <LinkRow
+                  label="ENLACES"
+                  links={item.links ?? []}
+                  color={vibeColor}
+                />
               </dl>
             ) : (
               <p className="font-mono text-[11px] text-muted">

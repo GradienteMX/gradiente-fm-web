@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-06-26 · INGEST · CONTEXTO expansion — per-form outbound links + scene entities across all forms & overlays (pushed to main)
+
+Every dashboard compose form now authors a context-appropriate CONTEXTO block (outbound links + scene entities), and **every** overlay renders it — closing the gap where four overlays showed no entities at all. Built incrementally across the session; migration `0041` applied via the SQL editor before the push. Also folded in: the partner-attribution toggle standardization (below).
+
+- **New generic field `links?: EntityLink[]` on [[types|ContentItem]]** ([lib/types.ts](../lib/types.ts)) — plain labeled outbound URLs ("where to buy / listen / read more": Bandcamp, Discogs, Spotify, official site, news source). Deliberately distinct from `embeds` (playable sources) and `entities` (browsable scene rows) — these are links that don't deserve their own entity. Reuses the existing `EntityLink { label, url }` shape. Rides the drafts `item_payload` jsonb for free; published items use the new `items.links` jsonb column.
+- **Migration `0041_item_links.sql`** ([supabase/migrations/0041_item_links.sql](../supabase/migrations/0041_item_links.sql)) — `add column if not exists links jsonb not null default '[]'`. Applied via the SQL editor (NEVER `db push`; migration-history-drift). `contentItemToRow` sends `links` whenever defined (so emptying clears it); `rowToContentItem` reads it (cast past stale generated types, same pattern as `partner_id`).
+- **`LinkListField` primitive** ([Dashboard Forms]] · [shared/Fields.tsx](../components/dashboard/forms/shared/Fields.tsx)) — label+URL row editor with per-form preset chips (Bandcamp/Discogs/Spotify/Sitio/Fuente/RSVP/Referencia). Surfaced as an **ENLACES** field in all 8 forms' CONTEXTO. Forms lacking a CONTEXTO section (noticia/editorial/opinion/articulo) got a new one (ENCUESTA renumbered); evento's sits in MEDIA + BOLETOS with the ticket URL; review/listicle/mix use their existing CONTEXTO.
+- **Scene-entity selects extended.** Editorial-family forms (noticia/editorial/opinion) gained `artist` + `label` `EntityMultiSelect`s — they render today via [[ReaderOverlay]]'s existing entity rows, no overlay work. **Mix** gained `artist`/`label`/`venue` selects (it had none — the structural gap; free-text GRABADO EN stays as the quick-draft fallback).
+- **Two shared overlay renderers** (the display half — previously only [[ReaderOverlay]] showed entities/links):
+  - **[OverlayLinks](../components/overlay/OverlayLinks.tsx)** — `ENLACES` block of external anchors (`target=_blank rel=noopener`). Skips half-filled rows (no label or no url).
+  - **[OverlayEntities](../components/overlay/OverlayEntities.tsx)** — subject entities grouped by kind → clickable `EntityChipButton` chips (→ `/e/[slug]`); mirrors ReaderOverlay's `EntityRow`. Safe in [[LivePreview]] (app-wide `OverlayProvider`).
+  - Both wired into [[MixOverlay]] · [[ListicleOverlay]] · [[EventoOverlay]] · [[ArticuloOverlay]]. **This retroactively fixes a pre-existing gap**: ListicleForm had collected artist/label entities for ages that [[ListicleOverlay]] never displayed.
+  - [[ReaderOverlay]] keeps its own dl-native `LinkRow` for links (review/editorial/opinion/noticia).
+- **Partner-attribution toggle standardized** ([[PartnerAttributionField]]) — the `VINCULAR ESTE CONTENIDO CON MI PROMOTORA` toggle now sits uniformly at the top of every stamped form's IDENTIDAD section, directly below the EDITORIAL toggle (was a loose control floating above the footer in 4 of 5 forms). Bare `Toggle`, returns null for non-partner users.
+- **Verified:** `tsc` clean throughout; in-preview end-to-end on review + articulo (author a link → renders through the real overlay), section renumbering correct, ENLACES + entity selects present per form. Real-data display proof: opened the one published item with entities (evento `Tarab…`) → ARTISTAS `Tarek Atoui` + VENUES `Kurimanzutto` render as clickable chips. No new console errors (only the pre-existing `pollVotesCache` seed-poll noise).
+- **NEXT (optional):** a `collective` `entity_kind` for crews/colectivos as first-class chips — needs a migration (enum value) + `KIND_LABEL`/placeholder entries + adding the select where relevant. Distinct from the `colectivo` `partner_kind`. Deferred to a follow-up.
+
+---
+
 ## 2026-06-25 · INGEST · Partner dossier revamp — overlay → full /p/[slug] page (MERGED to main)
 
 The thin partner-rail overlay (image + two links) became a full partner destination. Commit `617acfb` — fast-forward to `main`, live on gradiente.org (prod `next build` verified clean before merge). Built across 5 verified slices on branch `partner/dossier-phase1`.

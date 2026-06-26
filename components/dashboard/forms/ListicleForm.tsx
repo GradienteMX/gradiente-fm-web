@@ -26,6 +26,7 @@ import {
   GenreMultiSelect,
   ImageUrlField,
   EmbedList,
+  LinkListField,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
@@ -150,6 +151,10 @@ export function ListicleForm() {
             value={!!draft.editorial}
             onChange={(v) => patch({ editorial: v })}
           />
+          <PartnerAttributionField
+            draft={draft}
+            onChange={(v) => patch({ attributePartner: v })}
+          />
         </Section>
 
         <Section label="02" title="LEAD">
@@ -191,6 +196,13 @@ export function ListicleForm() {
             value={draft.entities ?? []}
             onChange={(entities) => patch({ entities })}
           />
+          {/* Outbound buy/listen/source links → //ENLACES row in the overlay. */}
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
+            presets={['Bandcamp', 'Spotify', 'Sitio', 'Fuente']}
+          />
         </Section>
 
         <Section label="05" title="MEDIA">
@@ -219,11 +231,6 @@ export function ListicleForm() {
             onChange={(poll) => patch({ poll: poll ?? undefined })}
           />
         </Section>
-
-        <PartnerAttributionField
-          draft={draft}
-          onChange={(v) => patch({ attributePartner: v })}
-        />
 
         <SubmitFooter
           canSubmit={canSubmit}

@@ -14,10 +14,12 @@ import {
   VibeField,
   GenreMultiSelect,
   ImageUrlField,
+  LinkListField,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
 } from './shared/Fields'
+import { EntityMultiSelect } from './shared/EntityMultiSelect'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -178,7 +180,28 @@ export function EditorialForm() {
           />
         </Section>
 
-        <Section label="05" title="ENCUESTA (opcional)">
+        <Section label="05" title="CONTEXTO">
+          {/* Scene entities the piece is about (→ CONTEXTO rail chips + per-entity
+              filter) plus reference / source links (→ //ENLACES row). */}
+          <EntityMultiSelect
+            kind="artist"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <EntityMultiSelect
+            kind="label"
+            value={draft.entities ?? []}
+            onChange={(entities) => patch({ entities })}
+          />
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
+            presets={['Fuente', 'Sitio', 'Referencia']}
+          />
+        </Section>
+
+        <Section label="06" title="ENCUESTA (opcional)">
           <PollFieldset
             type={draft.type}
             poll={draft.poll}

@@ -15,6 +15,7 @@ import {
   GenreMultiSelect,
   StringListField,
   ImageUrlField,
+  LinkListField,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
@@ -279,6 +280,13 @@ export function EventoForm() {
             value={draft.price ?? ''}
             onChange={(v) => patch({ price: v })}
             placeholder="$800 early · $1200 general"
+          />
+          {/* Extra outbound links beyond TICKET — event page, RSVP, source. */}
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
+            presets={['Sitio', 'RSVP', 'Fuente']}
           />
         </Section>
 

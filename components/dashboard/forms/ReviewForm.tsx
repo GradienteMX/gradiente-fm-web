@@ -15,6 +15,7 @@ import {
   GenreMultiSelect,
   ImageUrlField,
   EmbedList,
+  LinkListField,
   SubmitFooter,
   slugify,
   useDraftWorkbench,
@@ -327,6 +328,13 @@ export function ReviewForm() {
           <EmbedList
             embeds={draft.embeds ?? []}
             onChange={(embeds) => patch({ embeds })}
+          />
+          {/* Outbound buy/read-more links (Bandcamp/Discogs/source) — labeled
+              URLs that surface as the //ENLACES row in the overlay CONTEXTO. */}
+          <LinkListField
+            label="ENLACES"
+            values={draft.links ?? []}
+            onChange={(links) => patch({ links })}
           />
         </Section>
 
