@@ -105,6 +105,7 @@
 - [[NewThreadOverlay]] — login-gated thread composer (image + 1–5 genres required)
 - [[ReplyComposer]] — pinned-bottom reply form; `>>id` parsing + quote-back pre-fill
 - [[PostHeader]] — role-colored identity chrome at the top of each foro post
+- [[InviteExperience]] — the `/welcome` 3D invite (envelope → holo glass card → carousel); Three.js island + post chain + the macOS holo-blackout fix
 
 ## 50 — Modules
 

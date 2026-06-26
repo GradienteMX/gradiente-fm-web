@@ -44,7 +44,13 @@ export function createHologramMaterial({
         vec3 N = normalize(vN); vec3 V = normalize(-vView);
         float ndv = clamp(dot(N,V),0.0,1.0);
         float fres = pow(1.0-ndv, 2.4);
-        float ang = atan(N.y,N.x)/TAU + 0.5;
+        // atan(0,0) es indefinido: en Metal (macOS) devuelve NaN cuando la cara mira
+        // de frente a la cámara (N≈(0,0,1) ⇒ N.x=N.y=0). Ese NaN se propaga por el
+        // blending ADITIVO al buffer HDR y el blur del bloom lo esparce a TODA la
+        // pantalla → la escena se queda en negro ~2.5s SÓLO en Mac mientras la tarjeta
+        // pasa de frente en la apertura (en Windows/D3D11 atan(0,0)=0, sin bug).
+        // Devolvemos un ángulo estable en el caso degenerado.
+        float ang = dot(N.xy, N.xy) > 1e-7 ? atan(N.y,N.x)/TAU + 0.5 : 0.5;
         float diag = vUv.x*0.72 + vUv.y*0.43;
         float pph = dot(uPointer, vec2(0.7,-0.5));
         // patrón de difracción real (holo-pattern.png) modula tono y brillo

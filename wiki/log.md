@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-06-26 · INGEST · Fix macOS-only ~2.5s blackout when the invite envelope opens · [[InviteExperience]]
+
+Diagnosed and fixed a Mac-only bug where opening the `/welcome` invite envelope blanked the whole scene (just background) for ~2.5s mid-animation, then everything reappeared in place. New note [[InviteExperience]] created (the invite3d subsystem was undocumented).
+
+**Root cause:** [hologram.js](../components/welcome/invite3d/glasscard/hologram.js) computed `atan(N.y, N.x)` on the surface normal. When the card flips face-on to the camera during the open animation, `N≈(0,0,1)` ⇒ `N.x=N.y=0`, and `atan(0,0)` is undefined — **Metal (macOS) returns NaN, D3D11 (Windows) returns 0**. The NaN flows through the **additive** hologram blend into the HDR buffer; `UnrealBloomPass`'s blur smears it across the entire frame → full-canvas blackout. Self-clears once the card settles to a non-dead-on tilt.
+
+**Fix (one line):** `float ang = dot(N.xy, N.xy) > 1e-7 ? atan(N.y,N.x)/TAU + 0.5 : 0.5;`
+
+**Method:** reproduced + measured in the headless preview via per-frame canvas-luminance sampling; ruled out context loss (`gl.isContextLost()` false, rAF never stalled); bisected with `window.__glass` toggles + `outline.enabled`/`bloom.enabled` (blank died with bloom off, and with `holoOff` while bloom stayed on ⇒ holo feeds bloom the NaN). Two earlier hypotheses (OutlinePass first-use compile flash; lazy transmission RT) were wrong and reverted — see [[InviteExperience]] §Gotchas.
+
+**Also:** the pulled invite3d code needs `gsap` (declared in package.json, was missing from `node_modules` → `/welcome` + `/lab/tarjeta` 500'd). Run `npm install` after pulling. Verified on `/lab/tarjeta` (retina, dpr 2): blackout gone, card + iridescence + carousel intact.
+
 ## 2026-06-26 · INGEST · CONTEXTO expansion — per-form outbound links + scene entities across all forms & overlays (pushed to main)
 
 Every dashboard compose form now authors a context-appropriate CONTEXTO block (outbound links + scene entities), and **every** overlay renders it — closing the gap where four overlays showed no entities at all. Built incrementally across the session; migration `0041` applied via the SQL editor before the push. Also folded in: the partner-attribution toggle standardization (below).
