@@ -173,6 +173,11 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     partner_kind: item.partnerKind ?? null,
     partner_url: item.partnerUrl ?? null,
     partner_last_updated: tsOrNull(item.partnerLastUpdated),
+    // Partner dossier fields — migration 0040; conditional spread like partner_id.
+    ...(item.verified !== undefined ? { verified: item.verified } : {}),
+    ...(item.featuredItemId !== undefined
+      ? { featured_item_id: item.featuredItemId }
+      : {}),
     // partner_id added in migration 0015; cast bypasses stale generated
     // types until `npx supabase gen types typescript` regenerates.
     ...(item.partnerId !== undefined ? { partner_id: item.partnerId } : {}),
@@ -250,6 +255,10 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     partnerKind: row.partner_kind ?? undefined,
     partnerUrl: row.partner_url ?? undefined,
     partnerLastUpdated: row.partner_last_updated ?? undefined,
+    // Partner dossier fields — migration 0040; cast bypasses stale generated types.
+    verified: (row as { verified?: boolean }).verified ?? undefined,
+    featuredItemId:
+      (row as { featured_item_id?: string | null }).featured_item_id ?? undefined,
     // partner_id added in migration 0015; cast bypasses stale generated
     // types until `npx supabase gen types typescript` regenerates.
     partnerId: (row as { partner_id?: string | null }).partner_id ?? undefined,
@@ -720,4 +729,25 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   const withPartner = attachPartner(withAgg, item.partnerId ? partners.get(item.partnerId) : undefined)
   const withCreator = attachCreator(withPartner, item.createdById ? creators.get(item.createdById) : undefined)
   return attachEntities(withCreator, entities.get(item.id))
+}
+
+// Items attributed to a partner via the //PRESENTA self-FK — drives the full
+// /p/[slug] partner page (PRÓXIMOS / ARCHIVO / catalog facts / actividad).
+// Server-fetched so a DIRECT visit works (the client itemsCache is only warm
+// on grid pages). Lean: no aggregate/creator/entity merge — the partner-page
+// cards only need base item fields. `partner_id` is a post-0015 column; cast
+// bypasses the stale generated types (same as getItemsByCreatedBy).
+export async function getItemsByPartner(partnerId: string): Promise<ContentItem[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEMS_SELECT)
+    .eq('partner_id' as never, partnerId as never)
+    .eq('published', true)
+    .order('published_at', { ascending: false })
+  if (error) {
+    console.error('[getItemsByPartner] Supabase error:', error)
+    return []
+  }
+  return ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
 }

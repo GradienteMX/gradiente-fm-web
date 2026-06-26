@@ -261,6 +261,9 @@ export interface ContentItem {
   partnerKind?: PartnerKind
   partnerUrl?: string     // outbound link (site, Instagram, Bandcamp, etc.)
   partnerLastUpdated?: string  // ISO — overrides publishedAt for rail ordering
+  // Partner dossier fields (migration 0040 / project_partner_page_revamp).
+  verified?: boolean       // official/verified partner → //VERIFICADO badge
+  featuredItemId?: string  // partner-chosen //HISTORIA DESTACADA item (items.id)
 
   // Partner attribution — when set on a NON-partner item, the item was authored
   // (or scraper-matched) on behalf of that partner organization. Drives the

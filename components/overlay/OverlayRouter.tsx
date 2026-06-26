@@ -79,23 +79,39 @@ export function OverlayRouter() {
 
   if (!mounted) return null
 
+  const handleExited = () => {
+    const next = resolveSlug(openSlug)
+    if (next && next.slug !== mounted.slug) {
+      // Swap in the new item after the old one finished exiting.
+      recordHpEvent(next.id, 'open')
+      setMounted(next)
+      setExiting(false)
+    } else {
+      setMounted(null)
+      setExiting(false)
+    }
+  }
+
+  // Partners render as a standalone full-screen dossier (own chrome + wide
+  // layout), NOT wrapped in OverlayShell's 1024px single panel. See the
+  // project_partner_page_revamp design note.
+  if (mounted.type === 'partner') {
+    return (
+      <PartnerOverlay
+        key={mounted.slug}
+        item={mounted}
+        exiting={exiting}
+        onExited={handleExited}
+      />
+    )
+  }
+
   return (
     <OverlayShell
       key={mounted.slug}
       item={mounted}
       exiting={exiting}
-      onExited={() => {
-        const next = resolveSlug(openSlug)
-        if (next && next.slug !== mounted.slug) {
-          // Swap in the new item after old one finished exiting.
-          recordHpEvent(next.id, 'open')
-          setMounted(next)
-          setExiting(false)
-        } else {
-          setMounted(null)
-          setExiting(false)
-        }
-      }}
+      onExited={handleExited}
     >
       {renderByType(mounted)}
     </OverlayShell>
@@ -112,8 +128,6 @@ function renderByType(item: ContentItem) {
       return <MixOverlay item={item} />
     case 'listicle':
       return <ListicleOverlay item={item} />
-    case 'partner':
-      return <PartnerOverlay item={item} />
     case 'editorial':
     case 'review':
     case 'opinion':
