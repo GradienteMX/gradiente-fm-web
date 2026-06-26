@@ -2,12 +2,14 @@
 type: domain
 status: current
 tags: [partners, isolation, constraint]
-updated: 2026-04-22
+updated: 2026-06-25
 ---
 
 # Partners Isolation
 
 > Partners never appear in the main content grid. They live in a dedicated sidebar rail, ordered chronologically, not by curation.
+
+> **2026-06-25 UPDATE — rail-only relaxed (route added).** Partners now also have a real `/p/[slug]` route ([[Partner Page]]) reached via the [[PartnerOverlay]]'s `[ENTRAR AL PERFIL DE PARTNER]` CTA. They STILL never enter the main editorial mosaic — the route is an identity hub (like `/e/[slug]` / `/u/[username]`), not a grid surface. This relaxes the original "rail-only" framing + [[Contained Single Surface]]'s no-detail-routes rule; flagged for datavismo sign-off.
 
 ## The rule
 

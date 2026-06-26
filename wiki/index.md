@@ -41,6 +41,7 @@
 - [[Articulos]] — `/articulos` — longform features only
 - [[Foro]] — `/foro` — imageboard-style discussion catalog (threads + flat replies)
 - [[Marketplace Page]] — `/marketplace` — public marketplace catalog; `?partner=<slug>` opens a partner's overlay
+- [[Partner Page]] — `/p/[slug]` — full partner dossier (Concept-1): stats · última actividad · próximos · archivo tabs · mercado · señales mockup · comunidad; the `[ENTRAR]` destination from [[PartnerOverlay]]
 - [[Dashboard]] — `/dashboard` — auth-gated insider surface for composing new content (visual prototype)
 - [[Dashboard Drafts]] — `/dashboard/drafts` — table view of session items with edit / publish / delete actions
 - [[About]] — `/about` — identity surface: what Gradiente is + partner ecosystem
@@ -59,6 +60,7 @@
 - [[ContentCard]] — sm/md/lg tiered card (image-forward); opens overlay on click
 - [[HeroCard]] — split portada hero; opens overlay on click
 - [[PartnersRail]] — chronological rail, never merges with grid
+- [[PartnerOverlay]] — standalone wide partner dossier peek (own chrome, NOT OverlayShell); catalog facts (vanity cut), folded-in //MERCADO, `[ENTRAR]` → [[Partner Page]]
 - [[OverlayShell]] — frame chrome + CRT boot animation for every overlay
 - [[OverlayRouter]] — mount/exit state machine, picks type-specific overlay
 - [[ReaderOverlay]] — terminal reader for editorial / review / opinion / noticia

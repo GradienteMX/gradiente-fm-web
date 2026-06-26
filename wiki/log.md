@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-06-25 · INGEST · Partner dossier revamp — overlay → full /p/[slug] page (MERGED to main)
+
+The thin partner-rail overlay (image + two links) became a full partner destination. Commit `617acfb` — fast-forward to `main`, live on gradiente.org (prod `next build` verified clean before merge). Built across 5 verified slices on branch `partner/dossier-phase1`.
+
+- **Overlay → standalone wide dossier.** [OverlayRouter.tsx](../components/overlay/OverlayRouter.tsx) now special-cases `type==='partner'` to render [[PartnerOverlay]] standalone (own chrome, `max-w-6xl`) instead of wrapping it in [[OverlayShell]]'s 1024px panel — the cramped panel was why the partner view read as thin. Two-pane identity/content; **catalog-facts strip replacing the mockups' vanity metrics** (real `eventos`/`lanzamientos`/`artículos` counts, NO seguidores/miembros — honors [[Size and Position as Only Signals]]); folded-in `//MERCADO` reusing [[MarketplaceListingCard]] + the [[MarketplaceListingDetail]] z-60 sub-overlay (LOCAL state, not a URL param, so no collision with `?item=`); `verified` badge; `//HISTORIA DESTACADA` featured block; a prominent `[ENTRAR AL PERFIL DE PARTNER]` CTA.
+- **New `/p/[slug]` route.** [[Partner Page]] — a REAL route ([page.tsx](../app/p/%5Bslug%5D/page.tsx) → [PartnerProfile.tsx](../components/partner/PartnerProfile.tsx)) recreating the Concept-1 dossier: header + catalog-facts stats + última actividad + `//PRÓXIMOS` + `//ARCHIVO` (type tabs) + `//MERCADO` + a `//SEÑALES` mockup + `//COMUNIDAD`. Iker overruled overlay-only because the mockups are full-bleed multi-column pages a centered modal can't do. The overlay stays the lightweight peek; the page is the shareable/indexable destination. **This relaxes [[Partners Isolation]] + [[Contained Single Surface]]** — partners now route, consistent with `/e/[slug]` (entities) + `/u/[username]` (identity hubs already route). Flagged for datavismo sign-off.
+- **Architectural fix (load-bearing).** PartnerProfile first read attributed content from the CLIENT `itemsCache` (`getAllItemsSync`), only warm on grid pages → a DIRECT `/p/[slug]` visit was empty. Added `getItemsByPartner(partnerId)` ([items.ts](../lib/data/items.ts)) — server query `items WHERE partner_id=X AND published` — fetched server-side + passed as the `attributedItems` prop; PartnerProfile derives counts/featured/próximos/archivo from it. Verified on `/p/club-japan` (the ONLY partner with attributed content: 3 events).
+- **`//SEÑALES` is a MOCKUP.** Gradiente-native digital cosmetics (emoji/profile/shader/collectible) — no product class exists; rides the unbuilt payments + order_items spine and MUST stay disjoint from EARNED trophies/frames/emoji. Display-only (`// PRÓXIMAMENTE`).
+- **Schema — migration 0040** ([0040_partner_dossier_fields.sql](../supabase/migrations/0040_partner_dossier_fields.sql)): `verified bool` + `featured_item_id text` (bio reuses `excerpt`, since reuses `year`, tags reuse `tags`). **STILL PENDING: apply via the SQL editor** — deploy is safe without it (fields read undefined via the cast, write spreads empty so publishing is unaffected), but the verified badge + featured block stay dormant until applied. Never `db push` (see `migration-history-drift` memory).
+- **Close-on-navigate gotcha.** The `ENTRAR` Link needs explicit `onClick={close}` — `useOverlay().open()` writes `?item=` via `history.replaceState`, invisible to Next's `useSearchParams`, so the URL-sync never clears `openSlug` on a route nav. ANY in-overlay Link to a real route must `close()`.
+- **NEXT:** authoring UI for verified/featured/tags/bio/year; flesh `//SEÑALES` once the payments spine exists; attribution is SPARSE (only Club Japan) so most pages read empty until the scraper attributes more.
+
+---
+
 ## 2026-06-25 · INGEST · Scraped events get genre tags + a seed vibe band (SHIPPED to main)
 
 The RA scraper now enriches events instead of landing them at a flat neutral 5/5 with no genres. Two commits (`d9696ee` + `0a69105`, live on gradiente.org) + a migration applied via the Supabase SQL editor (`0036`, never `db push`).
