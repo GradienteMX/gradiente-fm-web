@@ -6,6 +6,7 @@ import type { ContentItem, PartnerKind } from '@/lib/types'
 import { categoryColor } from '@/lib/utils'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { recordItems } from '@/lib/itemsCache'
+import { SmartImage } from '@/components/SmartImage'
 
 const PARTNER_LABEL: Record<PartnerKind, string> = {
   promo: 'PROMO',
@@ -51,12 +52,11 @@ function PartnerCard({ item }: { item: ContentItem }) {
       <article className="group relative overflow-hidden border border-border bg-elevated transition-colors hover:border-white/30">
         <div className="relative aspect-[4/3] overflow-hidden">
           {item.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SmartImage
               src={item.imageUrl}
               alt={item.title}
-              className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-              loading="lazy"
+              sizes="(max-width: 768px) 45vw, 240px"
+              className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
             />
           ) : (
             <div className="h-full w-full bg-base" />

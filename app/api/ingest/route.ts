@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import sharp from 'sharp'
 import { createClient } from '@/lib/supabase/server'
 import { mapScrapedGenres, seedVibeFromGenreIds } from '@/lib/scrapedGenres'
+
+// sharp is a native module — pin to the Node.js runtime (also the default for
+// route handlers, but explicit here since we now transcode on the server).
+export const runtime = 'nodejs'
 
 // POST /api/ingest { events: ScrapedEventInput[] }
 //
@@ -61,8 +66,16 @@ async function rehostImage(
     if (!res.ok) return srcUrl
     const contentType = res.headers.get('content-type') || 'image/jpeg'
     if (!contentType.startsWith('image/')) return srcUrl
-    const bytes = await res.arrayBuffer()
-    if (bytes.byteLength === 0 || bytes.byteLength > 8_000_000) return srcUrl
+    const raw = Buffer.from(await res.arrayBuffer())
+    if (raw.byteLength === 0 || raw.byteLength > 8_000_000) return srcUrl
+
+    // Keep the original extension so the deterministic path stays stable across
+    // re-ingests (no orphaned objects). For non-GIFs we still transcode to WebP
+    // and store with an image/webp content-type — browsers + next/image key off
+    // the content-type header, not the filename, exactly like the one-time
+    // recompress backfill. This pulls the external-URL ingest path (RA flyers,
+    // pasted URLs) into the same egress regime as /api/ingest-image: shrunk
+    // bytes + a 1-year TTL. On any sharp failure we fall back to the raw bytes.
     const ext = contentType.includes('png')
       ? 'png'
       : contentType.includes('webp')
@@ -70,10 +83,25 @@ async function rehostImage(
         : contentType.includes('gif')
           ? 'gif'
           : 'jpg'
+    const isGif = contentType.includes('gif')
+    let outBuf: Buffer = raw
+    let outType = contentType
+    if (!isGif) {
+      try {
+        outBuf = await sharp(raw)
+          .rotate()
+          .resize(1440, 1440, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer()
+        outType = 'image/webp'
+      } catch {
+        // leave outBuf/outType as the original bytes
+      }
+    }
     const path = `${userId}/ig/${sanitizeId(externalId)}.${ext}`
     const { error } = await supabase.storage
       .from('uploads')
-      .upload(path, bytes, { contentType, upsert: true, cacheControl: '3600' })
+      .upload(path, outBuf, { contentType: outType, upsert: true, cacheControl: '31536000' })
     if (error) return srcUrl
     return supabase.storage.from('uploads').getPublicUrl(path).data.publicUrl
   } catch {

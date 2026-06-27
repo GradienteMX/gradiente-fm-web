@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { SmartImage } from '@/components/SmartImage'
 import type { ContentItem } from '@/lib/types'
 import { vibeToColor, vibeMid, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime, isExpired } from '@/lib/utils'
 import { VibeMeter } from '@/components/VibeMeter'
@@ -207,13 +208,13 @@ function CardImage({
       {/* Image — full color, static (no grayscale/halftone develop, no tilt). */}
       <div className="absolute inset-0 overflow-hidden">
         {item.imageUrl ? (
-          <img
+          <SmartImage
             src={item.imageUrl}
             alt={item.title}
-            className={`h-full w-full object-cover object-top transition-transform duration-300 ease-out group-hover:scale-105 ${
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className={`object-cover object-top transition-transform duration-300 ease-out group-hover:scale-105 ${
               isFresh ? 'fresh-cover-flicker' : ''
             }`}
-            loading="lazy"
           />
         ) : (
           <div className="h-full w-full bg-elevated" />

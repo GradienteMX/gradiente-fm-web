@@ -2,6 +2,7 @@
 
 import { Calendar, Clock, MapPin, Ticket, ExternalLink } from 'lucide-react'
 import type { ContentItem } from '@/lib/types'
+import { SmartImage } from '@/components/SmartImage'
 import {
   fmtDateFull,
   fmtDayName,
@@ -36,11 +37,11 @@ export function EventoOverlay({ item }: Props) {
       {/* Flyer column */}
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-elevated md:aspect-auto md:h-full md:min-h-[520px]">
         {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SmartImage
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-cover object-top"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover object-top"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

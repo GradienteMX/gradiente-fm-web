@@ -71,7 +71,9 @@ export async function compressAndUploadImage(
   const { error } = await supabase.storage
     .from('uploads')
     .upload(path, toUpload, {
-      cacheControl: '3600',
+      // 1-year TTL — uploads are immutable (random path, never overwritten),
+      // so a long cache keeps the Smart CDN + browsers from re-pulling bytes.
+      cacheControl: '31536000',
       upsert: false,
       contentType: isGif ? 'image/gif' : `image/${extension}`,
     })

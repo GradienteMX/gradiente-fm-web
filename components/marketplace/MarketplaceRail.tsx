@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, ShoppingBag } from 'lucide-react'
 import type { ContentItem } from '@/lib/types'
+import { SmartImage } from '@/components/SmartImage'
 
 // ── MarketplaceRail ────────────────────────────────────────────────────────
 //
@@ -61,12 +62,7 @@ export function MarketplaceRail({ partners }: { partners: ContentItem[] }) {
               >
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-border/40 bg-base">
                   {p.imageUrl && (
-                    <img
-                      src={p.imageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
+                    <SmartImage src={p.imageUrl} alt="" sizes="48px" className="object-cover" />
                   )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">

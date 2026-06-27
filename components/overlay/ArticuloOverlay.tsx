@@ -13,6 +13,7 @@ import { getGenreById, getTagNames } from '@/lib/genres'
 import { Calendar, Clock, Quote, User, ExternalLink } from 'lucide-react'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { PLATFORM_LABELS } from '@/components/embed/platforms'
+import { SmartImage } from '@/components/SmartImage'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
@@ -174,11 +175,11 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             className="relative overflow-hidden border border-border bg-elevated"
             style={{ aspectRatio: '16 / 9' }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <SmartImage
               src={item.imageUrl}
               alt={item.title}
-              className="h-full w-full object-cover object-top"
+              sizes="(max-width: 768px) 100vw, 720px"
+              className="object-cover object-top"
             />
             <div
               className="absolute bottom-0 left-0 right-0 h-0.5"

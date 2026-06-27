@@ -6,6 +6,7 @@ import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { VibeFader } from '@/components/VibeFader'
 import { VibeMeter } from '@/components/VibeMeter'
+import { SmartImage } from '@/components/SmartImage'
 
 interface Props {
   item: ContentItem
@@ -25,11 +26,11 @@ export function GenericOverlay({ item }: Props) {
     <article className="flex flex-col">
       {item.imageUrl && (
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-elevated">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SmartImage
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-cover object-top"
+            sizes="(max-width: 768px) 100vw, 720px"
+            className="object-cover object-top"
           />
           <VibeMeter
             item={item}
