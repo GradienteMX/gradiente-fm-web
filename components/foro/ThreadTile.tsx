@@ -8,6 +8,7 @@ import { getUserById } from '@/lib/mockUsers'
 import { useReplyCount } from '@/lib/foro'
 import { getGenreById, getTagById, vibeForGenre } from '@/lib/genres'
 import { vibeToColor } from '@/lib/utils'
+import { SmartImage } from '@/components/SmartImage'
 
 // ── ThreadTile ─────────────────────────────────────────────────────────────
 //
@@ -33,10 +34,11 @@ export function ThreadTile({ thread }: ThreadTileProps) {
     >
       {/* Image — square aspect, image-forward */}
       <div className="relative aspect-square overflow-hidden border-b border-border bg-elevated">
-        <img
+        <SmartImage
           src={thread.imageUrl}
           alt=""
-          className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+          sizes="(max-width: 768px) 50vw, 220px"
+          className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
         />
 
         {/* Reply count chip — top-left, the only ranking signal allowed */}

@@ -16,6 +16,7 @@ import type { ContentItem, ContentType, PartnerKind } from '@/lib/types'
 import { categoryColor, fmtDateFull } from '@/lib/utils'
 import { getAllItemsSync, subscribeItems } from '@/lib/itemsCache'
 import { useOverlay } from './useOverlay'
+import { SmartImage } from '@/components/SmartImage'
 import Link from 'next/link'
 import { ShareButton } from './ShareButton'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
@@ -366,11 +367,11 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                 aren't cropped. */}
             <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-black">
               {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SmartImage
                   src={item.imageUrl}
                   alt={item.title}
-                  className="h-full w-full object-contain"
+                  sizes="(max-width: 768px) 100vw, 400px"
+                  className="object-contain"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
@@ -520,12 +521,11 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                 >
                   <div className="relative aspect-[16/9] w-full overflow-hidden bg-base">
                     {featured.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <SmartImage
                         src={featured.imageUrl}
                         alt=""
-                        className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                        loading="lazy"
+                        sizes="(max-width: 768px) 100vw, 480px"
+                        className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center font-mono text-[10px] tracking-widest text-muted">
@@ -790,14 +790,13 @@ export function PartnerLinkedPeek({
         >
           <div className="relative aspect-[4/5] overflow-hidden bg-base">
             {item.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={item.imageUrl}
                 alt=""
-                className={`h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+                sizes="(max-width: 768px) 45vw, 240px"
+                className={`object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
                   isPast ? 'opacity-60 grayscale-[40%]' : ''
                 }`}
-                loading="lazy"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">

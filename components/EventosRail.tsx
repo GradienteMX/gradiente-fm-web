@@ -10,6 +10,7 @@ import { useVibe } from '@/context/VibeContext'
 import { categoryColor, isExpired } from '@/lib/utils'
 import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
 import { recordItems } from '@/lib/itemsCache'
+import { SmartImage } from '@/components/SmartImage'
 
 const EVENT_RED = categoryColor('evento')
 
@@ -40,13 +41,13 @@ function EventoRailCard({
     >
       <div className="relative aspect-[4/5] overflow-hidden">
         {item.imageUrl ? (
-          <img
+          <SmartImage
             src={item.imageUrl}
             alt=""
-            className={`h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+            sizes="(max-width: 768px) 45vw, 220px"
+            className={`object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
               past ? 'opacity-60 grayscale-[40%]' : ''
             }`}
-            loading="lazy"
           />
         ) : (
           <div className="h-full w-full bg-base" />

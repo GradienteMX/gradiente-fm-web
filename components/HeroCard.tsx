@@ -7,6 +7,7 @@ import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from '@/components/cards/SavedBadge'
+import { SmartImage } from '@/components/SmartImage'
 import { Clock, ArrowRight } from 'lucide-react'
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
@@ -105,10 +106,12 @@ export function HeroCard({ item }: HeroCardProps) {
         {/* LEFT — image */}
         <div className="relative w-full overflow-hidden md:w-[45%]" style={{ minHeight: 260 }}>
           {item.imageUrl ? (
-            <img
+            <SmartImage
               src={item.imageUrl}
               alt={item.title}
-              className="absolute inset-0 h-full w-full object-cover object-top"
+              priority
+              sizes="(max-width: 768px) 100vw, 45vw"
+              className="object-cover object-top"
             />
           ) : (
             <div className="absolute inset-0 bg-elevated" />

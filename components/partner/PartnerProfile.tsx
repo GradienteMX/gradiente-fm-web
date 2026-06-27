@@ -16,6 +16,7 @@ import { useOverlay } from '@/components/overlay/useOverlay'
 import { KIND_LABEL, TYPE_LABEL } from '@/components/overlay/PartnerOverlay'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
+import { SmartImage } from '@/components/SmartImage'
 
 // ── PartnerProfile ──────────────────────────────────────────────────────────
 //
@@ -169,11 +170,11 @@ export function PartnerProfile({
         {/* Logo */}
         <div className="relative aspect-square w-full overflow-hidden border border-border bg-black">
           {item.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SmartImage
               src={item.imageUrl}
               alt={item.title}
-              className="h-full w-full object-contain"
+              sizes="(max-width: 768px) 100vw, 320px"
+              className="object-contain"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
@@ -317,12 +318,11 @@ export function PartnerProfile({
               >
                 <div className="relative aspect-[21/9] w-full overflow-hidden bg-base">
                   {featured.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={featured.imageUrl}
                       alt=""
-                      className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                      loading="lazy"
+                      sizes="(max-width: 768px) 100vw, 480px"
+                      className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center font-mono text-[10px] tracking-widest text-muted">
@@ -625,12 +625,11 @@ function MiniCard({
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-base">
         {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SmartImage
             src={item.imageUrl}
             alt=""
-            className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-            loading="lazy"
+            sizes="(max-width: 768px) 45vw, 240px"
+            className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center font-mono text-[9px] tracking-widest text-muted">
