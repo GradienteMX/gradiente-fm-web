@@ -12,6 +12,7 @@ import {
 import {
   createHologramMaterial, createSmudge, createLenticular, addHologramOverlay,
 } from './hologram.js';
+import { addStickers } from './sticker.js';
 import { ROLES } from '../config.js';
 
 const GLB = '/tarjeta/models/gradiente-card.glb?v=8';
@@ -149,7 +150,11 @@ function reprojectPlanarUV(geometry) {
   uv.needsUpdate = true;
 }
 
-// cara trasera: código + barcode grabados en vidrio
+// cara trasera: código + barcode grabados en vidrio. El texto vive DETRÁS del vidrio
+// a propósito (refracción/parallax al inclinar); la nitidez la da el buffer de
+// transmisión a resolución completa (renderer.transmissionResolutionScale = 1.0 en
+// experience.js). A 0.5 el dorso se veía borroso porque la refracción se muestreaba
+// a media resolución — ese era el bug, no la geometría.
 function backTexture(invite) {
   const w = 2048, h = 1244, c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d');
@@ -200,7 +205,8 @@ function roundedRectGeo(w, h, r) {
   return g;
 }
 
-export async function buildGlassCard({ invite, reduced = false } = {}) {
+export async function buildGlassCard(opts = {}) {
+  const { invite, reduced = false } = opts;
   setInvite(invite);
   // rol del invitado → fase del arcoíris (centro de la banda de tonos de la
   // iridiscencia) + ancho de banda; y el color para el chip impreso.
@@ -288,6 +294,7 @@ export async function buildGlassCard({ invite, reduced = false } = {}) {
   // arcoíris (createHologramMaterial con el logo como máscara) que reacciona a la
   // dirección de la tarjeta vía la normal y el puntero, exactamente como GRADIENTE.
   const logoMeshes = [];
+  const stickerGroups = []; // calcomanías del dorso: visibles SOLO en la cara trasera
   const embNames = [];
   model.traverse((o) => { if (/EMBOSS/i.test(o.name)) embNames.push(o.name + (o.isMesh ? '·mesh' : '')); });
   console.log('Gradiente: EMBOSS en GLB →', embNames.join(', ') || '(ninguno)');
@@ -417,6 +424,35 @@ export async function buildGlassCard({ invite, reduced = false } = {}) {
     addBack(createSmudge({ map: caseRough, side: 0, scale: 1.6, opacity: 0.26, hue: 0.5, lo: 0.4, hi: 0.9 }), 0.03, 16);
   }
 
+  // ---------- calcomanías (capa cosmética sobre el vidrio) ----------
+  // Lista GENERAL de stickers; hoy la alimenta el partner del código de invitación
+  // (instancia #1), mañana los cosméticos que el usuario posea. Van en la zona
+  // DERECHA del dorso, PEGADOS encima del vidrio (nítidos, con su propio tornasol),
+  // distintos del texto grabado que vive tras el vidrio. Cada chip mira a -Z, así
+  // que queda culled cuando se ve la cara delantera (igual que el dorso).
+  const stickers = opts.stickers
+    ?? (invite?.partner?.logoUrl
+      ? [{ url: invite.partner.logoUrl, kind: 'partner', label: invite?.partner?.title }]
+      : []);
+  if (ci && stickers.length) {
+    // PEGAR el sticker sobre la cara trasera del VIDRIO. El texto grabado vive
+    // DENTRO del cristal (≈ -0.054) y la cara trasera del cuerpo de vidrio está en
+    // ≈ -0.152; antes el chip caía en -0.084 → quedaba EMBEBIDO en el vidrio (se
+    // sentía "en la tarjeta interior"). Medimos la cara trasera y lo colocamos un
+    // pelín por fuera (-z = hacia el observador en el dorso) para que se lea ENCIMA.
+    let stickerZ = ci.position.z - 0.13;
+    if (caseMesh) {
+      caseMesh.geometry.computeBoundingBox();
+      stickerZ = caseMesh.position.z + caseMesh.geometry.boundingBox.min.z - 0.015;
+    }
+    const { holoMats: stickerMats, groups } = await addStickers(stickers, ci.parent, {
+      anchor: { x: -1.28, y: 0.4, z: stickerZ },
+      size: 0.9, gap: 1.02, holoPattern,
+    });
+    hologramMats.push(...stickerMats);
+    stickerGroups.push(...groups);
+  }
+
   // ---------- jerarquía: root → tilt → flip → model ----------
   model.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(model);
@@ -457,6 +493,7 @@ export async function buildGlassCard({ invite, reduced = false } = {}) {
     // ocultar el logo cuando la cara delantera no mira a cámara (trasera)
     const showFront = Math.cos(flip.rotation.y) > 0;
     for (const m of logoMeshes) m.visible = showFront;
+    for (const g of stickerGroups) g.visible = !showFront; // calcomanías: solo en el dorso
     for (const m of hologramMats) {
       m.uniforms.uTime.value = elapsed;
       if (m.uniforms.uHover) m.uniforms.uHover.value = 0.4 + 0.6 * Math.min(1, smoothed.length());

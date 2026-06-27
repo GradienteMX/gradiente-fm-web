@@ -226,7 +226,9 @@ export function setInvite(data) {
 
 export async function loadFonts() {
   const probes = ['700 128px "Rajdhani"', '600 56px "Rajdhani"',
-    '500 40px "IBM Plex Mono"', '600 76px "IBM Plex Mono"', '500 116px "Fraunces"'];
+    '500 40px "IBM Plex Mono"', '600 76px "IBM Plex Mono"', '500 116px "Fraunces"',
+    // cara trasera: caras propias no cubiertas arriba (lista en peso 400 + cursiva)
+    '400 34px "IBM Plex Mono"', 'italic 400 44px "Fraunces"'];
   try { await Promise.all(probes.map((f) => document.fonts.load(f, 'GRADIENTE Invitada0123ÁÉ'))); await document.fonts.ready; }
   catch { /* fallback */ }
 }

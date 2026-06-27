@@ -56,7 +56,11 @@ export function createExperience({ canvas, ui, invite }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.9;
-  renderer.transmissionResolutionScale = 0.5;
+  // resolución COMPLETA del buffer de transmisión: el dorso de la tarjeta vive
+  // detrás del vidrio (refracción/parallax), y a 0.5 ese muestreo a media
+  // resolución lo veía borroso. A 1.0 el texto grabado se lee nítido sin perder
+  // el efecto de profundidad. Coste: una sola tarjeta en pantalla, despreciable.
+  renderer.transmissionResolutionScale = 1.0;
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(new THREE.Color("#150c02"), 10.5, 17);

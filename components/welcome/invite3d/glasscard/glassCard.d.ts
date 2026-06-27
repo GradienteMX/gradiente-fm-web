@@ -8,6 +8,16 @@ export interface GlassCardInvite {
   role?: string
   folio?: string
   issued?: string
+  /** Partner attached to the invite code; renders as the first over-glass sticker. */
+  partner?: { title?: string; logoUrl?: string | null } | null
+}
+
+/** A cosmetic chip placed over the glass (back-right zone). Today fed by the
+ *  invite's partner; later by a user's owned cosmetics. */
+export interface CardSticker {
+  url: string
+  kind?: string
+  label?: string
 }
 
 export interface GlassCard {
@@ -26,6 +36,8 @@ export interface GlassCard {
 export function buildGlassCard(opts?: {
   invite?: GlassCardInvite
   reduced?: boolean
+  /** Explicit sticker list; defaults to the invite's partner when omitted. */
+  stickers?: CardSticker[]
 }): Promise<GlassCard>
 
 export function setupGlassEnvironment(
