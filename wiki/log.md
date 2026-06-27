@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-06-27 · INGEST · Invite card back: sharpened engraved text + over-glass partner holo-sticker (the first card-cosmetic) · [[InviteExperience]]
+
+Two changes to the **back** of the holographic invite card, shipped on branch `card/partner-sticker` (merged to `main` → live). Both turned on the same realisation: position relative to the glass body is a design tool. [[InviteExperience]] §Card back updated; Renderer note corrected (was `transmissionResolutionScale = 0.5`).
+
+- **Engraved back text was blurry → fixed by full-res transmission.** The text lives *behind* the glass on purpose (refraction/parallax). The blur was the half-res transmission buffer, nothing else: `renderer.transmissionResolutionScale 0.5 → 1.0` in [experience.js](../components/welcome/invite3d/experience.js) sharpens it while keeping the depth. (An earlier attempt to reinforce it with a crisp foil layer was the wrong approach — reverted — because the front face proved its own text is sharp through the glass purely from position, not a foil trick.) Back fonts pre-warmed in `loadFonts()`.
+- **Over-glass STICKER layer** ([sticker.js](../components/welcome/invite3d/glasscard/sticker.js)) — a general `stickers[]` cosmetic system, partner = instance #1. `buildGlassCard` defaults the list to `invite.partner`; the partner's logo renders as a thin extruded rounded-rect holo chip in the back-right zone. Image wraps the bevelled edge (planar-UV, no dark border); seated just outside the **measured** glass back face (not embedded); culled on the front via an explicit visibility toggle. This is the seed of the card-as-profile cosmetics/monetization direction (supporter flair for partners/artists/labels/writers) — kept visually distinct from *earned* trophies/frames.
+- **Two halo traps documented in [[InviteExperience]]:** new card materials must call `killDirectSpecular` (the card suppresses light-blobs everywhere via `hideLightSources`), and additive overlays must keep footprint == base + `polygonOffset` (never `scale > 1`, which bleeds a bright halo onto the glass). Both bit us; both fixed.
+- **Verified** on `/welcome` with a real partner-linked code (FASCiNOMA, render-only — code not consumed); tsc + lint clean. The invite partner data pipeline was already live in prod (47 partner-linked codes, `intended_partner_id` → `users.partner_id` on signup); this is purely the card-visual half.
+
+---
+
 ## 2026-06-26 · INGEST · Fix macOS-only ~2.5s blackout when the invite envelope opens · [[InviteExperience]]
 
 Diagnosed and fixed a Mac-only bug where opening the `/welcome` invite envelope blanked the whole scene (just background) for ~2.5s mid-animation, then everything reappeared in place. New note [[InviteExperience]] created (the invite3d subsystem was undocumented).

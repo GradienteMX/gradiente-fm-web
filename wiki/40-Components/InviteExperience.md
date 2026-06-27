@@ -1,8 +1,8 @@
 ---
 type: component
 status: current
-tags: [welcome, webgl, threejs, invite, holo, shaders, macos]
-updated: 2026-06-26
+tags: [welcome, webgl, threejs, invite, holo, shaders, macos, stickers, cosmetics]
+updated: 2026-06-27
 ---
 
 # InviteExperience
@@ -19,11 +19,19 @@ Mounted full-viewport by two routes: [app/welcome/page.tsx](../../app/welcome/pa
 
 ## How
 
-- **Renderer:** `WebGLRenderer({ alpha: true, antialias: true })`, ACES tone mapping, `transmissionResolutionScale = 0.5`. Canvas is transparent over the page → a frame that fails to draw shows the dark page through it.
+- **Renderer:** `WebGLRenderer({ alpha: true, antialias: true })`, ACES tone mapping, `transmissionResolutionScale = 1.0`. Full-res refraction is deliberate: the card back's engraved text lives *behind* the glass (see §Card back), and the prior half-res (`0.5`) transmission buffer was the sole cause of it rendering blurry. Canvas is transparent over the page → a frame that fails to draw shows the dark page through it.
 - **Post chain (EffectComposer):** `RenderPass → UnrealBloomPass (strength 0.06) → OutlinePass → OutputPass`, run every frame via `composer.render()`. `OutlinePass.selectedObjects` is empty until `enterCardPhase` (subtle card edge glow only in the card phase).
 - **Glass card** ([glasscard/glassCard.js](../../components/welcome/invite3d/glasscard/glassCard.js)): a `MeshPhysicalMaterial` with `transmission:1` + iridescence + clearcoat (one of three's heaviest shaders), built eagerly and rendered from the first frame, plus stacked **additive** hologram layers.
 - **Hologram shaders** ([glasscard/hologram.js](../../components/welcome/invite3d/glasscard/hologram.js)): four custom `ShaderMaterial` factories — hologram / foil / smudge / lenticular — all `AdditiveBlending`, `toneMapped:false` (they write straight to the HDR buffer, so their glow feeds the bloom). Canvas-2D textures (print/foil/back) come from [glasscard/cardPrint.js](../../components/welcome/invite3d/glasscard/cardPrint.js).
 - **Dev console hooks:** `window.__glass` exposes live tuners + isolation toggles (`glassOff/On`, `holoOff/On`, `lightSpec`, …) — invaluable for bisecting render bugs.
+
+## Card back: engraved text (behind glass) + sticker layer (over glass)
+
+The back is **two distinct depth layers relative to the glass body** — a distinction worth holding onto, because it dictates how anything new on the back must be built:
+
+- **Engraved text** (`NECESITAS DOS COSAS` / código / barcode, drawn to a canvas texture in [cardPrint.js](../../components/welcome/invite3d/glasscard/cardPrint.js)) sits *behind* the glass back face (text ≈ z −0.054; the glass back face ≈ −0.152). It is **refracted by the glass** → real parallax/depth on tilt. Its sharpness is governed **entirely** by `transmissionResolutionScale` (see Renderer) — it is not a separate effect. Moving it out from behind the glass to "fix blur" would kill the parallax; the fix was the full-res buffer.
+- **Stickers** ([glasscard/sticker.js](../../components/welcome/invite3d/glasscard/sticker.js)) sit *over* the glass, seated just **outside the measured glass back face** (we read `caseMesh.geometry.boundingBox.min.z`, not a magic number) so they read as stuck-on, not embedded. `buildGlassCard` takes a general **`stickers[]`** list — the first brick of a card-cosmetics system — defaulting today to `invite.partner` (the partner attached to the invite code → its logo as a holo chip in the back-right zone). Each chip is a thin **extruded** rounded-rect: the image wraps the bevelled edge (planar-UV reprojection → no dark sides), a holo-laminate sheen on top, and it is **culled on the front face via an explicit visibility toggle** (a solid slab isn't auto-culled like a one-sided plane is).
+- **Two halo traps when adding *any* material to the card** (both bit us building the sticker): (1) every card surface suppresses direct-light specular via `hideLightSources`; a new material that skips it is the only thing showing raw light-blobs that then bloom → apply the equivalent `killDirectSpecular`. (2) an **additive** overlay scaled larger than its base paints light *beyond* the footprint onto neighbouring glass (a bright halo) → keep the footprint equal and separate depth with `polygonOffset`, never `scale > 1`.
 
 ## Gotchas
 
