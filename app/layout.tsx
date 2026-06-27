@@ -19,6 +19,7 @@ import { PromptOverlay } from '@/components/prompt/PromptOverlay'
 import { SearchProvider } from '@/components/search/useSearch'
 import { SearchOverlay } from '@/components/search/SearchOverlay'
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerProvider'
+import { MobileNotice } from '@/components/MobileNotice'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <PublishConfirmOverlay />
                 <PromptOverlay />
                 <SearchOverlay />
+                <MobileNotice />
               </Suspense>
             </CRTOverlay>
           </AudioPlayerProvider>
