@@ -263,7 +263,7 @@ export function OverlayShell({
           onClick={(e) => e.stopPropagation()}
           className="eva-box eva-scanlines relative flex min-w-0 flex-col overflow-hidden bg-base"
           style={{
-            maxHeight: 'min(92vh, 900px)',
+            maxHeight: 'min(92dvh, 900px)',
             flexGrow: 1,
             flexShrink: 1,
             flexBasis: 0,
@@ -363,18 +363,38 @@ export function OverlayShell({
             <SessionItemStrip item={item} onDeleted={close} />
           )}
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          {/* Scrollable content. overflow-x-hidden is load-bearing on mobile:
+              with only overflow-y-auto, CSS promotes overflow-x to auto, so any
+              child wider than the panel becomes a horizontal scroll and a
+              diagonal drag drifts the content sideways into empty space. Pinning
+              x-hidden keeps reading strictly vertical (per-type bodies still
+              stack their wide pieces so nothing is clipped). */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">{children}</div>
 
-          {/* Mobile-only bottom dismiss bar */}
-          <button
-            onClick={close}
-            aria-label="Cerrar"
-            className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-base/95 px-4 py-3 font-mono text-[11px] tracking-widest text-primary backdrop-blur-sm transition-colors active:bg-elevated sm:hidden"
-          >
-            <X size={14} />
-            <span>CERRAR</span>
-          </button>
+          {/* Mobile-only bottom bar — comments entry + dismiss. The desktop
+              rail tab is hidden < sm, so this is the phone path into comments
+              (works for EVERY overlay type, not just ReaderOverlay). */}
+          <div className="flex shrink-0 border-t border-border bg-base/95 backdrop-blur-sm sm:hidden">
+            <button
+              onClick={() => setCommentsOpen(true)}
+              aria-label="Mostrar comentarios"
+              className="flex flex-1 items-center justify-center gap-2 border-r border-border px-4 py-3 font-mono text-[11px] tracking-widest text-sys-orange transition-colors active:bg-elevated"
+            >
+              <MessageSquare size={14} />
+              <span>
+                COMENTARIOS
+                {commentsTotal > 0 && !commentsLoading ? ` · ${commentsTotal}` : ''}
+              </span>
+            </button>
+            <button
+              onClick={close}
+              aria-label="Cerrar"
+              className="flex flex-1 items-center justify-center gap-2 px-4 py-3 font-mono text-[11px] tracking-widest text-primary transition-colors active:bg-elevated"
+            >
+              <X size={14} />
+              <span>CERRAR</span>
+            </button>
+          </div>
 
           {/* Phosphor warm-up flash — one-shot, only on enter */}
           {!exiting && (
@@ -462,7 +482,7 @@ export function OverlayShell({
               onClick={(e) => e.stopPropagation()}
               className="eva-box eva-scanlines hidden min-w-0 flex-col overflow-hidden bg-base sm:flex"
               style={{
-                maxHeight: 'min(92vh, 900px)',
+                maxHeight: 'min(92dvh, 900px)',
                 flexGrow: 0,
                 flexShrink: 0,
               }}
@@ -488,6 +508,27 @@ export function OverlayShell({
         </AnimatePresence>
       </motion.div>
     </div>
+
+      {/* Mobile comments — full-screen sheet (the desktop split column above is
+          hidden < sm). Reuses the same CommentsColumn body + shell context, so
+          the live count, threaded list, and composer all work. Opened from the
+          bottom-bar COMENTARIOS button (and any in-body entry that flips
+          commentsOpen, e.g. ReaderOverlay's). */}
+      {commentsOpen && (
+        <div
+          className="overlay-backdrop-in fixed inset-0 z-[60] flex flex-col bg-base sm:hidden"
+          style={{ height: '100dvh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Comentarios"
+        >
+          <CommentsColumn
+            item={item}
+            onClose={() => setCommentsOpen(false)}
+            focusedCommentId={focusedCommentId}
+          />
+        </div>
+      )}
     </OverlayShellContext.Provider>
   )
 }

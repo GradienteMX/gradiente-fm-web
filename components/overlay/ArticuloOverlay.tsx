@@ -119,7 +119,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
         </div>
 
         <h1
-          className="mb-6 max-w-[22ch] font-syne text-4xl font-black leading-[1.02] text-primary md:text-6xl"
+          className="mb-6 max-w-[22ch] break-words font-syne text-3xl font-black leading-[1.02] text-primary sm:text-4xl md:text-6xl"
           style={{ letterSpacing: '-0.01em' }}
         >
           {item.title}
@@ -161,7 +161,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               </dd>
             </div>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
             <span className="sys-label">VIBE</span>
             <VibeFader item={item} />
           </div>
@@ -698,7 +698,7 @@ function TrackBlock({
             >
               {block.artist}
             </p>
-            <h3 className="font-syne text-lg font-black leading-[1.05] text-primary md:text-xl">
+            <h3 className="font-syne text-lg font-black leading-[1.05] text-primary [overflow-wrap:anywhere] md:text-xl">
               {block.title}
             </h3>
             {meta.length > 0 && (

@@ -125,9 +125,11 @@ export function AudioPlayer3D({
       </header>
 
       {/* ── Cover + metadata + LIVE MATRIX ──────────────────────────────── */}
-      <div className="flex items-start gap-4 px-5 pt-4">
+      {/* Stacks vertically on phones — the fixed 120px cover + metadata + LIVE
+          MATRIX badge in one row was the MixOverlay horizontal-overflow source. */}
+      <div className="flex flex-col gap-4 px-5 pt-4 sm:flex-row sm:items-start">
         <div
-          className="relative h-[120px] w-[120px] shrink-0 overflow-hidden border border-border bg-elevated"
+          className="relative h-20 w-20 shrink-0 overflow-hidden border border-border bg-elevated sm:h-[120px] sm:w-[120px]"
           aria-hidden
         >
           {coverUrl ? (
@@ -211,7 +213,7 @@ export function AudioPlayer3D({
 
       {/* ── GPU particle field — the star of the overlay. Generous height so
            the field reads as the marquee analyzer, not a thumbnail. ─────── */}
-      <div className="relative mx-5 mt-4 h-[440px] overflow-hidden">
+      <div className="relative mx-5 mt-4 h-[260px] overflow-hidden sm:h-[440px]">
         <ParticleField3D
           data={data}
           dataRef={dataRef}

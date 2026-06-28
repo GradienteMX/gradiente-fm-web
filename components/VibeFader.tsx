@@ -390,13 +390,16 @@ export function VibeFader({ item }: Props) {
         : { type: 'spring' as const, stiffness: 900, damping: 40 } // calm follow
 
   return (
-    <div className="flex items-center gap-2">
+    // flex-wrap + min-w-0 so the readout labels drop BELOW the track on a phone
+    // instead of forcing the row ~470px wide (the overlay sideways-drift cause).
+    // Stays a single nowrap row from sm up.
+    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:flex-nowrap">
       <motion.div
         ref={trackRef}
         onPointerDown={handleTrackPointerDown}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="group relative w-[180px] cursor-pointer md:w-[220px]"
+        className="group relative w-full max-w-[180px] cursor-pointer md:w-[220px] md:max-w-none"
         animate={{ height: trackH }}
         initial={false}
         transition={heightTransition}
@@ -502,7 +505,7 @@ export function VibeFader({ item }: Props) {
           type="button"
           onPointerDown={handleThumbPointerDown('min')}
           aria-label={`Mínimo: ${thumbMin}`}
-          className="absolute inset-y-[-3px] flex w-3 -translate-x-1/2 cursor-col-resize items-stretch justify-center"
+          className="absolute inset-y-[-3px] flex w-8 -translate-x-1/2 cursor-col-resize items-stretch justify-center sm:w-3"
           animate={{ left: `${(thumbMin / 10) * 100}%` }}
           initial={false}
           transition={
@@ -531,7 +534,7 @@ export function VibeFader({ item }: Props) {
           type="button"
           onPointerDown={handleThumbPointerDown('max')}
           aria-label={`Máximo: ${thumbMax}`}
-          className="absolute inset-y-[-3px] flex w-3 -translate-x-1/2 cursor-col-resize items-stretch justify-center"
+          className="absolute inset-y-[-3px] flex w-8 -translate-x-1/2 cursor-col-resize items-stretch justify-center sm:w-3"
           animate={{ left: `${(thumbMax / 10) * 100}%` }}
           initial={false}
           transition={
@@ -587,7 +590,7 @@ export function VibeFader({ item }: Props) {
           a transient EN AIRE on commit, else hidden (slot stays reserved so
           the meta strip never reflows). Gold to match the armed accent. */}
       <span
-        className="inline-block min-w-[3.25rem] font-mono text-[8px] font-bold tracking-[0.18em] tabular-nums whitespace-nowrap"
+        className="inline-block min-w-0 font-mono text-[10px] font-bold tracking-[0.18em] tabular-nums whitespace-normal sm:min-w-[3.25rem] sm:text-[8px] sm:whitespace-nowrap"
         style={{
           color: ARMED,
           opacity: editing || onAir ? 1 : 0,
@@ -603,7 +606,7 @@ export function VibeFader({ item }: Props) {
           single-point ("5 · GROOVE") and range ("0-10 · GLACIAL → VOLCÁN")
           without reflowing the surrounding meta strip. */}
       <span
-        className="inline-block min-w-[12rem] font-mono text-[10px] tracking-widest tabular-nums whitespace-nowrap"
+        className="inline-block min-w-0 font-mono text-[10px] tracking-widest tabular-nums whitespace-normal sm:min-w-[12rem] sm:whitespace-nowrap"
         style={{ color: labelColor }}
       >
         {labelTxt}
@@ -613,7 +616,7 @@ export function VibeFader({ item }: Props) {
           when zero, visibility-hidden in edit mode, ◆ when the crowd has
           crossed threshold (meter is crowd-authoritative), ◇ otherwise. */}
       <span
-        className={`inline-block min-w-[1.75rem] font-mono text-[9px] tracking-widest text-muted whitespace-nowrap ${
+        className={`inline-block min-w-0 font-mono text-[10px] tracking-widest text-muted whitespace-normal sm:min-w-[1.75rem] sm:text-[9px] sm:whitespace-nowrap ${
           editing || aggregate.checkCount === 0 ? 'invisible' : ''
         }`}
         aria-hidden={editing || aggregate.checkCount === 0}

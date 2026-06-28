@@ -130,7 +130,7 @@ export function MixOverlay({ item }: Props) {
   }, [scCanonicalUrl, item.id])
 
   return (
-    <article className="grid gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <article className="grid grid-cols-1 gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       {/* ── LEFT: editorial column ──────────────────────────── */}
       <div className="flex flex-col gap-5 p-5 md:p-7">
         {/* Type tag */}
@@ -297,7 +297,7 @@ export function MixOverlay({ item }: Props) {
         <Panel title="TRACKLIST / ETIQUETAS">
           {item.tracklist && item.tracklist.length > 0 ? (
             <div className="flex flex-col gap-1.5 font-mono text-[11px]">
-              <div className="grid grid-cols-[28px_1fr_1.4fr_48px] gap-2 border-b border-border pb-1 text-[10px] tracking-widest text-muted">
+              <div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2 border-b border-border pb-1 text-[10px] tracking-widest text-muted">
                 <span>#</span>
                 <span>ARTISTA</span>
                 <span>TEMA</span>
@@ -306,7 +306,7 @@ export function MixOverlay({ item }: Props) {
               {item.tracklist.map((t, i) => (
                 <div
                   key={i}
-                  className="grid grid-cols-[28px_1fr_1.4fr_48px] gap-2 text-secondary"
+                  className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2 text-secondary"
                 >
                   <span className="text-muted">
                     {String(i + 1).padStart(2, '0')}

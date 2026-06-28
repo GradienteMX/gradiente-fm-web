@@ -131,7 +131,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
               </dd>
             </div>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
             <span className="sys-label">VIBE</span>
             <VibeFader item={item} />
           </div>
