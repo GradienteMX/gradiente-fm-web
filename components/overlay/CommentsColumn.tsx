@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { X } from 'lucide-react'
 import type { ContentItem } from '@/lib/types'
 import { setRealUsers } from '@/lib/userOverrides'
 import { CommentList } from './CommentList'
@@ -59,14 +60,19 @@ export function CommentsColumn({
             discusión·{item.slug}
           </span>
         </div>
+        {/* Close. On mobile the comments are a full-screen sheet with no
+            backdrop, so this is the ONLY way out — make it a prominent bordered
+            orange button (was dim text-muted, easy to miss). Reverts to the
+            subtle "OCULTAR ›" inline link on desktop where it sits in the split. */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Cerrar comentarios"
-          className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+          className="flex shrink-0 items-center gap-1.5 border border-sys-orange/60 bg-sys-orange/10 px-3 py-2 font-mono text-[11px] tracking-widest text-sys-orange transition-colors active:bg-sys-orange/20 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-[10px] sm:text-muted sm:hover:text-primary"
         >
+          <X size={14} className="sm:hidden" />
           <span>OCULTAR</span>
-          <span aria-hidden>›</span>
+          <span aria-hidden className="hidden sm:inline">›</span>
         </button>
       </div>
 
