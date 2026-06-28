@@ -86,9 +86,13 @@ function PartnerCard({ item }: { item: ContentItem }) {
 
 interface PartnersRailProps {
   items: ContentItem[]
+  // 'rail' = the desktop right-column aside (default). 'drawer' = a bare 2-col
+  // grid of cards for the mobile PartnersDrawer (no aside chrome / fixed width /
+  // md gate — the drawer provides its own frame).
+  variant?: 'rail' | 'drawer'
 }
 
-export function PartnersRail({ items }: PartnersRailProps) {
+export function PartnersRail({ items, variant = 'rail' }: PartnersRailProps) {
   const partners = useMemo(
     () =>
       items
@@ -105,6 +109,17 @@ export function PartnersRail({ items }: PartnersRailProps) {
   }, [partners])
 
   if (partners.length === 0) return null
+
+  // Drawer variant — bare responsive grid; the PartnersDrawer owns the chrome.
+  if (variant === 'drawer') {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {partners.map((item) => (
+          <PartnerCard key={item.id} item={item} />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <aside

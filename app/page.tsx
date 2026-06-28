@@ -5,6 +5,7 @@ import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
 import { FeedHeader } from '@/components/FeedHeader'
 import { HeroCard } from '@/components/HeroCard'
 import { PartnersRail } from '@/components/PartnersRail'
+import { PartnersDrawer } from '@/components/PartnersDrawer'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
@@ -128,18 +129,21 @@ export default async function HomePage() {
           <HomeFeedWithDrafts items={gridItems} mode="home" />
         </div>
 
-        {/* Independent right column — partners rail at top, marketplace
-            entry directly below. PartnersRail keeps its own md:block + w
-            wrapper; MarketplaceRail sits in its own w-[260px] block so the
-            two visually align without changing PartnersRail's existing
-            shape. */}
-        <div className="hidden flex-col gap-4 md:flex">
+        {/* Independent right column — partners rail at top, marketplace entry
+            below. Shown only at `lg+`, where there's room for a third zone; in
+            the 768-1024 band it used to squeeze the feed into a cramped 2-col
+            mosaic. Below lg the feed takes the full width and partners move to
+            the PartnersDrawer (marketplace stays reachable via the nav link). */}
+        <div className="hidden flex-col gap-4 lg:flex">
           <PartnersRail items={partners} />
           <div className="w-[260px]">
             <MarketplaceRail partners={marketplacePartners} />
           </div>
         </div>
       </div>
+
+      {/* Mobile/tablet partner access (below lg) — slide-in drawer + edge tab. */}
+      <PartnersDrawer partners={partners} />
     </>
   )
 }
