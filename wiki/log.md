@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-06-28 · INGEST · Mobile readiness pass — entry/auth + mosaic + partners drawer + overlays (MERGED to main) · [[Mobile Readiness]]
+
+The desktop-built app made usable on phones, in response to prod reports that users couldn't log in or enter their invite code on mobile. Shipped as 5 commits on `mobile/ux-pass`, fast-forwarded to `main` (`87698ef`) → live. New note [[Mobile Readiness]] holds the full breakdown + the deferred-polish list; [[Next Session]] updated.
+
+- **Entry/auth (`a02cb39`):** the reported blocker was a tap-swallow — at phone heights the `/welcome` fixed cockpit's `flex-1` body overflowed under the decorative `<footer>` (`pointer-events:auto`), which ate taps on the código input. Fixed (footer `pointer-events-none`, cockpit scrolls, vinyl hidden on phones). Plus: a 16px input floor kills iOS zoom-on-focus site-wide ([globals.css](../app/globals.css)); [[InviteExperience]] 3D signup form scrolls + a `webglcontextlost`→inline RegistroCard fallback; login/registro added to the [[Navigation]] mobile menu ([[AuthBadge]] is desktop-only); `body`→`100dvh`; [[MobileNotice]] suppressed on `/welcome`.
+- **Mosaic (`bbe899e`):** [[curation]] emits a fixed 3-col layout but [[ContentGrid]] is width-fluid → at 1–2 cols a `colStart:3`/`colSpan:3` card squished into an implicit column. [[ContentGrid]] now measures the real column count + clamps each cell, uses `repeat(cols,minmax(0,1fr))`, floored at 2 cols so phones keep a real mosaic. Framer `layout` gated until after first paint (the 3→2 flip snaps, no stuck transforms).
+- **Partners drawer (`9c247fa`):** right column `md:flex`→`lg:flex` (full-width feed below lg) + new [PartnersDrawer](../components/PartnersDrawer.tsx) (`lg:hidden`, right-edge tab + edge-swipe). [[PartnersRail]] got `variant="drawer"`. Phones get partner access for the first time.
+- **Overlays (`5a762d6`):** the reading "sideways drift" = [[OverlayShell]]'s `overflow-y-auto` promoting overflow-x→auto, driven by [[VibeFader]] (~470px fixed/nowrap, in every overlay). Shell clamped to `overflow-x-hidden`; [[VibeFader]] made fluid below sm. Per-type wide content (MixOverlay grid/player, Articulo hero H1, shared TrackBlock H3) made to wrap/stack. Comments were unreachable (rail + column both `hidden sm:flex`, only [[ReaderOverlay]] had an entry) → [[OverlayShell]] now has a mobile COMENTARIOS bottom-bar button + a full-screen `sm:hidden` comments sheet reusing [[CommentsColumn]].
+- **OCULTAR (`87698ef`):** mobile comments close button was dim `text-muted` 10px → now a bordered sys-orange button + X icon.
+- **Verified** each surface at 375/820/1280 on throwaway `/lab/*` harnesses (dev `/lab` bypasses the auth gate); `tsc` clean throughout; desktop unaffected (all changes `sm:`/`lg:`-gated or additive). Deferred (documented in [[Mobile Readiness]]): ~34 sub-44px touch targets, ~16 sub-11px labels, keyboard-aware composers, the standalone [[PartnerOverlay]] mobile pass, and the nav overflow in the 768–1050px band.
+
+---
+
 ## 2026-06-27 · INGEST · Invite card back: sharpened engraved text + over-glass partner holo-sticker (the first card-cosmetic) · [[InviteExperience]]
 
 Two changes to the **back** of the holographic invite card, shipped on branch `card/partner-sticker` (merged to `main` → live). Both turned on the same realisation: position relative to the glass body is a design tool. [[InviteExperience]] §Card back updated; Renderer note corrected (was `transmissionResolutionScale = 0.5`).
