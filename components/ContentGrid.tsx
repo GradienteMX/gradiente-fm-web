@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { parseISO } from 'date-fns'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { ContentItem } from '@/lib/types'
@@ -108,17 +108,32 @@ const MosaicItem = forwardRef<
   {
     id: string
     layout: CardLayout
+    cols: number
     children: React.ReactNode
     index: number
     isPast?: boolean
+    animateLayout: boolean
   }
->(function MosaicItem({ id, layout, children, index, isPast }, ref) {
+>(function MosaicItem({ id, layout, cols, children, index, isPast, animateLayout }, ref) {
   const reducedMotion = useReducedMotion()
 
+  // The curation engine plans for a 3-column grid (colSpan/colStart up to 3),
+  // but the grid renders a width-driven number of columns. Clamp each cell to
+  // the ACTUAL column count so a wide/anchored card can't overflow into a
+  // squished implicit column on phones/tablets (the "tiny cards on the right"
+  // bug). A colStart that no longer fits is dropped → dense-flow places the
+  // card instead. Size hierarchy survives: a colSpan-3 hero becomes full-width
+  // (span 2) at 2 columns, a 1×2 stays a tall half-width tile, etc.
+  const colSpan = Math.min(layout.colSpan, cols)
+  const colStart =
+    layout.colStart && layout.colStart + colSpan - 1 <= cols
+      ? layout.colStart
+      : undefined
+
   const style: CSSProperties = {
-    gridColumn: layout.colStart
-      ? `${layout.colStart} / span ${layout.colSpan}`
-      : `span ${layout.colSpan} / span ${layout.colSpan}`,
+    gridColumn: colStart
+      ? `${colStart} / span ${colSpan}`
+      : `span ${colSpan} / span ${colSpan}`,
     gridRow: `span ${layout.rowSpan} / span ${layout.rowSpan}`,
     // No visual consumer today — kept as a hook for future shader/treatment
     // work; do not remove without checking ContentCard + CSS.
@@ -140,7 +155,10 @@ const MosaicItem = forwardRef<
       // is a state, not a momentum) and the field slides to absorb them. Also
       // avoids text squish during span changes. Under prefers-reduced-motion
       // the slide is disabled; the reveal below is opacity-only, so it stays.
-      layout={reducedMotion ? false : 'position'}
+      // `animateLayout` is false until after first paint so the initial
+      // column-count correction (3→measured) snaps instantly instead of
+      // animating a stuck full-grid reflow on mobile.
+      layout={animateLayout && !reducedMotion ? 'position' : false}
       style={style}
       // Mount cuts in stepped — no scale-in: cards CUT in, they do not grow.
       initial={{ opacity: 0 }}
@@ -161,6 +179,40 @@ const MosaicItem = forwardRef<
 
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
   const { vibeRange, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
+
+  // Measure how many columns the mosaic actually has so MosaicItem can clamp
+  // the curation's 3-column layout to the real width. MIN_TRACK mirrors the
+  // previous `minmax(280px, …)` so desktop column counts are unchanged; floored
+  // at 2 so phones keep a real mosaic (size hierarchy intact) instead of
+  // collapsing to a single column and losing the HL signal entirely.
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [cols, setCols] = useState(3)
+  // Gate the Framer layout animation on until AFTER the first paint, so the
+  // mount-time column correction (default 3 → measured 2 on phones) snaps in
+  // place instead of animating a 200-cell reflow (which leaves stuck
+  // transforms). Genuine re-ranks (vibe slider / filters) still animate.
+  const [animateLayout, setAnimateLayout] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimateLayout(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+  const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+  useIsoLayoutEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const MIN_TRACK = 280
+    const GAP = 12
+    const measure = () => {
+      const w = el.clientWidth
+      if (!w) return
+      const next = Math.max(2, Math.floor((w + GAP) / (MIN_TRACK + GAP)))
+      setCols((prev) => (prev === next ? prev : next))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Coalesce the feed re-rank to ONE update per animation frame. The vibe
   // slider fires setVibeRange on every pointermove; without this, filterByVibe
@@ -279,8 +331,11 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
   const gridStyle: CSSProperties = {
     containerType: 'inline-size',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gridAutoRows: 'minmax(220px, auto)',
+    // Explicit column count (measured) instead of auto-fit, so MosaicItem's
+    // clamp and the actual track count always agree. Rows shrink on the 2-col
+    // (phone) layout so a 1×2 tile doesn't become an absurdly tall sliver.
+    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+    gridAutoRows: cols <= 2 ? 'minmax(150px, auto)' : 'minmax(220px, auto)',
     gridAutoFlow: 'dense',
     gap: 'clamp(8px, 1vw, 16px)',
     // Positioning context so RecurationSweep's transient canvas (absolute,
@@ -297,7 +352,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
   }
 
   return (
-    <div style={gridStyle}>
+    <div ref={gridRef} style={gridStyle}>
       {/* Re-curation sweep — a transient teletext/scanline band that retunes the
           mosaic whenever the ranked set's identity/order changes (filter change
           or realtime re-curation). Pure visual layer above the cards
@@ -324,8 +379,10 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
             key={item.id}
             id={item.id}
             layout={layout}
+            cols={cols}
             index={index}
             isPast={isPast}
+            animateLayout={animateLayout}
           >
             <ContentCard item={item} size={layout.tier === 'xl' ? 'lg' : layout.tier} />
           </MosaicItem>
