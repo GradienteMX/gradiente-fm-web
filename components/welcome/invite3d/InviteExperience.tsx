@@ -10,7 +10,15 @@ import type { InviteCard } from '@/lib/invitations'
 // main.js choreography. Takes the resolved InviteCard (from peekInviteCard): the
 // holo card reads name/code/role/folio/issued; the REGISTRO form gets the full
 // invite (incl. the real code for signup). Container-relative so it can embed.
-export function InviteExperience({ invite }: { invite: InviteCard }) {
+export function InviteExperience({
+  invite,
+  onUnavailable,
+}: {
+  invite: InviteCard
+  // Called if the WebGL context is lost after mount, so the page can fall back
+  // to the inline RegistroCard instead of a frozen/blank canvas.
+  onUnavailable?: () => void
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const loaderRef = useRef<HTMLDivElement>(null)
   const loaderBarRef = useRef<HTMLDivElement>(null)
@@ -57,8 +65,16 @@ export function InviteExperience({ invite }: { invite: InviteCard }) {
     ui.nav!.setAttribute('inert', '')
 
     const exp = createExperience({ canvas, ui: ui as ExperienceUI, invite })
-    return () => exp.dispose()
-  }, [invite])
+    const onContextLost = (e: Event) => {
+      e.preventDefault()
+      onUnavailable?.()
+    }
+    canvas.addEventListener('webglcontextlost', onContextLost)
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onContextLost)
+      exp.dispose()
+    }
+  }, [invite, onUnavailable])
 
   return (
     <div className="x-exp">
@@ -125,7 +141,9 @@ export function InviteExperience({ invite }: { invite: InviteCard }) {
       {/* Real signup form, centered over the REGISTRO panel when it's the hero. */}
       {registroActive && (
         <div className="x-registro-overlay">
-          <RegistroCard invite={invite} />
+          <div className="x-registro-scroll">
+            <RegistroCard invite={invite} />
+          </div>
         </div>
       )}
 
@@ -382,6 +400,19 @@ export function InviteExperience({ invite }: { invite: InviteCard }) {
           padding: 20px;
           pointer-events: none;
           animation: x-registro-in 0.12s ease-out both;
+        }
+        /* The form scrolls WITHIN the overlay so the soft keyboard / landscape
+           can't strand the top fields or the CREAR IDENTIDAD button on phones:
+           cap the wrapper at the visible height and let it scroll internally
+           instead of vertically centering taller-than-screen content with no
+           way to reach the clipped ends. */
+        .x-registro-scroll {
+          width: 100%;
+          max-width: 28rem;
+          max-height: 100%;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          pointer-events: auto;
         }
         .x-registro-overlay > * { pointer-events: auto; }
         @keyframes x-registro-in {

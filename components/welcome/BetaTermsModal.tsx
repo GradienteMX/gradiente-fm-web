@@ -141,7 +141,10 @@ export function BetaTermsModal({ open, onAccept, onClose }: BetaTermsModalProps)
     document.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    acceptRef.current?.focus()
+    // preventScroll: focusing the bottom-pinned ACEPTO button otherwise scrolls
+    // the terms body to the end on open (esp. on mobile) — the user should
+    // start at the top of the agreement.
+    acceptRef.current?.focus({ preventScroll: true })
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
@@ -166,7 +169,7 @@ export function BetaTermsModal({ open, onAccept, onClose }: BetaTermsModalProps)
 
       {/* Panel */}
       <div
-        className="eva-box relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col bg-base"
+        className="eva-box relative z-10 flex max-h-[85dvh] w-full max-w-lg flex-col bg-base"
         style={{ borderColor: '#242424' }}
       >
         {/* Header */}

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { useAuth } from '@/components/auth/useAuth'
 import { AuthBadge } from '@/components/auth/AuthBadge'
 import { SystemObject } from '@/components/brand/SystemObject'
 import { useFeedPulse } from '@/lib/hooks/useFeedPulse'
@@ -37,6 +38,9 @@ const ACTIVE_GRADIENT = 'linear-gradient(to right, #F97316, #E63329)'
 export function Navigation() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  // AuthBadge is desktop-only (hidden md:flex), so the mobile menu carries the
+  // login / registro / dashboard / salir controls instead.
+  const { isAuthed, openLogin, logout } = useAuth()
 
   // Live feed piece count — feeds the brand mark's signal strength only.
   const { activeCount } = useFeedPulse()
@@ -222,6 +226,55 @@ export function Navigation() {
               FEEDBACK BETA
             </span>
           </a>
+
+          {/* Auth controls — only place login/registro is reachable on phones. */}
+          {!isAuthed ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setMobileOpen(false); openLogin('login') }}
+                className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3.5 text-left"
+              >
+                <span className="font-mono text-[10px] text-sys-orange">⏎</span>
+                <span className="font-syne text-xs font-bold tracking-widest text-sys-orange">
+                  INICIAR SESIÓN
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMobileOpen(false); openLogin('signup') }}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              >
+                <span className="font-mono text-[10px] text-sys-orange">+</span>
+                <span className="font-syne text-xs font-bold tracking-widest text-sys-orange">
+                  REGISTRARSE
+                </span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 border-b border-border-subtle px-4 py-3.5"
+              >
+                <span className="h-2 w-2 rounded-full bg-sys-green" />
+                <span className="font-syne text-xs font-bold tracking-widest text-sys-green">
+                  DASHBOARD
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => { setMobileOpen(false); logout() }}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              >
+                <span className="font-mono text-[10px] text-muted">⏻</span>
+                <span className="font-syne text-xs font-bold tracking-widest text-muted">
+                  SALIR
+                </span>
+              </button>
+            </>
+          )}
         </nav>
       )}
     </header>

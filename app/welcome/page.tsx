@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Code2, UserSquare2 } from 'lucide-react'
@@ -62,6 +62,11 @@ export default function WelcomePage() {
   // WebGL gate: the 3D experience needs it. Without it, a valid code falls back
   // to the inline RegistroCard in the cockpit (still a working signup path).
   const [webglOk, setWebglOk] = useState(true)
+  // If the live 3D invite loses its WebGL context mid-flow (low-end phones,
+  // backgrounding, GPU pressure), fall back to the inline RegistroCard — a
+  // working signup path — instead of leaving a dead canvas.
+  const [inviteFailed, setInviteFailed] = useState(false)
+  const handleInviteUnavailable = useCallback(() => setInviteFailed(true), [])
   useEffect(() => {
     try {
       const c = document.createElement('canvas')
@@ -102,14 +107,14 @@ export default function WelcomePage() {
   // → holo card → the 5 cards → REGISTRO form, filling the viewport over the
   // cockpit chrome. The form's signup creates the account, then the redirect
   // effect above sends them home.
-  if (inviteState === 'ready' && invite && webglOk) {
+  if (inviteState === 'ready' && invite && webglOk && !inviteFailed) {
     return (
       <>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="stylesheet" href={INVITE_FONTS} />
         <div className="fixed inset-0 z-[55] overflow-hidden bg-base">
-          <InviteExperience invite={invite} />
+          <InviteExperience invite={invite} onUnavailable={handleInviteUnavailable} />
         </div>
       </>
     )
@@ -137,7 +142,7 @@ export default function WelcomePage() {
       </header>
 
       {/* ── Body — three columns on desktop, stacked on mobile ────── */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[clamp(220px,18vw,280px)_1fr_clamp(220px,18vw,280px)]">
+      <div className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[clamp(220px,18vw,280px)_1fr_clamp(220px,18vw,280px)]">
         {/* ── LEFT COLUMN ─────────────────────────────────────────── */}
         <aside className="hidden flex-col gap-4 font-mono text-[10px] tracking-widest md:flex">
           <div className="flex flex-col gap-1">
@@ -170,7 +175,10 @@ export default function WelcomePage() {
           <h1
             data-text="GRADIENTE"
             className="welcome-glitch whitespace-nowrap font-syne font-black leading-none tracking-tighter text-primary"
-            style={{ fontSize: 'clamp(3rem, 9vw, 6.5rem)' }}
+            // Floor lowered (was 3rem) so the vw term governs on phones —
+            // a 3rem/48px floor forced the wordmark to ~465px wide at 375px and
+            // it cropped on both edges. Still caps at 6.5rem on desktop.
+            style={{ fontSize: 'clamp(1.75rem, 8.5vw, 6.5rem)' }}
           >
             GRADIENTE
           </h1>
@@ -201,13 +209,14 @@ export default function WelcomePage() {
             /* No-WebGL fallback: a valid code WITH WebGL early-returns into the
                full 3D experience above; this inline RegistroCard is the working
                signup path when WebGL is unavailable. */
-            <div className="flex min-h-0 flex-1 items-center justify-center py-2">
+            <div className="flex items-center justify-center py-2 md:min-h-0 md:flex-1">
               <RegistroCard invite={invite} />
             </div>
           ) : (
             <>
-              {/* Vinyl */}
-              <div className="flex min-h-0 flex-1 items-center justify-center">
+              {/* Vinyl — decorative; hidden on phones so the CTAs + código
+                  form sit near the top instead of below a tall ASCII disc. */}
+              <div className="hidden min-h-0 flex-1 items-center justify-center md:flex">
                 <VinylAscii />
               </div>
 
@@ -242,9 +251,15 @@ export default function WelcomePage() {
                     value={codeInput}
                     onChange={(e) => setCodeInput(e.target.value)}
                     placeholder="INV-XXXXXXXXXXXXXXXX"
-                    autoFocus
+                    // Don't yank the soft keyboard up before the user orients;
+                    // autofocus only on precise (mouse) pointers.
+                    autoFocus={typeof window !== 'undefined' && window.matchMedia('(pointer:fine)').matches}
                     autoComplete="off"
-                    className="flex-1 border bg-black px-3 py-2 font-mono text-sm tracking-widest text-primary outline-none focus:border-sys-orange"
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="text"
+                    className="min-w-0 flex-1 border bg-black px-3 py-2 font-mono text-sm tracking-widest text-primary outline-none focus:border-sys-orange"
                     style={{ borderColor: '#242424' }}
                   />
                   <button
@@ -293,7 +308,7 @@ export default function WelcomePage() {
       </div>
 
       {/* ── Bottom strip ───────────────────────────────────────────── */}
-      <footer className="grid shrink-0 grid-cols-1 gap-4 border-t border-sys-orange/30 bg-base/80 px-4 py-3 font-mono text-[10px] tracking-widest backdrop-blur-sm md:grid-cols-4">
+      <footer className="pointer-events-none grid shrink-0 grid-cols-1 gap-4 border-t border-sys-orange/30 bg-base/80 px-4 py-3 font-mono text-[10px] tracking-widest backdrop-blur-sm md:grid-cols-4">
         <div>
           <div className="mb-1 text-sys-orange">// LOGS DEL SISTEMA</div>
           {LOG_LINES.map((l) => (

@@ -45,10 +45,29 @@ body {
   font-family: var(--font-space-grotesk);
   background-color: #0D0D0D;
   min-height: 100vh;
+  /* dvh on mobile so content isn't sized against the (larger) layout viewport
+     and hidden behind the dynamic browser bars. vh stays as the fallback for
+     browsers without dvh. */
+  min-height: 100dvh;
   /* Safety net — prevents any rogue child from producing a horizontal
      scrollbar at intermediate viewport widths. The header and home layout
      are responsive but this guarantees the page never scrolls sideways. */
   overflow-x: hidden;
+}
+
+/* ── iOS zoom-on-focus guard ──────────────────────────────────
+   iOS Safari force-zooms (and never restores) any focused input/select/
+   textarea whose computed font-size is under 16px — which shoves auth /
+   search / composer forms off-screen mid-entry. Floor every form control to
+   16px on phones; desktop (md+) keeps the smaller terminal register via the
+   components' own text-sm/xs classes. !important because Tailwind's text-*
+   utility classes otherwise out-specify this element selector. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* ── Scrollbar ────────────────────────────────────────────── */

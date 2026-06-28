@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Smartphone, Monitor, X } from 'lucide-react'
 
 // ── MobileNotice ───────────────────────────────────────────────────────────
@@ -23,9 +24,14 @@ const DISMISS_KEY = 'gradiente:mobile-notice:v1'
 const MOBILE_MAX_WIDTH = 768 // Tailwind `md` breakpoint
 
 export function MobileNotice() {
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
+    // Never on the invite gate — /welcome is where invited users log in and
+    // enter their code, and it has its own mobile-tuned entry flow. A "go to
+    // desktop" notice there reads as "you can't get in."
+    if (pathname?.startsWith('/welcome')) return
     // Only ever show on a phone-sized viewport, and only if not dismissed.
     const isMobile = window.innerWidth < MOBILE_MAX_WIDTH
     if (!isMobile) return
@@ -35,7 +41,7 @@ export function MobileNotice() {
       // localStorage can throw in private mode — fail open (show once).
     }
     setOpen(true)
-  }, [])
+  }, [pathname])
 
   // Lock body scroll while the notice is up.
   useEffect(() => {
@@ -56,7 +62,7 @@ export function MobileNotice() {
     setOpen(false)
   }
 
-  if (!open) return null
+  if (!open || pathname?.startsWith('/welcome')) return null
 
   return (
     <div
