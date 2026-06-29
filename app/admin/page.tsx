@@ -82,11 +82,17 @@ export default async function AdminPage({
   if (tab === 'events') {
     events = await getAllEventsAdmin()
   } else if (tab === 'invites') {
+    // Load the full code book (184 and growing slowly) so a specific person's
+    // code is always present for the client-side filter. The old .limit(50)
+    // ordered by created_at desc hid every code past the 50 newest — an older
+    // redeemed code (e.g. folio 20 of 150) sat at rank ~126 and was invisible,
+    // which read as "this user was never invited" even though they were. When
+    // the code book outgrows a single page, swap this for a server-side search.
     const { data } = await supabase
       .from('invite_codes')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(1000)
     codes = (data as InviteCodeRow[] | null) ?? []
   } else if (tab === 'partners') {
     // Partners tab fetches the existing-partners list from `partners`

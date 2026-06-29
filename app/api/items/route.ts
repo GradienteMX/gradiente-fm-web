@@ -51,11 +51,13 @@ export async function POST(request: NextRequest) {
   // in their composer state. Single source of truth: who is the auth user.
   const { data: userRow } = await supabase
     .from('users')
-    .select('partner_id')
+    .select('partner_id, role')
     .eq('id', user.id)
     .maybeSingle()
-  const userPartnerId =
-    (userRow as { partner_id?: string | null } | null)?.partner_id ?? null
+  const typedUserRow =
+    userRow as { partner_id?: string | null; role?: string | null } | null
+  const userPartnerId = typedUserRow?.partner_id ?? null
+  const userRole = typedUserRow?.role ?? null
 
   // 1. Upsert the item row. Stamp `created_by` with the current user so the
   //    dashboard's "Publicados" surface can filter to the editor's own work.
@@ -87,6 +89,17 @@ export async function POST(request: NextRequest) {
     !!userPartnerId && PARTNER_STAMPED_TYPES.includes(item.type)
   const stampAsPartner = isPartnerStampableType && item.attributePartner === true
 
+  // The editorial spawn-HP boost is an editor/guide lever. A non-staff
+  // authoring role (curator/insider) publishing their OWN personal (non-
+  // partner) item must not self-set it: RLS items_author_insert (migration
+  // 0042) enforces editorial=false, so stamp it here in lockstep — otherwise a
+  // composer-defaulted editorial:true would 403 the whole publish. Staff
+  // (guide/admin) keep the lever via items_staff_insert; partner-stamped items
+  // get editorial=true from partnerOverrides below (stampAsPartner short-circuits
+  // this, so the two overrides never collide).
+  const isStaff = userRole === 'guide' || userRole === 'admin'
+  const forceEditorialOff = !stampAsPartner && !isStaff
+
   const row = contentItemToRow(item)
   const partnerOverrides = stampAsPartner
     ? {
@@ -97,10 +110,16 @@ export async function POST(request: NextRequest) {
     : isPartnerStampableType && item.attributePartner === false
       ? { partner_id: null, source: null }
       : {}
+  const editorialOverride = forceEditorialOff ? { editorial: false as const } : {}
   const { error: itemError } = await supabase
     .from('items')
     .upsert(
-      { ...row, created_by: user.id, ...partnerOverrides } as unknown as typeof row,
+      {
+        ...row,
+        created_by: user.id,
+        ...partnerOverrides,
+        ...editorialOverride,
+      } as unknown as typeof row,
       { onConflict: 'id' }
     )
   if (itemError) {
