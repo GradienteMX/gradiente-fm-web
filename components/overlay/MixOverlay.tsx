@@ -13,15 +13,8 @@ import { OverlayLinks } from './OverlayLinks'
 import { OverlayEntities } from './OverlayEntities'
 import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
-
-// Pick the best canonical SoundCloud URL for an item: prefer an explicit
-// SC embed entry, fall back to the mixUrl when it points to soundcloud.
-function pickSoundCloudUrl(item: ContentItem): string | null {
-  const sc = item.embeds?.find((e) => e.platform === 'soundcloud')
-  if (sc?.url) return sc.url
-  if (item.mixUrl && /soundcloud\.com/.test(item.mixUrl)) return item.mixUrl
-  return null
-}
+import { pickPlayableSource, pickOpenSourceUrl } from '@/components/audio/sources'
+import { PLATFORM_LABELS } from '@/components/embed/platforms'
 
 interface Props {
   item: ContentItem
@@ -60,8 +53,20 @@ export function MixOverlay({ item }: Props) {
   // we tell the global player to load this mix when the user hits play, then
   // mirror its state back into our chrome.
   const audio = useAudioPlayer()
-  const scCanonicalUrl = pickSoundCloudUrl(item)
+  // The best CONTROLLABLE source (SoundCloud / YouTube / Mixcloud / Spotify),
+  // and the URL the "ABRIR FUENTE" button opens (falls back to any embed —
+  // incl. Bandcamp — or the legacy mixUrl, so the link-out always works).
+  const playable = pickPlayableSource(item)
+  const openUrl = pickOpenSourceUrl(item)
   const isActive = audio.currentItem?.id === item.id
+
+  // Prime the relevant platform's hidden player as soon as the overlay mounts,
+  // ahead of the user's play click — so the API is bound and first play
+  // autoplays within the gesture (no dead first tap on YouTube/Mixcloud/Spotify).
+  useEffect(() => {
+    if (playable) audio.primePlatform(playable.platform, playable.url)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playable?.platform, playable?.url])
 
   // When this is the active mix, mirror live transport. Otherwise show the
   // idle 00:00 state — pressing play will load this mix into the global player.
@@ -70,8 +75,8 @@ export function MixOverlay({ item }: Props) {
   const duration = isActive ? audio.duration : 0
 
   const openSource = () => {
-    if (!scCanonicalUrl) return
-    window.open(scCanonicalUrl, '_blank', 'noopener,noreferrer')
+    if (!openUrl) return
+    window.open(openUrl, '_blank', 'noopener,noreferrer')
   }
 
   // Play handler defers everything to the global player. First call ever
@@ -92,7 +97,10 @@ export function MixOverlay({ item }: Props) {
     if (audio.matrixStatus === 'denied') return 'PERMISO DENEGADO'
     if (audio.matrixStatus === 'unsupported') return 'NO COMPATIBLE'
     if (isPlaying) return 'REPRODUCIENDO'
-    if (isActive && audio.widgetReady) return 'EN ESPERA'
+    // Active but the bridge is still booting (cold-primed platform whose API
+    // hasn't readied) — show loading, not a misleading "press play".
+    if (isActive && !audio.widgetReady) return 'CARGANDO'
+    if (isActive) return 'EN ESPERA'
     return 'PULSA PLAY'
   })()
   const statusTone: 'live' | 'paused' | 'idle' | 'error' =
@@ -109,10 +117,10 @@ export function MixOverlay({ item }: Props) {
     audio.matrixActive
       ? 'analizador · pestaña actual'
       : audio.matrixErrorMessage ||
-        (scCanonicalUrl
+        (playable
           ? isActive
             ? 'pulsa play para reanudar'
-            : 'pulsa play para cargar este mix'
+            : `pulsa play para cargar este mix · ${PLATFORM_LABELS[playable.platform]}`
           : 'fuente pendiente')
 
   // Hotkeys: O → open source. P → play/pause (or load). Skip when focus
@@ -127,7 +135,7 @@ export function MixOverlay({ item }: Props) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scCanonicalUrl, item.id])
+  }, [openUrl, item.id])
 
   return (
     <article className="grid grid-cols-1 gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
@@ -223,7 +231,7 @@ export function MixOverlay({ item }: Props) {
             so closing this overlay does NOT stop playback. The matrix
             visualizer reads the same tab-capture stream as the persistent
             HUD in the sidebar. */}
-        {scCanonicalUrl ? (
+        {playable ? (
           <AudioPlayer3D
             dataRef={audio.dataRef}
             sampleRate={audio.sampleRate}
@@ -239,15 +247,33 @@ export function MixOverlay({ item }: Props) {
             onSeek={handleSeek}
             liveMatrixActive={audio.matrixActive}
             onOpenSource={openSource}
-            sourceUrl={scCanonicalUrl}
+            sourceUrl={openUrl ?? undefined}
             statusLabel={statusLabel}
             statusTone={statusTone}
             statusDetail={statusDetail}
           />
+        ) : openUrl ? (
+          // A source exists but isn't controllable in-app (Bandcamp, or an
+          // unrecognised host). Offer the working link-out instead of a dead
+          // panel — never trap the user with an empty REPRODUCTOR.
+          <Panel title="REPRODUCTOR">
+            <p className="font-mono text-[11px] leading-relaxed text-muted">
+              Esta fuente no se puede reproducir dentro de Gradiente. Ábrela en
+              su plataforma original.
+            </p>
+            <button
+              type="button"
+              onClick={openSource}
+              className="mt-3 inline-flex items-center gap-2 border px-3 py-1.5 font-mono text-[11px] tracking-widest transition-colors hover:bg-elevated"
+              style={{ borderColor: '#F97316', color: '#F97316' }}
+            >
+              [ABRIR FUENTE]
+            </button>
+          </Panel>
         ) : (
           <Panel title="REPRODUCTOR">
             <p className="font-mono text-[11px] text-muted">
-              Sin fuente de SoundCloud configurada para este mix.
+              Sin fuente configurada para este mix.
             </p>
           </Panel>
         )}
