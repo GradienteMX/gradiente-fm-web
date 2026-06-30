@@ -58,7 +58,12 @@ export function MixOverlay({ item }: Props) {
   // incl. Bandcamp — or the legacy mixUrl, so the link-out always works).
   const playable = pickPlayableSource(item)
   const openUrl = pickOpenSourceUrl(item)
-  const isActive = audio.currentItem?.id === item.id
+  // "Active" means this mix is the one actually loaded into a bridge — not
+  // merely cued (cue sets currentItem without loading audio). Gating on
+  // activePlatform keeps a cued track's overlay in the idle "PULSA PLAY" state
+  // instead of a stuck "CARGANDO".
+  const isActive =
+    audio.activePlatform != null && audio.currentItem?.id === item.id
 
   // Prime the relevant platform's hidden player as soon as the overlay mounts,
   // ahead of the user's play click — so the API is bound and first play

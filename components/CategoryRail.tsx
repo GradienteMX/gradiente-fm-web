@@ -182,7 +182,7 @@ export function CategoryRail({ items }: CategoryRailProps) {
 
         {/* ── NOW PLAYING — persistent track + transport + matrix viz.
              Only transport surface visible when no overlay is open. ── */}
-        <NowPlayingHud />
+        <NowPlayingHud items={items} />
       </div>
     </aside>
   )

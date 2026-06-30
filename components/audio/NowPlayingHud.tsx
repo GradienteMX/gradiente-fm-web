@@ -1,8 +1,12 @@
 'use client'
 
 import nextDynamic from 'next/dynamic'
+import { useEffect, useMemo, useRef } from 'react'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
+import type { ContentItem } from '@/lib/types'
 import { useAudioPlayer } from './AudioPlayerProvider'
+import { pickPlayableSource } from './sources'
+import { useOverlay } from '@/components/overlay/useOverlay'
 import { useExpandedVisualizerActive } from '@/lib/visualizerSlot'
 
 // Code-split the GPU visualizer: three.js + GPUComputationRenderer +
@@ -30,9 +34,71 @@ function fmtTime(sec: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function NowPlayingHud() {
+// How many playable mixes the skip-queue holds — the highest-HL ones from the
+// feed. Metadata only (no audio preloaded), so this is just a sanity bound.
+const QUEUE_LIMIT = 12
+
+export function NowPlayingHud({ items }: { items: ContentItem[] }) {
   const audio = useAudioPlayer()
+  const overlay = useOverlay()
   const has = !!audio.currentItem
+
+  // Register the skip-queue: mixes in the current feed with a playable source,
+  // most-alive (highest HL) first, capped. Re-registers when the feed changes;
+  // the provider recomputes our position against the live track.
+  const { setQueue } = audio
+  const queue = useMemo(
+    () =>
+      items
+        .filter((i) => i.type === 'mix' && !!pickPlayableSource(i))
+        .sort((a, b) => (b.hp ?? 0) - (a.hp ?? 0))
+        .slice(0, QUEUE_LIMIT),
+    [items],
+  )
+  useEffect(() => {
+    setQueue(queue)
+  }, [queue, setQueue])
+
+  // Cue a random mix into the idle HUD on load, so the player is never empty —
+  // shown ready/paused (browsers block autoplay-with-sound until a gesture).
+  // The first play click starts it AND requests the visualizer permission.
+  const { cue } = audio
+  const cuedOnceRef = useRef(false)
+  const currentId = audio.currentItem?.id
+  useEffect(() => {
+    if (cuedOnceRef.current) return
+    if (currentId) {
+      cuedOnceRef.current = true // already playing/cued — leave it
+      return
+    }
+    if (queue.length === 0) return // wait for the feed
+    cuedOnceRef.current = true
+    cue(queue[Math.floor(Math.random() * queue.length)])
+  }, [queue, currentId, cue])
+
+  // The full item backing the current track (for loadAndPlay from the HUD).
+  const currentFull = currentId
+    ? queue.find((i) => i.id === currentId) ?? null
+    : null
+
+  // HUD play button. Starting playback goes through loadAndPlay (not a bare
+  // toggle) so a cued track loads + plays and the first play requests tab
+  // capture — i.e. the visualizer permission prompt fires from the HUD too.
+  const handlePlay = () => {
+    if (audio.isPlaying) audio.pause()
+    else if (currentFull) void audio.loadAndPlay(currentFull)
+    else audio.toggle()
+  }
+
+  // Click the player → open the playing track's overlay (resolves via the
+  // slug-keyed itemsCache the feed already populated).
+  const openCurrent = () => {
+    if (audio.currentItem) overlay.open(audio.currentItem.slug)
+  }
+  // The particle field (a WebGL context) mounts only once a track is actually
+  // loaded into a bridge — NOT for a merely-cued track — so idle home keeps its
+  // 2-context budget.
+  const fieldActive = audio.activePlatform != null
   // While an expanded player (open MixOverlay / lab) holds the visualizer slot,
   // drop this HUD's WebGL field so the page never runs two particle contexts.
   const expandedActive = useExpandedVisualizerActive()
@@ -68,10 +134,26 @@ export function NowPlayingHud() {
         />
       </div>
 
-      {/* ── Track info ──────────────────────────────────────────── */}
-      <div className="min-w-0">
-        <p className="truncate font-syne text-[12px] font-bold uppercase leading-tight text-primary">
-          {has ? audio.currentItem!.title : 'SIN PISTA'}
+      {/* ── Track info — click to open the track's overlay ──────── */}
+      <button
+        type="button"
+        onClick={openCurrent}
+        disabled={!has}
+        aria-label={has ? 'Abrir overlay del mix' : undefined}
+        className="group min-w-0 text-left disabled:cursor-default"
+      >
+        <p className="flex items-center gap-1 font-syne text-[12px] font-bold uppercase leading-tight text-primary">
+          <span className="truncate">
+            {has ? audio.currentItem!.title : 'SIN PISTA'}
+          </span>
+          {has && (
+            <span
+              className="shrink-0 font-mono text-[9px] text-muted transition-colors group-hover:text-sys-orange"
+              aria-hidden
+            >
+              ↗
+            </span>
+          )}
         </p>
         <p className="truncate font-mono text-[9px] tracking-widest text-muted">
           {has
@@ -80,7 +162,7 @@ export function NowPlayingHud() {
                 .join(' · ')
             : 'pulsa play en un mix'}
         </p>
-      </div>
+      </button>
 
       {/* ── Time + progress ─────────────────────────────────────── */}
       <div className="flex items-center gap-1.5">
@@ -123,15 +205,16 @@ export function NowPlayingHud() {
       <div className="flex items-center justify-center gap-1.5">
         <button
           type="button"
-          disabled
+          onClick={() => audio.prev()}
+          disabled={!audio.hasPrev}
           aria-label="Anterior"
-          className="flex h-5 w-5 items-center justify-center text-muted disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-5 w-5 items-center justify-center text-secondary transition-colors hover:text-sys-orange disabled:cursor-not-allowed disabled:text-muted disabled:opacity-30 disabled:hover:text-muted"
         >
           <SkipBack size={10} />
         </button>
         <button
           type="button"
-          onClick={() => audio.toggle()}
+          onClick={handlePlay}
           disabled={!has}
           aria-label={audio.isPlaying ? 'Pausar' : 'Reproducir'}
           className="flex h-6 w-6 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-40"
@@ -145,9 +228,10 @@ export function NowPlayingHud() {
         </button>
         <button
           type="button"
-          disabled
+          onClick={() => audio.next()}
+          disabled={!audio.hasNext}
           aria-label="Siguiente"
-          className="flex h-5 w-5 items-center justify-center text-muted disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-5 w-5 items-center justify-center text-secondary transition-colors hover:text-sys-orange disabled:cursor-not-allowed disabled:text-muted disabled:opacity-30 disabled:hover:text-muted"
         >
           <SkipForward size={10} />
         </button>
@@ -180,8 +264,14 @@ export function NowPlayingHud() {
            / materials / renderer and removes its canvas — freeing the context.
            When the rail is idle we render an honest non-canvas placeholder, so
            home idle holds 2 contexts, not 3. ── */}
-      <div className="relative h-[260px] overflow-hidden border border-border/40">
-        {has && !expandedActive ? (
+      <div
+        className={`relative h-[260px] overflow-hidden border border-border/40 ${
+          has ? 'cursor-pointer' : ''
+        }`}
+        onClick={has ? openCurrent : undefined}
+        title={has ? 'Abrir overlay del mix' : undefined}
+      >
+        {fieldActive && !expandedActive ? (
           <>
             <ParticleField3D
               dataRef={audio.dataRef}
@@ -199,7 +289,7 @@ export function NowPlayingHud() {
             </div>
           </>
         ) : (
-          <MatrixIdlePlaceholder mode={has && expandedActive ? 'yielded' : 'idle'} />
+          <MatrixIdlePlaceholder mode={fieldActive && expandedActive ? 'yielded' : 'idle'} />
         )}
       </div>
     </section>
