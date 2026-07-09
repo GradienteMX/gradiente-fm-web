@@ -80,8 +80,14 @@ export function useSpotifyWidget(
   hostRef: React.RefObject<HTMLDivElement>,
   enabled: boolean,
   initialUri: string | null,
+  onEnded?: () => void,
 ): EmbedWidget {
   const controllerRef = useRef<SpotifyController | null>(null)
+  // Spotify has no ended event — we detect "paused within a whisker of the
+  // duration" on playback_update. `endedFiredRef` keeps it one-shot per track.
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
+  const endedFiredRef = useRef(false)
   // A URI chosen before the controller existed — drained once it's created.
   const pendingRef = useRef<string | null>(null)
   // Spotify ignores a play() fired in the same tick as loadUri() (the embed
@@ -137,6 +143,21 @@ export function useSpotifyWidget(
               if (typeof d.isPaused === 'boolean') setIsPlaying(!d.isPaused)
               if (typeof d.position === 'number') setCurrentTime(d.position / 1000)
               if (d.duration) setDuration(d.duration / 1000)
+              // End-of-track: paused with the playhead at (or within 1.2 s of)
+              // the end. One-shot until the next load()/seek-back re-arms it.
+              if (
+                d.isPaused &&
+                d.duration &&
+                typeof d.position === 'number' &&
+                d.position >= d.duration - 1200
+              ) {
+                if (!endedFiredRef.current) {
+                  endedFiredRef.current = true
+                  onEndedRef.current?.()
+                }
+              } else if (d.isPaused === false) {
+                endedFiredRef.current = false
+              }
             })
             if (pendingRef.current) {
               controller.loadUri(pendingRef.current)
@@ -167,6 +188,7 @@ export function useSpotifyWidget(
     (url: string) => {
       const uri = extractSpotifyUri(url)
       if (!uri) return
+      endedFiredRef.current = false
       setCurrentTime(0)
       setDuration(0)
       const c = controllerRef.current

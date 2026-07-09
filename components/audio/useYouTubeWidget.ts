@@ -85,8 +85,12 @@ function loadYouTubeAPI(): Promise<void> {
 export function useYouTubeWidget(
   hostRef: React.RefObject<HTMLDivElement>,
   enabled: boolean,
+  onEnded?: () => void,
 ): EmbedWidget {
   const playerRef = useRef<YTPlayer | null>(null)
+  // Ref-held so the onStateChange binding (set up once) sees the latest handler.
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
   // A video id chosen before the player finished booting — drained on ready.
   const pendingRef = useRef<string | null>(null)
   const pollIdRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -164,7 +168,10 @@ export function useYouTubeWidget(
             } else if (e.data === S.PAUSED || e.data === S.ENDED) {
               setIsPlaying(false)
               stopPolling()
-              if (e.data === S.ENDED) setCurrentTime(0)
+              if (e.data === S.ENDED) {
+                setCurrentTime(0)
+                onEndedRef.current?.()
+              }
             }
           },
         },

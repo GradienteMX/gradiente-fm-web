@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { X, Trash2, Send, Pencil, MessageSquare } from 'lucide-react'
+import { X, Trash2, Send, Pencil, MessageSquare, ChevronRight } from 'lucide-react'
 import {
   createContext,
   useContext,
@@ -408,14 +408,15 @@ export function OverlayShell({
           )}
         </div>
 
-        {/* Rail button — vertical "terminal tab" anchored to the wrapper's
+        {/* Rail button — horizontal "terminal tab" docked to the wrapper's
             right edge so it always sits on the rightmost surface (panel when
-            closed, comments column when open). Reads as a live system
-            readout: zero-padded count on top, label in the middle, presence
-            dot on bottom when count > 0. Closed-state is orange-on-rest so
-            it carries CTA color at rest rather than only on press.
-            Hidden on mobile — comments are reachable via the in-body
-            DISCUSIÓN entry + footer legend instead. */}
+            closed, comments column when open). It sits mostly ON the surface
+            and pokes out only a small nub, because when the column opens the
+            wrapper grows to 1400px and there's almost no room to the right —
+            a wide tab poking out would clip. Closed: a bright orange CTA that
+            reads as an invitation to talk. Open: recedes to a dark "collapse"
+            control with a chevron. Hidden on mobile — comments are reachable
+            via the bottom-bar COMENTARIOS button instead. */}
         <button
           type="button"
           onClick={(e) => {
@@ -426,49 +427,63 @@ export function OverlayShell({
           onMouseLeave={() => setRailHover(false)}
           aria-expanded={commentsOpen}
           aria-label={commentsOpen ? 'Ocultar comentarios' : 'Mostrar comentarios'}
-          className="absolute top-1/2 z-30 hidden items-center justify-center gap-3 border px-3 py-5 font-mono text-[12px] tracking-widest sm:flex"
+          className="absolute top-1/2 z-30 hidden items-center gap-2.5 whitespace-nowrap border px-4 py-3 font-mono text-[12px] font-semibold uppercase tracking-widest sm:flex"
           style={{
             right: 0,
-            writingMode: 'vertical-rl',
-            transform: `translate(${railHover ? 'calc(50% - 8px)' : '50%'}, -50%) rotate(180deg)`,
+            borderRadius: 5,
+            // Pokes out a small nub (rest) and settles almost flush on hover —
+            // stays within the ~20px of side room even at the 1400px open width.
+            transform: `translate(${railHover ? 4 : 10}px, -50%)`,
             borderColor: commentsOpen
-              ? '#F97316'
+              ? 'rgba(249,115,22,0.55)'
               : railHover
-              ? '#F97316'
-              : 'rgba(249,115,22,0.55)',
-            color: commentsOpen || railHover ? '#F97316' : '#FF9A33',
-            backgroundColor: commentsOpen
-              ? 'rgba(249,115,22,0.12)'
+              ? '#FFB877'
+              : 'rgba(255,180,110,0.35)',
+            color: commentsOpen ? '#FF9A33' : '#1a0d02',
+            background: commentsOpen
+              ? '#0a0a0a'
               : railHover
-              ? 'rgba(249,115,22,0.08)'
-              : '#0a0a0a',
-            minHeight: '220px',
+              ? 'linear-gradient(180deg, #FFA24D 0%, #F97316 100%)'
+              : 'linear-gradient(180deg, #FB8B3C 0%, #F97316 100%)',
+            boxShadow: commentsOpen
+              ? 'none'
+              : railHover
+              ? '0 0 28px rgba(249,115,22,0.6), 0 4px 14px rgba(0,0,0,0.5)'
+              : '0 0 18px rgba(249,115,22,0.42), 0 3px 10px rgba(0,0,0,0.45)',
             transition:
-              'transform 220ms cubic-bezier(0.22,0.8,0.32,1), border-color 220ms, color 220ms, background-color 220ms',
+              'transform 220ms cubic-bezier(0.22,0.8,0.32,1), box-shadow 220ms, background 220ms, color 220ms, border-color 220ms',
           }}
         >
-          <span
-            className="tabular-nums"
-            style={{ fontSize: 11, opacity: 0.85, letterSpacing: '0.18em' }}
-          >
-            {commentsLoading
-              ? '··'
-              : String(Math.min(commentsTotal, 99)).padStart(2, '0')}
-          </span>
-          <MessageSquare size={14} aria-hidden style={{ transform: 'rotate(90deg)' }} />
-          <span>{commentsOpen ? 'OCULTAR' : 'COMENTARIOS'}</span>
-          {commentsTotal > 0 && !commentsLoading && (
-            <span
-              className="inline-flex items-center gap-1.5 tabular-nums"
-              style={{ fontSize: 11, letterSpacing: '0.18em' }}
-              aria-hidden
-            >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: '#F97316', boxShadow: '0 0 6px #F97316' }}
-              />
-              <span>{commentsTotal}</span>
-            </span>
+          {commentsOpen ? (
+            <>
+              <ChevronRight size={15} aria-hidden />
+              <span>Ocultar</span>
+            </>
+          ) : (
+            <>
+              <MessageSquare size={15} aria-hidden />
+              <span>Comentarios</span>
+              {!commentsLoading && commentsTotal > 0 && (
+                <span
+                  className="tabular-nums"
+                  style={{
+                    background: 'rgba(0,0,0,0.28)',
+                    color: '#1a0d02',
+                    borderRadius: 3,
+                    padding: '1px 6px',
+                    fontSize: 11,
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  {commentsTotal}
+                </span>
+              )}
+              {commentsLoading && (
+                <span className="tabular-nums" style={{ opacity: 0.7, fontSize: 11 }}>
+                  ··
+                </span>
+              )}
+            </>
           )}
         </button>
 

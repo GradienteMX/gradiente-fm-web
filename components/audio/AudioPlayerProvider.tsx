@@ -10,14 +10,14 @@ import {
   useState,
   type RefObject,
 } from 'react'
-import type { ContentItem, EmbedPlatform } from '@/lib/types'
+import type { EmbedPlatform } from '@/lib/types'
 import type { EmbedTrackMeta, EmbedWidget } from './types'
 import { useSoundCloudWidget } from './useSoundCloudWidget'
 import { useYouTubeWidget } from './useYouTubeWidget'
 import { useMixcloudWidget } from './useMixcloudWidget'
 import { useSpotifyWidget } from './useSpotifyWidget'
 import { useTabAudioCapture } from './useTabAudioCapture'
-import { pickPlayableSource } from './sources'
+import { pickPlayableSource, type PlayableRef } from './sources'
 import { extractMixcloudFeed, extractSpotifyUri } from '@/components/embed/platforms'
 
 // Persistent global audio surface — now MULTI-PLATFORM.
@@ -75,26 +75,36 @@ export interface AudioPlayerState {
   sampleRate: number
 
   // Skip-queue: an ordered list of playable items the prev/next transport walks.
-  // Registered by NowPlayingHud from the current feed (mixes with a playable
-  // source). Metadata only — no audio is preloaded; the neighbour's track loads
-  // on demand when you skip to it.
+  // TWO layers share it: the ambient FEED queue (registered by NowPlayingHud
+  // from the current feed) and an explicit COLLECTION queue (a listicle's or
+  // articulo's playable track blocks, set via playQueue). While a collection is
+  // active it owns prev/next and auto-advance; playing anything outside it
+  // hands control back to the feed queue. Metadata only — no audio preloads;
+  // a neighbour's track loads on demand when you skip to it.
   hasNext: boolean
   hasPrev: boolean
+  // Position of the current track within whichever queue is active (−1 when
+  // outside it) and that queue's length — for "PISTA 03/10" chrome.
+  queueIndex: number
+  queueLength: number
 
   // Methods.
-  loadAndPlay: (item: ContentItem) => Promise<void>
+  loadAndPlay: (item: PlayableRef) => Promise<void>
   toggle: () => void
   pause: () => void
   seek: (sec: number) => void
   // Skip to the next / previous item in the queue (no-op at the ends).
   next: () => void
   prev: () => void
-  // Register the skip-queue (idempotent on identical lists).
-  setQueue: (items: ContentItem[]) => void
+  // Register the ambient feed skip-queue (idempotent on identical lists).
+  setQueue: (items: PlayableRef[]) => void
+  // Activate a COLLECTION queue (e.g. a listicle's tracks) and start playing
+  // the entry at startIndex. Tracks auto-advance through the collection.
+  playQueue: (tracks: PlayableRef[], startIndex?: number) => void
   // Seed an IDLE player with a ready-to-play track (metadata only — no audio
   // loads/plays and no capture prompt until the user hits play). Used to show a
   // random mix in the HUD on page load. No-op if something's already loaded.
-  cue: (item: ContentItem) => void
+  cue: (item: PlayableRef) => void
   // Mount + bind a platform's player ahead of time (called by MixOverlay on
   // mount). Idempotent. `sourceUrl` seeds the iframe for platforms that need a
   // feed/uri to bind (Mixcloud, Spotify).
@@ -174,10 +184,16 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [mcInitialFeed, setMcInitialFeed] = useState<string | null>(null)
   const [spInitialUri, setSpInitialUri] = useState<string | null>(null)
 
-  const sc = useSoundCloudWidget(scIframeRef)
-  const yt = useYouTubeWidget(ytHostRef, primed.has('youtube'))
-  const mc = useMixcloudWidget(mcIframeRef, primed.has('mixcloud'))
-  const sp = useSpotifyWidget(spHostRef, primed.has('spotify'), spInitialUri)
+  // Auto-advance: every bridge reports end-of-track through this one handler,
+  // which walks to the next queue entry (no-op at the end). Indirected through
+  // a ref because next() is defined further down (it needs loadAndPlay).
+  const nextFnRef = useRef<() => void>(() => {})
+  const handleTrackEnded = useCallback(() => nextFnRef.current(), [])
+
+  const sc = useSoundCloudWidget(scIframeRef, handleTrackEnded)
+  const yt = useYouTubeWidget(ytHostRef, primed.has('youtube'), handleTrackEnded)
+  const mc = useMixcloudWidget(mcIframeRef, primed.has('mixcloud'), handleTrackEnded)
+  const sp = useSpotifyWidget(spHostRef, primed.has('spotify'), spInitialUri, handleTrackEnded)
 
   const tab = useTabAudioCapture()
 
@@ -187,14 +203,20 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // same track" from "switch to a new one".
   const loadedRef = useRef<{ platform: EmbedPlatform; url: string } | null>(null)
 
-  // Skip-queue. `queueIndex` is the position of the current track within it (or
-  // -1 when the current track isn't in the queue / nothing's playing). Held in
-  // both state (for hasNext/hasPrev reactivity) and refs (so next/prev stay
-  // identity-stable).
-  const [queue, setQueueState] = useState<ContentItem[]>([])
+  // Skip-queues. `feedQueue` is the ambient list NowPlayingHud registers from
+  // the feed; `collection` (when non-null) is an explicit track list started
+  // via playQueue and takes priority. `queueIndex` is the position of the
+  // current track within the ACTIVE queue (or -1 when it isn't in it /
+  // nothing's playing). Held in both state (for hasNext/hasPrev reactivity)
+  // and refs (so next/prev stay identity-stable).
+  const [feedQueue, setFeedQueue] = useState<PlayableRef[]>([])
+  const [collection, setCollection] = useState<PlayableRef[] | null>(null)
+  const collectionRef = useRef(collection)
+  collectionRef.current = collection
+  const activeQueue = collection ?? feedQueue
   const [queueIndex, setQueueIndex] = useState(-1)
-  const queueRef = useRef(queue)
-  queueRef.current = queue
+  const queueRef = useRef(activeQueue)
+  queueRef.current = activeQueue
   const queueIndexRef = useRef(queueIndex)
   queueIndexRef.current = queueIndex
   const currentItemRef = useRef(currentItem)
@@ -234,11 +256,20 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   )
 
   const loadAndPlay = useCallback(
-    async (item: ContentItem) => {
+    async (item: PlayableRef) => {
       const source = pickPlayableSource(item)
       if (!source) return
       const widget = widgetsRef.current[source.platform]
       if (!widget) return
+
+      // Playing something OUTSIDE the active collection dissolves it — the
+      // ambient feed queue takes over prev/next again. (Collection tracks
+      // themselves — via playQueue / next / prev — keep it alive.)
+      const col = collectionRef.current
+      if (col && !col.some((t) => t.id === item.id)) {
+        collectionRef.current = null
+        setCollection(null)
+      }
 
       // Make sure the platform's player is mounted/bound (no-op if MixOverlay
       // already primed it on mount).
@@ -320,20 +351,35 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (p) widgetsRef.current[p]?.seek(sec)
   }, [])
 
-  // Register the skip-queue. The position within it (queueIndex) is derived
-  // from committed state in the effect below, so this just stores the list.
-  const setQueue = useCallback((items: ContentItem[]) => {
-    setQueueState(items)
+  // Register the ambient feed skip-queue. The position within it (queueIndex)
+  // is derived from committed state in the effect below, so this just stores
+  // the list. While a collection is active this doesn't disturb playback —
+  // the collection keeps priority until it's dissolved.
+  const setQueue = useCallback((items: PlayableRef[]) => {
+    setFeedQueue(items)
   }, [])
 
-  // Single source of truth for queueIndex: recompute from the COMMITTED queue +
-  // currentItem whenever either changes. This makes the cued-on-load track
-  // resolve to its real position regardless of the order the HUD's setQueue and
-  // cue effects fire in (both run in one commit reading not-yet-updated refs).
+  // Activate a collection queue (a listicle's / articulo's playable tracks)
+  // and play the chosen entry. The ref is set synchronously so the
+  // loadAndPlay call right after doesn't see a stale "outside the collection"
+  // state and dissolve what we just activated.
+  const playQueue = useCallback((tracks: PlayableRef[], startIndex = 0) => {
+    const target = tracks[startIndex]
+    if (!target) return
+    collectionRef.current = tracks
+    setCollection(tracks)
+    void loadAndPlayRef.current(target)
+  }, [])
+
+  // Single source of truth for queueIndex: recompute from the COMMITTED active
+  // queue + currentItem whenever either changes. This makes the cued-on-load
+  // track resolve to its real position regardless of the order the HUD's
+  // setQueue and cue effects fire in (both run in one commit reading
+  // not-yet-updated refs).
   useEffect(() => {
     const id = currentItem?.id
-    setQueueIndex(id ? queue.findIndex((i) => i.id === id) : -1)
-  }, [queue, currentItem])
+    setQueueIndex(id ? activeQueue.findIndex((i) => i.id === id) : -1)
+  }, [activeQueue, currentItem])
 
   // Seed the idle player with a ready-to-play track. Metadata ONLY: no bridge
   // load, no playback, no tab-capture prompt, and deliberately no priming —
@@ -341,7 +387,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // on load anyway). Priming here would mount a YouTube/Mixcloud/Spotify iframe
   // + script on idle home for a randomly-cued non-SC track; SoundCloud (the
   // common case) is already bound at boot, so first play is instant regardless.
-  const cue = useCallback((item: ContentItem) => {
+  const cue = useCallback((item: PlayableRef) => {
     if (currentItemRef.current) return // never interrupt active playback
     const source = pickPlayableSource(item)
     if (!source) return
@@ -373,6 +419,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const target = idx > 0 ? q[idx - 1] : null
     if (target) void loadAndPlayRef.current(target)
   }, [])
+  // Feed the auto-advance handler (bound into the bridges above next's
+  // definition) the real next().
+  nextFnRef.current = next
 
   const isItemActive = useCallback(
     (itemId: string) => currentItem?.id === itemId,
@@ -392,7 +441,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // enters at the top, so it's available whenever the queue is non-empty.
   const hasNext =
     currentItem != null &&
-    (queueIndex < 0 ? queue.length > 0 : queueIndex < queue.length - 1)
+    (queueIndex < 0 ? activeQueue.length > 0 : queueIndex < activeQueue.length - 1)
   const hasPrev = currentItem != null && queueIndex > 0
 
   const value = useMemo<AudioPlayerState>(
@@ -412,6 +461,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       sampleRate: tab.sampleRate,
       hasNext,
       hasPrev,
+      queueIndex,
+      queueLength: activeQueue.length,
       loadAndPlay,
       toggle,
       pause,
@@ -419,6 +470,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       next,
       prev,
       setQueue,
+      playQueue,
       cue,
       primePlatform,
       isItemActive,
@@ -438,6 +490,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       tab.dataRef,
       hasNext,
       hasPrev,
+      queueIndex,
+      activeQueue.length,
       loadAndPlay,
       toggle,
       pause,
@@ -445,6 +499,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       next,
       prev,
       setQueue,
+      playQueue,
       cue,
       primePlatform,
       isItemActive,

@@ -64,8 +64,12 @@ function loadMixcloudAPI(): Promise<void> {
 export function useMixcloudWidget(
   iframeRef: React.RefObject<HTMLIFrameElement>,
   enabled: boolean,
+  onEnded?: () => void,
 ): EmbedWidget {
   const widgetRef = useRef<MCWidget | null>(null)
+  // Ref-held so the ended binding (set up once) sees the latest handler.
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
   // A feed chosen before the widget finished booting — drained on ready.
   const pendingRef = useRef<string | null>(null)
 
@@ -91,7 +95,11 @@ export function useMixcloudWidget(
             setReady(true)
             widget.events.play.on(() => !cancelled && setIsPlaying(true))
             widget.events.pause.on(() => !cancelled && setIsPlaying(false))
-            widget.events.ended.on(() => !cancelled && setIsPlaying(false))
+            widget.events.ended.on(() => {
+              if (cancelled) return
+              setIsPlaying(false)
+              onEndedRef.current?.()
+            })
             widget.events.progress.on((position, dur) => {
               if (cancelled) return
               setCurrentTime(position || 0)

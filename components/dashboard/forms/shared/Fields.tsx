@@ -870,6 +870,10 @@ export function EmbedList({
           filas con plataforma auto-detectada.
         </p>
       )}
+      <p className="font-mono text-[9px] leading-relaxed text-muted">
+        SoundCloud · YouTube · Mixcloud · Spotify se reproducen en el
+        reproductor de Gradiente. Bandcamp solo abre como enlace externo.
+      </p>
     </div>
   )
 }

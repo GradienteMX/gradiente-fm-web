@@ -81,8 +81,12 @@ function loadSoundCloudAPI(): Promise<void> {
 
 export function useSoundCloudWidget(
   iframeRef: React.RefObject<HTMLIFrameElement>,
+  onEnded?: () => void,
 ): EmbedWidget {
   const widgetRef = useRef<SCWidgetInstance | null>(null)
+  // Ref-held so the FINISH binding (set up once) always sees the latest handler.
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
   const [ready, setReady] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -119,7 +123,11 @@ export function useSoundCloudWidget(
         })
         widget.bind(SC.Widget.Events.PLAY, () => !cancelled && setIsPlaying(true))
         widget.bind(SC.Widget.Events.PAUSE, () => !cancelled && setIsPlaying(false))
-        widget.bind(SC.Widget.Events.FINISH, () => !cancelled && setIsPlaying(false))
+        widget.bind(SC.Widget.Events.FINISH, () => {
+          if (cancelled) return
+          setIsPlaying(false)
+          onEndedRef.current?.()
+        })
         widget.bind(SC.Widget.Events.PLAY_PROGRESS, (data?: unknown) => {
           if (cancelled) return
           const d = data as { currentPosition?: number } | undefined
