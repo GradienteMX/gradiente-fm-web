@@ -91,9 +91,11 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
   }
 
   // Click the player → open the playing track's overlay (resolves via the
-  // slug-keyed itemsCache the feed already populated).
+  // slug-keyed itemsCache the feed already populated). Synthetic tracks — a
+  // listicle's track blocks carry the parent's slug; inline prose links carry
+  // none — so guard the empty-slug case.
   const openCurrent = () => {
-    if (audio.currentItem) overlay.open(audio.currentItem.slug)
+    if (audio.currentItem?.slug) overlay.open(audio.currentItem.slug)
   }
   // The particle field (a WebGL context) mounts only once a track is actually
   // loaded into a bridge — NOT for a merely-cued track — so idle home keeps its
@@ -125,13 +127,23 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
         >
           NOW PLAYING
         </span>
-        <span
-          className="h-1 w-1 animate-pulse rounded-full"
-          style={{
-            backgroundColor: audio.isPlaying ? '#4ADE80' : '#3a3a3a',
-          }}
-          aria-hidden
-        />
+        <span className="flex items-center gap-1.5">
+          {/* Position within the active queue (feed or collection) — the only
+              hint the HUD gives that prev/next walk a list. */}
+          {audio.queueIndex >= 0 && audio.queueLength > 1 && (
+            <span className="font-mono text-[8px] tabular-nums tracking-widest text-muted">
+              {String(audio.queueIndex + 1).padStart(2, '0')}/
+              {String(audio.queueLength).padStart(2, '0')}
+            </span>
+          )}
+          <span
+            className="h-1 w-1 animate-pulse rounded-full"
+            style={{
+              backgroundColor: audio.isPlaying ? '#4ADE80' : '#3a3a3a',
+            }}
+            aria-hidden
+          />
+        </span>
       </div>
 
       {/* ── Track info — click to open the track's overlay ──────── */}

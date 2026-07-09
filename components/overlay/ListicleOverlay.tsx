@@ -210,7 +210,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
 
         {/* Main column */}
         <article className="min-w-0 md:col-span-7">
-          <BodyBlocks blocks={blocks} color={color} vibeColor={vibeColor} />
+          <BodyBlocks blocks={blocks} color={color} vibeColor={vibeColor} item={item} />
 
           <div className="mt-14 flex flex-col items-start gap-3 border-t border-border pt-6">
             <div
