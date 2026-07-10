@@ -90,7 +90,7 @@ export function MixForm() {
     // Clear any active category filter so the editor sees their pending card
     // even if they had the home grid narrowed to a different type.
     setCategoryFilter(null)
-    openConfirm(id)
+    openConfirm(id, workbench.publishMode)
   }
 
   // Auto-generate slug from title unless user manually edited it.

@@ -62,7 +62,13 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
         /* unparseable date → treated as old */
       }
       const recency = Math.max(0, RECENCY_DAYS - ageDays)
-      return (l.views ?? 0) + recency
+      // Popularity uses a diminishing (log) curve capped at the fresh-item
+      // recency bonus, so a listing with inflated views can at most TIE a brand
+      // new item — it can never permanently dominate the feed. Raw views used
+      // to add linearly and unbounded, so scripting the (anon, unauthenticated)
+      // view endpoint pinned a listing to the top (#27).
+      const popularity = Math.min(RECENCY_DAYS, Math.log1p(l.views ?? 0) * 4)
+      return recency + popularity
     }
     const all: { listing: MarketplaceListing; partner: ContentItem }[] = []
     for (const p of partners) {

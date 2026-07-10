@@ -64,7 +64,7 @@ export function EditorialForm() {
   const onPublish = () => {
     const id = workbench.requestPublish()
     setCategoryFilter(null)
-    openConfirm(id)
+    openConfirm(id, workbench.publishMode)
   }
 
   useEffect(() => {

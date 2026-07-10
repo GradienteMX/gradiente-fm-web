@@ -45,6 +45,15 @@ export function clearPublishedItemsCache() {
   notify()
 }
 
+// Optimistic per-id upsert — used after a successful publish so a later edit
+// of the same item hydrates the version just published, rather than the stale
+// pre-edit snapshot the dashboard-mount fetch primed (the cache is otherwise
+// only refreshed on a full refetch, which races form hydration).
+export function setPublishedItemLocal(item: ContentItem) {
+  cache.set(item.id, item)
+  notify()
+}
+
 // Optimistic per-id removal — used by the delete flow so the dashboard's
 // "Publicados" grid drops the tile before the API round-trip completes.
 // router.refresh() refetches `useMyPublishedItems` and primes the cache

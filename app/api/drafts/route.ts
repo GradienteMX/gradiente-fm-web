@@ -56,7 +56,29 @@ export async function POST(request: NextRequest) {
     .insert({ author_id: user.id, item_payload: item as unknown as object })
     .select('id, created_at, updated_at')
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // Concurrency: two overlapping saves both passed the existence check above
+    // and raced to insert. The unique index (migration 0044) rejects the
+    // loser with 23505 — recover by updating the row the winner created rather
+    // than surfacing a 500. Idempotent: last write wins.
+    if (error.code === '23505') {
+      const { data: winner } = await supabase
+        .from('drafts')
+        .select('id')
+        .eq('author_id', user.id)
+        .eq('item_payload->>id', item.id)
+        .maybeSingle()
+      if (winner) {
+        const { error: updErr } = await supabase
+          .from('drafts')
+          .update({ item_payload: item as unknown as object })
+          .eq('id', winner.id)
+        if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+        return NextResponse.json({ ok: true, draftId: winner.id, action: 'updated' })
+      }
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
   return NextResponse.json({
     ok: true,
     draftId: inserted.id,

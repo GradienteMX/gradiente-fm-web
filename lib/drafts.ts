@@ -41,6 +41,14 @@ const STORAGE_KEY = 'gradiente:dashboard:items'
 
 export type DraftState = 'draft' | 'published'
 
+// Publish intent sent to POST /api/items. 'create' means "this is a brand-new
+// item — reject (don't overwrite) if the id already exists"; 'edit' means
+// "knowingly re-publishing an existing item". Derived from the composer's
+// entry point (NUEVO vs ?edit=<id>), NOT from persisted composer state, so a
+// poisoned per-type draft slot can't smuggle a stale published id into a
+// 'create' and silently overwrite the original. See the publish bug hunt.
+export type PublishMode = 'create' | 'edit'
+
 // Frontend-only metadata layered on top of the canonical ContentItem shape.
 // The leading underscore signals these never round-trip to a backend AS-IS;
 // `_draftState` is implicit (DB rows in `drafts` are always 'draft', the
@@ -119,7 +127,11 @@ export function getItemById(id: string): DraftItem | null {
 // Insert if new, update if id matches existing. The signature stays sync-void
 // for back-compat with the prototype's call sites — under the hood, draft
 // writes are fire-and-forget API calls; published writes are still session.
-export function upsertItem(item: ContentItem, state: DraftState): DraftItem {
+export function upsertItem(
+  item: ContentItem,
+  state: DraftState,
+  opts?: { localOnly?: boolean }
+): DraftItem {
   const now = new Date().toISOString()
   if (state === 'draft') {
     const existing = getDraftSync(item.id)
@@ -131,7 +143,10 @@ export function upsertItem(item: ContentItem, state: DraftState): DraftItem {
       _updatedAt: now,
     }
     setDraftLocal(next)
-    void postDraft(item)
+    // localOnly (used by the publish flow) seeds the cache without POSTing a
+    // server draft row — the publish creates the items row directly, so no
+    // draft exists to race the server-side draft delete (finding #6).
+    if (!opts?.localOnly) void postDraft(item)
     return next
   }
   // published → real publish via POST /api/items. The route handler upserts
@@ -196,26 +211,52 @@ async function postDraft(item: ContentItem): Promise<void> {
   }
 }
 
+export interface PublishResult {
+  ok: boolean
+  status: number
+  // The id the item was ultimately published under. Usually item.id, but on a
+  // 'create' collision we mint a fresh id and retry, so the caller must
+  // navigate / scroll to THIS id, not the one it passed in.
+  itemId: string
+  error?: string
+}
+
 // Exposed so callers (PublishConfirmOverlay) can await the publish before
-// triggering router.refresh() — otherwise the home-feed re-render races the
-// API write and the just-published item might not appear until the next
-// navigation.
-export async function publishItem(item: ContentItem): Promise<{ ok: boolean }> {
-  try {
-    const res = await fetch('/api/items', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ item }),
-    })
-    if (!res.ok) {
-      console.error('[publish] failed:', await safeReadError(res))
-      return { ok: false }
+// triggering navigation — otherwise the home-feed re-render races the API
+// write and the just-published item might not appear until the next nav.
+//
+// `mode` declares create-vs-edit intent to the server guard. On a 'create'
+// that collides with an existing id (409), we mint a fresh id and retry once:
+// the new content still publishes, but as its own row — it never overwrites
+// the item the stale id pointed at.
+export async function publishItem(
+  item: ContentItem,
+  mode: PublishMode = 'edit'
+): Promise<PublishResult> {
+  let payload = item
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ item: payload, mode }),
+      })
+      if (res.ok) return { ok: true, status: res.status, itemId: payload.id }
+      if (res.status === 409 && mode === 'create' && attempt === 0) {
+        // Stale/leaked id collided with an existing row. Re-key to a fresh id
+        // and publish as a genuinely new item.
+        payload = { ...payload, id: newItemId(payload.type) }
+        continue
+      }
+      const error = await safeReadError(res)
+      console.error('[publish] failed:', error)
+      return { ok: false, status: res.status, itemId: payload.id, error }
+    } catch (e) {
+      console.error('[publish] network error:', e)
+      return { ok: false, status: 0, itemId: payload.id, error: 'network' }
     }
-    return { ok: true }
-  } catch (e) {
-    console.error('[publish] network error:', e)
-    return { ok: false }
   }
+  return { ok: false, status: 409, itemId: payload.id, error: 'id_conflict' }
 }
 
 async function deleteDraft(itemId: string): Promise<void> {
