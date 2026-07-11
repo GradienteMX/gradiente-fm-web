@@ -51,8 +51,10 @@ export interface AudioPlayer3DProps {
   onOpenSource?: () => void;
   sourceUrl?: string;
 
-  // Status strip — "ANALIZANDO", "EN PAUSA", "FUENTE EN VIVO", etc.
-  statusLabel: string;
+  // Status strip — "ANALIZANDO", "EN PAUSA", "FUENTE EN VIVO", etc. Retained on
+  // the props contract for callers, but the chrome that rendered it was stripped
+  // from the overlay player (kept minimal: cover, title, visualizer, transport).
+  statusLabel?: string;
   statusTone?: "live" | "paused" | "idle" | "error";
   statusDetail?: string;
 }
@@ -66,16 +68,6 @@ function fmtTime(sec: number): string {
     return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
-
-const TONE_COLOR: Record<
-  NonNullable<AudioPlayer3DProps["statusTone"]>,
-  string
-> = {
-  live: "#4ADE80",
-  paused: "#F59E0B",
-  idle: "#666666",
-  error: "#E63329",
-};
 
 export function AudioPlayer3D({
   data,
@@ -94,12 +86,8 @@ export function AudioPlayer3D({
   liveMatrixActive,
   onOpenSource,
   sourceUrl,
-  statusLabel,
-  statusTone = "idle",
-  statusDetail,
 }: AudioPlayer3DProps) {
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
-  const toneColor = TONE_COLOR[statusTone];
 
   // Hold the shared visualizer slot while this expanded player is mounted, so
   // the persistent NowPlayingHud drops its own WebGL field — one particle
@@ -111,23 +99,10 @@ export function AudioPlayer3D({
       className="relative flex flex-col bg-base font-mono text-primary"
       style={{ border: "1px solid #F97316" }}
     >
-      {/* ── Top header strip ────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between border-b border-border/60 px-5 py-3">
-        <div className="flex items-center gap-3 text-[11px] tracking-widest">
-          <span style={{ color: "#F97316" }}>01</span>
-          <span>AUDIO EMBED // REPRODUCTOR</span>
-        </div>
-        <span
-          className="h-1.5 w-1.5 animate-pulse rounded-full"
-          style={{ backgroundColor: toneColor }}
-          aria-hidden
-        />
-      </header>
-
       {/* ── Cover + metadata + LIVE MATRIX ──────────────────────────────── */}
       {/* Stacks vertically on phones — the fixed 120px cover + metadata + LIVE
           MATRIX badge in one row was the MixOverlay horizontal-overflow source. */}
-      <div className="flex flex-col gap-4 px-5 pt-4 sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-4 px-5 pt-5 sm:flex-row sm:items-start">
         <div
           className="relative h-20 w-20 shrink-0 overflow-hidden border border-border bg-elevated sm:h-[120px] sm:w-[120px]"
           aria-hidden
@@ -142,14 +117,6 @@ export function AudioPlayer3D({
               )}
               <span>SIN ARTE</span>
             </div>
-          )}
-          {coverLabel && coverUrl && (
-            <span
-              className="absolute left-1.5 top-1.5 text-[9px] tracking-widest"
-              style={{ color: "#F97316" }}
-            >
-              {coverLabel}
-            </span>
           )}
         </div>
 
@@ -167,19 +134,6 @@ export function AudioPlayer3D({
               {source}
             </p>
           )}
-          <div className="mt-2 flex items-center gap-3">
-            <span className="text-[11px] tabular-nums text-secondary">
-              {fmtTime(currentTime)}
-            </span>
-            <ProgressBar
-              progress={progress}
-              duration={duration}
-              onSeek={onSeek}
-            />
-            <span className="text-[11px] tabular-nums text-secondary">
-              {fmtTime(duration)}
-            </span>
-          </div>
         </div>
 
         <div
@@ -222,20 +176,21 @@ export function AudioPlayer3D({
           interactive
           className="absolute inset-0"
         />
+      </div>
 
-        {/* CAMPO DE PARTÍCULAS legend, top-left. Honest: each row maps to a
-            real driver of the field (cool↔hot color = spectral brightness;
-            energy = flow/brillo; graves = the bass breath pulse). */}
-        <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1.5 text-[10px] tracking-widest">
-          <span style={{ color: "#F97316" }}>CAMPO · PARTÍCULAS</span>
-          <LegendRow color="#087487" label="FRÍO · GRAVE" />
-          <LegendRow color="#948E85" label="ENERGÍA" />
-          <LegendRow color="#FC6C0F" label="CÁLIDO · BRILLO" />
-        </div>
+      {/* ── Seek bar — large hit target, sits right above the transport so the
+           time position reads as part of the controls, not a separate strip. */}
+      <div className="mt-4 px-5">
+        <SeekBar
+          currentTime={currentTime}
+          duration={duration}
+          progress={progress}
+          onSeek={onSeek}
+        />
       </div>
 
       {/* ── Transport row ───────────────────────────────────────────────── */}
-      <div className="mt-4 flex items-center justify-center gap-5 px-5 pb-3">
+      <div className="mt-2 flex items-center justify-center gap-5 px-5 pb-4">
         <TransportBtn aria="Aleatorio" disabled>
           <Shuffle size={14} style={{ color: "#F97316" }} />
         </TransportBtn>
@@ -246,13 +201,13 @@ export function AudioPlayer3D({
           type="button"
           onClick={onPlayPause}
           aria-label={isPlaying ? "Pausar" : "Reproducir"}
-          className="flex h-11 w-11 items-center justify-center border transition-colors"
+          className="flex h-12 w-12 items-center justify-center border transition-colors"
           style={{ borderColor: "#F97316", color: "#F97316" }}
         >
           {isPlaying ? (
-            <Pause size={18} fill="currentColor" />
+            <Pause size={20} fill="currentColor" />
           ) : (
-            <Play size={18} fill="currentColor" />
+            <Play size={20} fill="currentColor" />
           )}
         </button>
         <TransportBtn aria="Siguiente" disabled>
@@ -261,55 +216,27 @@ export function AudioPlayer3D({
         <TransportBtn aria="Repetir" disabled>
           <Repeat size={14} />
         </TransportBtn>
-        <div className="ml-3 flex items-end gap-[2px]">
-          {[3, 5, 7, 9, 11].map((h, i) => (
-            <div
-              key={i}
-              className="w-[3px]"
-              style={{
-                height: `${h + 2}px`,
-                backgroundColor: i < 3 ? "#F97316" : "#3a3a3a",
-              }}
-            />
-          ))}
-        </div>
       </div>
 
-      {/* ── Bottom status strip ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-t border-border/60 px-5 py-2.5 text-[10px] tracking-widest text-muted">
-        <span>
-          <span style={{ color: toneColor }}>{statusLabel}</span>
-          {statusDetail && <span className="ml-2">· {statusDetail}</span>}
-        </span>
-        {sourceUrl && (
+      {/* ── Source link — the one functional affordance kept from the old
+           status strip. Hidden entirely when there's no external source. ── */}
+      {sourceUrl && (
+        <div className="flex items-center justify-end border-t border-border/60 px-5 py-2.5">
           <button
             type="button"
             onClick={onOpenSource}
-            className="tracking-widest"
+            className="text-[10px] tracking-widest"
             style={{ color: "#F97316" }}
           >
             [ABRIR FUENTE]
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }
 
 // ── Sub-components ──────────────────────────────────────────────────────────
-
-function LegendRow({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className="block h-2 w-2"
-        style={{ backgroundColor: color }}
-        aria-hidden
-      />
-      <span className="text-secondary">{label}</span>
-    </div>
-  );
-}
 
 function TransportBtn({
   children,
@@ -335,45 +262,56 @@ function TransportBtn({
   );
 }
 
-function ProgressBar({
-  progress,
+function SeekBar({
+  currentTime,
   duration,
+  progress,
   onSeek,
 }: {
-  progress: number;
+  currentTime: number;
   duration: number;
+  progress: number;
   onSeek?: (seconds: number) => void;
 }) {
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Click (or drag-release) anywhere on the track to jump there. The wrapper
+  // carries generous vertical padding so the clickable area is ~20px tall even
+  // though the visible track is thin — the old 4px bar was near-impossible to
+  // hit, which read as "seeking doesn't work".
+  const seekFromEvent = (clientX: number, el: HTMLDivElement) => {
     if (!onSeek || duration <= 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const t = (e.clientX - rect.left) / rect.width;
+    const rect = el.getBoundingClientRect();
+    const t = (clientX - rect.left) / rect.width;
     onSeek(Math.max(0, Math.min(1, t)) * duration);
   };
   return (
-    <div
-      className="relative h-1 flex-1 cursor-pointer bg-border"
-      onClick={handleClick}
-      role="slider"
-      aria-valuemin={0}
-      aria-valuemax={duration}
-      aria-valuenow={progress * duration}
-    >
+    <div className="flex items-center gap-3">
+      <span className="w-[42px] shrink-0 text-[11px] tabular-nums text-secondary">
+        {fmtTime(currentTime)}
+      </span>
       <div
-        className="absolute left-0 top-0 h-full"
-        style={{ width: `${progress * 100}%`, backgroundColor: "#F97316" }}
-      />
-      <div
-        className="absolute top-1/2 -translate-y-1/2"
-        style={{
-          left: `${progress * 100}%`,
-          width: 6,
-          height: 8,
-          backgroundColor: "#F97316",
-          transform: "translate(-50%, -50%)",
-        }}
-        aria-hidden
-      />
+        className="group relative flex-1 cursor-pointer py-2.5"
+        onClick={(e) => seekFromEvent(e.clientX, e.currentTarget)}
+        role="slider"
+        aria-label="Posición de la pista"
+        aria-valuemin={0}
+        aria-valuemax={Math.round(duration)}
+        aria-valuenow={Math.round(progress * duration)}
+      >
+        <div className="relative h-2 w-full bg-border">
+          <div
+            className="absolute left-0 top-0 h-full"
+            style={{ width: `${progress * 100}%`, backgroundColor: "#F97316" }}
+          />
+          <div
+            className="absolute top-1/2 h-4 w-[6px] -translate-x-1/2 -translate-y-1/2 transition-transform group-hover:scale-y-125"
+            style={{ left: `${progress * 100}%`, backgroundColor: "#F97316" }}
+            aria-hidden
+          />
+        </div>
+      </div>
+      <span className="w-[42px] shrink-0 text-right text-[11px] tabular-nums text-secondary">
+        {fmtTime(duration)}
+      </span>
     </div>
   );
 }

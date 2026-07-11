@@ -284,22 +284,13 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
         title={has ? 'Abrir overlay del mix' : undefined}
       >
         {fieldActive && !expandedActive ? (
-          <>
-            <ParticleField3D
-              dataRef={audio.dataRef}
-              sampleRate={audio.sampleRate}
-              orientation="portrait"
-              interactive={false}
-              className="absolute inset-0"
-            />
-            {/* Color-position legend along the RIGHT edge — hot up top, glacial
-                at the bottom, matching the thermal ramp the field samples. */}
-            <div className="pointer-events-none absolute right-1 top-1 flex flex-col gap-0.5">
-              <LegendDot color="#FC6C0F" label="H" />
-              <LegendDot color="#948E85" label="M" />
-              <LegendDot color="#087487" label="L" />
-            </div>
-          </>
+          <ParticleField3D
+            dataRef={audio.dataRef}
+            sampleRate={audio.sampleRate}
+            orientation="portrait"
+            interactive={false}
+            className="absolute inset-0"
+          />
         ) : (
           <MatrixIdlePlaceholder mode={fieldActive && expandedActive ? 'yielded' : 'idle'} />
         )}
@@ -350,17 +341,3 @@ function MatrixIdlePlaceholder({ mode = 'idle' }: { mode?: 'idle' | 'yielded' })
   )
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="flex items-center gap-1">
-      <span
-        className="block h-1 w-1"
-        style={{ backgroundColor: color }}
-        aria-hidden
-      />
-      <span className="font-mono text-[7px] tracking-widest text-secondary">
-        {label}
-      </span>
-    </div>
-  )
-}
