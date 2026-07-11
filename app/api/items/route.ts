@@ -143,6 +143,14 @@ export async function POST(request: NextRequest) {
 
   // 2. Polls (optional). Look up by item_id (unique constraint) so a
   //    re-publish UPDATEs the existing row instead of inserting a duplicate.
+  //
+  //    NON-FATAL, like the entity-link sync below: the item row is ALREADY
+  //    saved at this point, so a poll hiccup (RLS, stale choice shape, …) must
+  //    NOT turn a successful publish into a failure response. Doing so produced
+  //    the false-positive "no se pudo publicar" the editor saw on re-publishing
+  //    a mix whose change had actually landed. We log it, surface a `warning`
+  //    in the 200 body, and let the publish succeed.
+  let pollWarning: string | null = null
   if (item.poll) {
     const poll = item.poll
     const { data: existingPoll } = await supabase
@@ -150,33 +158,33 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('item_id', item.id)
       .maybeSingle()
-    if (existingPoll) {
-      const { error: pollError } = await supabase
-        .from('polls')
-        .update({
+    const { error: pollError } = existingPoll
+      ? await supabase
+          .from('polls')
+          .update({
+            kind: poll.kind,
+            prompt: poll.prompt,
+            choices: (poll.choices ?? []) as unknown as PollChoice[],
+            multi_choice: poll.multiChoice ?? false,
+            closes_at: poll.closesAt ?? null,
+          })
+          .eq('id', existingPoll.id)
+      : await supabase.from('polls').insert({
+          id: randomUUID(),
+          item_id: item.id,
           kind: poll.kind,
           prompt: poll.prompt,
           choices: (poll.choices ?? []) as unknown as PollChoice[],
           multi_choice: poll.multiChoice ?? false,
           closes_at: poll.closesAt ?? null,
         })
-        .eq('id', existingPoll.id)
-      if (pollError) {
-        return NextResponse.json({ error: pollError.message }, { status: 500 })
-      }
-    } else {
-      const { error: pollError } = await supabase.from('polls').insert({
-        id: randomUUID(),
-        item_id: item.id,
-        kind: poll.kind,
-        prompt: poll.prompt,
-        choices: (poll.choices ?? []) as unknown as PollChoice[],
-        multi_choice: poll.multiChoice ?? false,
-        closes_at: poll.closesAt ?? null,
+    if (pollError) {
+      pollWarning = pollError.message
+      console.error('[POST /api/items] poll upsert failed (non-fatal)', {
+        code: pollError.code,
+        message: pollError.message,
+        itemId: item.id,
       })
-      if (pollError) {
-        return NextResponse.json({ error: pollError.message }, { status: 500 })
-      }
     }
   }
 
@@ -233,5 +241,5 @@ export async function POST(request: NextRequest) {
       .eq('item_payload->>slug', item.slug)
   }
 
-  return NextResponse.json({ ok: true, itemId: item.id })
+  return NextResponse.json({ ok: true, itemId: item.id, warning: pollWarning })
 }
