@@ -694,6 +694,7 @@ function MarketplaceTab({
       <ListingsManager
         partner={partner as unknown as ContentItem}
         canManage={canManage}
+        currentUserId={currentUserId}
         listings={listings}
         onChanged={onRefetch}
       />
@@ -1070,14 +1071,55 @@ type SortCol = 'title' | 'category' | 'condition' | 'price' | 'status' | 'update
 type SortDir = 'asc' | 'desc'
 type ComposerFlash = 'draft' | 'published' | null
 
+// Read an error response body without assuming JSON. Next returns JSON
+// (`{ error }`) for handler errors but PLAIN TEXT / HTML for framework-level
+// ones like 413 Payload Too Large — reading as text first and only then trying
+// to parse handles both.
+async function readErrorBody(res: Response): Promise<string> {
+  const raw = await res.text().catch(() => '')
+  if (raw) {
+    try {
+      const data = JSON.parse(raw)
+      if (data?.error) return String(data.error)
+    } catch {
+      /* plain text (e.g. a 413 HTML page) — fall through */
+    }
+    return raw.slice(0, 200)
+  }
+  return `HTTP ${res.status}`
+}
+
+// Map a failed listing save to a specific, actionable Spanish message. The
+// seller should always learn WHY it failed — payload too big, a permission
+// gap, or a database column that a pending migration hasn't added yet.
+function describeListingSaveError(status: number, msg: string): string {
+  const m = msg.toLowerCase()
+  if (status === 413 || m.includes('too large') || m.includes('payload too')) {
+    return 'La ficha pesa demasiado para enviarse (normalmente por imágenes muy grandes). Las imágenes ahora se comprimen y suben solas — vuelve a agregarlas y guarda de nuevo.'
+  }
+  if (m.includes('schema cache') || m.includes('could not find')) {
+    return `Falta una columna en la base de datos (migración de marketplace sin aplicar): ${msg}. Avísale al equipo técnico — no es un error de tus datos.`
+  }
+  if (status === 401)
+    return 'Tu sesión expiró. Inicia sesión de nuevo e intenta otra vez.'
+  if (status === 403)
+    return 'No tienes permiso para editar las fichas de esta tienda.'
+  if (status === 404)
+    return 'No se encontró la tienda (pudo haberse eliminado). Recarga la página.'
+  if (status === 409) return 'Ya existe una ficha con ese identificador.'
+  return `No se pudo guardar la ficha: ${msg}`
+}
+
 function ListingsManager({
   partner,
   canManage,
+  currentUserId,
   listings,
   onChanged,
 }: {
   partner: ContentItem
   canManage: boolean
+  currentUserId: string
   listings: MarketplaceListing[]
   onChanged: () => Promise<void>
 }) {
@@ -1085,6 +1127,12 @@ function ListingsManager({
   const [draft, setDraft] = useState<MarketplaceListing | null>(null)
   const [isNew, setIsNew] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Specific, human-readable reason the last save failed (null when clean).
+  // Surfacing the real server message is the whole point — the old code
+  // swallowed the response, so every failure looked identical (or worse,
+  // flashed success). Cleared at the start of each save attempt so a stale
+  // error never lingers across retries.
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('destacada')
   const [page, setPage] = useState(0)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({
@@ -1198,10 +1246,11 @@ function ListingsManager({
     if (!draft) return
     if (saving) return
     if (!draft.title.trim()) {
-      // Soft-fail — the DB CHECK constraint would 400 anyway.
+      setSaveError('Falta el título de la ficha.')
       return
     }
     setSaving(true)
+    setSaveError(null)
     try {
       const body = {
         id: draft.id,
@@ -1222,27 +1271,30 @@ function ListingsManager({
         related_links: draft.relatedLinks ?? [],
         published_at: draft.publishedAt,
       }
-      if (isNew) {
-        await fetch(
-          `/api/partners/${encodeURIComponent(partner.id)}/listings`,
-          {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(body),
-          },
-        )
-      } else {
-        await fetch(
-          `/api/partners/${encodeURIComponent(partner.id)}/listings/${encodeURIComponent(draft.id)}`,
-          {
-            method: 'PATCH',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(body),
-          },
-        )
+      const url = isNew
+        ? `/api/partners/${encodeURIComponent(partner.id)}/listings`
+        : `/api/partners/${encodeURIComponent(partner.id)}/listings/${encodeURIComponent(draft.id)}`
+      const res = await fetch(url, {
+        method: isNew ? 'POST' : 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        // Surface the ACTUAL failure. Previously the response was ignored, so
+        // a 413 (imágenes muy pesadas), a 403 (permisos), or a missing-column
+        // schema-cache error all looked the same — and the composer even
+        // flashed success. Now the specific reason reaches the seller.
+        setSaveError(describeListingSaveError(res.status, await readErrorBody(res)))
+        return
       }
       await onChanged()
       fireFlash(kind)
+    } catch (e) {
+      setSaveError(
+        e instanceof Error
+          ? `Error de red al guardar: ${e.message}`
+          : 'Error de red al guardar la ficha. Revisa tu conexión.',
+      )
     } finally {
       setSaving(false)
     }
@@ -1312,7 +1364,9 @@ function ListingsManager({
             listing={draft}
             partner={partner}
             canManage={canManage && !saving}
+            currentUserId={currentUserId}
             flash={flash}
+            saveError={saveError}
             onPatch={onPatch}
             onPreview={onPreview}
             onSaveDraft={() => persistDraft('draft')}
@@ -1355,7 +1409,9 @@ function ListingComposer({
   listing,
   partner,
   canManage,
+  currentUserId,
   flash,
+  saveError,
   onPatch,
   onPreview,
   onSaveDraft,
@@ -1364,7 +1420,9 @@ function ListingComposer({
   listing: MarketplaceListing | null
   partner: ContentItem
   canManage: boolean
+  currentUserId: string
   flash: ComposerFlash
+  saveError: string | null
   onPatch: (patch: Partial<MarketplaceListing>) => void
   onPreview: () => void
   onSaveDraft: () => void
@@ -1456,6 +1514,7 @@ function ListingComposer({
             <MultiImageGallery
               images={listing.images}
               disabled={!canManage}
+              currentUserId={currentUserId}
               onChange={(images) => onPatch({ images })}
             />
           </FormField>
@@ -1537,6 +1596,20 @@ function ListingComposer({
               }
             />
           </FormField>
+
+          {saveError && (
+            <p
+              className="border px-3 py-2 font-mono text-[10px] leading-relaxed"
+              style={{
+                borderColor: '#E63329',
+                color: '#E63329',
+                backgroundColor: 'rgba(230,51,41,0.08)',
+              }}
+              role="alert"
+            >
+              // {saveError}
+            </p>
+          )}
 
           <ActionRow
             canManage={canManage}
@@ -1949,39 +2022,60 @@ function TagsChipInput({
 function MultiImageGallery({
   images,
   disabled,
+  currentUserId,
   onChange,
 }: {
   images: string[]
   disabled?: boolean
+  currentUserId: string
   onChange: (images: string[]) => void
 }) {
   const [dragOver, setDragOver] = useState(false)
   const [urlOpen, setUrlOpen] = useState(false)
   const [urlDraft, setUrlDraft] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const readFile = (file: File) => {
-    if (!file.type.startsWith('image/')) return
-    const r = new FileReader()
-    r.onload = () => {
-      if (typeof r.result === 'string') {
-        onChange([...images, r.result])
+  // Compress + upload each picked/dropped file to Supabase Storage and store
+  // the returned URL — NOT a base64 data URI. Embedding data URIs (the old
+  // behaviour) bloated the listing-save request until it tripped the server's
+  // payload limit ("content too large" / 413). URLs keep the body tiny and the
+  // images get compressed on the way up. All files in one drop are gathered and
+  // appended in a single onChange so concurrent uploads don't clobber each other.
+  const addFiles = async (files: File[]) => {
+    const imgs = files.filter((f) => f.type.startsWith('image/'))
+    if (imgs.length === 0 || disabled) return
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const urls: string[] = []
+      for (const file of imgs) {
+        const res = await compressAndUploadImage(file, currentUserId, {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+        })
+        if (res.ok) urls.push(res.url)
+        else {
+          setUploadError(res.error)
+          break // keep whatever already uploaded; stop on first failure
+        }
       }
+      if (urls.length) onChange([...images, ...urls])
+    } finally {
+      setUploading(false)
     }
-    r.readAsDataURL(file)
   }
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setDragOver(false)
     if (disabled) return
-    const files = Array.from(e.dataTransfer.files ?? [])
-    files.filter((f) => f.type.startsWith('image/')).forEach(readFile)
+    void addFiles(Array.from(e.dataTransfer.files ?? []))
   }
 
   const onPicker = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    files.forEach(readFile)
+    void addFiles(Array.from(e.target.files ?? []))
     e.target.value = ''
   }
 
@@ -2059,6 +2153,17 @@ function MultiImageGallery({
           className="hidden"
         />
       </div>
+
+      {uploading && (
+        <span className="font-mono text-[10px] tracking-widest text-sys-orange">
+          ⟳ SUBIENDO Y COMPRIMIENDO…
+        </span>
+      )}
+      {uploadError && (
+        <span className="font-mono text-[10px] text-sys-red">
+          // No se pudo subir la imagen: {uploadError}
+        </span>
+      )}
 
       {!disabled && !urlOpen && (
         <button
