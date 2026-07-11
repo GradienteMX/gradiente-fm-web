@@ -15,6 +15,15 @@ import { extractMixcloudFeed } from '@/components/embed/platforms'
 
 const SCRIPT_URL = 'https://widget.mixcloud.com/media/js/widgetApi.js'
 
+// Mixcloud's PlayerWidget ready-handshake (a postMessage from the widget iframe
+// that resolves `widget.ready`) is unreliable — empirically it's dropped on
+// roughly half of binds, non-deterministically. A single bind therefore leaves
+// the player permanently "not ready": the pending feed never drains and nothing
+// ever plays. We recover by racing each bind against a timeout and, on a miss,
+// reloading the iframe + rebinding until one attempt readies.
+const READY_TIMEOUT_MS = 4000
+const MAX_READY_ATTEMPTS = 6
+
 interface MCWidget {
   ready: Promise<void>
   load: (cloudcastKey: string, startPlaying?: boolean) => void
@@ -83,36 +92,68 @@ export function useMixcloudWidget(
     const iframe = iframeRef.current
     if (!iframe || widgetRef.current) return
     let cancelled = false
+    let readyTimer: ReturnType<typeof setTimeout> | null = null
+    let attempts = 0
+    // Set just before we imperatively reload the iframe, so the iframe's own
+    // load event (which also fires for its very first load) only triggers a
+    // rebind for reloads WE initiate — the first bind is driven directly.
+    let reloadPending = false
+
+    const attempt = () => {
+      if (cancelled || !window.Mixcloud) return
+      attempts += 1
+      const widget = window.Mixcloud.PlayerWidget(iframe)
+      let settled = false
+      widget.ready
+        .then(() => {
+          if (cancelled) return
+          settled = true
+          if (readyTimer) clearTimeout(readyTimer)
+          widgetRef.current = widget
+          setReady(true)
+          widget.events.play.on(() => !cancelled && setIsPlaying(true))
+          widget.events.pause.on(() => !cancelled && setIsPlaying(false))
+          widget.events.ended.on(() => {
+            if (cancelled) return
+            setIsPlaying(false)
+            onEndedRef.current?.()
+          })
+          widget.events.progress.on((position, dur) => {
+            if (cancelled) return
+            setCurrentTime(position || 0)
+            if (dur) setDuration(dur)
+          })
+          if (pendingRef.current) {
+            widget.load(pendingRef.current, true)
+            pendingRef.current = null
+          }
+        })
+        .catch(() => {
+          /* this bind failed — the timeout below reloads + rebinds */
+        })
+
+      // If ready doesn't resolve in time, the handshake was dropped: reload the
+      // iframe (its load event rebinds via onLoad) and try again, up to a cap so
+      // a genuinely dead/private cloudcast doesn't reload forever.
+      readyTimer = setTimeout(() => {
+        if (cancelled || settled) return
+        if (attempts >= MAX_READY_ATTEMPTS) return
+        reloadPending = true
+        // eslint-disable-next-line no-self-assign
+        iframe.src = iframe.src
+      }, READY_TIMEOUT_MS)
+    }
+
+    const onLoad = () => {
+      if (!reloadPending) return
+      reloadPending = false
+      attempt()
+    }
+    iframe.addEventListener('load', onLoad)
 
     loadMixcloudAPI()
       .then(() => {
-        if (cancelled || !window.Mixcloud) return
-        const widget = window.Mixcloud.PlayerWidget(iframe)
-        widgetRef.current = widget
-        widget.ready
-          .then(() => {
-            if (cancelled) return
-            setReady(true)
-            widget.events.play.on(() => !cancelled && setIsPlaying(true))
-            widget.events.pause.on(() => !cancelled && setIsPlaying(false))
-            widget.events.ended.on(() => {
-              if (cancelled) return
-              setIsPlaying(false)
-              onEndedRef.current?.()
-            })
-            widget.events.progress.on((position, dur) => {
-              if (cancelled) return
-              setCurrentTime(position || 0)
-              if (dur) setDuration(dur)
-            })
-            if (pendingRef.current) {
-              widget.load(pendingRef.current, true)
-              pendingRef.current = null
-            }
-          })
-          .catch(() => {
-            /* widget never became ready — stays "not ready", player still renders */
-          })
+        if (!cancelled) attempt()
       })
       .catch(() => {
         /* script failed — feature degrades to not-ready */
@@ -120,6 +161,8 @@ export function useMixcloudWidget(
 
     return () => {
       cancelled = true
+      if (readyTimer) clearTimeout(readyTimer)
+      iframe.removeEventListener('load', onLoad)
     }
   }, [enabled, iframeRef])
 
