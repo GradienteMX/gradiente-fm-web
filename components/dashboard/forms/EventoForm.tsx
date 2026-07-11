@@ -92,7 +92,7 @@ export function EventoForm() {
   const onPublish = () => {
     const id = workbench.requestPublish()
     setCategoryFilter(null)
-    openConfirm(id)
+    openConfirm(id, workbench.publishMode)
   }
 
   useEffect(() => {

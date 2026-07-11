@@ -1309,13 +1309,15 @@ export { upsertItem as commitItem, newItemId } from '@/lib/drafts'
 //   - `reset()` that wipes both the in-progress draft and any committed item
 //   - A transient `flash` state for the SubmitFooter confirmation chip
 
-import type { DraftState } from '@/lib/drafts'
+import type { DraftItem, DraftState, PublishMode } from '@/lib/drafts'
 import {
   upsertItem as _commitItem,
   newItemId as _newItemId,
   removeItem,
   getItemById,
 } from '@/lib/drafts'
+import { subscribeDrafts } from '@/lib/draftsCache'
+import { subscribePublishedItems } from '@/lib/publishedItemsCache'
 
 interface DraftWorkbenchPersisted<T extends ContentItem> {
   draft: T
@@ -1348,28 +1350,70 @@ export function useDraftWorkbench<T extends ContentItem>({
   const [isPublished, setIsPublished] = useState(false)
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate on mount — prefer the editItemId from the URL over local draft.
+  // Edit sessions get their OWN storage key (`…-draft:edit:<id>`), separate
+  // from the new-compose slot (`…-draft`). Previously both shared one per-type
+  // key, so merely opening a published item wrote its id into the slot and the
+  // next NUEVO compose resumed it — silently rebinding a "new" publish onto the
+  // published item (the Report A overwrite). Separate keys break that link.
+  const storageKey = editItemId ? `${draftKey}:edit:${editItemId}` : draftKey
+
+  // Hydrate — prefer the editItemId from the URL over the local slot. Re-runs
+  // when editItemId changes (feed-overlay EDITAR / back-forward between edits).
   useEffect(() => {
+    let cancelled = false
+
+    const applyExisting = (existing: DraftItem) => {
+      if (cancelled) return
+      // Strip the frontend-only flag before slotting into form state.
+      const { _draftState, ...clean } = existing
+      // Double-cast through `unknown` because TS can't prove the runtime
+      // narrowing matches the form's specific T (e.g. MixDraft) — at this
+      // point we know the existing item's `type` matches the form.
+      setDraft({ ...emptyFn(), ...(clean as unknown as T) })
+      setCommittedId(existing.id)
+      setIsPublished(existing._draftState === 'published')
+      setLastSavedAt(Date.now())
+      setHydrated(true)
+    }
+
     if (editItemId) {
       const existing = getItemById(editItemId)
       if (existing) {
-        // Strip the frontend-only flag before slotting into form state.
-        const { _draftState, ...clean } = existing
-        // Double-cast through `unknown` because TS can't prove the runtime
-        // narrowing matches the form's specific T (e.g. MixDraft) — at this
-        // point we know the existing item's `type` matches the form.
-        setDraft({ ...emptyFn(), ...(clean as unknown as T) })
-        setCommittedId(existing.id)
-        setIsPublished(existing._draftState === 'published')
-        setLastSavedAt(Date.now())
-        setHydrated(true)
+        applyExisting(existing)
         return
       }
-      // editItemId given but item not found — fall through to local draft
-      // (rare; happens if storage was cleared between navigations).
+      // The draft/published caches prime asynchronously (auth + dashboard-mount
+      // fetch), so on a hard reload or deep link they may be empty right now.
+      // Wait for the item to appear rather than falling through to the local
+      // slot — that used to bind the WRONG id and duplicate the item on publish
+      // (or mint a fresh row). Stay unhydrated (form disabled) until it lands.
+      setHydrated(false)
+      let done = false
+      let unsubD = () => {}
+      let unsubP = () => {}
+      const attempt = () => {
+        if (cancelled || done) return
+        const found = getItemById(editItemId)
+        if (found) {
+          done = true
+          applyExisting(found)
+          unsubD()
+          unsubP()
+        }
+      }
+      unsubD = subscribeDrafts(attempt)
+      unsubP = subscribePublishedItems(attempt)
+      return () => {
+        cancelled = true
+        unsubD()
+        unsubP()
+      }
     }
+
+    // New-compose: hydrate from the per-type slot. Edit sessions use a separate
+    // key, so opening a published item can no longer poison this one.
     try {
-      const raw = sessionStorage.getItem(draftKey)
+      const raw = sessionStorage.getItem(storageKey)
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<DraftWorkbenchPersisted<T>>
         if (parsed.draft) setDraft({ ...emptyFn(), ...parsed.draft })
@@ -1379,8 +1423,11 @@ export function useDraftWorkbench<T extends ContentItem>({
       }
     } catch {}
     setHydrated(true)
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [editItemId])
 
   // Autosave on every change (post-hydration only — avoids overwriting
   // freshly-loaded state with the empty-default snapshot).
@@ -1392,15 +1439,15 @@ export function useDraftWorkbench<T extends ContentItem>({
         committedId,
         isPublished,
       }
-      sessionStorage.setItem(draftKey, JSON.stringify(payload))
+      sessionStorage.setItem(storageKey, JSON.stringify(payload))
       setLastSavedAt(Date.now())
     } catch {}
-  }, [draft, committedId, isPublished, hydrated, draftKey])
+  }, [draft, committedId, isPublished, hydrated, storageKey])
 
-  const commit = (state: DraftState): string => {
+  const commit = (state: DraftState, opts?: { localOnly?: boolean }): string => {
     const id = committedId ?? _newItemId(draft.type)
     const item = { ...draft, id, publishedAt: new Date().toISOString() }
-    _commitItem(item, state)
+    _commitItem(item, state, opts)
     setCommittedId(id)
     setIsPublished(state === 'published')
     setFlash(state)
@@ -1414,23 +1461,63 @@ export function useDraftWorkbench<T extends ContentItem>({
   // The state transition to 'published' happens only after the editor confirms
   // via [[PublishConfirmOverlay]] — never directly from the form.
   const requestPublish = (): string => {
-    const id = commit('draft')
+    // localOnly: seed the drafts CACHE (so the confirm overlay can resolve the
+    // item) but DON'T POST a server draft row. The publish creates the items
+    // row directly, so there's no server draft to race-delete → no durable
+    // "zombie" draft carrying the published id (finding #6).
+    const id = commit('draft', { localOnly: true })
     // Suppress the "DRAFT GUARDADO" flash since the editor pressed PUBLICAR,
     // not SAVE — they shouldn't see a "saved" confirmation chip.
     setFlash(null)
     return id
   }
 
+  // Create-vs-edit intent for the publish guard, derived from the ENTRY POINT
+  // (?edit=<id> present ⇒ editing an existing item; absent ⇒ NUEVO). This is
+  // deliberately NOT read from `committedId`/`isPublished`: those are restored
+  // from the per-type sessionStorage slot, which a prior edit-open can poison
+  // with a published item's id. Anchoring to the URL keeps a NUEVO compose a
+  // 'create' even when its slot carries a stale id — so the server rejects the
+  // overwrite and the client re-keys to a fresh id instead of clobbering the
+  // original. On success the composer unmounts (nav to feed), so there is no
+  // same-session re-publish that would need to flip to 'edit'.
+  const publishMode: PublishMode = editItemId ? 'edit' : 'create'
+
   const reset = () => {
-    // If we already committed an item, drop it from the shared store.
-    if (committedId) removeItem(committedId)
+    // Editing an existing item: "reset" REVERTS to the stored version rather
+    // than blanking. Blanking used to detach committedId, so a subsequent
+    // publish minted a NEW id and duplicated the item (finding #23). Never
+    // deletes the underlying published/draft row.
+    if (editItemId) {
+      const existing = getItemById(editItemId)
+      if (existing) {
+        const { _draftState, ...clean } = existing
+        setDraft({ ...emptyFn(), ...(clean as unknown as T) })
+        setCommittedId(existing.id)
+        setIsPublished(existing._draftState === 'published')
+        setFlash(null)
+        try {
+          sessionStorage.removeItem(storageKey)
+        } catch {}
+        return
+      }
+    }
+    // New-compose: clear the form. If a DB draft was already saved, confirm
+    // before discarding it (destructive — it holds the only copy).
+    if (committedId && getItemById(committedId)) {
+      const ok =
+        typeof window === 'undefined' ||
+        window.confirm('¿Descartar este borrador? No se puede deshacer.')
+      if (!ok) return
+      removeItem(committedId)
+    }
     setDraft(emptyFn())
     setCommittedId(null)
     setIsPublished(false)
     setLastSavedAt(null)
     setFlash(null)
     try {
-      sessionStorage.removeItem(draftKey)
+      sessionStorage.removeItem(storageKey)
     } catch {}
   }
 
@@ -1439,6 +1526,7 @@ export function useDraftWorkbench<T extends ContentItem>({
     lastSavedAt,
     flash,
     isPublished,
+    publishMode,
     saveDraft,
     requestPublish,
     reset,

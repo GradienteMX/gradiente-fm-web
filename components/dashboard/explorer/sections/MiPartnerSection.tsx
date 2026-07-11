@@ -114,6 +114,37 @@ interface TeamMember {
 // Snake_case → camelCase mappers for the API responses. Keeping the
 // downstream component tree on camelCase avoids touching the listings
 // composer and the inline ContentItem assumptions deeper in the file.
+// Map a raw marketplace_listings row (snake_case from PostgREST) to the
+// camelCase MarketplaceListing the composer/table consume. Mirrors
+// rowToMarketplaceListing in lib/data/items.ts — which we can't import here
+// (that module is server-only). WITHOUT this mapping, saleUrl/email/
+// shippingMode/relatedLinks/publishedAt were all undefined, so editing any
+// listing PATCHed them back as null/[] and wiped the seller's data (#9).
+function mapListingRow(row: Record<string, unknown>): MarketplaceListing {
+  return {
+    id: String(row.id),
+    title: String(row.title ?? ''),
+    category: row.category as MarketplaceListing['category'],
+    subcategory: (row.subcategory as string | null) ?? undefined,
+    price: Number(row.price ?? 0),
+    condition: row.condition as MarketplaceListing['condition'],
+    status: row.status as MarketplaceListing['status'],
+    description: (row.description as string | null) ?? undefined,
+    tags: (row.tags as string[] | null) ?? undefined,
+    shippingMode: (row.shipping_mode as MarketplaceListing['shippingMode']) ?? undefined,
+    images: (row.images as string[] | null) ?? [],
+    embeds: (row.embeds as MarketplaceListing['embeds']) ?? undefined,
+    saleUrl: (row.sale_url as string | null) ?? undefined,
+    whatsapp: (row.whatsapp as string | null) ?? undefined,
+    email: (row.contact_email as string | null) ?? undefined,
+    relatedLinks: Array.isArray(row.related_links)
+      ? (row.related_links as MarketplaceListing['relatedLinks'])
+      : undefined,
+    views: typeof row.views === 'number' ? row.views : 0,
+    publishedAt: String(row.published_at ?? ''),
+  }
+}
+
 function mapPartnerRow(row: Record<string, unknown>): PartnerData {
   return {
     id: String(row.id),
@@ -128,7 +159,9 @@ function mapPartnerRow(row: Record<string, unknown>): PartnerData {
     marketplaceDescription: (row.marketplace_description as string | null) ?? null,
     marketplaceLocation: (row.marketplace_location as string | null) ?? null,
     marketplaceCurrency: (row.marketplace_currency as string | null) ?? null,
-    marketplaceListings: (row.marketplace_listings as MarketplaceListing[] | null) ?? [],
+    marketplaceListings: Array.isArray(row.marketplace_listings)
+      ? (row.marketplace_listings as Record<string, unknown>[]).map(mapListingRow)
+      : [],
   }
 }
 
@@ -1127,12 +1160,6 @@ function ListingsManager({
   const [draft, setDraft] = useState<MarketplaceListing | null>(null)
   const [isNew, setIsNew] = useState(false)
   const [saving, setSaving] = useState(false)
-  // Specific, human-readable reason the last save failed (null when clean).
-  // Surfacing the real server message is the whole point — the old code
-  // swallowed the response, so every failure looked identical (or worse,
-  // flashed success). Cleared at the start of each save attempt so a stale
-  // error never lingers across retries.
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('destacada')
   const [page, setPage] = useState(0)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({
@@ -1140,6 +1167,11 @@ function ListingsManager({
     dir: 'desc',
   })
   const [flash, setFlash] = useState<ComposerFlash>(null)
+  const [composerError, setComposerError] = useState<string | null>(null)
+  // Tracks which listing id we've already seeded the draft from, so a
+  // background refetch (team change, another tab) can't re-seed over the
+  // seller's unsaved edits (#26).
+  const seededIdRef = useRef<string | null>(null)
 
   // INBOX/OFERTA — set of listing ids with an unanswered buyer comment/offer.
   // Refetched when the listing set changes (e.g. after an edit/refresh).
@@ -1159,27 +1191,36 @@ function ListingsManager({
     }
   }, [partner.id, listings])
 
-  // Seed the draft from the source listing whenever editingId changes (and
-  // we're editing an existing listing, not creating a new one). Refetch
-  // updates `listings`; if the row currently being edited gets a server-
-  // side change we re-seed, which is acceptable since the partner team
-  // member is the only one editing it.
+  // Seed the draft from the source listing the FIRST time an editingId is
+  // selected. A later refetch that changes `listings` must NOT re-seed (that
+  // silently discarded the seller's in-progress edits — #26), but if the row
+  // being edited was deleted server-side we close the composer.
   useEffect(() => {
-    if (isNew) return
+    if (isNew) {
+      seededIdRef.current = null
+      return
+    }
     if (editingId) {
       const found = listings.find((l) => l.id === editingId) ?? null
-      if (found) setDraft({ ...found })
-      else {
+      if (!found) {
+        // Row vanished (deleted elsewhere) — close the composer.
         setDraft(null)
         setEditingId(null)
+        seededIdRef.current = null
+        return
       }
+      if (seededIdRef.current === editingId) return // already seeded; keep edits
+      setDraft({ ...found })
+      seededIdRef.current = editingId
     } else {
+      seededIdRef.current = null
       setDraft(null)
     }
   }, [editingId, isNew, listings])
 
   const onAdd = () => {
     if (!canManage) return
+    setComposerError(null)
     setIsNew(true)
     setEditingId(null)
     setDraft({
@@ -1195,8 +1236,21 @@ function ListingsManager({
   }
 
   const onSelect = (id: string) => {
+    setComposerError(null)
     setIsNew(false)
+    seededIdRef.current = null // force a fresh seed for the newly selected row
     setEditingId(id)
+  }
+
+  // Non-destructive exit from the composer (#2). Without this, the only ways
+  // out were save/publish/delete/leave-tab — so a seller who opened an
+  // existing listing to view it, then wanted to bail, had no safe option.
+  const onCancel = () => {
+    setComposerError(null)
+    setEditingId(null)
+    setIsNew(false)
+    setDraft(null)
+    seededIdRef.current = null
   }
 
   const onPatch = (patch: Partial<MarketplaceListing>) => {
@@ -1207,6 +1261,7 @@ function ListingsManager({
     if (!canManage) return
     const source = listings.find((l) => l.id === id)
     if (!source) return
+    setComposerError(null)
     setIsNew(true)
     setEditingId(null)
     setDraft({
@@ -1221,18 +1276,38 @@ function ListingsManager({
   const onDelete = async (id: string) => {
     if (!canManage) return
     if (saving) return
+    // Confirm — the delete is a permanent hard-delete that also cascades the
+    // listing's buyer comment thread, and the trash icon sits one pixel-row
+    // from Edit/Duplicate (#11).
+    const listing = listings.find((l) => l.id === id)
+    const label = listing?.title ? `"${listing.title}"` : 'esta ficha'
+    const ok =
+      typeof window === 'undefined' ||
+      window.confirm(
+        `¿Eliminar ${label} de forma permanente? Se borrará también su hilo de comentarios. No se puede deshacer.`,
+      )
+    if (!ok) return
+    setComposerError(null)
     setSaving(true)
     try {
-      await fetch(
+      const res = await fetch(
         `/api/partners/${encodeURIComponent(partner.id)}/listings/${encodeURIComponent(id)}`,
         { method: 'DELETE' },
       )
+      if (!res.ok) {
+        // Surface the failure instead of silently proceeding as if deleted (#10).
+        setComposerError('No se pudo eliminar la ficha. Vuelve a intentarlo.')
+        return
+      }
       await onChanged()
       if (editingId === id || draft?.id === id) {
         setEditingId(null)
         setIsNew(false)
         setDraft(null)
+        seededIdRef.current = null
       }
+    } catch {
+      setComposerError('Sin conexión. No se pudo eliminar la ficha.')
     } finally {
       setSaving(false)
     }
@@ -1246,11 +1321,11 @@ function ListingsManager({
     if (!draft) return
     if (saving) return
     if (!draft.title.trim()) {
-      setSaveError('Falta el título de la ficha.')
+      setComposerError('La ficha necesita un título.')
       return
     }
     setSaving(true)
-    setSaveError(null)
+    setComposerError(null)
     try {
       const body = {
         id: draft.id,
@@ -1280,20 +1355,20 @@ function ListingsManager({
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        // Surface the ACTUAL failure. Previously the response was ignored, so
-        // a 413 (imágenes muy pesadas), a 403 (permisos), or a missing-column
-        // schema-cache error all looked the same — and the composer even
-        // flashed success. Now the specific reason reaches the seller.
-        setSaveError(describeListingSaveError(res.status, await readErrorBody(res)))
+        // Surface the ACTUAL failure and don't flash success / destroy the
+        // draft on a failed write. A 413 (imágenes muy pesadas), a 403
+        // (permisos), or a missing-column schema-cache error each get a
+        // specific message instead of a generic retry.
+        setComposerError(describeListingSaveError(res.status, await readErrorBody(res)))
         return
       }
       await onChanged()
       fireFlash(kind)
     } catch (e) {
-      setSaveError(
+      setComposerError(
         e instanceof Error
           ? `Error de red al guardar: ${e.message}`
-          : 'Error de red al guardar la ficha. Revisa tu conexión.',
+          : 'Sin conexión. No se pudo guardar la ficha.',
       )
     } finally {
       setSaving(false)
@@ -1365,10 +1440,12 @@ function ListingsManager({
             partner={partner}
             canManage={canManage && !saving}
             currentUserId={currentUserId}
+            isNew={isNew}
             flash={flash}
-            saveError={saveError}
+            error={composerError}
             onPatch={onPatch}
             onPreview={onPreview}
+            onCancel={onCancel}
             onSaveDraft={() => persistDraft('draft')}
             onPublish={() => persistDraft('published')}
           />
@@ -1410,10 +1487,12 @@ function ListingComposer({
   partner,
   canManage,
   currentUserId,
+  isNew,
   flash,
-  saveError,
+  error,
   onPatch,
   onPreview,
+  onCancel,
   onSaveDraft,
   onPublish,
 }: {
@@ -1421,10 +1500,12 @@ function ListingComposer({
   partner: ContentItem
   canManage: boolean
   currentUserId: string
+  isNew: boolean
   flash: ComposerFlash
-  saveError: string | null
+  error: string | null
   onPatch: (patch: Partial<MarketplaceListing>) => void
   onPreview: () => void
+  onCancel: () => void
   onSaveDraft: () => void
   onPublish: () => void
 }) {
@@ -1433,9 +1514,11 @@ function ListingComposer({
       <header className="flex items-center justify-between border-b border-border/60 px-3 py-2 font-mono text-[10px] tracking-widest">
         <span className="text-muted">//COMPOSER</span>
         <span className="text-secondary">
-          {listing
-            ? `EDITANDO · ${listing.id.slice(-8).toUpperCase()}`
-            : 'SIN·SELECCIÓN'}
+          {!listing
+            ? 'SIN·SELECCIÓN'
+            : isNew
+              ? 'NUEVA·FICHA'
+              : `EDITANDO · ${listing.id.slice(-8).toUpperCase()}`}
         </span>
       </header>
 
@@ -1597,24 +1680,13 @@ function ListingComposer({
             />
           </FormField>
 
-          {saveError && (
-            <p
-              className="border px-3 py-2 font-mono text-[10px] leading-relaxed"
-              style={{
-                borderColor: '#E63329',
-                color: '#E63329',
-                backgroundColor: 'rgba(230,51,41,0.08)',
-              }}
-              role="alert"
-            >
-              // {saveError}
-            </p>
-          )}
-
           <ActionRow
             canManage={canManage}
+            isNew={isNew}
             flash={flash}
+            error={error}
             onPreview={onPreview}
+            onCancel={onCancel}
             onSaveDraft={onSaveDraft}
             onPublish={onPublish}
           />
@@ -2311,65 +2383,104 @@ function ImageSlot({
 
 function ActionRow({
   canManage,
+  isNew,
   flash,
+  error,
   onPreview,
+  onCancel,
   onSaveDraft,
   onPublish,
 }: {
   canManage: boolean
+  isNew: boolean
   flash: ComposerFlash
+  error: string | null
   onPreview: () => void
+  onCancel: () => void
   onSaveDraft: () => void
   onPublish: () => void
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-3">
-      <div className="flex items-center">
-        {flash === 'draft' && (
-          <span className="font-mono text-[10px] tracking-widest text-sys-orange">
-            ◉ GUARDADO
-          </span>
-        )}
-        {flash === 'published' && (
-          <span
-            className="font-mono text-[10px] tracking-widest"
-            style={{ color: '#4ADE80' }}
+    <div className="flex flex-col gap-2 border-t border-border/40 pt-3">
+      {error && (
+        <p
+          role="alert"
+          className="border border-dashed px-2 py-1.5 font-mono text-[10px] leading-relaxed"
+          style={{ borderColor: '#E63329', color: '#E63329' }}
+        >
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center">
+          {flash === 'draft' && (
+            <span className="font-mono text-[10px] tracking-widest text-sys-orange">
+              ◉ GUARDADO
+            </span>
+          )}
+          {flash === 'published' && (
+            <span
+              className="font-mono text-[10px] tracking-widest"
+              style={{ color: '#4ADE80' }}
+            >
+              ▶ PUBLICADO
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Preview only makes sense for a persisted listing (a new one has
+              no public URL yet). */}
+          {!isNew && (
+            <button
+              type="button"
+              onClick={onPreview}
+              className="flex items-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+            >
+              <Eye size={11} strokeWidth={1.5} />
+              VISTA PREVIA
+            </button>
+          )}
+          {/* Non-destructive exit (#2). */}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
           >
-            ▶ PUBLICADO
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onPreview}
-          className="flex items-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
-        >
-          <Eye size={11} strokeWidth={1.5} />
-          VISTA PREVIA
-        </button>
-        <button
-          type="button"
-          disabled={!canManage}
-          onClick={onSaveDraft}
-          className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ borderColor: '#888', color: '#888' }}
-        >
-          ▣ GUARDAR BORRADOR
-        </button>
-        <button
-          type="button"
-          disabled={!canManage}
-          onClick={onPublish}
-          className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          style={{
-            borderColor: '#4ADE80',
-            color: '#4ADE80',
-            backgroundColor: 'rgba(74,222,128,0.08)',
-          }}
-        >
-          ▶ PUBLICAR ITEM
-        </button>
+            CANCELAR
+          </button>
+          {/* One honest primary action. A NEW listing publishes live (there is
+              no private-draft state — the old "GUARDAR BORRADOR" implied one,
+              #19); editing an existing one saves changes in place. */}
+          {isNew ? (
+            <button
+              type="button"
+              disabled={!canManage}
+              onClick={onPublish}
+              className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              style={{
+                borderColor: '#4ADE80',
+                color: '#4ADE80',
+                backgroundColor: 'rgba(74,222,128,0.08)',
+              }}
+            >
+              ▶ PUBLICAR FICHA
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={!canManage}
+              onClick={onSaveDraft}
+              className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              style={{
+                borderColor: '#F97316',
+                color: '#F97316',
+                backgroundColor: 'rgba(249,115,22,0.08)',
+              }}
+            >
+              ▣ GUARDAR CAMBIOS
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

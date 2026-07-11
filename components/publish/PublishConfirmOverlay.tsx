@@ -1,12 +1,25 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Send } from 'lucide-react'
 import { usePublishConfirm } from './usePublishConfirm'
-import { getItemById, publishItem } from '@/lib/drafts'
+import { getItemById, publishItem, type PublishResult } from '@/lib/drafts'
 import { removeDraftLocal } from '@/lib/draftsCache'
+import { setPublishedItemLocal } from '@/lib/publishedItemsCache'
 import { categoryColor } from '@/lib/utils'
+
+// User-facing copy for a failed publish. Keeps the draft intact (nothing is
+// dropped optimistically) and tells the editor what to do next.
+function publishErrorMessage(res: PublishResult): string {
+  if (res.status === 403)
+    return 'No tienes permiso para editar este ítem. Puede pertenecer a otra persona.'
+  if (res.status === 409)
+    return 'No se pudo crear el ítem por un conflicto de id. Vuelve a intentarlo.'
+  if (res.status === 0)
+    return 'Sin conexión con el servidor. Tu borrador sigue guardado; vuelve a intentarlo.'
+  return 'No se pudo publicar. Tu borrador sigue guardado; vuelve a intentarlo.'
+}
 
 // Globally-mounted confirmation modal for publishing a draft. Opens when
 // usePublishConfirm.confirmingId is set (triggered from the dashboard form's
@@ -19,9 +32,17 @@ import { categoryColor } from '@/lib/utils'
 // On cancel: just clears the modal state — the draft stays in storage so
 // the editor can come back to it from the dashboard.
 export function PublishConfirmOverlay() {
-  const { confirmingId, closeConfirm } = usePublishConfirm()
+  const { confirmingId, confirmingMode, closeConfirm } = usePublishConfirm()
   const router = useRouter()
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Reset transient submit/error state whenever the modal opens for a new item.
+  useEffect(() => {
+    setSubmitting(false)
+    setErrorMsg(null)
+  }, [confirmingId])
 
   // Lock body scroll while open.
   useEffect(() => {
@@ -58,33 +79,52 @@ export function PublishConfirmOverlay() {
   const color = categoryColor(item.type)
 
   const handleConfirm = async () => {
-    // Close first so the modal dismisses via its own state (not via the
-    // cache mutation below pulling `item` out from under the memoized
-    // render). Capture the publish payload locally — closure keeps it
-    // alive for the awaited fetch.
+    if (submitting) return
+    // Capture the payload locally — closure keeps it alive for the awaited
+    // fetch even as the memoized render changes.
     const payload = item
-    closeConfirm()
-    // Optimistic: drop from drafts cache so the dashboard drafts list
-    // reflects the publish before the API round-trip completes.
-    removeDraftLocal(payload.id)
-    // Await the publish before navigating so the home page's server-side
-    // getItems() refetch sees the new row.
-    const { ok } = await publishItem(payload)
-    if (ok) {
-      // Wipe the per-type composer's autosaved sessionStorage so the next
-      // navigation to "new <type>" starts with an empty form. Without this,
-      // useDraftWorkbench's hydration would re-populate the composer with
-      // the just-published item's data. Key convention is shared across
-      // every dashboard form (see gradiente:dashboard:<type>-draft).
-      try {
-        sessionStorage.removeItem(`gradiente:dashboard:${payload.type}-draft`)
-      } catch {}
-      // Land the user on the feed so they see their card live with the
-      // fresh-published chrome. The `?fresh=<id>` param tells
-      // HomeFeedWithDrafts to scroll the matching card into view; the
-      // param is cleared after the scroll lands.
-      router.push(`/?fresh=${encodeURIComponent(payload.id)}`)
+    setErrorMsg(null)
+    setSubmitting(true)
+    // Await the publish BEFORE mutating any local state or navigating. Nothing
+    // is dropped optimistically, so a failure (403/409/offline) leaves the
+    // draft exactly where it was and we can surface a clear error in-place
+    // instead of the old silent-swallow that made a failed publish look done.
+    const res = await publishItem(payload, confirmingMode)
+    if (!res.ok) {
+      setSubmitting(false)
+      setErrorMsg(publishErrorMessage(res))
+      return
     }
+    // Success — now it's safe to prune local state. Drop the draft from cache
+    // so the dashboard drafts list updates.
+    removeDraftLocal(payload.id)
+    // Reflect the published version in the published-items cache under the id
+    // it actually landed under, so re-opening it to edit hydrates THIS version
+    // (not the stale pre-edit snapshot) without waiting for a refetch.
+    setPublishedItemLocal({ ...payload, id: res.itemId })
+    // Wipe the composer's autosaved sessionStorage so the next navigation to
+    // "new <type>" starts empty. Only clear the new-compose slot if it actually
+    // holds THIS item (otherwise we'd destroy an unrelated in-progress compose
+    // of the same type — finding #22); always clear this item's edit slot.
+    try {
+      const newKey = `gradiente:dashboard:${payload.type}-draft`
+      const raw = sessionStorage.getItem(newKey)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.committedId === payload.id || parsed?.draft?.id === payload.id) {
+          sessionStorage.removeItem(newKey)
+        }
+      }
+      sessionStorage.removeItem(
+        `gradiente:dashboard:${payload.type}-draft:edit:${payload.id}`
+      )
+    } catch {}
+    closeConfirm()
+    // Land the user on the feed so they see their card live with the
+    // fresh-published chrome. Use the id the item ACTUALLY published under
+    // (a 'create' collision re-keys to a fresh id) so the `?fresh=<id>`
+    // scroll targets the right card.
+    router.push(`/?fresh=${encodeURIComponent(res.itemId)}`)
   }
 
   return (
@@ -162,19 +202,31 @@ export function PublishConfirmOverlay() {
             «deshacer» la publicación silenciosamente.
           </p>
 
+          {errorMsg && (
+            <p
+              role="alert"
+              className="border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
+              style={{ borderColor: '#E63329', color: '#E63329' }}
+            >
+              {errorMsg}
+            </p>
+          )}
+
           <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
             <button
               ref={cancelRef}
               type="button"
               onClick={closeConfirm}
-              className="border border-border px-3 py-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+              disabled={submitting}
+              className="border border-border px-3 py-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary disabled:opacity-50"
             >
               CANCELAR
             </button>
             <button
               type="button"
               onClick={handleConfirm}
-              className="flex items-center gap-2 border px-4 py-2 font-mono text-[11px] tracking-widest transition-colors"
+              disabled={submitting}
+              className="flex items-center gap-2 border px-4 py-2 font-mono text-[11px] tracking-widest transition-colors disabled:opacity-60"
               style={{
                 borderColor: '#F97316',
                 color: '#F97316',
@@ -182,7 +234,7 @@ export function PublishConfirmOverlay() {
               }}
             >
               <Send size={11} />
-              ▶ PUBLICAR DEFINITIVAMENTE
+              {submitting ? 'PUBLICANDO…' : errorMsg ? '▶ REINTENTAR' : '▶ PUBLICAR DEFINITIVAMENTE'}
             </button>
           </div>
         </div>

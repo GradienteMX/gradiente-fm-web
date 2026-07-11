@@ -40,7 +40,9 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
     // types until `npx supabase gen types typescript` regenerates.
     void supabase
       .from('items')
-      .select('*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at)')
+      .select(
+        '*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at), item_entities(relation, entity:entities(id, kind, name, slug))'
+      )
       .eq('created_by' as never, userId as never)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
@@ -76,7 +78,9 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
 
 // Minimal duplicate of lib/data/items.ts rowToContentItem — that module is
 // server-only (cookies-aware client). Browser side we re-do the mapping
-// against the typed row. Keep in sync.
+// against the typed row. Keep in sync — a field dropped here is a field the
+// edit-then-republish round-trip WIPES (the composer hydrates it as an
+// emptyFn default and the publish upsert writes that default back).
 function rowToContentItem(row: any): ContentItem {
   const poll = row.poll
     ? {
@@ -89,6 +93,20 @@ function rowToContentItem(row: any): ContentItem {
         createdAt: row.poll.created_at,
       }
     : undefined
+  // item_entities(relation, entity:entities(...)) → EntityRef[]. Populated so
+  // the edit form shows the item's real scene links; without it a republish
+  // sends entities:[] and the route deletes every item_entities row.
+  const entities = Array.isArray(row.item_entities)
+    ? row.item_entities
+        .filter((l: any) => l?.entity)
+        .map((l: any) => ({
+          id: l.entity.id,
+          kind: l.entity.kind,
+          name: l.entity.name,
+          slug: l.entity.slug,
+          relation: l.relation ?? 'subject',
+        }))
+    : []
   return {
     poll,
     id: row.id,
@@ -101,6 +119,13 @@ function rowToContentItem(row: any): ContentItem {
     vibeMax: row.vibe_max,
     genres: row.genres ?? [],
     tags: row.tags ?? [],
+    // Fields formerly dropped here — each silently wiped on republish (#12):
+    format: row.format ?? undefined,
+    subjectKind: row.subject_kind ?? undefined,
+    country: row.country ?? undefined,
+    year: row.year ?? undefined,
+    links: row.links ?? undefined,
+    entities,
     imageUrl: row.image_url ?? undefined,
     publishedAt: row.published_at,
     date: row.date ?? undefined,
@@ -135,6 +160,8 @@ function rowToContentItem(row: any): ContentItem {
     partnerKind: row.partner_kind ?? undefined,
     partnerUrl: row.partner_url ?? undefined,
     partnerLastUpdated: row.partner_last_updated ?? undefined,
+    verified: row.verified ?? undefined,
+    featuredItemId: row.featured_item_id ?? undefined,
     partnerId: row.partner_id ?? undefined,
     createdById: row.created_by ?? undefined,
     marketplaceEnabled: row.marketplace_enabled ?? false,
