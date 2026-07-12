@@ -73,12 +73,21 @@ function loadMixcloudAPI(): Promise<void> {
 export function useMixcloudWidget(
   iframeRef: React.RefObject<HTMLIFrameElement>,
   enabled: boolean,
+  // Whether Mixcloud currently owns playback (activePlatform === 'mixcloud').
+  // Ref-read at drain time so a feed that was pending while the widget booted
+  // only AUTOPLAYS if the user is still on this platform — otherwise it loads
+  // silently. Without this, a slow Mixcloud that readies AFTER the user gave up
+  // and played something else would autoplay on top of it (two sources at once,
+  // uncontrollable), which read as "Mixcloud breaks the whole player".
+  isActive: boolean,
   onEnded?: () => void,
 ): EmbedWidget {
   const widgetRef = useRef<MCWidget | null>(null)
   // Ref-held so the ended binding (set up once) sees the latest handler.
   const onEndedRef = useRef(onEnded)
   onEndedRef.current = onEnded
+  const isActiveRef = useRef(isActive)
+  isActiveRef.current = isActive
   // A feed chosen before the widget finished booting — drained on ready.
   const pendingRef = useRef<string | null>(null)
 
@@ -124,7 +133,10 @@ export function useMixcloudWidget(
             if (dur) setDuration(dur)
           })
           if (pendingRef.current) {
-            widget.load(pendingRef.current, true)
+            // Autoplay ONLY if Mixcloud still owns playback — otherwise load
+            // the feed silently so it can't overlap whatever the user switched
+            // to while this was booting.
+            widget.load(pendingRef.current, isActiveRef.current)
             pendingRef.current = null
           }
         })
