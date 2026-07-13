@@ -39,12 +39,22 @@ export function detectPlatform(url: string): EmbedPlatform | null {
 // its embed iframe needs an internal album/track id that a plain URL doesn't
 // expose. So Bandcamp can only ever be a link-out ("ABRIR FUENTE"), never a
 // controllable source.
+//
+// Mixcloud is ALSO absent (2026-07): its Widget API technically ships transport
+// methods, but in practice they don't reliably start audio from our hidden
+// offscreen iframe — and the workarounds we tried let a hidden cloudcast play
+// uncontrollably. Until that's genuinely solved, Mixcloud is link-out only.
+// See MIXCLOUD_UNSUPPORTED_NOTE below for the copy shown to editors/users.
 export const PLAYABLE_PLATFORMS: EmbedPlatform[] = [
   'soundcloud',
   'youtube',
-  'mixcloud',
   'spotify',
 ]
+
+// Shared copy for the "Mixcloud can't play here" state, so every surface says
+// the same thing.
+export const MIXCLOUD_UNSUPPORTED_NOTE =
+  'Mixcloud no se reproduce dentro de Gradiente por ahora — solo se abre como enlace externo.'
 
 export function isPlayablePlatform(p: EmbedPlatform): boolean {
   return PLAYABLE_PLATFORMS.includes(p)
