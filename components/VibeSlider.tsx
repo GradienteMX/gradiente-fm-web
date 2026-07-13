@@ -128,6 +128,11 @@ function VibeSliderImpl() {
   // hides the rest of the candidates.
   const [pinned, setPinned] = useState(false)
   const [recentInteraction, setRecentInteraction] = useState(false)
+  // The whole fader starts COLLAPSED — just a "//VIBE" toggle row. One click
+  // reveals the tape/needles/plate/chips; a narrowed range keeps its compact
+  // readout + RESET visible even while collapsed so an active filter is never
+  // silently hidden.
+  const [open, setOpen] = useState(false)
   const interactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstInteractionRender = useRef(true)
 
@@ -321,23 +326,39 @@ function VibeSliderImpl() {
             mount) so the row's height stays stable when the user narrows
             or resets the range — otherwise the whole strip jumps ~6px. */}
         <div className="flex items-center justify-between pb-0.5 pt-1 md:pb-1 md:pt-2">
-          <div className="flex min-w-0 items-baseline gap-2 md:gap-3">
-            <span className="font-mono text-[10px] font-bold tracking-widest text-primary">
+          <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            {/* The //VIBE label IS the collapse toggle. */}
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls="vibe-fader-body"
+              className="flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-widest text-primary transition-colors hover:text-sys-orange"
+            >
+              <ChevronDown
+                size={11}
+                className={`transition-transform ${open ? 'rotate-180' : ''}`}
+                aria-hidden
+              />
               //VIBE
-            </span>
-            <span className="inline-block min-w-[24ch] whitespace-nowrap font-mono text-[10px] tracking-wider">
-              <span style={{ color: VIBE_SLOT_COLORS[minSlot] }}>
-                {VIBE_SLOT_NAMES[minSlot]}
+            </button>
+            {/* Range readout — while collapsed it only appears when a filter
+                is actually narrowed, so the idle strip is just "//VIBE". */}
+            {(open || !isFullRange) && (
+              <span className="inline-block min-w-[24ch] whitespace-nowrap font-mono text-[10px] tracking-wider">
+                <span style={{ color: VIBE_SLOT_COLORS[minSlot] }}>
+                  {VIBE_SLOT_NAMES[minSlot]}
+                </span>
+                {minSlot !== maxSlot && (
+                  <>
+                    <span className="text-muted"> → </span>
+                    <span style={{ color: VIBE_SLOT_COLORS[maxSlot] }}>
+                      {VIBE_SLOT_NAMES[maxSlot]}
+                    </span>
+                  </>
+                )}
               </span>
-              {minSlot !== maxSlot && (
-                <>
-                  <span className="text-muted"> → </span>
-                  <span style={{ color: VIBE_SLOT_COLORS[maxSlot] }}>
-                    {VIBE_SLOT_NAMES[maxSlot]}
-                  </span>
-                </>
-              )}
-            </span>
+            )}
           </div>
           <button
             onClick={() => setVibeRange([0, 10])}
@@ -351,6 +372,9 @@ function VibeSliderImpl() {
           </button>
         </div>
 
+        {/* ── Collapsible fader body: tape + needles + printed plate ── */}
+        {open && (
+        <div id="vibe-fader-body">
         {/* ── The tape band IS the slider ── */}
         <div
           className="relative h-7 cursor-crosshair md:h-10"
@@ -463,6 +487,8 @@ function VibeSliderImpl() {
             )
           })}
         </div>
+        </div>
+        )}
 
       </div>
 
@@ -477,6 +503,7 @@ function VibeSliderImpl() {
             chips are already up for another reason.
           - Otherwise (full range idle, or narrowed range gone idle) →
             hidden. */}
+      {open && (
       <div className="bg-base px-4 pb-1 pt-1 md:px-8 md:pb-3 md:pt-2">
         <div className="mx-auto max-w-screen-2xl">
           {/* The row's height is content-driven now — when chips are
@@ -584,6 +611,7 @@ function VibeSliderImpl() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
