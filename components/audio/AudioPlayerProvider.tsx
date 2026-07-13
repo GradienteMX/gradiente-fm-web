@@ -190,15 +190,24 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const nextFnRef = useRef<() => void>(() => {})
   const handleTrackEnded = useCallback(() => nextFnRef.current(), [])
 
+  // Declared above the bridge hooks so Mixcloud can be told whether it still
+  // owns playback (guards its deferred-autoplay against overlapping a track the
+  // user switched to while it was booting).
+  const [currentItem, setCurrentItem] = useState<CurrentItem | null>(null)
+  const [activePlatform, setActivePlatform] = useState<EmbedPlatform | null>(null)
+
   const sc = useSoundCloudWidget(scIframeRef, handleTrackEnded)
   const yt = useYouTubeWidget(ytHostRef, primed.has('youtube'), handleTrackEnded)
-  const mc = useMixcloudWidget(mcIframeRef, primed.has('mixcloud'), handleTrackEnded)
+  const mc = useMixcloudWidget(
+    mcIframeRef,
+    primed.has('mixcloud'),
+    activePlatform === 'mixcloud',
+    handleTrackEnded,
+  )
   const sp = useSpotifyWidget(spHostRef, primed.has('spotify'), spInitialUri, handleTrackEnded)
 
   const tab = useTabAudioCapture()
 
-  const [currentItem, setCurrentItem] = useState<CurrentItem | null>(null)
-  const [activePlatform, setActivePlatform] = useState<EmbedPlatform | null>(null)
   // The track currently loaded into a bridge — used to distinguish "toggle the
   // same track" from "switch to a new one".
   const loadedRef = useRef<{ platform: EmbedPlatform; url: string } | null>(null)
