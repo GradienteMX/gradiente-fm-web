@@ -18,7 +18,7 @@ import { useMixcloudWidget } from './useMixcloudWidget'
 import { useSpotifyWidget } from './useSpotifyWidget'
 import { useTabAudioCapture } from './useTabAudioCapture'
 import { pickPlayableSource, type PlayableRef } from './sources'
-import { extractMixcloudFeed, extractSpotifyUri } from '@/components/embed/platforms'
+import { extractSpotifyUri } from '@/components/embed/platforms'
 
 // Persistent global audio surface — now MULTI-PLATFORM.
 //
@@ -247,14 +247,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const primePlatform = useCallback(
     (platform: EmbedPlatform, sourceUrl?: string) => {
-      if (platform === 'bandcamp') return // never controllable
+      // Bandcamp + Mixcloud are link-out only — never mount a hidden iframe
+      // for them. (Mixcloud's bridge stays in the tree but dormant; priming is
+      // the only thing that would boot it, so this is the hard off-switch that
+      // also prevents any stray background cloudcast audio.)
+      if (platform === 'bandcamp' || platform === 'mixcloud') return
       setPrimed((prev) =>
         prev.has(platform) ? prev : new Set(prev).add(platform),
       )
-      if (platform === 'mixcloud' && sourceUrl) {
-        const feed = extractMixcloudFeed(sourceUrl)
-        if (feed) setMcInitialFeed((f) => f ?? feed)
-      }
       if (platform === 'spotify' && sourceUrl) {
         // Spotify's controller binds to a `spotify:` URI, not a web URL.
         const uri = extractSpotifyUri(sourceUrl)

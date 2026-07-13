@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import { useAudioPlayer } from './AudioPlayerProvider'
 import { MarqueeText } from './NowPlayingHud'
@@ -28,8 +29,16 @@ function fmtTime(sec: number): string {
 export function GlobalPlayerBar() {
   const audio = useAudioPlayer()
   const overlay = useOverlay()
+  const pathname = usePathname()
   const item = audio.currentItem
   const has = !!item
+
+  // Home keeps ONLY the left rail player (NowPlayingHud) — the top bar is for
+  // the other pages (agenda / foro / marketplace / empieza aquí / dashboard)
+  // where there's no rail. Hooks run before this early return so hook order
+  // stays stable across routes; hiding the bar never touches the global
+  // provider, so playback continues uninterrupted across navigations.
+  if (pathname === '/') return null
 
   const progress =
     audio.duration > 0 ? Math.min(1, audio.currentTime / audio.duration) : 0

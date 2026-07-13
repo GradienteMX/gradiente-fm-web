@@ -5,7 +5,6 @@ import {
   isPlayablePlatform,
   extractYouTubeId,
   extractSpotifyUri,
-  extractMixcloudFeed,
 } from '@/components/embed/platforms'
 
 export interface PlayableSource {
@@ -45,7 +44,9 @@ export function canExtractSource(platform: EmbedPlatform, url: string): boolean 
     case 'youtube':
       return extractYouTubeId(url) !== null
     case 'mixcloud':
-      return extractMixcloudFeed(url) !== null
+      // Link-out only (see PLAYABLE_PLATFORMS note in embed/platforms) — never
+      // a controllable in-app source, even for a well-formed cloudcast URL.
+      return false
     case 'spotify':
       return extractSpotifyUri(url) !== null
     default:

@@ -14,7 +14,7 @@ import { OverlayEntities } from './OverlayEntities'
 import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 import { pickPlayableSource, pickOpenSourceUrl } from '@/components/audio/sources'
-import { PLATFORM_LABELS } from '@/components/embed/platforms'
+import { PLATFORM_LABELS, MIXCLOUD_UNSUPPORTED_NOTE } from '@/components/embed/platforms'
 
 interface Props {
   item: ContentItem
@@ -58,6 +58,7 @@ export function MixOverlay({ item }: Props) {
   // incl. Bandcamp — or the legacy mixUrl, so the link-out always works).
   const playable = pickPlayableSource(item)
   const openUrl = pickOpenSourceUrl(item)
+  const openIsMixcloud = !!openUrl && openUrl.includes('mixcloud.com')
   // "Active" means this mix is the one actually loaded into a bridge — not
   // merely cued (cue sets currentItem without loading audio). Gating on
   // activePlatform keeps a cued track's overlay in the idle "PULSA PLAY" state
@@ -263,8 +264,9 @@ export function MixOverlay({ item }: Props) {
           // panel — never trap the user with an empty REPRODUCTOR.
           <Panel title="REPRODUCTOR">
             <p className="font-mono text-[11px] leading-relaxed text-muted">
-              Esta fuente no se puede reproducir dentro de Gradiente. Ábrela en
-              su plataforma original.
+              {openIsMixcloud
+                ? MIXCLOUD_UNSUPPORTED_NOTE
+                : 'Esta fuente no se puede reproducir dentro de Gradiente. Ábrela en su plataforma original.'}
             </p>
             <button
               type="button"
@@ -272,7 +274,7 @@ export function MixOverlay({ item }: Props) {
               className="mt-3 inline-flex items-center gap-2 border px-3 py-1.5 font-mono text-[11px] tracking-widest transition-colors hover:bg-elevated"
               style={{ borderColor: '#F97316', color: '#F97316' }}
             >
-              [ABRIR FUENTE]
+              {openIsMixcloud ? '[ABRIR EN MIXCLOUD]' : '[ABRIR FUENTE]'}
             </button>
           </Panel>
         ) : (

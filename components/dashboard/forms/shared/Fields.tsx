@@ -11,6 +11,7 @@ import {
   PLATFORM_LABELS,
   PLATFORM_ORDER,
   detectPlatform,
+  MIXCLOUD_UNSUPPORTED_NOTE,
 } from '@/components/embed/platforms'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -965,6 +966,14 @@ function EmbedRow({
           <Trash2 size={12} />
         </button>
       </div>
+      {embed.platform === 'mixcloud' && (
+        <p
+          className="font-mono text-[10px] leading-relaxed text-sys-orange/80"
+          style={{ gridColumn: '1 / -1' }}
+        >
+          // {MIXCLOUD_UNSUPPORTED_NOTE}
+        </p>
+      )}
     </div>
   )
 }
