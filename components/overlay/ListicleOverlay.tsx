@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
-import { MOCK_ITEMS } from '@/lib/mockData'
+import { getRelatedByVibe } from '@/lib/itemsCache'
 import {
   categoryColor,
   fmtDateFull,
@@ -416,34 +416,12 @@ function buildBlocks(item: ContentItem): ArticleBlock[] {
   ]
 }
 
+// REAL items from the client cache, ranked by vibe closeness exclusively and
+// tie-broken by grid neighborhood (next item directly below in the mosaic).
+// Replaced the old MOCK_ITEMS source.
 function getRelated(item: ContentItem): ContentItem[] {
-  const picks: ContentItem[] = []
-  const seen = new Set<string>([item.id])
-
-  // 1) Other listicles first
-  for (const c of MOCK_ITEMS) {
-    if (picks.length >= 3) break
-    if (seen.has(c.id)) continue
-    if (c.type === 'listicle') {
-      picks.push(c)
-      seen.add(c.id)
-    }
-  }
-
-  // 2) Articulos / editorials sharing at least one genre
-  if (picks.length < 3) {
-    const genreSet = new Set(item.genres)
-    const family: ContentItem['type'][] = ['articulo', 'editorial', 'review']
-    for (const c of MOCK_ITEMS) {
-      if (picks.length >= 3) break
-      if (seen.has(c.id)) continue
-      if (!family.includes(c.type)) continue
-      if (c.genres.some((g) => genreSet.has(g))) {
-        picks.push(c)
-        seen.add(c.id)
-      }
-    }
-  }
-
-  return picks
+  return getRelatedByVibe(item, {
+    types: ['listicle', 'articulo', 'editorial', 'review', 'mix'],
+    limit: 3,
+  })
 }

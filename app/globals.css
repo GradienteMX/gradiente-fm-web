@@ -412,6 +412,22 @@ body {
    performance — feed cards now render full-color and static (no per-card
    filter/blend, no hover develop, no 3D tilt). */
 
+/* HUD marquee — NowPlayingHud track/artist lines scroll horizontally when the
+   text overflows the narrow rail. Two copies of the text each translate -100%
+   for a seamless loop (the second enters as the first exits). Neutralized
+   under prefers-reduced-motion below (falls back to a static truncated line). */
+@keyframes hud-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+.hud-marquee {
+  animation: hud-marquee 14s linear infinite;
+}
+
 /* Reduced-motion backstop — neutralize the remaining infinite/looping CSS
    animations that aren't already branched in JS. Targets named classes ONLY:
    a blanket `* { animation: none }` would fight the CRTShader / VibeFader /
@@ -426,6 +442,7 @@ body {
   .fresh-chip-flicker,
   .animate-scanline,
   .animate-pulse,
+  .hud-marquee,
   .cursor-blink::after {
     animation: none !important;
   }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import './globals.css'
 import { Navigation } from '@/components/Navigation'
 import { VibeSlider } from '@/components/VibeSlider'
+import { GlobalPlayerBar } from '@/components/audio/GlobalPlayerBar'
 import { CRTOverlay } from '@/components/CRTOverlay'
 import { ChromeFrame } from '@/components/ChromeFrame'
 import { VibeProvider } from '@/context/VibeContext'
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Suspense fallback={null}>
                 <ChromeFrame>
                   <Navigation />
+                  <GlobalPlayerBar />
                   <VibeSlider />
                 </ChromeFrame>
                 <main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">

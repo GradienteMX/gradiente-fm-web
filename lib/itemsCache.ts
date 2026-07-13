@@ -46,3 +46,41 @@ export function subscribeItems(fn: () => void): () => void {
     listeners.delete(fn)
   }
 }
+
+// ── Related content — vibe first, grid neighborhood second ─────────────────
+//
+// The "SIGUIENTES / LECTURA RELACIONADA" rails at the foot of overlays.
+// Candidates come from the REAL items the client has already streamed (this
+// cache), not from mock data. Ranking is deliberately simple:
+//   1. Vibe closeness EXCLUSIVELY — |candidate vibe center − item vibe center|.
+//   2. Tie-break: the candidate most directly BELOW the current item in the
+//      grid (next-lower HP). Anything ABOVE sorts after everything below,
+//      nearest first. Grid position ≈ HP prominence, the same signal the
+//      mosaic lays out by.
+export function getRelatedByVibe(
+  item: ContentItem,
+  opts: { types?: ContentItem['type'][]; limit?: number } = {},
+): ContentItem[] {
+  const { types, limit = 3 } = opts
+  const center = (i: ContentItem) => (i.vibeMin + i.vibeMax) / 2
+  const c0 = center(item)
+  const hp0 = item.hp ?? 0
+  // "Below in the grid" = lower HP. Below beats above; smaller drop first.
+  const gridRank = (c: ContentItem) => {
+    const drop = hp0 - (c.hp ?? 0)
+    return drop >= 0 ? drop : 1e6 - drop
+  }
+  return getAllItemsSync()
+    .filter(
+      (c) =>
+        c.id !== item.id &&
+        c.type !== 'partner' &&
+        (!types || types.includes(c.type)),
+    )
+    .sort((a, b) => {
+      const dv = Math.abs(center(a) - c0) - Math.abs(center(b) - c0)
+      if (dv !== 0) return dv
+      return gridRank(a) - gridRank(b)
+    })
+    .slice(0, limit)
+}

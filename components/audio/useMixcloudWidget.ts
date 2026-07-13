@@ -90,11 +90,57 @@ export function useMixcloudWidget(
   isActiveRef.current = isActive
   // A feed chosen before the widget finished booting — drained on ready.
   const pendingRef = useRef<string | null>(null)
+  // The cloudcast currently loaded in the iframe. Seeded at bind time from the
+  // iframe's own src (the provider bakes the initial feed into it). Mixcloud's
+  // widget.load() silently NO-OPS — startPlaying included — when handed the key
+  // it already has, so "load the same track" must become play() instead. This
+  // was the dead first click: priming baked feed X into the iframe, the user's
+  // play then load()ed feed X → ignored → nothing ever sounded.
+  const loadedFeedRef = useRef<string | null>(null)
 
   const [ready, setReady] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+
+  // Verified live (2026-07-12): two Mixcloud widget quirks force this shape.
+  //   1. widget.play() RESOLVES but never starts a player that has never
+  //      played — only togglePlay() actually kicks it off.
+  //   2. Right after `ready` resolves the internal player still silently DROPS
+  //      transport commands for a while — the same togglePlay that's ignored
+  //      at ready-time works seconds later.
+  // So "make it sound" = togglePlay now + spaced retries, each guarded by the
+  // live isPlaying state (ref-held) so a retry can never PAUSE an already-
+  // sounding player; all pending retries are cleared the moment the play
+  // event confirms audio, and a retry only fires while Mixcloud still owns
+  // playback (isActiveRef) so it can't unpause over another platform.
+  const isPlayingRef = useRef(false)
+  isPlayingRef.current = isPlaying
+  const kickTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const clearKicks = useCallback(() => {
+    kickTimersRef.current.forEach(clearTimeout)
+    kickTimersRef.current = []
+  }, [])
+  // `immediate: false` (used right after a widget.load of a NEW feed) skips
+  // the instant toggle: if the load's own startPlaying works, an immediate
+  // toggle racing ahead of its play event would PAUSE it. The delayed retries
+  // are safe either way — by then the play event has landed if autoplay worked.
+  const startPlayback = useCallback(
+    (immediate = true) => {
+      clearKicks()
+      const tryStart = () => {
+        const w = widgetRef.current
+        if (!w) return
+        if (!isPlayingRef.current && isActiveRef.current) w.togglePlay()
+      }
+      if (immediate) tryStart()
+      for (const delay of [1500, 3500, 7000]) {
+        kickTimersRef.current.push(setTimeout(tryStart, delay))
+      }
+    },
+    [clearKicks],
+  )
+  useEffect(() => clearKicks, [clearKicks])
 
   useEffect(() => {
     if (!enabled) return
@@ -120,7 +166,12 @@ export function useMixcloudWidget(
           if (readyTimer) clearTimeout(readyTimer)
           widgetRef.current = widget
           setReady(true)
-          widget.events.play.on(() => !cancelled && setIsPlaying(true))
+          widget.events.play.on(() => {
+            if (cancelled) return
+            // Audio confirmed — any pending autoplay retries are done.
+            clearKicks()
+            setIsPlaying(true)
+          })
           widget.events.pause.on(() => !cancelled && setIsPlaying(false))
           widget.events.ended.on(() => {
             if (cancelled) return
@@ -132,12 +183,24 @@ export function useMixcloudWidget(
             setCurrentTime(position || 0)
             if (dur) setDuration(dur)
           })
+          // What the iframe booted with — load() must know it to avoid the
+          // same-key no-op described above.
+          loadedFeedRef.current = extractMixcloudFeed(iframe.src)
           if (pendingRef.current) {
-            // Autoplay ONLY if Mixcloud still owns playback — otherwise load
-            // the feed silently so it can't overlap whatever the user switched
-            // to while this was booting.
-            widget.load(pendingRef.current, isActiveRef.current)
+            const feed = pendingRef.current
             pendingRef.current = null
+            // Autoplay ONLY if Mixcloud still owns playback — otherwise leave
+            // it loaded/silent so it can't overlap whatever the user switched
+            // to while this was booting.
+            if (feed === loadedFeedRef.current) {
+              if (isActiveRef.current) startPlayback()
+            } else {
+              loadedFeedRef.current = feed
+              widget.load(feed, isActiveRef.current)
+              // load()'s startPlaying flag is as droppable as play() right
+              // after ready — back it with delayed guarded retries only.
+              if (isActiveRef.current) startPlayback(false)
+            }
           }
         })
         .catch(() => {
@@ -176,7 +239,7 @@ export function useMixcloudWidget(
       if (readyTimer) clearTimeout(readyTimer)
       iframe.removeEventListener('load', onLoad)
     }
-  }, [enabled, iframeRef])
+  }, [enabled, iframeRef, startPlayback, clearKicks])
 
   const load = useCallback(
     (url: string) => {
@@ -185,13 +248,24 @@ export function useMixcloudWidget(
       setCurrentTime(0)
       setDuration(0)
       const w = widgetRef.current
-      if (w && ready) w.load(feed, true)
-      else pendingRef.current = feed
+      if (w && ready) {
+        // Same cloudcast that's already in the iframe → load() would no-op
+        // (see loadedFeedRef above); the user asked to hear it, so start it.
+        if (feed === loadedFeedRef.current) startPlayback()
+        else {
+          loadedFeedRef.current = feed
+          w.load(feed, true)
+          // Back load()'s droppable startPlaying flag with delayed retries.
+          startPlayback(false)
+        }
+      } else {
+        pendingRef.current = feed
+      }
     },
-    [ready],
+    [ready, startPlayback],
   )
 
-  const play = useCallback(() => widgetRef.current?.play(), [])
+  const play = useCallback(() => startPlayback(), [startPlayback])
   const pause = useCallback(() => widgetRef.current?.pause(), [])
   const toggle = useCallback(() => widgetRef.current?.togglePlay(), [])
   const seek = useCallback((sec: number) => {

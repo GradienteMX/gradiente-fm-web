@@ -1,7 +1,7 @@
 'use client'
 
 import nextDynamic from 'next/dynamic'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import type { ContentItem } from '@/lib/types'
 import { useAudioPlayer } from './AudioPlayerProvider'
@@ -106,9 +106,9 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
   const expandedActive = useExpandedVisualizerActive()
   const progress =
     audio.duration > 0 ? Math.min(1, audio.currentTime / audio.duration) : 0
-  const headerColor = audio.matrixActive
-    ? '#4ADE80'
-    : 'rgba(255, 102, 0, 0.7)'
+  // One-line status header: green = sounding, red = stopped. No queue counter,
+  // no matrix chatter — the transport state is the only thing worth a color.
+  const stateColor = audio.isPlaying ? '#4ADE80' : '#E63329'
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (audio.duration <= 0) return
@@ -119,34 +119,23 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
 
   return (
     <section className="flex flex-col gap-2 border border-border/60 bg-black/40 p-2.5">
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      {/* ── Header — one line, transport state as color ─────────── */}
+      <div className="flex items-center gap-1.5">
         <span
-          className="font-mono text-[8px] tracking-widest"
-          style={{ color: headerColor }}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: stateColor }}
+          aria-hidden
+        />
+        <span
+          className="font-mono text-[9px] tracking-widest"
+          style={{ color: stateColor }}
         >
-          NOW PLAYING
-        </span>
-        <span className="flex items-center gap-1.5">
-          {/* Position within the active queue (feed or collection) — the only
-              hint the HUD gives that prev/next walk a list. */}
-          {audio.queueIndex >= 0 && audio.queueLength > 1 && (
-            <span className="font-mono text-[8px] tabular-nums tracking-widest text-muted">
-              {String(audio.queueIndex + 1).padStart(2, '0')}/
-              {String(audio.queueLength).padStart(2, '0')}
-            </span>
-          )}
-          <span
-            className="h-1 w-1 animate-pulse rounded-full"
-            style={{
-              backgroundColor: audio.isPlaying ? '#4ADE80' : '#3a3a3a',
-            }}
-            aria-hidden
-          />
+          MEDIA PLAYER
         </span>
       </div>
 
-      {/* ── Track info — click to open the track's overlay ──────── */}
+      {/* ── Track info — marquee-scrolls when the rail is too narrow,
+           click opens the track's overlay ─────────────────────────── */}
       <button
         type="button"
         onClick={openCurrent}
@@ -154,35 +143,27 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
         aria-label={has ? 'Abrir overlay del mix' : undefined}
         className="group min-w-0 text-left disabled:cursor-default"
       >
-        <p className="flex items-center gap-1 font-syne text-[12px] font-bold uppercase leading-tight text-primary">
-          <span className="truncate">
-            {has ? audio.currentItem!.title : 'SIN PISTA'}
-          </span>
-          {has && (
-            <span
-              className="shrink-0 font-mono text-[9px] text-muted transition-colors group-hover:text-sys-orange"
-              aria-hidden
-            >
-              ↗
-            </span>
-          )}
-        </p>
-        <p className="truncate font-mono text-[9px] tracking-widest text-muted">
-          {has
-            ? [audio.currentItem!.author, audio.currentItem!.mixSeries]
-                .filter(Boolean)
-                .join(' · ')
-            : 'pulsa play en un mix'}
-        </p>
+        <MarqueeText
+          text={has ? audio.currentItem!.title : 'SIN PISTA'}
+          className="font-syne text-[13px] font-bold uppercase leading-tight text-primary"
+        />
+        <MarqueeText
+          text={
+            has
+              ? [audio.currentItem!.author, audio.currentItem!.mixSeries]
+                  .filter(Boolean)
+                  .join(' · ') || '—'
+              : 'pulsa play en un mix'
+          }
+          className="font-mono text-[10px] tracking-widest text-secondary"
+        />
       </button>
 
-      {/* ── Time + progress ─────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5">
-        <span className="font-mono text-[8px] tabular-nums text-secondary">
-          {fmtTime(audio.currentTime)}
-        </span>
+      {/* ── Progress — full-width bar; timecodes get their own row BELOW so
+           ten digits never squeeze the click target ────────────────── */}
+      <div className="flex flex-col gap-1">
         <div
-          className="relative h-0.5 flex-1 cursor-pointer bg-border"
+          className="relative h-2 w-full cursor-pointer bg-border"
           onClick={handleSeek}
           role="slider"
           aria-valuemin={0}
@@ -200,17 +181,18 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
             className="absolute top-1/2"
             style={{
               left: `${progress * 100}%`,
-              width: 4,
-              height: 6,
+              width: 5,
+              height: 12,
               backgroundColor: '#F97316',
               transform: 'translate(-50%, -50%)',
             }}
             aria-hidden
           />
         </div>
-        <span className="font-mono text-[8px] tabular-nums text-secondary">
-          {fmtTime(audio.duration)}
-        </span>
+        <div className="flex items-center justify-between font-mono text-[10px] tabular-nums text-secondary">
+          <span>{fmtTime(audio.currentTime)}</span>
+          <span>{fmtTime(audio.duration)}</span>
+        </div>
       </div>
 
       {/* ── Transport ───────────────────────────────────────────── */}
@@ -247,19 +229,6 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
         >
           <SkipForward size={10} />
         </button>
-      </div>
-
-      {/* ── Matrix label row ────────────────────────────────────── */}
-      <div className="mt-0.5 flex items-center justify-between">
-        <span
-          className="font-mono text-[8px] tracking-widest"
-          style={{ color: headerColor }}
-        >
-          MATRIX
-        </span>
-        <span className="font-mono text-[7px] tracking-widest text-muted">
-          {audio.matrixActive ? '● LIVE' : '○ IDLE'}
-        </span>
       </div>
 
       {/* ── GPU particle field — portrait orientation for the narrow rail
@@ -299,6 +268,50 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
   )
 }
 
+// Single-line text that horizontally marquee-scrolls ONLY when it overflows
+// its container — otherwise it renders static. Two copies of the text each
+// translate -100% (see .hud-marquee in globals.css) so the loop is seamless.
+// Overflow is re-measured on resize via ResizeObserver; under
+// prefers-reduced-motion the animation is neutralized and the line just
+// truncates (overflow-hidden).
+export function MarqueeText({ text, className }: { text: string; className?: string }) {
+  const outerRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLSpanElement>(null)
+  const [overflowing, setOverflowing] = useState(false)
+
+  useEffect(() => {
+    const outer = outerRef.current
+    const inner = innerRef.current
+    if (!outer || !inner) return
+    const check = () =>
+      setOverflowing(inner.scrollWidth > outer.clientWidth + 1)
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(outer)
+    return () => ro.disconnect()
+  }, [text])
+
+  return (
+    <div
+      ref={outerRef}
+      className={`overflow-hidden whitespace-nowrap ${className ?? ''}`}
+      title={text}
+    >
+      <span
+        ref={innerRef}
+        className={`inline-block ${overflowing ? 'hud-marquee pr-10' : ''}`}
+      >
+        {text}
+      </span>
+      {overflowing && (
+        <span className="hud-marquee inline-block pr-10" aria-hidden>
+          {text}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // Calm, honest "no signal" state for the matrix viewport when no track is
 // loaded. NOT a fake readout: it carries no spectrum and no RNG decoration —
 // it states plainly that the visualizer is offline because nothing is playing.
@@ -325,15 +338,18 @@ function MatrixIdlePlaceholder({ mode = 'idle' }: { mode?: 'idle' | 'yielded' })
         style={{ backgroundColor: '#087487', opacity: 0.35 }}
         aria-hidden
       />
+      {/* Grey-on-grey fails here (the viewport sits on bg-black/40) — the
+          primary label reads in a light neutral, the secondary in the house
+          dim-orange so hierarchy comes from HUE, not from two greys. */}
       <span
         className="font-mono text-[9px] tracking-[0.3em]"
-        style={{ color: yielded ? '#948E85' : '#666666' }}
+        style={{ color: yielded ? '#C9C4BD' : '#B8B8B8' }}
       >
         {yielded ? 'MATRIZ·EN·OVERLAY' : 'SIN·SEÑAL'}
       </span>
       <span
         className="font-mono text-[7px] tracking-widest"
-        style={{ color: '#666666', opacity: 0.7 }}
+        style={{ color: 'rgba(249,115,22,0.55)' }}
       >
         {yielded ? 'VISUALIZADOR EN PANTALLA' : 'MATRIZ EN ESPERA'}
       </span>
