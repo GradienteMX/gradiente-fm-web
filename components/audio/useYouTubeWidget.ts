@@ -112,7 +112,14 @@ export function useYouTubeWidget(
     stopPolling()
     pollIdRef.current = setInterval(() => {
       const p = playerRef.current
-      if (p) setCurrentTime(p.getCurrentTime() || 0)
+      if (!p) return
+      setCurrentTime(p.getCurrentTime() || 0)
+      // Refresh duration too: getDuration() can still be 0 at the instant
+      // onStateChange→PLAYING fires (metadata not loaded yet), and it's never
+      // retried otherwise — leaving the progress bar blank and seek disabled.
+      // setState bails out when the value is unchanged, so this is cheap.
+      const d = p.getDuration() || 0
+      if (d) setDuration(d)
     }, 250)
   }, [stopPolling])
 

@@ -121,7 +121,28 @@ export function useSoundCloudWidget(
             if (sound.duration) setDuration(sound.duration / 1000)
           })
         })
-        widget.bind(SC.Widget.Events.PLAY, () => !cancelled && setIsPlaying(true))
+        widget.bind(SC.Widget.Events.PLAY, () => {
+          if (cancelled) return
+          setIsPlaying(true)
+          // READY fires only ONCE per widget lifetime — never again after a
+          // load(). So the duration (and track meta) for a newly-loaded sound
+          // must be re-fetched here, when PLAY fires for it. Without this,
+          // every track after the first plays with duration 0, which blanks
+          // the progress bar and disables seeking (the seek UI needs duration).
+          widget.getDuration((d) => {
+            if (!cancelled && d) setDuration(d / 1000)
+          })
+          widget.getCurrentSound((sound) => {
+            if (cancelled || !sound) return
+            setTrack({
+              title: sound.title ?? '',
+              artist: sound.user?.username ?? '',
+              artwork: sound.artwork_url ?? null,
+              url: sound.permalink_url ?? null,
+            })
+            if (sound.duration) setDuration(sound.duration / 1000)
+          })
+        })
         widget.bind(SC.Widget.Events.PAUSE, () => !cancelled && setIsPlaying(false))
         widget.bind(SC.Widget.Events.FINISH, () => {
           if (cancelled) return
