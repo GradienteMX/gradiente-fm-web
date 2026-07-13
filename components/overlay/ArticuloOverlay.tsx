@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
-import { MOCK_ITEMS } from '@/lib/mockData'
+import { getRelatedByVibe } from '@/lib/itemsCache'
 import {
   categoryColor,
   fmtDateFull,
@@ -836,6 +836,22 @@ function TrackBlock({
                 </span>
               </button>
             )}
+            {/* Always offer the source as an OUTBOUND link too — some people
+                would rather open the track on YouTube/SoundCloud itself than
+                play it inline. */}
+            {source && (
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Abrir ${block.title} en ${PLATFORM_LABELS[source.platform]}`}
+                className="inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] tracking-widest transition-colors hover:bg-elevated"
+                style={{ borderColor: '#242424', color: '#888888' }}
+              >
+                ABRIR EN {PLATFORM_LABELS[source.platform]}
+                <ExternalLink size={10} />
+              </a>
+            )}
             {externalEmbeds.map((e) => (
               <a
                 key={e.platform}
@@ -940,23 +956,37 @@ function ProseLink({ url, label }: { url: string; label: string }) {
   const isActive = audio.isItemActive(ref.id)
   const isPlaying = isActive && audio.isPlaying
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (isActive) audio.toggle()
-        else void audio.loadAndPlay(ref)
-      }}
-      title={`${isPlaying ? 'Pausar' : 'Reproducir'} en Gradiente · ${PLATFORM_LABELS[platform]}`}
-      className="inline-flex items-baseline gap-1 align-baseline underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
-      style={{ color: '#F97316' }}
-    >
-      {isPlaying ? (
-        <Pause size={10} fill="currentColor" className="self-center" />
-      ) : (
-        <Play size={10} fill="currentColor" className="self-center" />
-      )}
-      {label}
-    </button>
+    <span className="inline-flex items-baseline gap-1 align-baseline">
+      <button
+        type="button"
+        onClick={() => {
+          if (isActive) audio.toggle()
+          else void audio.loadAndPlay(ref)
+        }}
+        title={`${isPlaying ? 'Pausar' : 'Reproducir'} en Gradiente · ${PLATFORM_LABELS[platform]}`}
+        className="inline-flex items-baseline gap-1 align-baseline underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
+        style={{ color: '#F97316' }}
+      >
+        {isPlaying ? (
+          <Pause size={10} fill="currentColor" className="self-center" />
+        ) : (
+          <Play size={10} fill="currentColor" className="self-center" />
+        )}
+        {label}
+      </button>
+      {/* Outbound twin — playable links must stay openable on the platform
+          itself, not only playable inline. */}
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Abrir en ${PLATFORM_LABELS[platform]}`}
+        title={`Abrir en ${PLATFORM_LABELS[platform]}`}
+        className="self-center text-muted transition-colors hover:text-sys-orange"
+      >
+        <ExternalLink size={10} />
+      </a>
+    </span>
   )
 }
 
@@ -1026,40 +1056,12 @@ function buildBlocks(item: ContentItem): ArticleBlock[] {
 }
 
 // Curated related picks — same type first, then editorial-family sharing genre.
+// REAL items from the client cache, ranked by vibe closeness exclusively and
+// tie-broken by grid neighborhood (next item directly below in the mosaic).
+// Replaced the old MOCK_ITEMS source.
 function getRelated(item: ContentItem): ContentItem[] {
-  const picks: ContentItem[] = []
-  const seen = new Set<string>([item.id])
-  const editorialFamily: ContentItem['type'][] = [
-    'articulo',
-    'editorial',
-    'review',
-    'opinion',
-    'noticia',
-  ]
-
-  // 1) Other articulos
-  for (const c of MOCK_ITEMS) {
-    if (picks.length >= 3) break
-    if (seen.has(c.id)) continue
-    if (c.type === 'articulo') {
-      picks.push(c)
-      seen.add(c.id)
-    }
-  }
-
-  // 2) Editorial-family items sharing at least one genre
-  if (picks.length < 3) {
-    const genreSet = new Set(item.genres)
-    for (const c of MOCK_ITEMS) {
-      if (picks.length >= 3) break
-      if (seen.has(c.id)) continue
-      if (!editorialFamily.includes(c.type)) continue
-      if (c.genres.some((g) => genreSet.has(g))) {
-        picks.push(c)
-        seen.add(c.id)
-      }
-    }
-  }
-
-  return picks
+  return getRelatedByVibe(item, {
+    types: ['articulo', 'editorial', 'review', 'opinion', 'noticia'],
+    limit: 3,
+  })
 }

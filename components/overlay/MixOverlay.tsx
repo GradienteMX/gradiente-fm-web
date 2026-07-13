@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import type { ContentItem } from '@/lib/types'
-import { MOCK_ITEMS } from '@/lib/mockData'
+import { getRelatedByVibe } from '@/lib/itemsCache'
 import { fmtDateFull, isEditableTarget } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { ContentCard } from '@/components/cards/ContentCard'
@@ -396,35 +396,15 @@ export function MixOverlay({ item }: Props) {
 }
 
 // ── Related mixes ───────────────────────────────────────────────────────────
-// Picks up to 3 other mixes: prefer genre overlap with the current item,
-// then fall back to most-recent mixes. Non-algorithmic; pure curation
-// fallback so the overlay always closes with "what's adjacent in our shelf".
+// Up to 3 other REAL mixes from whatever the feed already streamed into the
+// client items cache — ranked by vibe closeness exclusively, tie-broken by
+// grid neighborhood (the mix most directly below this one in the mosaic).
+// Replaced the old MOCK_ITEMS source.
 function RelatedMixes({ item }: Props) {
-  const related = useMemo(() => {
-    const seen = new Set<string>([item.id])
-    const genreSet = new Set(item.genres)
-    const picks: ContentItem[] = []
-    // 1) Other mixes sharing at least one genre
-    for (const c of MOCK_ITEMS) {
-      if (picks.length >= 3) break
-      if (seen.has(c.id)) continue
-      if (c.type !== 'mix') continue
-      if (c.genres.some((g) => genreSet.has(g))) {
-        picks.push(c)
-        seen.add(c.id)
-      }
-    }
-    // 2) Backfill with any other mixes (most recent first)
-    if (picks.length < 3) {
-      const recent = MOCK_ITEMS.filter((c) => c.type === 'mix' && !seen.has(c.id))
-      for (const c of recent) {
-        if (picks.length >= 3) break
-        picks.push(c)
-        seen.add(c.id)
-      }
-    }
-    return picks
-  }, [item])
+  const related = useMemo(
+    () => getRelatedByVibe(item, { types: ['mix'], limit: 3 }),
+    [item],
+  )
 
   if (related.length === 0) return null
 
