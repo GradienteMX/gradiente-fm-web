@@ -315,7 +315,7 @@ function VibeSliderImpl() {
   return (
     <div
       data-vibe-strip
-      className="sticky top-[56px] z-40 border-y border-border-subtle bg-base"
+      className="sticky top-[96px] z-40 border-y border-border-subtle bg-base"
     >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
 

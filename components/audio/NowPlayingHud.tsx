@@ -274,7 +274,7 @@ export function NowPlayingHud({ items }: { items: ContentItem[] }) {
 // Overflow is re-measured on resize via ResizeObserver; under
 // prefers-reduced-motion the animation is neutralized and the line just
 // truncates (overflow-hidden).
-function MarqueeText({ text, className }: { text: string; className?: string }) {
+export function MarqueeText({ text, className }: { text: string; className?: string }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLSpanElement>(null)
   const [overflowing, setOverflowing] = useState(false)
