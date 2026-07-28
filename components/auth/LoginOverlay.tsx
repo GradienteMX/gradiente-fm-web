@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useAuth } from './useAuth'
+import { normalizeInviteCode, normalizeUsername } from '@/lib/identity'
 
 type Mode = 'login' | 'signup'
 
@@ -60,34 +61,42 @@ export function LoginOverlay() {
 
   if (!loginOpen) return null
 
+  // Guarded end to end: every field is disabled while `submitting`, so an
+  // exception escaping here would leave a dead form the user can only exit by
+  // reloading. Same failure the invite RegistroCard had.
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
 
-    if (mode === 'login') {
-      const ok = await login(identifier.trim(), password)
-      if (ok) {
-        setJustAuthed(true)
-        setTimeout(() => closeLogin(), 700)
+    try {
+      if (mode === 'login') {
+        const ok = await login(identifier.trim(), password)
+        if (ok) {
+          setJustAuthed(true)
+          setTimeout(() => closeLogin(), 700)
+        } else {
+          setError('CREDENCIALES INVÁLIDAS · ACCESO DENEGADO')
+        }
       } else {
-        setError('CREDENCIALES INVÁLIDAS · ACCESO DENEGADO')
+        const result = await signup({
+          email: email.trim(),
+          password,
+          username: normalizeUsername(username),
+          inviteCode: normalizeInviteCode(inviteCode),
+        })
+        if (result.ok) {
+          setJustAuthed(true)
+          setTimeout(() => closeLogin(), 700)
+        } else {
+          setError(result.error.toUpperCase())
+        }
       }
-    } else {
-      const result = await signup({
-        email: email.trim(),
-        password,
-        username: username.trim(),
-        inviteCode: inviteCode.trim(),
-      })
-      if (result.ok) {
-        setJustAuthed(true)
-        setTimeout(() => closeLogin(), 700)
-      } else {
-        setError(result.error.toUpperCase())
-      }
+    } catch {
+      setError('NO SE PUDO COMPLETAR LA OPERACIÓN. INTENTA DE NUEVO.')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   const switchMode = (m: Mode) => {
@@ -209,7 +218,7 @@ export function LoginOverlay() {
                 <Field
                   label="USERNAME"
                   value={username}
-                  onChange={setUsername}
+                  onChange={(v) => setUsername(normalizeUsername(v))}
                   autoComplete="username"
                   disabled={submitting || justAuthed}
                 />
@@ -332,6 +341,10 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
+        // Identifiers, all of them — no auto-capital, no autocorrect.
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         disabled={disabled}
         className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none transition-colors focus:border-sys-orange disabled:opacity-60"
         style={{ borderColor: '#242424' }}

@@ -253,8 +253,12 @@ export function createExperience({ canvas, ui, invite }) {
     world.rotation.set(-0.38, 0.10, 0.03);
     world.position.y = -0.1;
 
-    // CTA con deep link al flujo de acceso (se reemplaza por onReveal en /welcome)
-    if (ctaLink) ctaLink.href = "https://gradiente.org/acceso?codigo=" + encodeURIComponent(invite.code.toLowerCase());
+    // CTA: el click lo intercepta la experiencia (trae REGISTRO al héroe), pero
+    // el href es lo que se copia / abre en pestaña nueva. Apunta a /welcome —
+    // /acceso no existe y el middleware lo redirige BORRANDO el query string,
+    // dejando al invitado sin código. Y el código va tal cual: la búsqueda es
+    // exacta, así que minusculizarlo lo rompía.
+    if (ctaLink) ctaLink.href = "/welcome?codigo=" + encodeURIComponent(invite.code);
 
     fillAccessibleMirror();
 
