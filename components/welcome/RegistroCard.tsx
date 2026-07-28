@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { BetaTermsModal } from '@/components/welcome/BetaTermsModal'
+import { normalizeUsername, usernameProblemEs } from '@/lib/identity'
 import type { InviteCard, InviteRole } from '@/lib/invitations'
 
 const ROLE_LABEL: Record<InviteRole, string> = {
@@ -44,6 +45,17 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
       setError('COMPLETA TODOS LOS CAMPOS')
       return
     }
+    // Catch what the field can still produce (too short, dots-only, `..`)
+    // here rather than after the T&C round trip.
+    const usernameProblem = usernameProblemEs(normalizeUsername(username))
+    if (usernameProblem) {
+      setError(usernameProblem.toUpperCase())
+      return
+    }
+    if (password.length < 6) {
+      setError('LA CONTRASEÑA NECESITA AL MENOS 6 CARACTERES')
+      return
+    }
     if (password !== confirmPassword) {
       setError('LAS CONTRASEÑAS NO COINCIDEN')
       return
@@ -52,21 +64,28 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
   }
 
   // Step 2 — runs only after the user accepts the Terms & Conditions.
+  // Everything after `setSubmitting(true)` is guarded: the fields are disabled
+  // while submitting, so any escaping exception would strand the invitee in a
+  // dead form they can only leave by reloading the whole 3D unbox.
   const acceptTermsAndRegister = async () => {
     setShowTerms(false)
     setSubmitting(true)
-    const result = await signup({
-      email: email.trim(),
-      password,
-      username: username.trim(),
-      inviteCode: invite.code,
-    })
-    if (result.ok) {
-      setJustAuthed(true) // page redirects once the session refresh lands
-    } else {
+    try {
+      const result = await signup({
+        email: email.trim(),
+        password,
+        username: normalizeUsername(username),
+        inviteCode: invite.code,
+      })
+      if (result.ok) {
+        setJustAuthed(true) // page redirects once the session refresh lands
+        return // stay locked — we're on our way out
+      }
       setError(result.error.toUpperCase())
-      setSubmitting(false)
+    } catch {
+      setError('NO SE PUDO COMPLETAR EL REGISTRO. INTENTA DE NUEVO.')
     }
+    setSubmitting(false)
   }
 
   const locked = submitting || justAuthed
@@ -110,7 +129,18 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
 
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="EMAIL" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={locked} />
-          <Field label="USERNAME" value={username} onChange={setUsername} autoComplete="username" disabled={locked} />
+          {/* Normalized on every keystroke so the invitee reads the username
+              that will actually be created — a phone's auto-capital, an
+              accent or a dot used to pass the field and get bounced by the
+              server gate after the T&C step. */}
+          <Field
+            label="USERNAME"
+            value={username}
+            onChange={(v) => setUsername(normalizeUsername(v))}
+            autoComplete="username"
+            disabled={locked}
+            hint="minúsculas, números, punto, _ y - · así se verá en tu perfil"
+          />
           <Field label="PASSWORD" type="password" value={password} onChange={setPassword} autoComplete="new-password" disabled={locked} />
           <Field label="CONFIRMAR PASSWORD" type="password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" disabled={locked} />
 
@@ -170,6 +200,7 @@ function Field({
   type = 'text',
   autoComplete,
   disabled,
+  hint,
 }: {
   label: string
   value: string
@@ -177,6 +208,7 @@ function Field({
   type?: 'text' | 'password' | 'email'
   autoComplete?: string
   disabled?: boolean
+  hint?: string
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -186,10 +218,16 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
+        // Phone keyboards capitalize and autocorrect by default; every field
+        // here is an identifier, so none of them want that help.
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         disabled={disabled}
         className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none transition-colors focus:border-sys-orange disabled:opacity-60"
         style={{ borderColor: '#242424' }}
       />
+      {hint && <span className="font-mono text-[9.5px] tracking-widest text-muted">{hint}</span>}
     </label>
   )
 }

@@ -219,11 +219,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (identifier: string, password: string): Promise<boolean> => {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
-      })
+      // fetch rejects on a dropped connection / backgrounded tab, and an
+      // exception escaping here would leave the caller's `submitting` flag
+      // stuck — a permanently disabled form. Failures are values, not throws.
+      let res: Response
+      try {
+        res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ identifier, password }),
+        })
+      } catch {
+        return false
+      }
       if (!res.ok) return false
       // Cookie was set by the route handler; pull the new session into the
       // browser client so onAuthStateChange fires, then nudge Next.js to
@@ -237,16 +245,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = useCallback(
     async (args: { email: string; password: string; username: string; inviteCode: string }) => {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(args),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Signup failed' }))
-        return { ok: false as const, error: body.error ?? 'Signup failed' }
+      const NETWORK_ERROR =
+        'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.'
+      // Same contract as `login`: never throw. A rejected fetch here used to
+      // escape the invite form's submit handler, so `submitting` was never
+      // cleared and every field stayed disabled — the invitee could not retry
+      // or change their username without reloading the whole unbox.
+      let res: Response
+      try {
+        res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(args),
+        })
+      } catch {
+        return { ok: false as const, error: NETWORK_ERROR }
       }
-      await supabase.auth.refreshSession()
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const error = typeof body?.error === 'string' ? body.error : NETWORK_ERROR
+        return { ok: false as const, error }
+      }
+      try {
+        await supabase.auth.refreshSession()
+      } catch {
+        // Cookie is already set by the route handler; the provider's auth
+        // listener will pick the session up. Not worth failing the signup.
+      }
       router.refresh()
       return { ok: true as const }
     },

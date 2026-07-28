@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { Code2, UserSquare2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { peekInviteCard, type InviteCard } from '@/lib/invitations'
+import { normalizeInviteCode } from '@/lib/identity'
 import { RegistroCard } from '@/components/welcome/RegistroCard'
 
 // The full invitación-3d experience is heavy (three.js + assets) — load it only
@@ -242,7 +243,10 @@ export default function WelcomePage() {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault()
-                    const c = codeInput.trim()
+                    // Normalize before the round trip: this input auto-
+                    // capitalizes on phones and codes are matched exactly, so
+                    // a hand-typed code would otherwise never resolve.
+                    const c = normalizeInviteCode(codeInput)
                     if (c) router.push(`/welcome?codigo=${encodeURIComponent(c)}`)
                   }}
                   className="flex w-full max-w-3xl items-stretch gap-2"

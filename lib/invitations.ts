@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { inviteCodeCandidates } from '@/lib/identity'
 
 // Invitación-3D integration · the data contract the holo card consumes.
 // `peekInviteCard` resolves a ?codigo= into this shape via the anon-safe
@@ -34,8 +35,11 @@ function issuedFrom(label: string | null, isoDate: string | null): string {
 
 // Resolves an invite code into card data. Never throws — an unknown/empty code
 // returns a well-formed object with status:'invalid' so the UI can branch
-// without try/catch. Matches the code exactly (codes are lowercase INV-hex),
-// mirroring the signup route's exact-match lookup.
+// without try/catch. `peek_invite_card` matches exactly, so we try the code as
+// given first and fall back to its normalized spelling: a code retyped on a
+// phone (auto-capitalized) or pasted with a trailing period resolves instead
+// of reading as "CÓDIGO NO RECONOCIDO". The returned `code` is the spelling
+// that matched — RegistroCard submits that, not what was typed.
 export async function peekInviteCard(code: string): Promise<InviteCard> {
   const trimmed = code.trim()
   const base: InviteCard = {
@@ -50,10 +54,22 @@ export async function peekInviteCard(code: string): Promise<InviteCard> {
   if (!trimmed) return base
 
   const supabase = createClient()
-  const { data, error } = await supabase.rpc('peek_invite_card', { p_code: trimmed })
-  if (error || !data || data.length === 0) return base
+  const peek = async (candidate: string) => {
+    const { data, error } = await supabase.rpc('peek_invite_card', { p_code: candidate })
+    return error || !data || data.length === 0 ? null : data[0]
+  }
 
-  const row = data[0]
+  let matched = trimmed
+  let row: Awaited<ReturnType<typeof peek>> = null
+  for (const candidate of inviteCodeCandidates(trimmed)) {
+    row = await peek(candidate)
+    if (row) {
+      matched = candidate
+      break
+    }
+  }
+  if (!row) return base
+
   const folio =
     row.folio != null
       ? `${String(row.folio).padStart(3, '0')}/${row.folio_denominator ?? 150}`
@@ -61,7 +77,7 @@ export async function peekInviteCard(code: string): Promise<InviteCard> {
 
   return {
     name: row.card_name?.trim() || '',
-    code: trimmed,
+    code: matched,
     folio,
     issued: issuedFrom(row.issued_label, row.issued_at),
     role: row.role,
