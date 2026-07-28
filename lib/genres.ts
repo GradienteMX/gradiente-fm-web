@@ -37,6 +37,21 @@ const ROOTS: Genre[] = [
   { id: 'traditional-folk', name: 'Tradicional / Folclórica', parents: [] },
   { id: 'world', name: 'World / Músicas del Mundo', parents: [] },
   { id: 'latin-electronica', name: 'Electrónica Latina', parents: [] },
+  // — Added 2026-07: basics that were missing or only reachable through
+  //   `legacy` ids. Sourced against the Discogs style list + Wikipedia.
+  { id: 'disco-italo', name: 'Disco / Italo / Hi-NRG', parents: [] },
+  { id: 'trance-family', name: 'Trance / Psy / Goa', parents: [] },
+  { id: 'hardcore-hardstyle', name: 'Hardcore / Gabber / Hardstyle', parents: [] },
+  { id: 'breakbeat-rave', name: 'Breakbeat / Rave', parents: [] },
+  { id: 'triphop-downtempo', name: 'Trip Hop / Downtempo', parents: [] },
+  { id: 'synthpop-newwave', name: 'Synth-Pop / New Wave / Synthwave', parents: [] },
+  { id: 'vapor-hypnagogic', name: 'Vaporwave / Hipnagógico / Hauntología', parents: [] },
+  { id: 'caribbean-dancehall', name: 'Dancehall / Soca / Caribe', parents: [] },
+  { id: 'tropical-tradicional', name: 'Tropical / Latinoamericana Tradicional', parents: [] },
+  { id: 'rock-pop', name: 'Rock / Pop', parents: [] },
+  { id: 'punk-metal', name: 'Punk / Metal / Hardcore', parents: [] },
+  { id: 'clasica-contemporanea', name: 'Clásica / Contemporánea', parents: [] },
+  { id: 'blues-gospel-country', name: 'Blues / Gospel / Country', parents: [] },
 ]
 
 // ── Subgenres (leaves) ─────────────────────────────────────────────────────
@@ -113,7 +128,7 @@ const SUBGENRES: Genre[] = [
   { id: 'dark-ambient', name: 'Dark Ambient', parents: ['ambient-drone'] },
   { id: 'drone', name: 'Drone', parents: ['ambient-drone'] },
   { id: 'environmental', name: 'Environmental Music', parents: ['ambient-drone'] },
-  { id: 'hauntology', name: 'Hauntology', parents: ['ambient-drone'] },
+  { id: 'hauntology', name: 'Hauntology', parents: ['ambient-drone', 'vapor-hypnagogic'] },
   { id: 'new-age', name: 'New Age (revalorizado)', parents: ['ambient-drone'] },
 
   // KRAUTROCK / KOSMISCHE
@@ -140,8 +155,8 @@ const SUBGENRES: Genre[] = [
   { id: 'lo-fi-hip-hop', name: 'Lo-fi Hip Hop', parents: ['lofi-bedroom', 'hip-hop-rap'] },
   { id: 'bedroom-pop', name: 'Bedroom Pop', parents: ['lofi-bedroom'] },
   { id: 'cassette-culture', name: 'Cassette Culture', parents: ['lofi-bedroom'] },
-  { id: 'vaporwave', name: 'Vaporwave', parents: ['lofi-bedroom'] },
-  { id: 'chillwave', name: 'Chillwave', parents: ['lofi-bedroom'] },
+  { id: 'vaporwave', name: 'Vaporwave', parents: ['lofi-bedroom', 'vapor-hypnagogic'] },
+  { id: 'chillwave', name: 'Chillwave', parents: ['lofi-bedroom', 'vapor-hypnagogic'] },
   { id: 'seapunk', name: 'Seapunk', parents: ['lofi-bedroom'] },
   { id: 'outsider-music', name: 'Outsider Music', parents: ['lofi-bedroom'] },
   { id: 'home-recording', name: 'Home Recording', parents: ['lofi-bedroom'] },
@@ -291,6 +306,245 @@ const SUBGENRES: Genre[] = [
   { id: 'electronica-andina', name: 'Electrónica Andina', parents: ['latin-electronica', 'world'] },
   { id: 'latin-club', name: 'Latin Club', parents: ['latin-electronica'] },
   { id: 'electronica-experimental-latam', name: 'Electrónica Experimental LatAm', parents: ['latin-electronica', 'electronica-idm'] },
+
+  // ══ Added 2026-07 ════════════════════════════════════════════════════════
+  // Gap-fill pass. Two kinds of entry here: (a) "very basic" genres that
+  // previously existed only as `legacy` ids or not at all, now promoted to
+  // first-class leaves under a proper root; (b) micro-genres the editorial
+  // side actually uses (vapor family, hypnagogic pop, etc.). Names follow
+  // Wikipedia/Discogs conventions; the legacy twin of each promoted id is
+  // mapped in LEGACY_ALIASES below so old DB rows resolve to these.
+
+  // TECHNO (fill)
+  { id: 'techno-dark', name: 'Dark Techno', parents: ['techno', 'industrial-ebm'] },
+  { id: 'techno-schranz', name: 'Schranz', parents: ['techno', 'hardcore-hardstyle'] },
+  { id: 'techno-bleep', name: 'Bleep Techno', parents: ['techno'] },
+  { id: 'techno-birmingham', name: 'Birmingham Techno', parents: ['techno'] },
+  { id: 'techno-peak-time', name: 'Peak Time / Driving Techno', parents: ['techno'] },
+  { id: 'techno-raw-deep', name: 'Raw / Deep / Hypnotic Techno', parents: ['techno'] },
+  { id: 'techno-electro', name: 'Electro Techno', parents: ['techno', 'electronica-idm'] },
+  { id: 'techno-trance', name: 'Trancey Techno', parents: ['techno', 'trance-family'] },
+
+  // HOUSE (fill)
+  { id: 'house-garage', name: 'Garage House', parents: ['house'] },
+  { id: 'house-disco', name: 'Disco House', parents: ['house', 'disco-italo'] },
+  { id: 'house-french', name: 'French House / Filter House', parents: ['house', 'disco-italo'] },
+  { id: 'house-funky', name: 'Funky House', parents: ['house'] },
+  { id: 'house-jackin', name: 'Jackin House', parents: ['house'] },
+  { id: 'house-gospel', name: 'Gospel House', parents: ['house', 'blues-gospel-country'] },
+  { id: 'house-ghetto', name: 'Ghetto House / Ghettotech', parents: ['house'] },
+  { id: 'house-progressive', name: 'Progressive House', parents: ['house', 'trance-family'] },
+  { id: 'house-micro', name: 'Microhouse', parents: ['house'] },
+  { id: 'house-organic', name: 'Organic House', parents: ['house'] },
+  { id: 'house-bass', name: 'Bass House', parents: ['house'] },
+  { id: 'house-hard', name: 'Hard House', parents: ['house', 'hardcore-hardstyle'] },
+  { id: 'house-amapiano', name: 'Amapiano', parents: ['house', 'world-bass'] },
+  { id: 'house-gqom', name: 'Gqom', parents: ['house', 'world-bass'] },
+  { id: 'house-3step', name: '3-Step', parents: ['house', 'dubstep-uk'] },
+  { id: 'house-balearic', name: 'Balearic', parents: ['house', 'disco-italo'] },
+
+  // DISCO / ITALO / HI-NRG
+  { id: 'disco', name: 'Disco', parents: ['disco-italo'] },
+  { id: 'nu-disco-music', name: 'Nu-Disco', parents: ['disco-italo', 'house'] },
+  { id: 'italo-disco', name: 'Italo Disco', parents: ['disco-italo'] },
+  { id: 'hi-nrg', name: 'Hi-NRG', parents: ['disco-italo'] },
+  { id: 'space-disco', name: 'Space Disco / Cosmic', parents: ['disco-italo'] },
+  { id: 'disco-dub', name: 'Disco Dub / Edits', parents: ['disco-italo', 'dub-reggae'] },
+  { id: 'post-disco', name: 'Post-Disco', parents: ['disco-italo', 'soul-funk-rnb'] },
+
+  // TRANCE
+  { id: 'trance-classic', name: 'Trance', parents: ['trance-family'] },
+  { id: 'trance-progressive', name: 'Progressive Trance', parents: ['trance-family'] },
+  { id: 'trance-psy', name: 'Psy-Trance', parents: ['trance-family'] },
+  { id: 'trance-goa', name: 'Goa Trance', parents: ['trance-family'] },
+  { id: 'trance-uplifting', name: 'Uplifting Trance', parents: ['trance-family'] },
+  { id: 'trance-acid', name: 'Acid Trance', parents: ['trance-family'] },
+  { id: 'trance-hard', name: 'Hard Trance', parents: ['trance-family', 'hardcore-hardstyle'] },
+  { id: 'trance-dream', name: 'Dream Trance', parents: ['trance-family'] },
+  { id: 'trance-forest', name: 'Forest / Dark Psy', parents: ['trance-family'] },
+
+  // HARDCORE / GABBER / HARDSTYLE
+  { id: 'hardcore-techno', name: 'Hardcore Techno', parents: ['hardcore-hardstyle'] },
+  { id: 'gabber', name: 'Gabber', parents: ['hardcore-hardstyle'] },
+  { id: 'happy-hardcore', name: 'Happy Hardcore', parents: ['hardcore-hardstyle'] },
+  { id: 'hardstyle', name: 'Hardstyle', parents: ['hardcore-hardstyle'] },
+  { id: 'frenchcore', name: 'Frenchcore', parents: ['hardcore-hardstyle'] },
+  { id: 'speedcore', name: 'Speedcore', parents: ['hardcore-hardstyle'] },
+  { id: 'terrorcore', name: 'Terrorcore', parents: ['hardcore-hardstyle'] },
+  { id: 'digital-hardcore', name: 'Digital Hardcore', parents: ['hardcore-hardstyle', 'industrial-ebm'] },
+  { id: 'uptempo-hardcore', name: 'Uptempo Hardcore', parents: ['hardcore-hardstyle'] },
+  { id: 'makina', name: 'Makina', parents: ['hardcore-hardstyle', 'trance-family'] },
+
+  // BREAKBEAT / RAVE
+  { id: 'breakbeat', name: 'Breakbeat', parents: ['breakbeat-rave'] },
+  { id: 'big-beat', name: 'Big Beat', parents: ['breakbeat-rave'] },
+  { id: 'breakbeat-hardcore', name: 'Breakbeat Hardcore', parents: ['breakbeat-rave', 'hardcore-hardstyle'] },
+  { id: 'rave-oldschool', name: 'Old-School Rave', parents: ['breakbeat-rave'] },
+  { id: 'nu-skool-breaks', name: 'Nu-Skool Breaks', parents: ['breakbeat-rave'] },
+  { id: 'florida-breaks', name: 'Florida Breaks', parents: ['breakbeat-rave'] },
+  { id: 'miami-bass', name: 'Miami Bass', parents: ['breakbeat-rave', 'hip-hop-rap'] },
+  { id: 'freestyle', name: 'Freestyle', parents: ['breakbeat-rave', 'electronica-idm'] },
+  { id: 'baltimore-club', name: 'Baltimore Club', parents: ['breakbeat-rave', 'hyperpop-deconstructed'] },
+  { id: 'speed-garage', name: 'Speed Garage', parents: ['breakbeat-rave', 'dubstep-uk'] },
+  { id: 'bassline', name: 'Bassline', parents: ['breakbeat-rave', 'dubstep-uk'] },
+  { id: 'donk', name: 'Donk / Bounce', parents: ['breakbeat-rave', 'hardcore-hardstyle'] },
+
+  // TRIP HOP / DOWNTEMPO
+  { id: 'trip-hop', name: 'Trip Hop', parents: ['triphop-downtempo', 'hip-hop-rap'] },
+  { id: 'downtempo-music', name: 'Downtempo', parents: ['triphop-downtempo'] },
+  { id: 'chill-out', name: 'Chill Out', parents: ['triphop-downtempo', 'ambient-drone'] },
+  { id: 'illbient', name: 'Illbient', parents: ['triphop-downtempo', 'ambient-drone'] },
+  { id: 'nu-jazz-downtempo', name: 'Broken Beat', parents: ['triphop-downtempo', 'jazz'] },
+  { id: 'acid-jazz', name: 'Acid Jazz', parents: ['triphop-downtempo', 'jazz'] },
+  { id: 'psybient', name: 'Psybient / Psydub', parents: ['triphop-downtempo', 'ambient-drone'] },
+
+  // SYNTH-POP / NEW WAVE / SYNTHWAVE
+  { id: 'synth-pop', name: 'Synth-Pop', parents: ['synthpop-newwave'] },
+  { id: 'new-wave', name: 'New Wave', parents: ['synthpop-newwave', 'post-punk-shoegaze'] },
+  { id: 'minimal-synth', name: 'Minimal Synth', parents: ['synthpop-newwave', 'industrial-ebm'] },
+  { id: 'synthwave', name: 'Synthwave / Retrowave', parents: ['synthpop-newwave'] },
+  { id: 'darksynth', name: 'Darksynth', parents: ['synthpop-newwave', 'industrial-ebm'] },
+  { id: 'electroclash', name: 'Electroclash', parents: ['synthpop-newwave', 'electronica-idm'] },
+  { id: 'hypnagogic-pop', name: 'Hypnagogic Pop', parents: ['synthpop-newwave', 'vapor-hypnagogic'] },
+  { id: 'sovietwave', name: 'Sovietwave', parents: ['synthpop-newwave', 'vapor-hypnagogic'] },
+  { id: 'coldwave-synth', name: 'Synth Cold Wave', parents: ['synthpop-newwave', 'industrial-ebm'] },
+
+  // VAPORWAVE / HIPNAGÓGICO / HAUNTOLOGÍA
+  { id: 'proto-vaporwave', name: 'Proto-Vaporwave', parents: ['vapor-hypnagogic'] },
+  { id: 'eccojams', name: 'Eccojams', parents: ['vapor-hypnagogic'] },
+  { id: 'mallsoft', name: 'Mallsoft', parents: ['vapor-hypnagogic', 'ambient-drone'] },
+  { id: 'future-funk', name: 'Future Funk', parents: ['vapor-hypnagogic', 'disco-italo'] },
+  { id: 'vaportrap', name: 'Vaportrap', parents: ['vapor-hypnagogic', 'hip-hop-rap'] },
+  { id: 'hardvapour', name: 'Hardvapour', parents: ['vapor-hypnagogic', 'hardcore-hardstyle'] },
+  { id: 'vapornoise', name: 'Vapornoise', parents: ['vapor-hypnagogic', 'industrial-ebm'] },
+  { id: 'signalwave', name: 'Signalwave / Broken Transmission', parents: ['vapor-hypnagogic'] },
+  { id: 'slushwave', name: 'Slushwave', parents: ['vapor-hypnagogic', 'ambient-drone'] },
+  { id: 'barber-beats', name: 'Barber Beats', parents: ['vapor-hypnagogic', 'lofi-bedroom'] },
+  { id: 'utopian-virtual', name: 'Utopian Virtual', parents: ['vapor-hypnagogic', 'ambient-drone'] },
+  { id: 'vhs-pop', name: 'VHS Pop', parents: ['vapor-hypnagogic'] },
+  { id: 'late-night-lofi', name: 'Late Night Lo-Fi', parents: ['vapor-hypnagogic', 'lofi-bedroom'] },
+  { id: 'dreampunk', name: 'Dreampunk', parents: ['vapor-hypnagogic', 'ambient-drone'] },
+  { id: 'plunderphonics', name: 'Plunderphonics', parents: ['vapor-hypnagogic', 'musique-concrete'] },
+  { id: 'dariacore', name: 'Dariacore / Mashcore', parents: ['vapor-hypnagogic', 'hyperpop-deconstructed'] },
+  { id: 'witch-house', name: 'Witch House', parents: ['vapor-hypnagogic', 'industrial-ebm'] },
+  { id: 'simpsonwave', name: 'Simpsonwave', parents: ['vapor-hypnagogic'] },
+  { id: 'post-internet', name: 'Post-Internet', parents: ['vapor-hypnagogic', 'hyperpop-deconstructed'] },
+
+  // DANCEHALL / SOCA / CARIBE
+  { id: 'dancehall', name: 'Dancehall', parents: ['caribbean-dancehall', 'dub-reggae'] },
+  { id: 'ragga', name: 'Ragga', parents: ['caribbean-dancehall', 'dub-reggae'] },
+  { id: 'ska', name: 'Ska', parents: ['caribbean-dancehall', 'dub-reggae'] },
+  { id: 'rocksteady', name: 'Rocksteady', parents: ['caribbean-dancehall', 'dub-reggae'] },
+  { id: 'dub-poetry', name: 'Dub Poetry', parents: ['caribbean-dancehall', 'dub-reggae'] },
+  { id: 'soca', name: 'Soca', parents: ['caribbean-dancehall'] },
+  { id: 'calypso', name: 'Calypso', parents: ['caribbean-dancehall'] },
+  { id: 'zouk', name: 'Zouk', parents: ['caribbean-dancehall'] },
+  { id: 'kompa', name: 'Kompa', parents: ['caribbean-dancehall'] },
+  { id: 'reggaeton-music', name: 'Reggaetón', parents: ['caribbean-dancehall', 'latin-electronica'] },
+
+  // TROPICAL / LATINOAMERICANA TRADICIONAL
+  { id: 'cumbia-music', name: 'Cumbia', parents: ['tropical-tradicional', 'world-bass'] },
+  { id: 'salsa-music', name: 'Salsa', parents: ['tropical-tradicional'] },
+  { id: 'son-cubano', name: 'Son Cubano', parents: ['tropical-tradicional'] },
+  { id: 'mambo', name: 'Mambo', parents: ['tropical-tradicional'] },
+  { id: 'guaguanco-rumba', name: 'Rumba / Guaguancó', parents: ['tropical-tradicional'] },
+  { id: 'merengue', name: 'Merengue', parents: ['tropical-tradicional'] },
+  { id: 'bachata', name: 'Bachata', parents: ['tropical-tradicional'] },
+  { id: 'bolero', name: 'Bolero', parents: ['tropical-tradicional'] },
+  { id: 'danzon', name: 'Danzón', parents: ['tropical-tradicional'] },
+  { id: 'tango', name: 'Tango', parents: ['tropical-tradicional'] },
+  { id: 'samba', name: 'Samba', parents: ['tropical-tradicional'] },
+  { id: 'bossa-nova', name: 'Bossa Nova', parents: ['tropical-tradicional', 'jazz'] },
+  { id: 'mpb', name: 'MPB', parents: ['tropical-tradicional'] },
+  { id: 'tropicalia', name: 'Tropicália', parents: ['tropical-tradicional', 'rock-pop'] },
+  { id: 'huapango', name: 'Son / Huapango', parents: ['tropical-tradicional', 'traditional-folk'] },
+  { id: 'mariachi', name: 'Mariachi', parents: ['tropical-tradicional', 'traditional-folk'] },
+  { id: 'norteno', name: 'Norteño', parents: ['tropical-tradicional', 'traditional-folk'] },
+  { id: 'ranchera', name: 'Ranchera', parents: ['tropical-tradicional', 'traditional-folk'] },
+  { id: 'nueva-cancion', name: 'Nueva Canción', parents: ['tropical-tradicional', 'traditional-folk'] },
+  { id: 'chicha', name: 'Chicha / Cumbia Amazónica', parents: ['tropical-tradicional', 'world-bass'] },
+
+  // ROCK / POP
+  { id: 'rock', name: 'Rock', parents: ['rock-pop'] },
+  { id: 'pop', name: 'Pop', parents: ['rock-pop'] },
+  { id: 'indie-rock', name: 'Indie Rock', parents: ['rock-pop'] },
+  { id: 'psych-rock', name: 'Rock Psicodélico', parents: ['rock-pop'] },
+  { id: 'garage-rock', name: 'Garage Rock', parents: ['rock-pop'] },
+  { id: 'prog-rock', name: 'Rock Progresivo', parents: ['rock-pop'] },
+  { id: 'art-pop', name: 'Art Pop', parents: ['rock-pop'] },
+  { id: 'avant-pop', name: 'Avant-Pop', parents: ['rock-pop', 'hyperpop-deconstructed'] },
+  { id: 'rock-en-espanol', name: 'Rock en Español', parents: ['rock-pop'] },
+  { id: 'indie-dance-music', name: 'Indie Dance', parents: ['rock-pop', 'house'] },
+  { id: 'dance-punk', name: 'Dance-Punk', parents: ['rock-pop', 'post-punk-shoegaze'] },
+  { id: 'surf-rock', name: 'Surf Rock', parents: ['rock-pop'] },
+
+  // PUNK / METAL / HARDCORE
+  { id: 'punk', name: 'Punk', parents: ['punk-metal'] },
+  { id: 'hardcore-punk', name: 'Hardcore Punk', parents: ['punk-metal'] },
+  { id: 'post-hardcore', name: 'Post-Hardcore', parents: ['punk-metal'] },
+  { id: 'metal', name: 'Metal', parents: ['punk-metal'] },
+  { id: 'doom-metal', name: 'Doom / Sludge', parents: ['punk-metal', 'ambient-drone'] },
+  { id: 'black-metal', name: 'Black Metal', parents: ['punk-metal'] },
+  { id: 'grindcore', name: 'Grindcore', parents: ['punk-metal'] },
+  { id: 'powerviolence', name: 'Powerviolence', parents: ['punk-metal'] },
+  { id: 'crust-punk', name: 'Crust / D-Beat', parents: ['punk-metal'] },
+  { id: 'metal-industrial', name: 'Metal Industrial', parents: ['punk-metal', 'industrial-ebm'] },
+
+  // CLÁSICA / CONTEMPORÁNEA
+  { id: 'clasica', name: 'Música Clásica', parents: ['clasica-contemporanea'] },
+  { id: 'barroco', name: 'Barroco', parents: ['clasica-contemporanea'] },
+  { id: 'opera', name: 'Ópera', parents: ['clasica-contemporanea'] },
+  { id: 'coral-sacro', name: 'Coral / Sacra', parents: ['clasica-contemporanea'] },
+  { id: 'contemporanea', name: 'Música Contemporánea', parents: ['clasica-contemporanea', 'musique-concrete'] },
+  { id: 'neoclasico', name: 'Neoclásico', parents: ['clasica-contemporanea'] },
+  { id: 'modern-classical', name: 'Modern Classical', parents: ['clasica-contemporanea', 'ambient-drone'] },
+  { id: 'chamber-music', name: 'Música de Cámara', parents: ['clasica-contemporanea'] },
+  { id: 'soundtrack', name: 'Soundtrack / Score', parents: ['clasica-contemporanea', 'fourth-world'] },
+  { id: 'giallo-horror-score', name: 'Giallo / Horror Score', parents: ['clasica-contemporanea', 'fourth-world'] },
+
+  // BLUES / GOSPEL / COUNTRY
+  { id: 'blues', name: 'Blues', parents: ['blues-gospel-country'] },
+  { id: 'delta-blues', name: 'Delta Blues', parents: ['blues-gospel-country'] },
+  { id: 'gospel', name: 'Gospel', parents: ['blues-gospel-country', 'soul-funk-rnb'] },
+  { id: 'country', name: 'Country', parents: ['blues-gospel-country'] },
+  { id: 'americana', name: 'Americana', parents: ['blues-gospel-country', 'traditional-folk'] },
+  { id: 'bluegrass', name: 'Bluegrass', parents: ['blues-gospel-country', 'traditional-folk'] },
+
+  // FILL — existing roots that were thin
+  { id: 'disco-boogie-funk', name: 'Boogie Funk', parents: ['soul-funk-rnb', 'disco-italo'] },
+  { id: 'gospel-soul', name: 'Gospel Soul', parents: ['soul-funk-rnb', 'blues-gospel-country'] },
+  { id: 'northern-soul', name: 'Northern Soul', parents: ['soul-funk-rnb'] },
+  { id: 'g-funk', name: 'G-Funk', parents: ['hip-hop-rap', 'soul-funk-rnb'] },
+  { id: 'boom-bap', name: 'Boom Bap', parents: ['hip-hop-rap'] },
+  { id: 'trap', name: 'Trap', parents: ['hip-hop-rap'] },
+  { id: 'phonk', name: 'Phonk', parents: ['hip-hop-rap', 'vapor-hypnagogic'] },
+  { id: 'grime-rap', name: 'UK Rap', parents: ['hip-hop-rap', 'dubstep-uk'] },
+  { id: 'rap-en-espanol', name: 'Rap en Español', parents: ['hip-hop-rap'] },
+  { id: 'turntablism', name: 'Turntablism', parents: ['hip-hop-rap', 'musique-concrete'] },
+  { id: 'field-recording', name: 'Field Recording', parents: ['ambient-drone', 'musique-concrete'] },
+  { id: 'lowercase', name: 'Lowercase', parents: ['ambient-drone', 'electronica-idm'] },
+  { id: 'harsh-noise-wall', name: 'Harsh Noise Wall', parents: ['industrial-ebm'] },
+  { id: 'wonky', name: 'Wonky', parents: ['electronica-idm', 'hip-hop-rap'] },
+  { id: 'ambient-pop', name: 'Ambient Pop', parents: ['ambient-drone', 'rock-pop'] },
+  { id: 'afrobeats', name: 'Afrobeats', parents: ['world-bass'] },
+  { id: 'highlife', name: 'Highlife', parents: ['world-bass', 'world'] },
+  { id: 'ethio-jazz', name: 'Ethio-Jazz', parents: ['jazz', 'world'] },
+  { id: 'desert-blues', name: 'Desert Blues / Tishoumaren', parents: ['world', 'blues-gospel-country'] },
+  { id: 'singeli', name: 'Singeli', parents: ['world-bass'] },
+  { id: 'coupe-decale', name: 'Coupé-Décalé', parents: ['world-bass'] },
+  { id: 'batida', name: 'Batida', parents: ['world-bass'] },
+  { id: 'shangaan-electro', name: 'Shangaan Electro', parents: ['world-bass'] },
+  { id: 'city-pop', name: 'City Pop', parents: ['rock-pop', 'vapor-hypnagogic'] },
+  { id: 'j-pop', name: 'J-Pop', parents: ['rock-pop', 'world'] },
+  { id: 'k-pop', name: 'K-Pop', parents: ['rock-pop', 'world'] },
+  { id: 'enka', name: 'Enka', parents: ['world', 'traditional-folk'] },
+  { id: 'qawwali', name: 'Qawwali', parents: ['world', 'traditional-folk'] },
+  { id: 'carnatic-hindustani', name: 'Carnática / Hindustaní', parents: ['world', 'traditional-folk'] },
+  { id: 'fado', name: 'Fado', parents: ['world', 'traditional-folk'] },
+  { id: 'flamenco', name: 'Flamenco', parents: ['world', 'traditional-folk'] },
+  { id: 'klezmer', name: 'Klezmer', parents: ['world', 'traditional-folk'] },
+  { id: 'cai-luong-gamelan', name: 'Gamelan', parents: ['world', 'traditional-folk'] },
+  { id: 'throat-singing', name: 'Canto de Garganta', parents: ['world', 'traditional-folk'] },
 ]
 
 // ── Legacy ids ─────────────────────────────────────────────────────────────
@@ -333,10 +587,8 @@ const LEGACY: Genre[] = [
   { id: 'wave', name: 'Wave', parents: ['lofi-bedroom'], legacy: true },
   { id: 'cumbia-electronica', name: 'Cumbia Electrónica', parents: ['world-bass', 'latin-electronica'], legacy: true },
   { id: 'latin-electronic', name: 'Latin Electronic', parents: ['world-bass', 'latin-electronica'], legacy: true },
-  { id: 'trap', name: 'Trap / Future Bass', parents: ['hip-hop-rap'], legacy: true },
   { id: 'ballroom', name: 'Ballroom / Voguing', parents: ['hyperpop-deconstructed'], legacy: true },
   { id: 'gqom', name: 'Gqom', parents: ['world-bass'] /* high-vibe */, legacy: true },
-  { id: 'afrobeats', name: 'Afrobeats', parents: ['world-bass'], legacy: true },
   { id: 'deconstructed', name: 'Deconstructed Club', parents: ['hyperpop-deconstructed'], legacy: true },
   { id: 'ambient-techno', name: 'Ambient Techno', parents: ['techno', 'ambient-drone'], legacy: true },
   { id: 'uk-bass', name: 'UK Bass', parents: ['dubstep-uk'], legacy: true },
@@ -351,6 +603,89 @@ const LEGACY: Genre[] = [
 ]
 
 export const GENRES: Genre[] = [...ROOTS, ...SUBGENRES, ...LEGACY]
+
+// ── Legacy aliases ─────────────────────────────────────────────────────────
+//
+// Every legacy id that has a same-meaning entry in the current taxonomy maps
+// to that canonical id here. This is what removes the *visible* duplicates
+// ("Hard Techno" appearing twice in a picker, etc.): pickers show only
+// non-legacy entries, and anything reading a stored id can normalize through
+// `canonicalizeGenre` so old rows land on the canonical chip.
+//
+// Legacy ids with no exact modern twin (e.g. `big-room`) are deliberately
+// absent — they stay resolvable but are not rewritten.
+
+export const LEGACY_ALIASES: Record<string, string> = {
+  'afro-house': 'house-afro',
+  'ambient-techno': 'techno-ambient',
+  'ballroom': 'ballroom-vogue',
+  'bass-house': 'house-bass',
+  'breaks': 'breakbeat',
+  'cumbia': 'cumbia-music',
+  'cumbia-electronica': 'cumbia-digital',
+  'dance-electro-pop': 'synth-pop',
+  'dark-techno': 'techno-dark',
+  'deconstructed': 'deconstructed-club',
+  'deep-house': 'house-deep',
+  'downtempo': 'downtempo-music',
+  'drum-and-bass': 'dnb-jungle',
+  'dub': 'dub-roots',
+  'dubstep': 'dubstep-uk',
+  'electronica': 'electronica-idm',
+  'ghetto-house': 'house-ghetto',
+  'gqom': 'house-gqom',
+  'hard-dance': 'hardcore-techno',
+  'hard-techno': 'techno-hard',
+  'hip-hop': 'hip-hop-rap',
+  'indie-dance': 'indie-dance-music',
+  'jackin-house': 'house-jackin',
+  'latin-electronic': 'latin-electronica',
+  'latin-jazz': 'jazz-latino',
+  'melodic-techno': 'techno-melodic',
+  'minimal': 'techno-minimal',
+  'nu-disco': 'nu-disco-music',
+  'organic-house': 'house-organic',
+  'peak-techno': 'techno-peak-time',
+  'progressive-house': 'house-progressive',
+  'psy-trance': 'trance-psy',
+  'reggaeton': 'reggaeton-music',
+  'rnb': 'rnb-contemporaneo',
+  'salsa': 'salsa-music',
+  'son': 'huapango',
+  'tech-house': 'house-tech',
+  'techno-peak': 'techno-peak-time',
+  'techno-raw': 'techno-raw-deep',
+  'trance': 'trance-classic',
+  'trance-raw': 'trance-progressive',
+  'uk-bass': 'bass-music',
+  'ukg': 'uk-garage',
+  'wave': 'dreampunk',
+}
+
+// Resolve a possibly-legacy id to its current canonical id. Unknown ids and
+// legacy ids without a twin pass through unchanged.
+export function canonicalizeGenre(id: string): string {
+  return LEGACY_ALIASES[id] ?? id
+}
+
+// Canonicalize a list and drop duplicates that collapse onto the same id.
+export function canonicalizeGenres(ids: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const id of ids) {
+    const c = canonicalizeGenre(id)
+    if (seen.has(c)) continue
+    seen.add(c)
+    out.push(c)
+  }
+  return out
+}
+
+// The pickable taxonomy — what every composer/tag UI should render. Legacy
+// ids are excluded so no genre ever appears twice in a list.
+export function getSelectableGenres(): Genre[] {
+  return [...ROOTS, ...SUBGENRES]
+}
 
 // ── Lookups ────────────────────────────────────────────────────────────────
 
@@ -448,8 +783,10 @@ export const TAGS: Tag[] = [
   { id: 'residency', name: 'Residency' },
   { id: 'showcase', name: 'Showcase' },
   { id: 'closing-party', name: 'Closing Party' },
-  { id: 'hip-hop-tag', name: 'Hip Hop' },
-  { id: 'neo-soul-tag', name: 'Neo Soul' },
+  // `hip-hop-tag` / `neo-soul-tag` duplicate the genre axis and `live-set`
+  // duplicates `live` — kept resolvable for old rows, hidden from pickers.
+  { id: 'hip-hop-tag', name: 'Hip Hop', legacy: true },
+  { id: 'neo-soul-tag', name: 'Neo Soul', legacy: true },
   { id: 'feminist', name: 'Feminista' },
   { id: 'community', name: 'Comunitario' },
   { id: 'vinyl-only', name: 'Vinyl Only' },
@@ -471,7 +808,7 @@ export const TAGS: Tag[] = [
   { id: 'acustico', name: 'Acústico' },
   { id: 'voz', name: 'Voz' },
   { id: 'instrumental', name: 'Instrumental' },
-  { id: 'live-set', name: 'Live Set (calidad)' },
+  { id: 'live-set', name: 'Live Set (calidad)', legacy: true },
   { id: 'cdmx', name: 'CDMX' },
   { id: 'latinoamericano', name: 'Latinoamericano' },
   { id: 'diasporico', name: 'Diaspórico' },
@@ -485,8 +822,43 @@ export function getTagById(id: string): Tag | undefined {
 }
 
 export function getTagNames(ids: string[]): string[] {
-  return ids.map((id) => TAG_BY_ID.get(id)?.name ?? id)
+  return ids.map(tagLabel)
 }
+
+// The pickable tag catalog — legacy duplicates excluded.
+export function getSelectableTags(): Tag[] {
+  return TAGS.filter((t) => !t.legacy)
+}
+
+// Display label for any tag id, including user-created ones that aren't in
+// the static catalog. Unknown ids are humanized from the slug rather than
+// rendered raw, so a tag created in the foro composer reads correctly even
+// before the custom-tag registry has loaded.
+export function tagLabel(id: string): string {
+  const known = TAG_BY_ID.get(id)
+  if (known) return known.name
+  return id
+    .split('-')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+// Normalize free text typed by a user into a stable tag id: lowercase,
+// accent-stripped, non-alphanumerics collapsed to single hyphens. Returns ''
+// when nothing usable remains — callers should reject that.
+export function slugifyTag(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+}
+
+// Longest tag label we accept from the composer.
+export const TAG_NAME_MAX = 40
 
 // ── Vibe heuristic (legacy / foro-side) ────────────────────────────────────
 //
@@ -549,6 +921,66 @@ export const GENRE_VIBE: Record<string, number> = {
   'tribal-guarachero': 8, 'changa-tuki': 8, 'nu-cumbia': 5,
   'electro-tropical': 6, 'latin-bass': 7, 'electronica-andina': 3,
   'latin-club': 7, 'electronica-experimental-latam': 6,
+  // New roots — anchor each so the slider's chip strip sorts them into the
+  // right place instead of defaulting them all to the middle of the range.
+  'disco-italo': 5, 'trance-family': 7, 'hardcore-hardstyle': 10,
+  'breakbeat-rave': 6, 'triphop-downtempo': 2, 'synthpop-newwave': 4,
+  'vapor-hypnagogic': 1, 'caribbean-dancehall': 6, 'tropical-tradicional': 4,
+  'rock-pop': 5, 'punk-metal': 8, 'clasica-contemporanea': 2,
+  'blues-gospel-country': 3,
+  // — 2026-07 gap-fill anchors
+  'disco': 5, 'nu-disco-music': 4, 'italo-disco': 5, 'hi-nrg': 7,
+  'space-disco': 4, 'post-disco': 4, 'house-disco': 5, 'house-french': 5,
+  'house-garage': 5, 'house-progressive': 6, 'house-amapiano': 4,
+  'house-gqom': 8, 'house-balearic': 2, 'house-micro': 4, 'house-hard': 8,
+  'trance-classic': 6, 'trance-progressive': 5, 'trance-psy': 9,
+  'trance-goa': 8, 'trance-uplifting': 7, 'trance-acid': 7, 'trance-hard': 9,
+  'trance-dream': 4, 'trance-forest': 9,
+  'hardcore-techno': 10, 'gabber': 10, 'happy-hardcore': 9, 'hardstyle': 9,
+  'frenchcore': 10, 'speedcore': 10, 'terrorcore': 10, 'digital-hardcore': 10,
+  'uptempo-hardcore': 10, 'makina': 9, 'techno-schranz': 10,
+  'techno-dark': 9, 'techno-peak-time': 7, 'techno-raw-deep': 6,
+  'techno-bleep': 5, 'techno-birmingham': 8, 'techno-electro': 6, 'techno-trance': 7,
+  'breakbeat': 6, 'big-beat': 6, 'breakbeat-hardcore': 8, 'rave-oldschool': 7,
+  'nu-skool-breaks': 6, 'miami-bass': 6, 'freestyle': 5, 'baltimore-club': 8,
+  'speed-garage': 7, 'bassline': 7, 'donk': 8,
+  'trip-hop': 2, 'downtempo-music': 2, 'chill-out': 1, 'illbient': 2,
+  'acid-jazz': 4, 'psybient': 2, 'nu-jazz-downtempo': 4,
+  'synth-pop': 4, 'new-wave': 4, 'minimal-synth': 4, 'synthwave': 4,
+  'darksynth': 7, 'electroclash': 6, 'hypnagogic-pop': 1, 'sovietwave': 2,
+  'proto-vaporwave': 1, 'eccojams': 1, 'mallsoft': 0, 'future-funk': 5,
+  'vaportrap': 3, 'hardvapour': 9, 'vapornoise': 8, 'signalwave': 1,
+  'slushwave': 0, 'barber-beats': 1, 'utopian-virtual': 1, 'vhs-pop': 2,
+  'late-night-lofi': 1, 'dreampunk': 1, 'plunderphonics': 4, 'dariacore': 9,
+  'witch-house': 5, 'simpsonwave': 1, 'post-internet': 6, 'phonk': 6,
+  'dancehall': 6, 'ragga': 7, 'ska': 5, 'rocksteady': 3, 'dub-poetry': 3,
+  'soca': 7, 'calypso': 4, 'zouk': 4, 'kompa': 4, 'reggaeton-music': 6,
+  'cumbia-music': 4, 'salsa-music': 5, 'son-cubano': 3, 'mambo': 5,
+  'guaguanco-rumba': 5, 'merengue': 6, 'bachata': 3, 'bolero': 1,
+  'danzon': 2, 'tango': 3, 'samba': 5, 'bossa-nova': 2, 'mpb': 3,
+  'tropicalia': 4, 'huapango': 4, 'mariachi': 4, 'norteno': 4,
+  'ranchera': 3, 'nueva-cancion': 2, 'chicha': 4,
+  'rock': 5, 'pop': 4, 'indie-rock': 4, 'psych-rock': 4, 'garage-rock': 6,
+  'prog-rock': 4, 'art-pop': 3, 'avant-pop': 5, 'rock-en-espanol': 5,
+  'indie-dance-music': 5, 'dance-punk': 6, 'surf-rock': 5,
+  'punk': 8, 'hardcore-punk': 9, 'post-hardcore': 7, 'metal': 8,
+  'doom-metal': 5, 'black-metal': 9, 'grindcore': 10, 'powerviolence': 10,
+  'crust-punk': 9, 'metal-industrial': 9,
+  'clasica': 2, 'barroco': 2, 'opera': 3, 'coral-sacro': 1,
+  'contemporanea': 3, 'neoclasico': 1, 'modern-classical': 1,
+  'chamber-music': 2, 'soundtrack': 2, 'giallo-horror-score': 4,
+  'blues': 3, 'delta-blues': 3, 'gospel': 4, 'country': 3,
+  'americana': 3, 'bluegrass': 4,
+  'disco-boogie-funk': 5, 'gospel-soul': 4, 'northern-soul': 5,
+  'g-funk': 4, 'boom-bap': 4, 'trap': 6, 'grime-rap': 6,
+  'rap-en-espanol': 5, 'turntablism': 6,
+  'field-recording': 0, 'lowercase': 0, 'harsh-noise-wall': 10,
+  'wonky': 5, 'ambient-pop': 2,
+  'afrobeats': 5, 'highlife': 4, 'ethio-jazz': 3, 'desert-blues': 3,
+  'singeli': 9, 'coupe-decale': 6, 'batida': 7, 'shangaan-electro': 8,
+  'city-pop': 3, 'j-pop': 5, 'k-pop': 6, 'enka': 2, 'qawwali': 4,
+  'carnatic-hindustani': 2, 'fado': 2, 'flamenco': 4, 'klezmer': 5,
+  'cai-luong-gamelan': 2, 'throat-singing': 1,
 }
 
 export function vibeForGenre(id: string): number | null {

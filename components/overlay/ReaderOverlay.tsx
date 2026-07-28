@@ -16,6 +16,7 @@ import {
   isEditableTarget,
 } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
+import { OverlaySources } from './OverlaySources'
 import {
   Expand,
   FileImage,
@@ -368,6 +369,16 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
 
         {/* Archival rail — 4 cols on desktop, stacked above article on mobile */}
         <aside className="flex flex-col gap-4 md:col-span-4 md:sticky md:top-4 md:self-start">
+          {/* ESCUCHAR — media links attached to the piece. Sits first in the
+              rail: if an author bothered to attach audio/video, it's the most
+              actionable thing on the page. Renders nothing when there are no
+              embeds, so text-only pieces are unchanged. */}
+          {((item.embeds?.length ?? 0) > 0 || !!item.mixUrl) && (
+            <ArchivalBlock label="ESCUCHAR">
+              <OverlaySources item={item} accent={vibeColor} />
+            </ArchivalBlock>
+          )}
+
           {/* Flyer — image as evidence, not hero */}
           {item.imageUrl && (
             <ArchivalBlock label="ARCHIVO VISUAL">

@@ -367,6 +367,12 @@ export interface Genre {
 export interface Tag {
   id: string
   name: string
+  // Superseded tags kept resolvable for existing rows but hidden from
+  // pickers — same contract as `Genre.legacy`.
+  legacy?: boolean
+  // True for tags created by users from the foro composer rather than
+  // shipped in the static catalog.
+  custom?: boolean
 }
 
 // ── Scene entities (artists / labels / venues / promoters) ──────────────────
