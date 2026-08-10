@@ -53,13 +53,16 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname
   const isApi = path.startsWith('/api/')
   const isWelcome = path === '/welcome'
+  // /espera — public waitlist for the viral campaign. Anonymous by design
+  // (its whole audience has no account); joins write through /api/waitlist.
+  const isEspera = path === '/espera'
   // Dev-only: let /lab/* experimental routes (e.g. the tarjeta-3d reconciliation
   // spike) be viewed without auth. Guarded by NODE_ENV so production is unchanged.
   const isDevLab = process.env.NODE_ENV !== 'production' && path.startsWith('/lab')
 
   // Anonymous: redirect every page request to /welcome (API routes pass
   // through and self-401 in their handlers).
-  if (!user && !isApi && !isWelcome && !isDevLab) {
+  if (!user && !isApi && !isWelcome && !isEspera && !isDevLab) {
     const url = request.nextUrl.clone()
     url.pathname = '/welcome'
     url.search = ''
@@ -67,8 +70,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Authenticated: bounce off /welcome — once you're logged in there's no
-  // reason to be on the landing.
-  if (user && isWelcome) {
+  // reason to be on the landing. Same for /espera: members don't queue.
+  if (user && (isWelcome || isEspera)) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     url.search = ''

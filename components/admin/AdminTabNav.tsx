@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-export type AdminTab = 'invites' | 'users' | 'partners' | 'events'
+export type AdminTab = 'invites' | 'espera' | 'users' | 'partners' | 'events'
 
 const TABS: { id: AdminTab; label: string; color: string }[] = [
   { id: 'invites', label: 'INVITACIONES', color: '#F97316' },
+  { id: 'espera', label: 'ESPERA', color: '#F59E0B' },
   { id: 'users', label: 'USUARIOS', color: '#A78BFA' },
   { id: 'partners', label: 'PARTNERS', color: '#FB923C' },
   { id: 'events', label: 'EVENTOS', color: '#EF4444' },

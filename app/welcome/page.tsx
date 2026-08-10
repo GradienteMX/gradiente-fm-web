@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { Code2, UserSquare2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { peekInviteCard, type InviteCard } from '@/lib/invitations'
@@ -275,6 +276,17 @@ export default function WelcomePage() {
                   </button>
                 </form>
               )}
+
+              {/* No code? → the public waitlist (/espera). Deliberately
+                  quieter than the two access CTAs — the waitlist is the
+                  fallback path, not the headline. */}
+              <Link
+                href="/espera"
+                className="relative flex w-full max-w-3xl items-center justify-center gap-3 border border-sys-orange/30 px-6 py-3 font-mono text-[11px] tracking-widest text-sys-orange/80 transition-all hover:border-sys-orange hover:bg-sys-orange/10 hover:text-sys-orange"
+              >
+                <Brackets />
+                ¿SIN CÓDIGO? &gt;&gt; UNIRME A LA LISTA DE ESPERA &lt;&lt;
+              </Link>
 
               <p className="mt-2 font-mono text-[10px] tracking-widest text-muted">
                 <span className="text-sys-red">⚠ ADVERTENCIA</span>: Este sistema
