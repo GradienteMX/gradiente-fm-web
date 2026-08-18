@@ -174,6 +174,10 @@ export type ContentSource =
   | 'scraper:instagram'
   | 'manual:editor'
   | 'manual:partner'
+  // Archivo Vivo 2005-2013 — posts reconstructed from the Internet Archive
+  // (living-archive pilot in gradiente-ops). Drives the //ARCHIVO cell
+  // treatment on /mapa and the visible-credit contract from MANUAL.md.
+  | 'archive:wayback'
 
 export interface ContentItem {
   id: string

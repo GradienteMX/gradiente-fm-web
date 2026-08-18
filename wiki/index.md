@@ -140,6 +140,8 @@
 
 ## 70 — Roadmap
 
+- [[Spatial Identity Canvas]] — global honeycomb rework: affinity-organized content terrain, semantic zoom into partner/user focus clusters, HL-driven polyhex weight, contextual identity strips; **working prototype at `/mapa`** (2026-08-18, lib/mapa engine + MapaCanvas)
+- [[Mapa Placement Rules]] — the ten placement rules for the `/mapa` honeycomb: mindshare geography, identity bearings, affinity precedence, focus reflow contract
 - [[Mobile Readiness]] — mobile-first pass (branch `mobile/ux-pass` → `main` 2026-06-28): entry/auth unblock, responsive 2-col mosaic, partners swipe-in drawer, overlay drift fix + mobile comments sheet; deferred-polish list inside
 - [[Backend Plan]] — current consolidated plan: Supabase + Vercel + R2 + GH Actions cron, magic-link signup + username/password login, invite-code beta gate, image auto-compression, foro 30-day retention, MWF scraper, SYSTEM UPDATE countdown
 - [[Scraper Pipeline]] — RA → review queue → live feed (core ingestion path)

@@ -456,3 +456,62 @@ body {
   }
 }
 
+
+/* ── Spatial Identity Canvas (/mapa) — semantic zoom bands ──────────────────
+   The canvas root carries data-band="far|mid|near" (set imperatively from the
+   camera zoom in MapaCanvas). Cell text detail resolves with scale — imagery
+   and silhouette dominate at distance, metadata appears close-up. This is the
+   "semantic scale, not just CSS magnification" behavior from the Spatial
+   Identity Canvas spec, band-gated in CSS so pan/zoom never re-renders cells. */
+.mapa-cell-label,
+.mapa-cell-title,
+.mapa-cell-meta {
+  transition: opacity 0.25s ease;
+}
+.mapa-root[data-band='far'] .mapa-cell-label,
+.mapa-root[data-band='far'] .mapa-cell-meta {
+  opacity: 0;
+}
+.mapa-root[data-band='far'] [data-size='1'] .mapa-cell-title {
+  opacity: 0;
+}
+.mapa-root[data-band='mid'] [data-size='1'] .mapa-cell-meta {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mapa-cell-label,
+  .mapa-cell-title,
+  .mapa-cell-meta {
+    transition: none;
+  }
+}
+
+/* ── /mapa — focus dim + zoom-burst hints ───────────────────────────────────
+   .mapa-cell--dim / --emph: partner-focus terrain treatment — everything not
+   attributed to the focused identity recedes; attributed cells keep full
+   color (their rim boost is inline SVG props).
+   .mapa-zooming: transitions suspended while the scale is actively changing —
+   a band flip mid-zoom otherwise starts an opacity transition on every
+   visible label at once. */
+.mapa-cell--off {
+  opacity: 0;
+  pointer-events: none;
+}
+.mapa-cell--dim .mapa-cell-media {
+  filter: brightness(0.35) saturate(0.5);
+}
+.mapa-cell--dim .mapa-cell-text {
+  opacity: 0.25;
+}
+.mapa-cell--dim .mapa-cell-media,
+.mapa-cell--dim .mapa-cell-text {
+  transition:
+    filter 0.3s ease,
+    opacity 0.3s ease;
+}
+.mapa-zooming .mapa-cell-label,
+.mapa-zooming .mapa-cell-title,
+.mapa-zooming .mapa-cell-meta,
+.mapa-zooming .mapa-cell-media {
+  transition: none;
+}
