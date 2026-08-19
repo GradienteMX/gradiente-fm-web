@@ -9,6 +9,7 @@
 //   4. exterior-edge detection (rim geometry)
 
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { describe, it } from 'node:test'
 
 import type { ContentItem } from '@/lib/types'
@@ -380,6 +381,191 @@ describe('sizeTiers', () => {
     assert.ok(dominants <= 4, `dominants ${dominants} <= 4`)
     const plainEvent = items[items.length - 1]
     assert.notEqual(tiers.get(plainEvent.id), 7)
+  })
+})
+
+// ── synthetic HL injection ───────────────────────────────────────────────────
+// Beta-posture lever: real HP is nearly flat until the hp_events writer
+// ships, so /mapa injects deterministic id-hashed tier promotions. The
+// contract under test: default-off, pure function of ids, promotion-only,
+// rule-2 (plain eventos never rosette) and the dominant cap still hold, and
+// the archive era promotes at a damped rate so the rim stays quieter.
+
+function flatCorpus(): {
+  items: ContentItem[]
+  archiveIds: Set<string>
+  contempIds: Set<string>
+} {
+  seq = 700
+  const items: ContentItem[] = []
+  const archiveIds = new Set<string>()
+  const contempIds = new Set<string>()
+  // Fresh peak-setters pin each type's peak high so the mass below decays flat.
+  items.push(makeItem({ type: 'noticia', publishedAt: '2026-08-17T12:00:00Z' }))
+  items.push(
+    makeItem({
+      type: 'evento',
+      date: '2026-09-30T22:00:00Z',
+      publishedAt: '2026-08-17T12:00:00Z',
+    }),
+  )
+  items.push(makeItem({ type: 'articulo', publishedAt: '2026-08-17T12:00:00Z' }))
+  for (let i = 0; i < 150; i++) {
+    const it = makeItem({
+      type: 'noticia',
+      publishedAt: `2026-0${(i % 5) + 1}-05T12:00:00Z`,
+    })
+    contempIds.add(it.id)
+    items.push(it)
+  }
+  for (let i = 0; i < 60; i++) {
+    const it = makeItem({
+      type: 'evento',
+      date: '2026-09-30T22:00:00Z',
+      publishedAt: `2026-0${(i % 5) + 1}-05T12:00:00Z`,
+    })
+    contempIds.add(it.id)
+    items.push(it)
+  }
+  for (let i = 0; i < 100; i++) {
+    const it = makeItem({
+      type: 'articulo',
+      source: 'archive:wayback',
+      publishedAt: `20${String((i % 9) + 5).padStart(2, '0')}-06-05T12:00:00Z`,
+    })
+    archiveIds.add(it.id)
+    items.push(it)
+  }
+  return { items, archiveIds, contempIds }
+}
+
+describe('synthetic HL', () => {
+  it('is off by default and deterministic when on', () => {
+    const { items } = flatCorpus()
+    assert.deepEqual(
+      [...sizeTiers(items, NOW).entries()],
+      [...sizeTiers(items, NOW, { syntheticHl: false }).entries()],
+    )
+    assert.deepEqual(
+      [...sizeTiers(items, NOW, { syntheticHl: true }).entries()],
+      [...sizeTiers(items, NOW, { syntheticHl: true }).entries()],
+    )
+  })
+
+  it('only ever promotes — a real tier is never demoted', () => {
+    const { items } = flatCorpus()
+    const off = sizeTiers(items, NOW)
+    const on = sizeTiers(items, NOW, { syntheticHl: true })
+    for (const item of items) {
+      assert.ok(
+        on.get(item.id)! >= off.get(item.id)!,
+        `${item.id} demoted ${off.get(item.id)} → ${on.get(item.id)}`,
+      )
+    }
+  })
+
+  it('adds real size variation within the caps; plain eventos never rosette', () => {
+    const { items } = flatCorpus()
+    const off = sizeTiers(items, NOW)
+    const on = sizeTiers(items, NOW, { syntheticHl: true })
+    const count = (m: Map<string, number>, s: number) =>
+      [...m.values()].filter((v) => v === s).length
+    assert.ok(count(on, 7) > count(off, 7), 'more rosettes than real HL alone')
+    assert.ok(count(on, 7) <= 8, `rosettes ${count(on, 7)} within synthetic cap`)
+    assert.ok(count(on, 3) >= count(off, 3) + 20, 'substantial trihex variation')
+    for (const item of items) {
+      if (item.type === 'evento' && !item.editorial && !item.elevated) {
+        assert.notEqual(on.get(item.id), 7, `plain evento ${item.id} rosette`)
+      }
+    }
+  })
+
+  it('a real-earned dominant is never displaced by synthetic promotions', () => {
+    // Regression (review find, 2026-08-18): a stale-but-still-peak item
+    // (score exactly 1.0, low prominence) walked AFTER a wall of fresh flat
+    // rosette-eligible content must keep its real tier 7 — synthetic
+    // promotions may only spend the budget real dominants leave over.
+    const items: ContentItem[] = []
+    items.push({
+      id: 'peak-articulo', slug: 'pk-a', type: 'articulo', title: 'Peak',
+      vibeMin: 5, vibeMax: 5, genres: [], tags: [],
+      publishedAt: '2026-08-17T12:00:00Z', hp: 50,
+      hpLastUpdatedAt: '2026-08-17T12:00:00Z',
+    } as ContentItem)
+    for (let i = 0; i < 200; i++) {
+      items.push({
+        id: `flat-${String(i).padStart(3, '0')}`, slug: `f-${i}`,
+        type: 'articulo', title: `F${i}`,
+        vibeMin: 5, vibeMax: 5, genres: [], tags: [],
+        publishedAt: '2026-08-17T12:00:00Z', hp: 15,
+        hpLastUpdatedAt: '2026-08-17T12:00:00Z',
+      } as ContentItem)
+    }
+    // The only mix — its own type peak (score 1.0 regardless of decay) but
+    // 60 days stale, so its prominence sits BELOW the fresh flat wall.
+    items.push({
+      id: 'target-mix', slug: 't-mix', type: 'mix', title: 'Target',
+      vibeMin: 5, vibeMax: 5, genres: [], tags: [],
+      publishedAt: '2026-06-19T12:00:00Z',
+    } as ContentItem)
+
+    const off = sizeTiers(items, NOW)
+    assert.equal(off.get('target-mix'), 7, 'sanity: real dominant when off')
+    const on = sizeTiers(items, NOW, { syntheticHl: true })
+    assert.equal(on.get('target-mix'), 7, 'real dominant survives synthetic')
+  })
+
+  it('archive era promotes at a damped rate (rim stays quieter than center)', () => {
+    const { items, archiveIds, contempIds } = flatCorpus()
+    const on = sizeTiers(items, NOW, { syntheticHl: true })
+    const promotedShare = (ids: Set<string>) => {
+      let promoted = 0
+      for (const id of ids) if (on.get(id)! > 1) promoted++
+      return promoted / ids.size
+    }
+    assert.ok(promotedShare(archiveIds) < promotedShare(contempIds))
+  })
+
+  it('placeItems stays integral with synthetic tiers', () => {
+    const { items } = flatCorpus()
+    const layout = placeItems(items, NOW, { syntheticHl: true })
+    assert.equal(layout.placed.length, items.length)
+    const seen = new Set<string>()
+    for (const p of layout.placed) {
+      assert.equal(p.cells.length, p.size)
+      assert.ok(isConnected(p.cells))
+      for (const c of p.cells) {
+        const k = cellKey(c)
+        assert.ok(!seen.has(k), `cell ${k} owned twice`)
+        seen.add(k)
+      }
+    }
+    assert.ok(isConnected(layout.placed.flatMap((p) => p.cells)))
+  })
+})
+
+// ── layout fingerprint (drift guard) ─────────────────────────────────────────
+// Pins the ACTUAL geometry, not just self-consistency: any silent change to
+// the frontier walk, tie-breaks, scoring weights, or the synthetic-HL hash
+// changes these digests. An intentional tuning pass updates them knowingly —
+// that is the point. (The packed-grid rewrite was verified byte-identical to
+// the string-keyed engine before these were pinned.)
+
+function layoutDigest(synthetic: boolean): string {
+  const layout = placeItems(makeDataset(), NOW, { syntheticHl: synthetic })
+  const serial = layout.placed
+    .map(
+      (p) =>
+        `${p.item.id}:${p.size}:${p.cells.map((c) => cellKey(c)).join(';')}`,
+    )
+    .join('|')
+  return createHash('sha256').update(serial).digest('hex').slice(0, 16)
+}
+
+describe('layout fingerprint', () => {
+  it('global placement geometry is pinned (both synthetic modes)', () => {
+    assert.equal(layoutDigest(false), 'c3c9a54e73a4ea5e')
+    assert.equal(layoutDigest(true), '86b05a004c63c972')
   })
 })
 

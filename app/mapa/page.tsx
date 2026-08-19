@@ -43,6 +43,13 @@ const layoutCache = new Map<
 >()
 const LAYOUT_CACHE_MAX = 3
 
+// Synthetic HL injection (2026-08-18, Iker's call): real HP is nearly flat
+// until the deferred hp_events writer ships, so the terrain reads as a field
+// of single hexes. This turns on layout.ts's deterministic id-hashed tier
+// promotion — mixed 1/3/7 slab texture, same layout for every viewer. Flip to
+// false (or delete) once real HP signals flow.
+const SYNTHETIC_HL = true
+
 function datasetKey(items: readonly ContentItem[], nowMs: number): string {
   let h = 5381
   const mix = (s: string) => {
@@ -94,7 +101,7 @@ export default async function MapaPage({ searchParams }: PageProps) {
   const key = datasetKey(terrainItems, nowMs)
   let cached = layoutCache.get(key)
   if (!cached) {
-    const layout = placeItems(terrainItems, now)
+    const layout = placeItems(terrainItems, now, { syntheticHl: SYNTHETIC_HL })
     cached = { layout, clusters: partnerClusters(layout, partners) }
     layoutCache.set(key, cached)
     while (layoutCache.size > LAYOUT_CACHE_MAX) {

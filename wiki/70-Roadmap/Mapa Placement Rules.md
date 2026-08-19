@@ -30,7 +30,14 @@ updated: 2026-08-18
    finite vocabulary — 1 / 3 / 7 cells — with no interior seams. HL decides
    the area (curation `score`: ≥1.0 → 7, ≥0.5 → 3, else 1; dominant cap 4;
    plain events never dominant). Size and position stay the only prominence
-   signals.
+   signals. *Beta amendment (2026-08-18, Iker's call): until the deferred
+   hp_events writer feeds real signals, real scores are nearly flat and the
+   terrain reads as a field of single hexes — so `/mapa` opts into
+   **synthetic HL injection** (`sizeTiers` `{syntheticHl: true}`):
+   deterministic id-hashed promotions (≈5.5% toward rosettes, next ≈28% to
+   trihexes, archive era at half rate, dominant cap 8, promotion-only — a
+   real tier is never demoted, and plain events still never take a rosette).
+   Same layout for every viewer; remove the layer when real HP flows.*
 
 3. **Affinity chooses neighbors.** Adjacency is earned through shared
    structured metadata, weighted in this order: same partner ≫ shared
@@ -131,6 +138,15 @@ updated: 2026-08-18
   owning partner's bearing).
 - Tunables (`W_ANCHOR`, `ANCHOR_RADIUS`, affinity weights) are code constants
   pending an editorial tuning pass with real data.
+- **Synthetic HL retirement**: the rule-2 beta amendment must come out once
+  `apply_hp_rollup()` has real traffic — flip `SYNTHETIC_HL` in
+  [app/mapa/page.tsx](../../app/mapa/page.tsx) to false and re-judge the
+  terrain texture.
+- **Placement beyond ~5k items**: the packed-grid engine (2026-08-18) runs
+  the full 2,400-item archive corpus in ~1.1s (O(n^1.5) — frontier grows as
+  the perimeter). The next lever if the corpus outgrows that is a bounded
+  frontier window (score only the k nearest frontier cells), which changes
+  output and therefore needs its own placement-quality review.
 
 ## Links
 

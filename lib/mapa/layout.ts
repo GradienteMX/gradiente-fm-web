@@ -40,6 +40,42 @@ const ELEVATED_THRESHOLD = 0.5
 // field of rosettes. Excess dominants demote to elevated.
 const MAX_DOMINANT = 4
 
+// ── Synthetic HL (beta posture) ──────────────────────────────────────────────
+// The HP writer side is deferred (nothing inserts hp_events yet — see wiki
+// Next Session §C), so real scores are nearly flat: prod terrain reads
+// 366×1 / 11×3 / 4×7 — a field of single hexes. Until real signals flow,
+// /mapa opts into a deterministic synthetic variation layer: id-hashed tier
+// PROMOTIONS that give the terrain the mockups' mixed-slab texture.
+// Contract (tested):
+//   - pure function of item id → same layout for every viewer (rule 9)
+//   - never demotes a tier the real score earned (real HL keeps precedence)
+//   - plain (non-curated) eventos still never take a rosette (rule 2)
+//   - archive-era items promote at half rate (the rim stays quieter than the
+//     living center, so "center is now, rim is memory" survives the injection)
+// Remove this layer when apply_hp_rollup() has real traffic feeding it.
+const SYNTH_P7 = 0.055 // ≈5.5% of flat items promote toward a rosette
+const SYNTH_P3 = 0.28 // next ≈28% promote to a trihex
+const SYNTH_ARCHIVE_DAMP = 0.5 // archive-era promotion probability multiplier
+const MAX_DOMINANT_SYNTH = 8 // higher cap while sizes are synthetic
+
+// Uniform [0,1) from an item id — djb2 + avalanche, seeded differently from
+// identityBearing so cell size never correlates with map direction.
+function synthHash01(id: string): number {
+  let h = 0x9e3779b9
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) + h + id.charCodeAt(i)) | 0
+  }
+  h ^= h >>> 13
+  h = Math.imul(h, 0x5bd1e995)
+  h ^= h >>> 15
+  return (h >>> 0) / 4294967296
+}
+
+export interface SizeTierOptions {
+  /** Inject deterministic synthetic HL variation (see block comment above). */
+  syntheticHl?: boolean
+}
+
 // Placement scoring weights.
 const W_AFFINITY = 1.0 // per adjacent edge, item-pair affinity
 const W_TYPE_RUN = 1.25 // penalty per adjacent edge whose owner shares type
@@ -127,6 +163,7 @@ export interface MapaLayout {
 export function sizeTiers(
   items: readonly ContentItem[],
   now: Date,
+  opts: SizeTierOptions = {},
 ): Map<string, PolyhexSize> {
   const peaks = computePeakByType([...items], now)
   const scored = items
@@ -137,15 +174,20 @@ export function sizeTiers(
     }))
     .sort((a, b) => (b.p !== a.p ? b.p - a.p : a.item.id < b.item.id ? -1 : 1))
 
+  const maxDominant = opts.syntheticHl ? MAX_DOMINANT_SYNTH : MAX_DOMINANT
   const out = new Map<string, PolyhexSize>()
   let dominants = 0
+
+  // Pass 1 — REAL tiers only, in prominence order (identical to the
+  // synthetic-off assignment apart from the higher cap). Real dominants
+  // claim their cap slots first: a synthetic promotion must never consume a
+  // slot a real-earned dominant needs — a stale-but-still-peak item (score
+  // 1.0, low prominence) walked AFTER fresh flat content would otherwise be
+  // demoted by the flat items' synthetic rosettes (review find, 2026-08-18).
   for (const { item, s } of scored) {
     const curated = item.editorial || item.elevated
-    if (
-      s >= DOMINANT_THRESHOLD &&
-      dominants < MAX_DOMINANT &&
-      (item.type !== 'evento' || curated)
-    ) {
+    const rosetteEligible = item.type !== 'evento' || curated
+    if (s >= DOMINANT_THRESHOLD && dominants < maxDominant && rosetteEligible) {
       out.set(item.id, 7)
       dominants++
     } else if (s >= ELEVATED_THRESHOLD) {
@@ -154,151 +196,239 @@ export function sizeTiers(
       out.set(item.id, 1)
     }
   }
+
+  // Pass 2 — synthetic promotions, only ever upward from a flat tier,
+  // spending whatever dominant budget pass 1 left, walked in the same
+  // prominence order so which candidates win a capped rosette slot stays
+  // deterministic.
+  if (opts.syntheticHl) {
+    for (const { item } of scored) {
+      if (out.get(item.id) !== 1) continue
+      const damp = item.source === 'archive:wayback' ? SYNTH_ARCHIVE_DAMP : 1
+      const t = synthHash01(item.id)
+      if (t < SYNTH_P7 * damp) {
+        const rosetteEligible =
+          item.type !== 'evento' || item.editorial || item.elevated
+        if (rosetteEligible && dominants < maxDominant) {
+          out.set(item.id, 7)
+          dominants++
+        } else {
+          out.set(item.id, 3)
+        }
+      } else if (t < (SYNTH_P7 + SYNTH_P3) * damp) {
+        out.set(item.id, 3)
+      }
+    }
+  }
   return out
 }
 
 // ── Placement ────────────────────────────────────────────────────────────────
+//
+// Packed-grid internals (2026-08-18 perf pass). The greedy walk burns nearly
+// all of its time in cell-key handling: profiled at archive scale (2,400
+// items) the candidate loop was 95% of a 4.7s run, dominated by ~27.6M string
+// `cellKey` builds, Map/Set hash probes on those strings, and a string-keyed
+// affinity memo whose lookup overhead cost ~3× the affinity computation it
+// saved. Cells are therefore packed into integers on every hot path:
+//
+//   pack(q, r) = (q + 2048) · 4096 + (r + 2048)
+//
+// The packing is additive against raw deltas — pack(a) + delta(b) =
+// pack(a + b) for delta(q, r) = q · 4096 + r — so template offsets and hex
+// directions become plain integer adds. Numeric ascending order of packed
+// keys equals the old (q, r) lexicographic frontier sort, so the walk order —
+// and every float-accumulation order behind it — is unchanged: same dataset
+// in, byte-identical layout out (golden-verified against the string-keyed
+// implementation in both synthetic-HL modes).
 
-interface Candidate {
-  anchor: Axial
-  variantIdx: number
-  cells: Axial[]
-  score: number
-  dist: number
+const PACK_O = 2048
+const PACK_M = 4096
+const packCell = (q: number, r: number): number =>
+  (q + PACK_O) * PACK_M + (r + PACK_O)
+const packDelta = (q: number, r: number): number => q * PACK_M + r
+const unpackQ = (k: number): number => Math.floor(k / PACK_M) - PACK_O
+const unpackR = (k: number): number => (k % PACK_M) - PACK_O
+const PACKED_DIRS = HEX_DIRS.map((d) => packDelta(d.q, d.r))
+
+interface PackedVariant {
+  offsets: readonly Axial[]
+  deltas: number[]
 }
 
-// Deterministic total order for candidate tie-breaks.
-function candidateBefore(a: Candidate, b: Candidate): boolean {
-  if (a.score !== b.score) return a.score > b.score
-  if (a.dist !== b.dist) return a.dist < b.dist
-  if (a.anchor.q !== b.anchor.q) return a.anchor.q < b.anchor.q
-  if (a.anchor.r !== b.anchor.r) return a.anchor.r < b.anchor.r
-  return a.variantIdx < b.variantIdx
+function packVariants(size: PolyhexSize): PackedVariant[] {
+  return templateVariants(size).map((v) => ({
+    offsets: v,
+    deltas: v.map((o) => packDelta(o.q, o.r)),
+  }))
 }
 
-export function placeItems(items: readonly ContentItem[], now: Date): MapaLayout {
-  const tiers = sizeTiers(items, now)
+export function placeItems(
+  items: readonly ContentItem[],
+  now: Date,
+  opts: SizeTierOptions = {},
+): MapaLayout {
+  const tiers = sizeTiers(items, now, opts)
   const peaks = computePeakByType([...items], now)
 
   // Placement order: prominence desc (big/alive first — they need room and
   // seed the neighborhood), stable id tie-break. Input order must not matter.
-  const ordered = [...items].sort((a, b) => {
-    const pa = prominence(a, peaks, now)
-    const pb = prominence(b, peaks, now)
-    if (pa !== pb) return pb - pa
-    return a.id < b.id ? -1 : 1
-  })
+  // Decorated sort — prominence parses dates, so the comparator must not
+  // recompute it O(n log n) times.
+  const ordered = [...items]
+    .map((item) => ({ item, p: prominence(item, peaks, now) }))
+    .sort((a, b) =>
+      a.p !== b.p ? b.p - a.p : a.item.id < b.item.id ? -1 : 1,
+    )
+    .map((d) => d.item)
 
-  const features = new Map<string, AffinityFeatures>()
-  for (const item of ordered) features.set(item.id, extractFeatures(item))
-  const itemsById = new Map(ordered.map((i) => [i.id, i]))
-
-  // Pairwise affinity memo (order-independent key).
-  const affMemo = new Map<string, number>()
-  const affinity = (aId: string, bId: string): number => {
-    const key = aId < bId ? `${aId}|${bId}` : `${bId}|${aId}`
-    const hit = affMemo.get(key)
-    if (hit !== undefined) return hit
-    const v = affinityScore(features.get(aId)!, features.get(bId)!)
-    affMemo.set(key, v)
-    return v
+  const n = ordered.length
+  const features: AffinityFeatures[] = new Array(n)
+  const types: (ContentItem['type'])[] = new Array(n)
+  const anchors: ({ x: number; y: number } | null)[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    const item = ordered[i]
+    features[i] = extractFeatures(item)
+    types[i] = item.type
+    anchors[i] = item.partnerId ? identityAnchorPx(item.partnerId) : null
   }
 
-  const cellOwner = new Map<string, string>()
-  // Frontier: empty cells adjacent to at least one occupied cell. Kept sorted
-  // lazily — we iterate it fully per item anyway.
-  const frontier = new Map<string, Axial>()
+  // Per-item affinity cache against already-placed neighbors, generation-
+  // stamped so it resets for free between items. Values are identical to the
+  // old global memo's — memoization never changed them.
+  const affVal = new Float64Array(n)
+  const affGen = new Int32Array(n)
 
-  const occupy = (cells: readonly Axial[], id: string) => {
-    for (const c of cells) {
-      const k = cellKey(c)
-      cellOwner.set(k, id)
+  const variantsBySize = new Map<PolyhexSize, PackedVariant[]>([
+    [1, packVariants(1)],
+    [3, packVariants(3)],
+    [7, packVariants(7)],
+  ])
+
+  const cellOwner = new Map<number, number>() // packed cell → item index
+  // Frontier: empty cells adjacent to at least one occupied cell.
+  const frontier = new Set<number>()
+
+  const occupy = (packedCells: readonly number[], idx: number) => {
+    for (const k of packedCells) {
+      cellOwner.set(k, idx)
       frontier.delete(k)
     }
-    for (const c of cells) {
-      for (const d of HEX_DIRS) {
-        const n = axialAdd(c, d)
-        const k = cellKey(n)
-        if (!cellOwner.has(k) && !frontier.has(k)) frontier.set(k, n)
+    for (const k of packedCells) {
+      for (const d of PACKED_DIRS) {
+        const nk = k + d
+        if (!cellOwner.has(nk) && !frontier.has(nk)) frontier.add(nk)
       }
     }
   }
 
   const placed: PlacedItem[] = []
+  const scratchAnchor: Axial = { q: 0, r: 0 }
+  const candCells: number[] = []
 
-  for (const item of ordered) {
+  for (let i = 0; i < n; i++) {
+    const item = ordered[i]
     const size = tiers.get(item.id)!
-    const variants = templateVariants(size)
+    const variants = variantsBySize.get(size)!
+    const gen = i + 1
+    const aPx = anchors[i]
+    const myType = types[i]
 
-    let best: Candidate | null = null
+    let bestScore = 0
+    let bestDist = 0
+    let bestAq = 0
+    let bestAr = 0
+    let bestVi = 0
+    let bestCells: number[] | null = null
 
     if (cellOwner.size === 0) {
-      best = {
-        anchor: { q: 0, r: 0 },
-        variantIdx: 0,
-        cells: offsetTemplate(variants[0], { q: 0, r: 0 }),
-        score: 0,
-        dist: 0,
-      }
+      const origin = packCell(0, 0)
+      bestCells = variants[0].deltas.map((d) => origin + d)
     } else {
-      // Frontier cells in deterministic order (insertion order of a Map is
-      // already deterministic given deterministic inserts, but sort anyway so
-      // the walk order is independent of bookkeeping details).
-      const frontierCells = [...frontier.values()].sort((a, b) =>
-        a.q !== b.q ? a.q - b.q : a.r - b.r,
-      )
+      // Frontier cells in deterministic (q, r)-ascending order — numeric
+      // order of packed keys is exactly that.
+      const frontierKeys = [...frontier].sort((a, b) => a - b)
       // Candidate anchors: every anchor whose template COVERS a frontier cell
       // (anchor = frontier − offset, per offset). Anchoring only ON frontier
       // cells would make rosettes unplaceable — a rosette centered next to
       // the terrain always overlaps it.
-      const tried = new Set<string>()
-      for (const f of frontierCells) {
+      const tried = new Set<number>()
+      for (const f of frontierKeys) {
         for (let vi = 0; vi < variants.length; vi++) {
-          for (const offset of variants[vi]) {
-            const anchor = { q: f.q - offset.q, r: f.r - offset.r }
-            const seenKey = `${anchor.q},${anchor.r}#${vi}`
+          const deltas = variants[vi].deltas
+          for (const off of deltas) {
+            const anchorKey = f - off
+            const seenKey = anchorKey * 8 + vi
             if (tried.has(seenKey)) continue
             tried.add(seenKey)
-            const cells = offsetTemplate(variants[vi], anchor)
+
             let valid = true
-            for (const c of cells) {
-              if (cellOwner.has(cellKey(c))) {
+            candCells.length = 0
+            for (const d of deltas) {
+              const ck = anchorKey + d
+              if (cellOwner.has(ck)) {
                 valid = false
                 break
               }
+              candCells.push(ck)
             }
             if (!valid) continue
 
             // Score: walk every exterior contact edge of the candidate.
-            const cellSet = new Set(cells.map(cellKey))
+            // candCells is small (≤7) — linear membership beats a Set here.
             let s = 0
             let contact = 0
-            for (const c of cells) {
-              for (const d of HEX_DIRS) {
-                const n = axialAdd(c, d)
-                const nk = cellKey(n)
-                if (cellSet.has(nk)) continue
-                const ownerId = cellOwner.get(nk)
-                if (!ownerId) continue
+            for (const ck of candCells) {
+              for (const pd of PACKED_DIRS) {
+                const nk = ck + pd
+                if (candCells.includes(nk)) continue
+                const ownerIdx = cellOwner.get(nk)
+                if (ownerIdx === undefined) continue
                 contact++
-                s += W_AFFINITY * affinity(item.id, ownerId)
-                if (itemsById.get(ownerId)!.type === item.type) s -= W_TYPE_RUN
+                if (affGen[ownerIdx] !== gen) {
+                  affGen[ownerIdx] = gen
+                  affVal[ownerIdx] = affinityScore(
+                    features[i],
+                    features[ownerIdx],
+                  )
+                }
+                s += W_AFFINITY * affVal[ownerIdx]
+                if (types[ownerIdx] === myType) s -= W_TYPE_RUN
               }
             }
             if (contact === 0) continue // must attach to the terrain
             s += W_CONTACT * contact
-            const px = hexToPixel(anchor, HEX_R)
+            const aq = unpackQ(anchorKey)
+            const ar = unpackR(anchorKey)
+            scratchAnchor.q = aq
+            scratchAnchor.r = ar
+            const px = hexToPixel(scratchAnchor, HEX_R)
             const dist = Math.hypot(px.x, px.y)
             s -= W_RADIAL * (dist / HEX_R)
             // Identity gravity: attributed items drift toward their
             // identity's fixed bearing — the mindshare-section mechanism.
-            if (item.partnerId) {
-              const ap = identityAnchorPx(item.partnerId)
-              s -= W_ANCHOR * (Math.hypot(px.x - ap.x, px.y - ap.y) / HEX_R)
+            if (aPx) {
+              s -= W_ANCHOR * (Math.hypot(px.x - aPx.x, px.y - aPx.y) / HEX_R)
             }
 
-            const cand: Candidate = { anchor, variantIdx: vi, cells, score: s, dist }
-            if (!best || candidateBefore(cand, best)) best = cand
+            // Deterministic total order: score desc, dist asc, q, r, variant.
+            if (
+              bestCells === null ||
+              s > bestScore ||
+              (s === bestScore &&
+                (dist < bestDist ||
+                  (dist === bestDist &&
+                    (aq < bestAq ||
+                      (aq === bestAq &&
+                        (ar < bestAr || (ar === bestAr && vi < bestVi)))))))
+            ) {
+              bestScore = s
+              bestDist = dist
+              bestAq = aq
+              bestAr = ar
+              bestVi = vi
+              bestCells = candCells.slice()
+            }
           }
         }
       }
@@ -307,37 +437,46 @@ export function placeItems(items: readonly ContentItem[], now: Date): MapaLayout
     // A valid candidate always exists (any template covering a frontier cell
     // from the open side fits) — but guard anyway: detach eastward of the
     // terrain, keeping the template's full size so cells.length === size.
-    if (!best) {
+    if (bestCells === null) {
       let maxQ = 0
       for (const k of cellOwner.keys()) {
-        const q = Number(k.split(',')[0])
+        const q = unpackQ(k)
         if (q > maxQ) maxQ = q
       }
-      const anchor = { q: maxQ + 3, r: 0 }
-      best = {
-        anchor,
-        variantIdx: 0,
-        cells: offsetTemplate(variants[0], anchor),
-        score: 0,
-        dist: 0,
-      }
+      bestAq = maxQ + 3
+      bestAr = 0
+      bestVi = 0
+      const base = packCell(bestAq, bestAr)
+      bestCells = variants[0].deltas.map((d) => base + d)
     }
 
-    occupy(best.cells, item.id)
-    const bbox = cellsBBox(best.cells, HEX_R)
+    const cells = offsetTemplate(variants[bestVi].offsets, {
+      q: bestAq,
+      r: bestAr,
+    })
+    occupy(bestCells, i)
+    const bbox = cellsBBox(cells, HEX_R)
     placed.push({
       item,
       size,
-      cells: best.cells,
+      cells,
       bbox,
-      outline: outlinePath(best.cells, HEX_R, { x: bbox.x, y: bbox.y }, HEX_GAP),
+      outline: outlinePath(cells, HEX_R, { x: bbox.x, y: bbox.y }, HEX_GAP),
     })
+  }
+
+  // String cell index for the output shape (overlays, keyboard nav) — built
+  // once at the end, in placement order, same entries the old inline build
+  // produced.
+  const cellOwnerOut: Record<string, string> = {}
+  for (const p of placed) {
+    for (const c of p.cells) cellOwnerOut[cellKey(c)] = p.item.id
   }
 
   const allCells = placed.flatMap((p) => p.cells)
   return {
     placed,
-    cellOwner: Object.fromEntries(cellOwner),
+    cellOwner: cellOwnerOut,
     bounds: allCells.length
       ? cellsBBox(allCells, HEX_R)
       : { x: 0, y: 0, width: 0, height: 0 },
@@ -444,124 +583,138 @@ export function compactLayout(
   const visible = layout.placed.filter((p) => !hiddenItemIds.has(p.item.id))
   if (visible.length === 0) return null
 
-  const features = new Map(
-    visible.map((p) => [p.item.id, extractFeatures(p.item)]),
-  )
-  const itemsById = new Map(visible.map((p) => [p.item.id, p.item]))
-  const affMemo = new Map<string, number>()
-  const affinity = (aId: string, bId: string): number => {
-    const key = aId < bId ? `${aId}|${bId}` : `${bId}|${aId}`
-    const hit = affMemo.get(key)
-    if (hit !== undefined) return hit
-    const v = affinityScore(features.get(aId)!, features.get(bId)!)
-    affMemo.set(key, v)
-    return v
+  // Same packed-grid machinery as placeItems — this walk runs in the BROWSER
+  // on every filter toggle, so the string-key overhead matters even more.
+  const n = visible.length
+  const features: AffinityFeatures[] = new Array(n)
+  const types: (ContentItem['type'])[] = new Array(n)
+  const anchors: ({ x: number; y: number } | null)[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    const p = visible[i]
+    features[i] = extractFeatures(p.item)
+    types[i] = p.item.type
+    anchors[i] = p.item.partnerId ? identityAnchorPx(p.item.partnerId) : null
   }
+  const affVal = new Float64Array(n)
+  const affGen = new Int32Array(n)
 
-  const cellOwner = new Map<string, string>()
-  const frontier = new Map<string, Axial>()
-  const occupy = (cells: readonly Axial[], id: string) => {
-    for (const c of cells) {
-      const k = cellKey(c)
-      cellOwner.set(k, id)
+  const cellOwner = new Map<number, number>()
+  const frontier = new Set<number>()
+  const occupy = (packedCells: readonly number[], idx: number) => {
+    for (const k of packedCells) {
+      cellOwner.set(k, idx)
       frontier.delete(k)
     }
-    for (const c of cells) {
-      for (const d of HEX_DIRS) {
-        const n = axialAdd(c, d)
-        const k = cellKey(n)
-        if (!cellOwner.has(k) && !frontier.has(k)) frontier.set(k, n)
+    for (const k of packedCells) {
+      for (const d of PACKED_DIRS) {
+        const nk = k + d
+        if (!cellOwner.has(nk) && !frontier.has(nk)) frontier.add(nk)
       }
     }
   }
 
   const newCellsById = new Map<string, Axial[]>()
+  const scratchAnchor: Axial = { q: 0, r: 0 }
+  const candCells: number[] = []
 
   // Original array order IS the placement order (prominence-sorted).
-  for (const p of visible) {
+  for (let i = 0; i < n; i++) {
+    const p = visible[i]
     const base = p.cells[0]
     const shape = p.cells.map((c) => ({ q: c.q - base.q, r: c.r - base.r }))
+    const deltas = shape.map((o) => packDelta(o.q, o.r))
+    const gen = i + 1
+    const aPx = anchors[i]
+    const myType = types[i]
 
     if (cellOwner.size === 0) {
       // Seed stays exactly where the global layout put it — the compacted
       // terrain remains anchored to the same place on the plane.
       const cells = p.cells.map((c) => ({ q: c.q, r: c.r }))
       newCellsById.set(p.item.id, cells)
-      occupy(cells, p.item.id)
+      occupy(cells.map((c) => packCell(c.q, c.r)), i)
       continue
     }
 
-    const frontierCells = [...frontier.values()].sort((a, b) =>
-      a.q !== b.q ? a.q - b.q : a.r - b.r,
-    )
-    let best: {
-      cells: Axial[]
-      score: number
-      dist: number
-      anchor: Axial
-    } | null = null
-    const tried = new Set<string>()
-    for (const f of frontierCells) {
-      for (const offset of shape) {
-        const anchor = { q: f.q - offset.q, r: f.r - offset.r }
-        const tk = `${anchor.q},${anchor.r}`
-        if (tried.has(tk)) continue
-        tried.add(tk)
-        const cells = shape.map((o) => axialAdd(anchor, o))
+    const frontierKeys = [...frontier].sort((a, b) => a - b)
+    let bestScore = 0
+    let bestDist = 0
+    let bestAq = 0
+    let bestAr = 0
+    let bestCells: number[] | null = null
+    const tried = new Set<number>()
+    for (const f of frontierKeys) {
+      for (const off of deltas) {
+        const anchorKey = f - off
+        if (tried.has(anchorKey)) continue
+        tried.add(anchorKey)
+
         let valid = true
-        for (const c of cells) {
-          if (cellOwner.has(cellKey(c))) {
+        candCells.length = 0
+        for (const d of deltas) {
+          const ck = anchorKey + d
+          if (cellOwner.has(ck)) {
             valid = false
             break
           }
+          candCells.push(ck)
         }
         if (!valid) continue
 
-        const cellSet = new Set(cells.map(cellKey))
         let s = 0
         let contact = 0
-        for (const c of cells) {
-          for (const d of HEX_DIRS) {
-            const n = axialAdd(c, d)
-            const nk = cellKey(n)
-            if (cellSet.has(nk)) continue
-            const ownerId = cellOwner.get(nk)
-            if (!ownerId) continue
+        for (const ck of candCells) {
+          for (const pd of PACKED_DIRS) {
+            const nk = ck + pd
+            if (candCells.includes(nk)) continue
+            const ownerIdx = cellOwner.get(nk)
+            if (ownerIdx === undefined) continue
             contact++
-            s += W_AFFINITY * affinity(p.item.id, ownerId)
-            if (itemsById.get(ownerId)!.type === p.item.type) s -= W_TYPE_RUN
+            if (affGen[ownerIdx] !== gen) {
+              affGen[ownerIdx] = gen
+              affVal[ownerIdx] = affinityScore(features[i], features[ownerIdx])
+            }
+            s += W_AFFINITY * affVal[ownerIdx]
+            if (types[ownerIdx] === myType) s -= W_TYPE_RUN
           }
         }
         if (contact === 0) continue
         s += W_CONTACT_COMPACT * contact
-        const px = hexToPixel(anchor, HEX_R)
+        const aq = unpackQ(anchorKey)
+        const ar = unpackR(anchorKey)
+        scratchAnchor.q = aq
+        scratchAnchor.r = ar
+        const px = hexToPixel(scratchAnchor, HEX_R)
         const dist = Math.hypot(px.x, px.y)
         s -= W_RADIAL_COMPACT * (dist / HEX_R)
-        if (p.item.partnerId) {
-          const ap = identityAnchorPx(p.item.partnerId)
-          s -= W_ANCHOR_COMPACT * (Math.hypot(px.x - ap.x, px.y - ap.y) / HEX_R)
+        if (aPx) {
+          s -= W_ANCHOR_COMPACT * (Math.hypot(px.x - aPx.x, px.y - aPx.y) / HEX_R)
         }
 
-        const cand = { cells, score: s, dist, anchor }
         if (
-          !best ||
-          cand.score > best.score ||
-          (cand.score === best.score &&
-            (cand.dist < best.dist ||
-              (cand.dist === best.dist &&
-                (cand.anchor.q < best.anchor.q ||
-                  (cand.anchor.q === best.anchor.q &&
-                    cand.anchor.r < best.anchor.r)))))
+          bestCells === null ||
+          s > bestScore ||
+          (s === bestScore &&
+            (dist < bestDist ||
+              (dist === bestDist &&
+                (aq < bestAq || (aq === bestAq && ar < bestAr)))))
         ) {
-          best = cand
+          bestScore = s
+          bestDist = dist
+          bestAq = aq
+          bestAr = ar
+          bestCells = candCells.slice()
         }
       }
     }
-    const cells = best
-      ? best.cells
+    const cells = bestCells
+      ? shape.map((o) => ({ q: bestAq + o.q, r: bestAr + o.r }))
       : p.cells.map((c) => ({ q: c.q, r: c.r })) // deterministic fallback
     newCellsById.set(p.item.id, cells)
-    occupy(cells, p.item.id)
+    occupy(
+      bestCells ?? cells.map((c) => packCell(c.q, c.r)),
+      i,
+    )
   }
 
   const deltas: Record<string, { dx: number; dy: number }> = {}

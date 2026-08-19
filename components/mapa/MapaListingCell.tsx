@@ -10,6 +10,7 @@
 import { memo, type KeyboardEvent } from 'react'
 import type { MarketplaceListing, MarketplaceListingStatus } from '@/lib/types'
 import type { ListingPlacement } from '@/lib/mapa/focus'
+import { SmartImage } from '@/components/SmartImage'
 
 export const MARKETPLACE_RIM = '#D6B37A' // warm sand (spec § Rim color system)
 
@@ -44,6 +45,7 @@ export const MapaListingCell = memo(function MapaListingCell({
     <div
       role="button"
       tabIndex={0}
+      data-mapa-node=""
       aria-label={`MERCADO: ${listing.title}. ${meta}`}
       onClick={() => onOpen(listing)}
       onKeyDown={handleKeyDown}
@@ -55,15 +57,15 @@ export const MapaListingCell = memo(function MapaListingCell({
         style={{ clipPath: `path('${outline}')` }}
       >
         {listing.images[0] ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={listing.images[0]}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          <div className="absolute inset-0">
+            <SmartImage
+              src={listing.images[0]}
+              alt=""
+              sizes="240px"
+              draggable={false}
+              className="object-cover"
+            />
+          </div>
         ) : (
           <div className="absolute inset-0 bg-surface" />
         )}

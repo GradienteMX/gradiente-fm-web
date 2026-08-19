@@ -1,4 +1,7 @@
+'use client'
+
 import Image from 'next/image'
+import { useState } from 'react'
 
 // ── SmartImage — fill image that optimizes what it safely can ──────────────────
 //
@@ -30,6 +33,8 @@ const OPTIMIZABLE_HOSTS = [
   'substackcdn.com',
   'is1-ssl.mzstatic.com',
   'i.discogs.com',
+  'web.archive.org', // Archivo Vivo Wayback snapshots (/mapa archive band)
+  'i.ytimg.com',
 ]
 
 function isOptimizable(src: string): boolean {
@@ -55,10 +60,32 @@ interface SmartImageProps {
   sizes?: string
   /** Eager-load above-the-fold images (e.g. the hero). */
   priority?: boolean
+  /** Set false on pannable surfaces (/mapa) so image ghost-drag never starts. */
+  draggable?: boolean
 }
 
-export function SmartImage({ src, alt, className, sizes, priority }: SmartImageProps) {
-  if (isOptimizable(src)) {
+// Optimizer failures remembered for the page session (module scope): on
+// virtualized surfaces (/mapa) cells unmount and remount as the viewport
+// moves — per-mount state alone would re-blank an already-fallback'd cell on
+// every pan-back and re-hit the rate-limited origin each time. A fresh page
+// load starts clean and retries the optimizer.
+const failedSrcs = new Set<string>()
+
+export function SmartImage({
+  src,
+  alt,
+  className,
+  sizes,
+  priority,
+  draggable,
+}: SmartImageProps) {
+  // Optimizer resilience: when the optimizer 500s on an upstream fetch (the
+  // Wayback origin rate-limits server-side bursts; any CDN can hiccup), fall
+  // back to the raw URL — the browser fetches it directly from the client's
+  // own IP, which is exactly the path that worked before optimization.
+  const [, forceRender] = useState(0)
+
+  if (isOptimizable(src) && !failedSrcs.has(src)) {
     return (
       <Image
         src={src}
@@ -66,7 +93,12 @@ export function SmartImage({ src, alt, className, sizes, priority }: SmartImageP
         fill
         sizes={sizes ?? '100vw'}
         priority={priority}
+        draggable={draggable}
         className={className}
+        onError={() => {
+          failedSrcs.add(src)
+          forceRender((n) => n + 1)
+        }}
       />
     )
   }
@@ -77,6 +109,7 @@ export function SmartImage({ src, alt, className, sizes, priority }: SmartImageP
       src={src}
       alt={alt}
       loading={priority ? undefined : 'lazy'}
+      draggable={draggable}
       className={`absolute inset-0 h-full w-full ${className ?? ''}`}
     />
   )

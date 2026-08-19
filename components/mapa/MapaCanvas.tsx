@@ -298,6 +298,24 @@ export function MapaCanvas({
     recordItems([...layout.placed.map((p) => p.item), ...partners])
   }, [layout, partners])
 
+  // Boot ripple delays — center-out, plane-space distance to terrain center,
+  // ms-quantized so cell memo props stay stable primitives.
+  const enterDelays = useMemo(() => {
+    const b = layout.bounds
+    const cx = b.x + b.width / 2
+    const cy = b.y + b.height / 2
+    const maxR = Math.max(1, Math.hypot(b.width, b.height) / 2)
+    const out = new Map<string, number>()
+    for (const p of layout.placed) {
+      const d = Math.hypot(
+        p.bbox.x + p.bbox.width / 2 - cx,
+        p.bbox.y + p.bbox.height / 2 - cy,
+      )
+      out.set(p.item.id, Math.round((d / maxR) * 550) / 1000)
+    }
+    return out
+  }, [layout])
+
   // ── Camera core ────────────────────────────────────────────────────────────
 
   const clampCamera = useCallback(
@@ -529,13 +547,30 @@ export function MapaCanvas({
     applyCamera()
     setViewCam({ ...cameraRef.current })
     setReady(true)
+    // Boot entrance — while .mapa-booting is on the root, cells run their
+    // center-out ripple (CSS, one-time; later virtualization mounts never
+    // animate because the class is gone). Imperative classList like
+    // .mapa-zooming/.mapa-dragging — the root's React className is a
+    // constant string, so React never rewrites the attribute and imperative
+    // classes can't be wiped mid-gesture. Window: max stagger (0.55s) +
+    // animation (0.5s) + margin.
+    let bootTimer: ReturnType<typeof setTimeout> | null = null
+    if (!reducedMotionRef.current) {
+      container.classList.add('mapa-booting')
+      bootTimer = setTimeout(() => {
+        container.classList.remove('mapa-booting')
+      }, 1200)
+    }
 
     const ro = new ResizeObserver(() => {
       measure()
       applyCamera()
     })
     ro.observe(container)
-    return () => ro.disconnect()
+    return () => {
+      ro.disconnect()
+      if (bootTimer !== null) clearTimeout(bootTimer)
+    }
     // Boot only — subsequent camera moves go through the callbacks above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -548,6 +583,9 @@ export function MapaCanvas({
     const onWheel = (e: WheelEvent) => {
       if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
       e.preventDefault()
+      // First interaction ends the boot ripple — cells mounted by the
+      // ensuing pan must not enter delayed/invisible.
+      container.classList.remove('mapa-booting')
       stopMotion()
       const cam = cameraRef.current
       if (e.ctrlKey || e.metaKey) {
@@ -582,6 +620,8 @@ export function MapaCanvas({
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
       setPartnersOpen(false) // terrain interaction dismisses the selector
+      // First interaction ends the boot ripple (see onWheel).
+      containerRef.current?.classList.remove('mapa-booting')
       stopMotion()
       suppressClickRef.current = false
       pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
@@ -646,6 +686,9 @@ export function MapaCanvas({
         // would retarget the ensuing `click` to the container and kill cell
         // opens (click dispatches to the capture target, not the cell).
         containerRef.current?.setPointerCapture(e.pointerId)
+        // Grabbing cursor + cell hover suspension while the terrain pans —
+        // class toggle, not state: pointermove must stay off the render path.
+        containerRef.current?.classList.add('mapa-dragging')
       }
       drag.moved = true
       suppressClickRef.current = true
@@ -665,6 +708,9 @@ export function MapaCanvas({
     (e: ReactPointerEvent<HTMLDivElement>) => {
       pointersRef.current.delete(e.pointerId)
       if (pointersRef.current.size < 2) pinchRef.current = null
+      if (pointersRef.current.size === 0) {
+        containerRef.current?.classList.remove('mapa-dragging')
+      }
       const drag = dragRef.current
       dragRef.current = null
       if (!drag || !drag.moved || reducedMotionRef.current) return
@@ -704,6 +750,35 @@ export function MapaCanvas({
       const z = Math.min(Math.max(base * factor, ZMIN), ZMAX)
       zoomStepTarget.current = z
       animateTo({ cx: cam.cx, cy: cam.cy, z }, reducedMotionRef.current ? 0 : 220)
+    },
+    [animateTo],
+  )
+
+  // Double-click: zoom TOWARD the pointer (the clicked spot holds its screen
+  // position), not the viewport center — same anchor math as ctrl-wheel.
+  const zoomAtPoint = useCallback(
+    (clientX: number, clientY: number, factor: number) => {
+      const container = containerRef.current
+      if (!container) return
+      const cam = cameraRef.current
+      const rect = container.getBoundingClientRect()
+      const sx = clientX - rect.left
+      const sy = clientY - rect.top
+      const { w, h } = viewportRef.current
+      const planeX = cam.cx + (sx - w / 2) / cam.z
+      const planeY = cam.cy + (sy - h / 2) / cam.z
+      const z = Math.min(Math.max(cam.z * factor, ZMIN), ZMAX)
+      // Keep the +/- compound base in sync — a zoomStep pressed during this
+      // animation must stack from THIS target, not a stale earlier one.
+      zoomStepTarget.current = z
+      animateTo(
+        {
+          cx: planeX - (sx - w / 2) / z,
+          cy: planeY - (sy - h / 2) / z,
+          z,
+        },
+        reducedMotionRef.current ? 0 : 320,
+      )
     },
     [animateTo],
   )
@@ -812,7 +887,7 @@ export function MapaCanvas({
     <div
       ref={containerRef}
       data-band="mid"
-      className="mapa-root fixed inset-0 z-40 touch-none select-none overflow-hidden bg-base"
+      className="mapa-root fixed inset-0 z-40 cursor-grab touch-none select-none overflow-hidden bg-base"
       role="region"
       aria-label="Mapa global de Gradiente — terreno hexagonal navegable"
       aria-describedby="mapa-instructions"
@@ -821,8 +896,14 @@ export function MapaCanvas({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onDoubleClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
-        zoomStep(1.5)
+        const t = e.target as HTMLElement
+        if (t.closest('[data-mapa-ui]')) return
+        // Cells own their clicks (first click already opened the overlay /
+        // listing / dossier) — double-click zoom belongs to the grout and
+        // empty terrain only. data-mapa-node covers the non-item nodes
+        // (listing hexes, identity nucleus).
+        if (t.closest('[data-item-id],[data-mapa-node]')) return
+        zoomAtPoint(e.clientX, e.clientY, 1.5)
       }}
       onKeyDown={(e) => {
         if (e.key === 'Escape' && focusSlug) zoomGlobal()
@@ -855,6 +936,7 @@ export function MapaCanvas({
             emphasized={focusMemberIds ? focusMemberIds.has(p.item.id) : false}
             hidden={hiddenItemIds?.has(p.item.id) ?? false}
             delta={moveDeltas?.[p.item.id] ?? null}
+            enterDelay={enterDelays.get(p.item.id) ?? 0}
             onOpen={handleOpen}
             onArrow={onArrow}
             onFocusItem={setFocusedItemId}
@@ -896,6 +978,7 @@ export function MapaCanvas({
             ))}
             <Link
               href={`/p/${focusedCluster.partner.slug}`}
+              data-mapa-node
               aria-label={`${focusedCluster.partner.title} — entrar al dossier del partner`}
               className="animate-fade-in absolute z-10 block no-underline"
               style={{
