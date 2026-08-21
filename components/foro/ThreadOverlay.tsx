@@ -11,7 +11,7 @@ import {
   useReplies,
   useThread,
 } from '@/lib/foro'
-import { getGenreById, getTagById, vibeForGenre } from '@/lib/genres'
+import { getGenreById, tagLabel, vibeForGenre } from '@/lib/genres'
 import { canModerate } from '@/lib/permissions'
 import { vibeToColor } from '@/lib/utils'
 import { getResolvedUserById, useResolvedUser } from '@/lib/userOverrides'
@@ -296,14 +296,13 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                       {/* Metadata tags — neutral chrome to read as a separate
                           axis from the vibe-colored genres. */}
                       {thread.tags.map((id) => {
-                        const t = getTagById(id)
                         return (
                           <span
                             key={id}
                             className="border border-dashed px-1.5 py-px font-mono text-[9px] tracking-widest text-muted"
                             style={{ borderColor: '#3a3a3a' }}
                           >
-                            #{(t?.name ?? id).toUpperCase()}
+                            #{tagLabel(id).toUpperCase()}
                           </span>
                         )
                       })}

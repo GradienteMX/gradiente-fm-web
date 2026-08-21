@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale'
 import type { ForoThread } from '@/lib/types'
 import { getUserById } from '@/lib/mockUsers'
 import { useReplyCount } from '@/lib/foro'
-import { getGenreById, getTagById, vibeForGenre } from '@/lib/genres'
+import { getGenreById, tagLabel, vibeForGenre } from '@/lib/genres'
 import { vibeToColor } from '@/lib/utils'
 import { SmartImage } from '@/components/SmartImage'
 
@@ -105,14 +105,13 @@ export function ThreadTile({ thread }: ThreadTileProps) {
         {thread.tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1">
             {thread.tags.slice(0, 2).map((id) => {
-              const t = getTagById(id)
               return (
                 <span
                   key={id}
                   className="border border-dashed px-1 py-px font-mono text-[8px] tracking-widest text-muted"
                   style={{ borderColor: '#3a3a3a' }}
                 >
-                  #{(t?.name ?? id).toUpperCase()}
+                  #{tagLabel(id).toUpperCase()}
                 </span>
               )
             })}

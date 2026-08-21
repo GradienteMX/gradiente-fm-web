@@ -1,11 +1,19 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ImagePlus, Star, X } from 'lucide-react'
+import { ImagePlus, Plus, Star, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
-import { createThread } from '@/lib/foro'
+import { createTag, createThread, fetchCustomTags } from '@/lib/foro'
 import { compressAndUploadImage } from '@/lib/imageUpload'
-import { GENRES, TAGS, vibeForGenre } from '@/lib/genres'
+import {
+  TAG_NAME_MAX,
+  getSelectableGenres,
+  getSelectableTags,
+  slugifyTag,
+  tagLabel,
+  vibeForGenre,
+} from '@/lib/genres'
+import type { Tag } from '@/lib/types'
 import { vibeToColor } from '@/lib/utils'
 import {
   FORO_THREAD_GENRES_MAX,
@@ -46,14 +54,17 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Legacy ids are excluded — they duplicate current taxonomy entries and
+  // made genres like "Hard Techno" show up twice in this list.
+  const selectableGenres = useMemo(() => getSelectableGenres(), [])
   const genreSet = useMemo(() => new Set(genres), [genres])
   const filteredGenres = useMemo(() => {
     const q = genreFilter.trim().toLowerCase()
-    if (!q) return GENRES
-    return GENRES.filter(
+    if (!q) return selectableGenres
+    return selectableGenres.filter(
       (g) => g.name.toLowerCase().includes(q) || g.id.includes(q),
     )
-  }, [genreFilter])
+  }, [genreFilter, selectableGenres])
 
   const toggleGenre = (id: string) => {
     if (genreSet.has(id)) {
@@ -68,14 +79,34 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     setGenres((g) => [...g, id])
   }
 
+  // Full tag catalog = shipped list + tags other users have created. Loaded
+  // once on open; a tag created here is appended locally so it's immediately
+  // pickable without a refetch.
+  const [customTags, setCustomTags] = useState<Tag[]>([])
+  useEffect(() => {
+    let alive = true
+    void fetchCustomTags().then((t) => {
+      if (alive) setCustomTags(t)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const allTags = useMemo(() => {
+    const shipped = getSelectableTags()
+    const seen = new Set(shipped.map((t) => t.id))
+    return [...shipped, ...customTags.filter((t) => !seen.has(t.id))]
+  }, [customTags])
+
   const tagSet = useMemo(() => new Set(tags), [tags])
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase()
-    if (!q) return TAGS
-    return TAGS.filter(
+    if (!q) return allTags
+    return allTags.filter(
       (t) => t.name.toLowerCase().includes(q) || t.id.includes(q),
     )
-  }, [tagFilter])
+  }, [tagFilter, allTags])
 
   const toggleTag = (id: string) => {
     if (tagSet.has(id)) {
@@ -88,6 +119,39 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
     }
     setSubmitError(null)
     setTags((t) => [...t, id])
+  }
+
+  // ── Creating a new tag ───────────────────────────────────────────────────
+  //
+  // The composer requires 1–5 tags, so a fixed catalog meant a user whose
+  // topic wasn't covered simply could not post. The filter input doubles as
+  // a "create" field: when what's typed doesn't already exist, an ADD button
+  // appears. The tag is registered in `foro_tags` so it joins the shared
+  // list for everyone; if that write fails we still attach it to this thread
+  // (foro_threads.tags is free-form) rather than blocking the post.
+  const [creatingTag, setCreatingTag] = useState(false)
+  const newTagName = tagFilter.trim()
+  const newTagId = slugifyTag(newTagName)
+  const canCreateTag =
+    newTagId.length > 0 &&
+    newTagName.length <= TAG_NAME_MAX &&
+    !allTags.some((t) => t.id === newTagId) &&
+    tags.length < FORO_THREAD_TAGS_MAX
+
+  const addNewTag = async () => {
+    if (!canCreateTag || creatingTag) return
+    setCreatingTag(true)
+    const res = await createTag(newTagName)
+    setCreatingTag(false)
+    const tag: Tag = res.ok ? res.tag : { id: newTagId, name: newTagName, custom: true }
+    if (!res.ok) {
+      setSubmitError(`El tag se aplicó a este hilo pero no se guardó en la lista: ${res.error}`)
+    } else {
+      setSubmitError(null)
+    }
+    setCustomTags((prev) => (prev.some((t) => t.id === tag.id) ? prev : [tag, ...prev]))
+    setTags((prev) => (prev.includes(tag.id) ? prev : [...prev, tag.id]))
+    setTagFilter('')
   }
 
   // Lock body scroll while open.
@@ -322,7 +386,7 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
               {genres.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {genres.map((id) => {
-                    const g = GENRES.find((x) => x.id === id)
+                    const g = selectableGenres.find((x) => x.id === id)
                     if (!g) return null
                     const v = vibeForGenre(id)
                     const accent = v !== null ? vibeToColor(v) : '#F97316'
@@ -385,7 +449,7 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
               <span className="sys-label text-muted">
                 TAGS <span className="text-sys-orange">*</span>
                 <span className="ml-2 normal-case text-[9px] text-muted">
-                  {tags.length}/{FORO_THREAD_TAGS_MAX} · mín {FORO_THREAD_TAGS_MIN} · keywords del metadata
+                  {tags.length}/{FORO_THREAD_TAGS_MAX} · mín {FORO_THREAD_TAGS_MIN} · ¿no está en la lista? escríbelo y dale CREAR
                 </span>
               </span>
 
@@ -393,17 +457,16 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {tags.map((id) => {
-                    const t = TAGS.find((x) => x.id === id)
-                    if (!t) return null
+                    const custom = customTags.find((x) => x.id === id)
                     return (
                       <button
                         key={id}
                         type="button"
                         onClick={() => toggleTag(id)}
                         className="flex items-center gap-1 border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide text-secondary transition-colors hover:text-primary"
-                        style={{ borderColor: '#3a3a3a' }}
+                        style={{ borderColor: custom ? '#F97316' : '#3a3a3a' }}
                       >
-                        #{t.name}
+                        #{custom?.name ?? tagLabel(id)}
                         <X size={9} aria-hidden />
                       </button>
                     )
@@ -412,15 +475,50 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
               )}
 
               {/* Filter input + chip list */}
-              <input
-                type="text"
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
-                placeholder="filtrar tags…"
-                className="border bg-black px-3 py-1.5 font-mono text-xs text-primary outline-none transition-colors focus:border-sys-orange"
-                style={{ borderColor: '#242424' }}
-              />
+              <div className="flex items-stretch gap-1.5">
+                <input
+                  type="text"
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && canCreateTag) {
+                      e.preventDefault()
+                      void addNewTag()
+                    }
+                  }}
+                  maxLength={TAG_NAME_MAX}
+                  placeholder="filtrar tags · o escribe uno nuevo…"
+                  className="min-w-0 flex-1 border bg-black px-3 py-1.5 font-mono text-xs text-primary outline-none transition-colors focus:border-sys-orange"
+                  style={{ borderColor: '#242424' }}
+                />
+                {newTagId.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void addNewTag()}
+                    disabled={!canCreateTag || creatingTag}
+                    title={
+                      allTags.some((t) => t.id === newTagId)
+                        ? 'Ese tag ya existe'
+                        : `Crear #${newTagId}`
+                    }
+                    className="flex shrink-0 items-center gap-1 border px-2.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-35"
+                    style={{
+                      borderColor: '#F97316',
+                      color: '#F97316',
+                      backgroundColor: 'rgba(249,115,22,0.08)',
+                    }}
+                  >
+                    <Plus size={11} />
+                    <span>{creatingTag ? 'CREANDO…' : 'CREAR'}</span>
+                  </button>
+                )}
+              </div>
               <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-border p-2">
+                {filteredTags.length === 0 && (
+                  <span className="font-mono text-[10px] tracking-widest text-muted">
+                    sin coincidencias — usa CREAR para agregar #{newTagId || '…'}
+                  </span>
+                )}
                 {filteredTags.map((t) => {
                   const isOn = tagSet.has(t.id)
                   return (
@@ -430,9 +528,13 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                       onClick={() => toggleTag(t.id)}
                       className="border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
                       style={{
-                        borderColor: isOn ? '#9CA3AF' : '#242424',
-                        color: isOn ? '#E5E7EB' : '#888',
-                        backgroundColor: isOn ? 'rgba(156,163,175,0.12)' : 'transparent',
+                        borderColor: isOn ? (t.custom ? '#F97316' : '#9CA3AF') : '#242424',
+                        color: isOn ? (t.custom ? '#F97316' : '#E5E7EB') : '#888',
+                        backgroundColor: isOn
+                          ? t.custom
+                            ? 'rgba(249,115,22,0.12)'
+                            : 'rgba(156,163,175,0.12)'
+                          : 'transparent',
                       }}
                     >
                       #{t.name}

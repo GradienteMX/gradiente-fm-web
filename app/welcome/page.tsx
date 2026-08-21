@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
-import { Code2, UserSquare2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { peekInviteCard, type InviteCard } from '@/lib/invitations'
 import { normalizeInviteCode } from '@/lib/identity'
 import { RegistroCard } from '@/components/welcome/RegistroCard'
+import { PrismField } from '@/components/welcome/PrismField'
+import {
+  WAITLIST_ALIAS_MAX,
+  WAITLIST_CITIES,
+  // WAITLIST_SOURCES — lo usa el campo "¿cómo nos encontraste?", apagado abajo.
+} from '@/lib/waitlist'
 
 // The full invitación-3d experience is heavy (three.js + assets) — load it only
 // when a valid code resolves, so the gate page stays light for everyone else.
@@ -22,12 +26,16 @@ const InviteExperience = dynamic(
 const INVITE_FONTS =
   'https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@300;400;500&display=swap'
 
-// /welcome — invite-only landing for anonymous visitors. Middleware
-// redirects everyone here when they have no session, and bounces them
-// off again once they're logged in. The look is deliberately a
-// terminal cockpit: status strips, side panels of atmosphere, ASCII
-// vinyl spinning in the center, and two CTAs that summon the
-// existing LoginOverlay (login mode + signup mode).
+// /welcome — invite-only landing for anonymous visitors. Middleware redirects
+// everyone here when they have no session, and bounces them off again once
+// they're logged in.
+//
+// The skin is the `landing-v2.html` "prisma 2008" prototype from
+// _Gradiente Ops/prototypes/fractal-hero: paper ground, the grotesco face on
+// stage, and the animated prism field behind everything (see PrismField). The
+// terminal-cockpit version it replaces is gone; what survived the reskin is the
+// door itself — iniciar sesión, insertar código, lista de espera — plus the
+// whole invitación path underneath it, untouched.
 export default function WelcomePage() {
   const { openLogin, isAuthed, authResolved } = useAuth()
   const router = useRouter()
@@ -46,23 +54,17 @@ export default function WelcomePage() {
     }
   }, [authResolved, isAuthed, router])
 
-  // Deep-link from the invitation: /welcome?codigo=INV-xxx. Resolve the code
-  // into the real invitee/card data via the anon-safe peek_invite_card RPC,
-  // then branch on its status. On an active code we keep driving the existing
-  // signup overlay (INTERIM — this status strip is the slot where the
-  // invitación-3d unbox will later mount and feed `invite` into the card). On a
-  // spent/invalid code we show a graceful message instead of opening signup
-  // with a dead code (the old effect opened signup blindly on any codigo).
+  // Which panel the door is showing. 'gate' is the two cells + the waitlist
+  // bar; the other two swap in below the face, which shrinks to make room.
+  const [panel, setPanel] = useState<'gate' | 'codigo' | 'wait'>('gate')
   const [invite, setInvite] = useState<InviteCard | null>(null)
   const [inviteState, setInviteState] = useState<
     'idle' | 'loading' | 'ready' | 'used' | 'expired' | 'invalid'
   >('idle')
-  // Manual code entry (the INSERTAR CÓDIGO path when no ?codigo= is present).
-  const [showCodeEntry, setShowCodeEntry] = useState(false)
   const [codeInput, setCodeInput] = useState('')
 
   // WebGL gate: the 3D experience needs it. Without it, a valid code falls back
-  // to the inline RegistroCard in the cockpit (still a working signup path).
+  // to the inline RegistroCard (still a working signup path).
   const [webglOk, setWebglOk] = useState(true)
   // If the live 3D invite loses its WebGL context mid-flow (low-end phones,
   // backgrounding, GPU pressure), fall back to the inline RegistroCard — a
@@ -92,23 +94,9 @@ export default function WelcomePage() {
     }
   }, [authResolved, isAuthed, codigo])
 
-  // Live UTC clock — doubles as a "this is on, this is real" cue.
-  const [clock, setClock] = useState('--:--:--')
-  useEffect(() => {
-    const tick = () => {
-      const d = new Date()
-      const pad = (n: number) => n.toString().padStart(2, '0')
-      setClock(`${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`)
-    }
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [])
-
   // Invited user with a valid code + WebGL → the full immersive unbox: envelope
-  // → holo card → the 5 cards → REGISTRO form, filling the viewport over the
-  // cockpit chrome. The form's signup creates the account, then the redirect
-  // effect above sends them home.
+  // → holo card → the 5 cards → REGISTRO form, filling the viewport. The form's
+  // signup creates the account, then the redirect effect above sends them home.
   if (inviteState === 'ready' && invite && webglOk && !inviteFailed) {
     return (
       <>
@@ -122,287 +110,489 @@ export default function WelcomePage() {
     )
   }
 
-  return (
-    <div
-      className="welcome-cockpit fixed inset-0 z-50 flex flex-col overflow-auto bg-base text-primary"
-      style={{
-        backgroundImage:
-          'repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px)',
-      }}
-    >
-      {/* ── Top strip ──────────────────────────────────────────────── */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-sys-orange/30 bg-base/80 px-4 py-2 font-mono text-[10px] tracking-widest backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-orange" />
-          <span className="text-sys-orange">// SISTEMA_GRADIENTE v3.1.7</span>
-        </div>
-        <span className="hidden text-muted lg:inline">
-          ENLACE ESTABLECIDO <span className="text-sys-orange/60">---</span>{' '}
-          ENCRIPTACIÓN AES-256
-        </span>
-        <span className="tabular-nums text-muted">UTC {clock}</span>
-      </header>
-
-      {/* ── Body — three columns on desktop, stacked on mobile ────── */}
-      <div className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[clamp(220px,18vw,280px)_1fr_clamp(220px,18vw,280px)]">
-        {/* ── LEFT COLUMN ─────────────────────────────────────────── */}
-        <aside className="hidden flex-col gap-4 font-mono text-[10px] tracking-widest md:flex">
-          <div className="flex flex-col gap-1">
-            <span className="text-sys-orange">
-              &gt; ACCESO: <span className="text-sys-red">RESTRINGIDO</span>
-            </span>
-            <span className="text-sys-orange">
-              &gt; NODO: MX-DF{' '}
-              <span className="text-muted">// 19.4326°N -99.1332°W</span>
-            </span>
-            <span className="text-sys-orange">
-              &gt; ESTADO: <span className="text-sys-green">EN LÍNEA</span>
-            </span>
-          </div>
-
-          <Panel label="ACTIVIDAD RECIENTE">
-            {RECENT_UPLOADS.map((u) => (
-              <div key={u.file} className="truncate text-muted">
-                &gt; UPLOAD: <span className="text-secondary">{u.date}</span> _{' '}
-                <span className="text-sys-orange/80">{u.file}</span>
-              </div>
-            ))}
-            <div className="mt-2 text-muted/60">... [ VER MÁS ]</div>
-          </Panel>
-        </aside>
-
-        {/* ── CENTER COLUMN ───────────────────────────────────────── */}
-        <main className="flex min-h-0 flex-col items-center justify-start gap-3">
-          {/* Wordmark */}
-          <h1
-            data-text="GRADIENTE"
-            className="welcome-glitch whitespace-nowrap font-syne font-black leading-none tracking-tighter text-primary"
-            // Floor lowered (was 3rem) so the vw term governs on phones —
-            // a 3rem/48px floor forced the wordmark to ~465px wide at 375px and
-            // it cropped on both edges. Still caps at 6.5rem on desktop.
-            style={{ fontSize: 'clamp(1.75rem, 8.5vw, 6.5rem)' }}
-          >
-            GRADIENTE
-          </h1>
-          <p className="font-mono text-[11px] tracking-[0.4em] text-sys-orange">
-            T R A N S M I S I Ó N · P R I V A D A
-          </p>
-
-          {/* Tagline */}
-          <div className="mt-1 max-w-xl text-center font-grotesk text-[13px] leading-relaxed text-secondary">
-            <p>&ldquo;Has encontrado una puerta fuera del mapa.</p>
-            <p>Aquí se preserva lo que no suena en las ondas.</p>
-            <p className="text-muted">
-              Música electrónica. Archivos ocultos. Señales que no fueron para ti.&rdquo;
-            </p>
-          </div>
-          <p className="font-mono text-[11px] tracking-widest text-sys-orange">
-            ESCUCHA CON CUIDADO. NO TODO DEBE SER ENCONTRADO.
-            <span className="ml-1 animate-pulse">_</span>
-          </p>
-
-          {/* Resolved-invitation status for non-active codes (used / expired /
-              unrecognized). An active code drops into the RegistroCard below. */}
-          {codigo &&
-            inviteState !== 'idle' &&
-            inviteState !== 'ready' && <InvitePeekStrip state={inviteState} />}
-
-          {inviteState === 'ready' && invite ? (
-            /* No-WebGL fallback: a valid code WITH WebGL early-returns into the
-               full 3D experience above; this inline RegistroCard is the working
-               signup path when WebGL is unavailable. */
-            <div className="flex items-center justify-center py-2 md:min-h-0 md:flex-1">
-              <RegistroCard invite={invite} />
-            </div>
-          ) : (
-            <>
-              {/* Vinyl — decorative; hidden on phones so the CTAs + código
-                  form sit near the top instead of below a tall ASCII disc. */}
-              <div className="hidden min-h-0 flex-1 items-center justify-center md:flex">
-                <VinylAscii />
-              </div>
-
-              {/* CTAs */}
-              <div className="flex w-full max-w-3xl flex-col gap-4 sm:flex-row">
-                <CtaButton
-                  icon={<UserSquare2 size={26} strokeWidth={1.5} />}
-                  label="INICIAR SESIÓN"
-                  sublabel="USUARIO REGISTRADO"
-                  onClick={() => openLogin('login')}
-                />
-                <CtaButton
-                  icon={<Code2 size={26} strokeWidth={1.5} />}
-                  label="INSERTAR CÓDIGO"
-                  sublabel="ACCESO POR INVITACIÓN"
-                  onClick={() => setShowCodeEntry(true)}
-                />
-              </div>
-
-              {/* Manual code entry → re-enters /welcome with ?codigo= so the
-                  same peek + RegistroCard path runs (no signup modal). */}
-              {showCodeEntry && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    // Normalize before the round trip: this input auto-
-                    // capitalizes on phones and codes are matched exactly, so
-                    // a hand-typed code would otherwise never resolve.
-                    const c = normalizeInviteCode(codeInput)
-                    if (c) router.push(`/welcome?codigo=${encodeURIComponent(c)}`)
-                  }}
-                  className="flex w-full max-w-3xl items-stretch gap-2"
-                >
-                  <input
-                    value={codeInput}
-                    onChange={(e) => setCodeInput(e.target.value)}
-                    placeholder="INV-XXXXXXXXXXXXXXXX"
-                    // Don't yank the soft keyboard up before the user orients;
-                    // autofocus only on precise (mouse) pointers.
-                    autoFocus={typeof window !== 'undefined' && window.matchMedia('(pointer:fine)').matches}
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    inputMode="text"
-                    className="min-w-0 flex-1 border bg-black px-3 py-2 font-mono text-sm tracking-widest text-primary outline-none focus:border-sys-orange"
-                    style={{ borderColor: '#242424' }}
-                  />
-                  <button
-                    type="submit"
-                    className="border px-5 font-mono text-[11px] tracking-widest transition-colors hover:bg-sys-orange/15"
-                    style={{ borderColor: '#F97316', color: '#F97316', backgroundColor: 'rgba(249,115,22,0.08)' }}
-                  >
-                    ▶ ACTIVAR
-                  </button>
-                </form>
-              )}
-
-              {/* No code? → the public waitlist (/espera). Deliberately
-                  quieter than the two access CTAs — the waitlist is the
-                  fallback path, not the headline. */}
-              <Link
-                href="/espera"
-                className="relative flex w-full max-w-3xl items-center justify-center gap-3 border border-sys-orange/30 px-6 py-3 font-mono text-[11px] tracking-widest text-sys-orange/80 transition-all hover:border-sys-orange hover:bg-sys-orange/10 hover:text-sys-orange"
-              >
-                <Brackets />
-                ¿SIN CÓDIGO? &gt;&gt; UNIRME A LA LISTA DE ESPERA &lt;&lt;
-              </Link>
-
-              <p className="mt-2 font-mono text-[10px] tracking-widest text-muted">
-                <span className="text-sys-red">⚠ ADVERTENCIA</span>: Este sistema
-                registra actividad. Toda acción deja rastro.
-              </p>
-            </>
-          )}
-        </main>
-
-        {/* ── RIGHT COLUMN ────────────────────────────────────────── */}
-        <aside className="hidden flex-col gap-4 font-mono text-[10px] tracking-widest md:flex">
-          <div className="flex items-center justify-end gap-2 text-sys-orange">
-            <span>SEÑAL: DÉBIL</span>
-            <SignalBars />
-          </div>
-
-          <Panel label="ESTADÍSTICAS DEL ARCHIVO" align="right">
-            <StatRow label="ARCHIVOS" value="1.248" />
-            <StatRow label="ARTISTAS" value="397" />
-            <StatRow label="SESIONES" value="852" />
-            <StatRow label="PAÍSES" value="28" />
-            <StatRow label="ÚLTIMA ACT." value="00:17:42" />
-          </Panel>
-
-          <Panel label="FRECUENCIA PORTADORA" align="right">
-            <div className="text-sys-orange tabular-nums">
-              &gt;&gt; 87.120 KHZ ±0.003
-            </div>
-          </Panel>
-
-          <Panel label="SINCRONIZACIÓN" align="right">
-            <div className="text-sys-green">&gt;&gt; ESTABLE</div>
-          </Panel>
-        </aside>
+  // No-WebGL fallback for a valid code. The prism needs the same WebGL2 the 3D
+  // unbox does, so there's no point dressing this in the landing skin — the
+  // RegistroCard keeps its own chrome on the dark ground.
+  if (inviteState === 'ready' && invite) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-base p-4">
+        <RegistroCard invite={invite} />
       </div>
+    )
+  }
 
-      {/* ── Bottom strip ───────────────────────────────────────────── */}
-      <footer className="pointer-events-none grid shrink-0 grid-cols-1 gap-4 border-t border-sys-orange/30 bg-base/80 px-4 py-3 font-mono text-[10px] tracking-widest backdrop-blur-sm md:grid-cols-4">
-        <div>
-          <div className="mb-1 text-sys-orange">// LOGS DEL SISTEMA</div>
-          {LOG_LINES.map((l) => (
-            <div key={l} className="text-muted">
-              {l}
-            </div>
-          ))}
-          <div className="mt-1 text-sys-green">
-            &gt;&gt; BIENVENIDO AL ARCHIVO.<span className="animate-pulse">_</span>
+  const formOpen = panel !== 'gate'
+
+  return (
+    <div className="wl-root fixed inset-0 z-50 overflow-auto">
+      {/* Painted underneath the canvas in case WebGL never starts. */}
+      <div className="wl-fallback" aria-hidden />
+      <PrismField />
+      {/* Readability scrim. Over a field this saturated, darkening dirties the
+          color — lifting toward white keeps it clean. It concentrates behind
+          the content and leaves the edges of the composition intact: that's
+          where the prism lives. */}
+      <div className="wl-scrim" aria-hidden />
+
+      <main className="wl-main">
+        <section className={`wl-hero${formOpen ? ' wl-form-open' : ''}`}>
+          <div className="wl-stage">
+            <img
+              className="wl-face"
+              src="/welcome/grotesco-face.png"
+              width={794}
+              height={782}
+              alt="Gradiente · subsistema cultural"
+            />
           </div>
-        </div>
 
-        <div className="relative px-3 py-2">
-          <Brackets />
-          <div className="mb-1 text-sys-orange/70">MENSAJE DEL OPERADOR</div>
-          <p className="font-grotesk text-[11px] leading-snug text-secondary">
-            El archivo no tiene dueños.<br />
-            Solo custodios temporales.<br />
-            Si algo aquí te encuentra,<br />
-            ya eras parte de la señal.
-          </p>
-          <p className="mt-1 text-muted">— G.<span className="ml-1 animate-pulse">_</span></p>
-        </div>
+          <div className="wl-foot">
+            {/* Resolved-invitation status for non-active codes (verifying,
+                spent, expired, unrecognized). An active code never reaches
+                here — it early-returns above. */}
+            {codigo && inviteState !== 'idle' && inviteState !== 'ready' && (
+              <InvitePeekStrip state={inviteState} />
+            )}
 
-        <div className="hidden md:block" aria-hidden>
-          <SpectrumAscii />
-        </div>
+            {panel === 'gate' && (
+              <>
+                <div className="wl-gate">
+                  <button
+                    type="button"
+                    className="wl-cell wl-brk"
+                    onClick={() => openLogin('login')}
+                  >
+                    <span className="wl-ic" aria-hidden="true">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </span>
+                    <span>
+                      <b>Iniciar sesión</b>
+                      <i>Usuario registrado</i>
+                    </span>
+                  </button>
 
-        <div className="text-right">
-          <div className="mb-1 text-sys-orange">CANAL DE SALIDA</div>
-          <div className="text-sys-red">&gt;&gt; CERRADO</div>
-        </div>
-      </footer>
+                  <button
+                    type="button"
+                    className="wl-cell wl-brk"
+                    onClick={() => setPanel('codigo')}
+                  >
+                    <span className="wl-ic" aria-hidden="true">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m9 8-4 4 4 4" />
+                        <path d="m15 8 4 4-4 4" />
+                      </svg>
+                    </span>
+                    <span>
+                      <b>Insertar código</b>
+                      <i>Acceso por invitación</i>
+                    </span>
+                  </button>
+                </div>
 
-      {/* Glitch keyframes for the wordmark — scoped to this page. */}
-      <style jsx>{`
-        .welcome-glitch {
+                <button
+                  className="wl-bar wl-brk"
+                  type="button"
+                  onClick={() => setPanel('wait')}
+                >
+                  ¿Sin código? &gt;&gt; Unirme a la lista de espera &lt;&lt;
+                </button>
+              </>
+            )}
+
+            {panel === 'codigo' && (
+              <CodigoPanel
+                value={codeInput}
+                onChange={setCodeInput}
+                onBack={() => setPanel('gate')}
+                onSubmit={() => {
+                  // Normalize before the round trip: this input auto-
+                  // capitalizes on phones and codes are matched exactly, so
+                  // a hand-typed code would otherwise never resolve.
+                  const c = normalizeInviteCode(codeInput)
+                  if (c) router.push(`/welcome?codigo=${encodeURIComponent(c)}`)
+                }}
+              />
+            )}
+
+            {panel === 'wait' && <WaitlistPanel onBack={() => setPanel('gate')} />}
+          </div>
+        </section>
+      </main>
+
+      <style jsx global>{`
+        .wl-root {
+          --wl-ink: #14141b;
+          --wl-paper: #f6f3ee;
+          --wl-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+          background: var(--wl-paper);
+          color: var(--wl-ink);
+          font: 400 16px/1.5 var(--font-space-grotesk), ui-sans-serif, -apple-system, sans-serif;
+          -webkit-font-smoothing: antialiased;
+          overflow-x: hidden;
+        }
+        .wl-fallback {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          background: linear-gradient(
+            100deg,
+            #f4f1e6 0%,
+            #eef0f6 26%,
+            #cfd6ea 33%,
+            #ff4fa0 38%,
+            #ffd24a 42%,
+            #46d6ff 46%,
+            #f0483f 62%,
+            #d8322c 100%
+          );
+          filter: saturate(0.85);
+        }
+        .wl-scrim {
+          position: fixed;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background:
+            radial-gradient(
+              40% 44% at 52% 40%,
+              rgba(249, 247, 243, 0.72) 0%,
+              rgba(249, 247, 243, 0.44) 48%,
+              rgba(249, 247, 243, 0.16) 72%,
+              transparent 88%
+            ),
+            linear-gradient(
+              to bottom,
+              rgba(249, 247, 243, 0.3) 0%,
+              transparent 22%,
+              transparent 70%,
+              rgba(249, 247, 243, 0.42) 100%
+            );
+        }
+        .wl-main {
+          position: relative;
+          z-index: 2;
+        }
+
+        /* By default the face takes the center of the free space and the door
+           stays at the bottom. With a panel open everything collapses back to
+           one centered column, because the form needs the height. */
+        .wl-hero {
+          min-height: 100svh;
+          display: flex;
+          flex-direction: column;
+          text-align: center;
+          padding: clamp(16px, 2.4vw, 28px) clamp(16px, 4vw, 48px) clamp(26px, 4.5vh, 54px);
+        }
+        .wl-stage {
+          flex: 1 1 auto;
+          display: grid;
+          place-items: center;
+          min-height: 0;
+        }
+        .wl-foot {
+          flex: 0 0 auto;
+          width: 100%;
+        }
+        .wl-hero.wl-form-open {
+          justify-content: center;
+        }
+        .wl-hero.wl-form-open .wl-stage {
+          flex: 0 0 auto;
+        }
+
+        .wl-face {
+          display: block;
+          width: min(375px, 65vw);
+          height: auto;
+          margin: 0 auto;
+          opacity: 0.92;
+          transition: width 0.35s ease;
+        }
+        /* With a panel open the face gives up space instead of pushing it off. */
+        .wl-hero.wl-form-open .wl-face {
+          width: min(112px, 24vw);
+          margin-bottom: clamp(12px, 1.6vw, 16px);
+        }
+
+        /* ── door ─────────────────────────────────────────────── */
+        .wl-gate {
+          width: min(760px, 94vw);
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: clamp(10px, 1.4vw, 16px);
+        }
+        @media (max-width: 620px) {
+          .wl-gate {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        /* Bracket corners. They're the current site's signature and survive the
+           change of skin without needing color. */
+        .wl-brk {
           position: relative;
         }
-        .welcome-glitch::before,
-        .welcome-glitch::after {
-          content: attr(data-text);
+        .wl-brk::before,
+        .wl-brk::after {
+          content: '';
           position: absolute;
-          inset: 0;
+          width: 13px;
+          height: 13px;
+          border: 1.5px solid var(--wl-ink);
+          opacity: 0.5;
           pointer-events: none;
         }
-        .welcome-glitch::before {
-          color: #ff3b30;
-          mix-blend-mode: screen;
-          transform: translate(2px, 0);
-          clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
-          animation: welcome-glitch-1 3.6s steps(2) infinite;
+        .wl-brk::before {
+          top: -1px;
+          left: -1px;
+          border-right: 0;
+          border-bottom: 0;
+        }
+        .wl-brk::after {
+          bottom: -1px;
+          right: -1px;
+          border-left: 0;
+          border-top: 0;
+        }
+
+        .wl-cell {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          padding: 17px 19px;
+          border: 1px solid rgba(22, 22, 28, 0.26);
+          /* Over the prism a 13% fill isn't enough: the cell needs its own
+             surface or the text is lost in the glow. */
+          background: rgba(250, 248, 244, 0.74);
+          backdrop-filter: blur(7px) saturate(1.15);
+          -webkit-backdrop-filter: blur(7px) saturate(1.15);
+          color: inherit;
+          text-align: left;
+          cursor: pointer;
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease;
+        }
+        .wl-cell:hover {
+          background: rgba(252, 251, 248, 0.9);
+          border-color: rgba(22, 22, 28, 0.5);
+        }
+        .wl-cell .wl-ic {
+          flex: 0 0 auto;
+          width: 40px;
+          height: 40px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(22, 22, 28, 0.3);
+        }
+        .wl-cell .wl-ic svg {
+          width: 19px;
+          height: 19px;
+        }
+        .wl-cell b {
+          display: block;
+          font: 500 14px/1.2 var(--wl-mono);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+        .wl-cell i {
+          display: block;
+          margin-top: 4px;
+          font: 400 10px/1.2 var(--wl-mono);
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          opacity: 0.52;
+          font-style: normal;
+        }
+
+        .wl-bar {
+          width: min(760px, 94vw);
+          margin: clamp(10px, 1.4vw, 16px) auto 0;
+          display: block;
+          padding: 15px 18px;
+          border: 1px solid rgba(22, 22, 28, 0.26);
+          background: rgba(250, 248, 244, 0.74);
+          backdrop-filter: blur(7px) saturate(1.15);
+          -webkit-backdrop-filter: blur(7px) saturate(1.15);
+          color: inherit;
+          cursor: pointer;
+          font: 500 12px/1.3 var(--wl-mono);
+          letter-spacing: 0.11em;
+          text-transform: uppercase;
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease;
+        }
+        .wl-bar:hover {
+          background: rgba(252, 251, 248, 0.9);
+          border-color: rgba(22, 22, 28, 0.5);
+        }
+
+        /* ── panels (waitlist / código) ───────────────────────── */
+        /* Same as the cells: over the prism the block needs its own surface.
+           Labels and small type don't survive without it. */
+        .wl-panel {
+          width: min(560px, 94vw);
+          margin: 0 auto;
+          text-align: left;
+          padding: clamp(18px, 2.4vw, 26px) clamp(18px, 2.6vw, 28px) clamp(16px, 2vw, 20px);
+          border: 1px solid rgba(22, 22, 28, 0.24);
+          background: rgba(250, 248, 244, 0.8);
+          backdrop-filter: blur(8px) saturate(1.15);
+          -webkit-backdrop-filter: blur(8px) saturate(1.15);
+        }
+        .wl-panel .wl-head {
+          text-align: center;
+          margin-bottom: clamp(12px, 1.6vw, 16px);
+        }
+        /* Único texto del panel — ya no hay encabezado encima, así que no es un
+           subtítulo: sube un punto de tamaño y de opacidad. */
+        .wl-panel .wl-head p {
+          margin: 0;
+          font: 400 12.5px/1.55 var(--wl-mono);
+          opacity: 0.72;
+          text-align: center;
+        }
+
+        .wl-f {
+          margin-bottom: 9px;
+        }
+        .wl-f label {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          font: 400 10px/1 var(--wl-mono);
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
           opacity: 0.55;
+          margin-bottom: 6px;
         }
-        .welcome-glitch::after {
-          color: #00d4ff;
-          mix-blend-mode: screen;
-          transform: translate(-2px, 0);
-          clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
-          animation: welcome-glitch-2 4.2s steps(2) infinite;
-          opacity: 0.55;
+        .wl-f input,
+        .wl-f select {
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid rgba(22, 22, 28, 0.26);
+          background: rgba(252, 250, 247, 0.8);
+          color: var(--wl-ink);
+          font: 400 13.5px/1.2 var(--wl-mono);
+          letter-spacing: 0.02em;
+          border-radius: 0;
+          transition:
+            border-color 0.18s ease,
+            background 0.18s ease;
         }
-        @keyframes welcome-glitch-1 {
-          0%, 92%, 100% { transform: translate(2px, 0); }
-          93% { transform: translate(-3px, -1px); }
-          94% { transform: translate(4px, 2px); }
-          95% { transform: translate(-1px, 1px); }
+        .wl-f input::placeholder {
+          color: rgba(22, 22, 28, 0.32);
         }
-        @keyframes welcome-glitch-2 {
-          0%, 88%, 100% { transform: translate(-2px, 0); }
-          89% { transform: translate(3px, 1px); }
-          90% { transform: translate(-4px, -2px); }
-          91% { transform: translate(1px, -1px); }
+        .wl-f input:focus,
+        .wl-f select:focus {
+          outline: none;
+          border-color: rgba(22, 22, 28, 0.7);
+          background: rgba(255, 255, 255, 0.94);
         }
+        .wl-f select {
+          appearance: none;
+          cursor: pointer;
+          background-image: linear-gradient(45deg, transparent 50%, rgba(22, 22, 28, 0.5) 50%),
+            linear-gradient(135deg, rgba(22, 22, 28, 0.5) 50%, transparent 50%);
+          background-position: calc(100% - 17px) 55%, calc(100% - 12px) 55%;
+          background-size: 5px 5px, 5px 5px;
+          background-repeat: no-repeat;
+        }
+
+        .wl-go {
+          width: 100%;
+          margin-top: 3px;
+          padding: 13px 18px;
+          border: 1px solid var(--wl-ink);
+          background: transparent;
+          color: var(--wl-ink);
+          font: 500 12px/1.3 var(--wl-mono);
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition:
+            background 0.2s ease,
+            color 0.2s ease;
+        }
+        .wl-go:hover {
+          background: var(--wl-ink);
+          color: #f3f1ec;
+        }
+
+        .wl-back {
+          display: block;
+          width: 100%;
+          margin-top: 10px;
+          padding: 0;
+          border: 0;
+          background: none;
+          color: inherit;
+          cursor: pointer;
+          font: 400 10.5px/1 var(--wl-mono);
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          opacity: 0.5;
+          text-align: center;
+        }
+        .wl-back:hover {
+          opacity: 0.85;
+        }
+        .wl-go[disabled] {
+          opacity: 0.5;
+          cursor: default;
+        }
+        .wl-error {
+          margin: 4px 0 8px;
+          font: 400 10.5px/1.4 var(--wl-mono);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #b32a22;
+          text-align: center;
+        }
+
+        .wl-peek {
+          width: min(560px, 94vw);
+          margin: 0 auto clamp(10px, 1.4vw, 16px);
+          padding: 11px 16px;
+          border: 1px solid rgba(22, 22, 28, 0.26);
+          background: rgba(250, 248, 244, 0.8);
+          backdrop-filter: blur(8px) saturate(1.15);
+          -webkit-backdrop-filter: blur(8px) saturate(1.15);
+          font: 500 11px/1.4 var(--wl-mono);
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          text-align: center;
+        }
+        .wl-peek.wl-peek-bad {
+          border-color: rgba(200, 42, 34, 0.55);
+          color: #b32a22;
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .welcome-glitch::before,
-          .welcome-glitch::after {
-            animation: none;
+          .wl-face,
+          .wl-cell,
+          .wl-bar,
+          .wl-go {
+            transition: none;
           }
         }
       `}</style>
@@ -410,395 +600,231 @@ export default function WelcomePage() {
   )
 }
 
+// ── Código panel ────────────────────────────────────────────────────────────
+//
+// Manual code entry → re-enters /welcome with ?codigo= so the same peek +
+// invitación path runs.
+function CodigoPanel({
+  value,
+  onChange,
+  onSubmit,
+  onBack,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSubmit: () => void
+  onBack: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    // Don't yank the soft keyboard up before the user orients; autofocus only
+    // on precise (mouse) pointers.
+    if (window.matchMedia('(pointer:fine)').matches) inputRef.current?.focus()
+  }, [])
+
+  return (
+    <div className="wl-panel wl-brk">
+      <div className="wl-head">
+        <h2>Insertar código</h2>
+        <p>Escribe el código de tu invitación tal como llegó.</p>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          onSubmit()
+        }}
+        noValidate
+      >
+        <div className="wl-f">
+          <label htmlFor="wl-codigo">01_ Código de invitación</label>
+          <input
+            id="wl-codigo"
+            ref={inputRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="INV-XXXXXXXXXXXXXXXX"
+            autoComplete="off"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="text"
+          />
+        </div>
+
+        <button className="wl-go" type="submit">
+          &gt;&gt; Activar código &lt;&lt;
+        </button>
+        <button className="wl-back" type="button" onClick={onBack}>
+          &lt; Regresar al acceso
+        </button>
+      </form>
+    </div>
+  )
+}
+
+// ── Waitlist panel ──────────────────────────────────────────────────────────
+//
+// Envía al mismo /api/waitlist que usa /espera — misma tabla, misma posición en
+// la cola, mismo honeypot. Este panel es la entrada inline desde la puerta; la
+// página /espera sigue siendo la versión larga con estadísticas.
+//
+// Sin encabezado, sin contador y sin numeración en las etiquetas: una sola
+// línea de copy arriba y los campos. El texto de relleno se fue a propósito.
+function WaitlistPanel({ onBack }: { onBack: () => void }) {
+  const [alias, setAlias] = useState('')
+  const [email, setEmail] = useState('')
+  const [city, setCity] = useState<string>(WAITLIST_CITIES[0])
+  // Honeypot. Los usuarios reales nunca lo ven; los bots lo autocompletan y el
+  // route finge que todo salió bien sin insertar nada.
+  const [tel, setTel] = useState('')
+  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+  const [error, setError] = useState('')
+  const aliasRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    aliasRef.current?.focus()
+  }, [])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (state === 'sending') return
+    setState('sending')
+    setError('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // `source` (¿cómo nos encontraste?) va apagado en esta vista — el route
+        // lo degrada a null cuando no llega.
+        body: JSON.stringify({ alias, email, city, tel }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.ok === false) {
+        setError(data.error ?? 'No se pudo enviar. Inténtalo de nuevo.')
+        setState('error')
+        return
+      }
+      setState('done')
+    } catch {
+      setError('No se pudo enviar. Revisa tu conexión.')
+      setState('error')
+    }
+  }
+
+  if (state === 'done') {
+    return (
+      <div className="wl-panel wl-brk">
+        <div className="wl-head">
+          <p>Señal recibida. Te avisaremos cuando la puerta se abra.</p>
+        </div>
+        <button className="wl-back" type="button" onClick={onBack}>
+          &lt; Regresar al acceso
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="wl-panel wl-brk">
+      <div className="wl-head">
+        <p>
+          Deja tus datos y te avisaremos cuando la puerta se abra. Solo usaremos tu correo
+          para avisarte del acceso. Nada más.
+        </p>
+      </div>
+
+      <form onSubmit={submit} noValidate>
+        <div className="wl-f">
+          <label htmlFor="wl-alias">Nombre / Alias</label>
+          <input
+            id="wl-alias"
+            ref={aliasRef}
+            type="text"
+            maxLength={WAITLIST_ALIAS_MAX}
+            placeholder="NOMADA_77"
+            autoComplete="nickname"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+          />
+        </div>
+        <div className="wl-f">
+          <label htmlFor="wl-mail">Correo electrónico</label>
+          <input
+            id="wl-mail"
+            type="email"
+            placeholder="tu@señal.net"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="wl-f">
+          <label htmlFor="wl-city">Ciudad / Zona</label>
+          <select id="wl-city" value={city} onChange={(e) => setCity(e.target.value)}>
+            {WAITLIST_CITIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* APAGADO — "¿Cómo nos encontraste?". El campo se queda aquí para
+            reactivarlo sin volver a escribirlo (el catálogo vive en
+            WAITLIST_SOURCES de lib/waitlist):
+            <div className="wl-f">
+              <label htmlFor="wl-src">¿Cómo nos encontraste?</label>
+              <select id="wl-src" defaultValue={WAITLIST_SOURCES[0]}>
+                {WAITLIST_SOURCES.map((f) => (
+                  <option key={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+        */}
+
+        {/* Honeypot — fuera de pantalla, nunca visible ni tabulable. */}
+        <input
+          type="text"
+          name="tel"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={tel}
+          onChange={(e) => setTel(e.target.value)}
+          style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+        />
+
+        {state === 'error' && <p className="wl-error">{error}</p>}
+
+        <button className="wl-go" type="submit" disabled={state === 'sending'}>
+          {state === 'sending' ? '>> Enviando <<' : '>> Unirme a la lista de espera <<'}
+        </button>
+        <button className="wl-back" type="button" onClick={onBack}>
+          &lt; Regresar al acceso
+        </button>
+      </form>
+    </div>
+  )
+}
+
 // ── Resolved-invitation strip ───────────────────────────────────────────────
 //
 // Status for /welcome?codigo= when the code is NOT registerable (verifying, or
-// spent / expired / unrecognized). An active code renders the RegistroCard
-// instead, so 'ready' never reaches this strip.
+// spent / expired / unrecognized). An active code renders the invitación
+// experience instead, so 'ready' never reaches this strip.
 function InvitePeekStrip({
   state,
 }: {
   state: 'loading' | 'used' | 'expired' | 'invalid'
 }) {
   if (state === 'loading') {
-    return (
-      <p className="font-mono text-[11px] tracking-widest text-muted">
-        &gt; VERIFICANDO CÓDIGO<span className="animate-pulse">_</span>
-      </p>
-    )
+    return <p className="wl-peek">Verificando código…</p>
   }
 
   const msg =
     state === 'used'
-      ? 'ESTE CÓDIGO YA FUE ACTIVADO'
+      ? 'Este código ya fue activado'
       : state === 'expired'
-        ? 'ESTE CÓDIGO EXPIRÓ'
-        : 'CÓDIGO NO RECONOCIDO'
-  return (
-    <p
-      className="border px-4 py-2 font-mono text-[11px] tracking-widest"
-      style={{ borderColor: '#E63329', color: '#E63329' }}
-    >
-      ⚠ {msg}
-    </p>
-  )
-}
-
-// ── Panel wrapper ───────────────────────────────────────────────────────────
-//
-// Floating annotation, not a card. No background fill, no full border —
-// just the four orange corner ticks pinning the content to the surface.
-// This keeps the cockpit feel of the reference, where data is overlaid on
-// the dark void rather than packaged into UI cards.
-function Panel({
-  label,
-  align = 'left',
-  children,
-}: {
-  label: string
-  align?: 'left' | 'right'
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      className={`relative flex flex-col gap-1 px-3 py-2 ${
-        align === 'right' ? 'text-right' : 'text-left'
-      }`}
-    >
-      <Brackets />
-      <div className="text-sys-orange/70">{label}</div>
-      {children}
-    </div>
-  )
-}
-
-// Larger, more visible corner ticks — the only frame the panels need.
-function Brackets() {
-  return (
-    <>
-      <span className="pointer-events-none absolute left-0 top-0 h-3 w-3 border-l border-t border-sys-orange/80" />
-      <span className="pointer-events-none absolute right-0 top-0 h-3 w-3 border-r border-t border-sys-orange/80" />
-      <span className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 border-b border-l border-sys-orange/80" />
-      <span className="pointer-events-none absolute bottom-0 right-0 h-3 w-3 border-b border-r border-sys-orange/80" />
-    </>
-  )
-}
-
-function StatRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="text-muted">
-      &gt; {label}: <span className="text-sys-orange tabular-nums">{value}</span>
-    </div>
-  )
-}
-
-// ── Signal-strength bars ────────────────────────────────────────────────────
-function SignalBars() {
-  return (
-    <span className="inline-flex items-end gap-[2px] align-middle">
-      {[3, 5, 4, 7, 9].map((h, i) => (
-        <span
-          key={i}
-          className={i < 2 ? 'bg-sys-orange' : 'bg-sys-orange/30'}
-          style={{ width: 2, height: h }}
-        />
-      ))}
-    </span>
-  )
-}
-
-// ── CTA button ──────────────────────────────────────────────────────────────
-function CtaButton({
-  icon,
-  label,
-  sublabel,
-  onClick,
-}: {
-  icon: React.ReactNode
-  label: string
-  sublabel: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative flex flex-1 items-center gap-4 border border-sys-orange/50 bg-sys-orange/5 px-6 py-5 text-left font-mono transition-all hover:border-sys-orange hover:bg-sys-orange/15"
-    >
-      <Brackets />
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center border border-sys-orange/40 text-sys-orange/80 transition-colors group-hover:text-sys-orange">
-        {icon}
-      </span>
-      <span className="flex flex-col gap-1 leading-tight">
-        <span className="text-[14px] tracking-widest text-sys-orange">
-          {label}
-        </span>
-        <span className="text-[10px] tracking-widest text-muted">
-          {sublabel}
-        </span>
-      </span>
-    </button>
-  )
-}
-
-// ── ASCII vinyl renderer ────────────────────────────────────────────────────
-//
-// Concentric grooves drawn into a <pre>, viewed at a tilt so it reads as
-// a record on a turntable rather than a flat target. Per cell:
-//   1. Squash y for perspective (TILT) so circles render as the elongated
-//      ellipses your eye expects from a record viewed from above-front.
-//   2. Snap distance to the nearest groove ring; cells close to a ring
-//      light up, cells between rings stay dim — this is what gives the
-//      striated "grooves" look instead of a flat fill.
-//   3. Top-down reflection — brightness biased toward the top of the disc
-//      and a slow-moving sparkle wedge that rotates with the spin.
-//   4. A small rotating tick on the label so you can see it spinning.
-function VinylAscii() {
-  const ref = useRef<HTMLPreElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    // Bigger grid + more aggressive tilt = a record viewed at a 35° angle
-    // instead of from straight overhead. The squashed Y axis also frees
-    // vertical space for more visible groove rings.
-    const COLS = 150
-    const ROWS = 64
-    const cx = (COLS - 1) / 2
-    const cy = (ROWS - 1) / 2
-    const CHAR_ASPECT = 0.5
-    const TILT_Y = 0.42 // strong perspective squash
-    const RADIUS_DISC = 33
-    const RADIUS_LABEL = 3.4
-    const RADIUS_LABEL_INNER = 1.4
-    const RADIUS_HOLE = 0.5
-
-    // Tight groove pitch — about 30 visible grooves between label and rim.
-    const GROOVE_PITCH = 0.5
-    // Edge band width controls how "thick" each groove line reads.
-    const EDGE_BAND = 0.16
-
-    const PALETTE = [' ', '·', ':', '+', '*', '#', '@']
-
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    let raf = 0
-    let last = 0
-    const FRAME_MS = 1000 / 30
-
-    // Specular hotspot — fixed relative to the viewer (light from
-    // upper-right of the page). Computed in the squashed-disc space so
-    // it sits visually "on" the disc, not floating in screen space.
-    const specularAngle = -Math.PI * 0.35 // upper-right
-    const specularRadius = RADIUS_DISC * 0.65 // distance from center
-
-    const renderAt = (t: number) => {
-      const spin = t * 0.45 // rad/sec
-      // Tiny breathing on the specular so it doesn't read as static decal.
-      const specWobble = Math.sin(t * 0.6) * 0.05
-      const sx = Math.cos(specularAngle + specWobble) * specularRadius
-      const sy = Math.sin(specularAngle + specWobble) * specularRadius
-
-      const lines: string[] = []
-      for (let y = 0; y < ROWS; y++) {
-        let line = ''
-        for (let x = 0; x < COLS; x++) {
-          const dx = (x - cx) * CHAR_ASPECT
-          const dy = (y - cy) / TILT_Y
-          const r = Math.sqrt(dx * dx + dy * dy)
-
-          if (r > RADIUS_DISC + 0.6) {
-            line += ' '
-            continue
-          }
-          if (r < RADIUS_HOLE) {
-            line += ' '
-            continue
-          }
-
-          const angle = Math.atan2(dy, dx)
-
-          // Label disc — solid bright with a rotating tick.
-          if (r < RADIUS_LABEL) {
-            const tickDelta =
-              ((angle - spin + Math.PI * 3) % (Math.PI * 2)) - Math.PI
-            const tickHit = Math.abs(tickDelta) < 0.22 && r > RADIUS_LABEL_INNER
-            line += tickHit ? '@' : '#'
-            continue
-          }
-
-          // ── Groove banding ───────────────────────────────────────
-          const ringR = Math.round(r / GROOVE_PITCH) * GROOVE_PITCH
-          const ringDist = Math.abs(r - ringR)
-          const onGroove = ringDist < EDGE_BAND
-
-          // ── Top-down ambient term (fades from top to bottom) ─────
-          // Hardened from cos² → cos⁴ so the upper-half reads markedly
-          // brighter than the lower half (depth cue).
-          const lightAngle = -Math.PI / 2
-          const dLight =
-            ((angle - lightAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI
-          const ambient = Math.cos(dLight) ** 4
-
-          // ── Specular hotspot (Gaussian falloff in disc space) ────
-          const ddx = dx - sx
-          const ddy = dy - sy
-          const specDistSq = ddx * ddx + ddy * ddy
-          const specular = Math.exp(-specDistSq / 22)
-
-          // ── Slow rim sparkle, tied to spin so it clearly rotates ─
-          const sparkleDelta =
-            ((angle - spin * 2.2 + Math.PI * 3) % (Math.PI * 2)) - Math.PI
-          const onRim = r > RADIUS_DISC * 0.85
-          const sparkle = onRim
-            ? Math.max(0, Math.cos(sparkleDelta) - 0.85) * 4
-            : 0
-
-          // ── Outer-edge falloff (the rim itself reads dim) ────────
-          const rimFalloff =
-            r > RADIUS_DISC - 0.6 ? 0.45 : 1 - (r / RADIUS_DISC) * 0.15
-
-          let v: number
-          if (onGroove) {
-            v =
-              (0.42 + ambient * 0.6 + specular * 0.8 + sparkle * 0.5) *
-              rimFalloff
-          } else {
-            // Between grooves — only specular leaks through. Empty most
-            // of the time, which is what makes the grooves *read* as
-            // grooves instead of a flat disc.
-            v = specular * 0.45 * rimFalloff + ambient * 0.05
-          }
-          if (v < 0) v = 0
-          if (v > 1) v = 1
-
-          const idx = Math.min(
-            PALETTE.length - 1,
-            Math.floor(v * PALETTE.length),
-          )
-          line += PALETTE[idx]
-        }
-        lines.push(line)
-      }
-      el.textContent = lines.join('\n')
-    }
-
-    if (reduced) {
-      renderAt(0)
-      return
-    }
-
-    const tick = (now: number) => {
-      if (now - last >= FRAME_MS) {
-        last = now
-        renderAt(now / 1000)
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  return (
-    // pointer-events-none is load-bearing, not hygiene: the `filter` below makes
-    // this <pre> a stacking context that paints OVER later non-positioned
-    // siblings (the código form + CTAs), and on short viewports the fixed-size
-    // grid overflows its flex-1 box down onto them. Without this, the overflow
-    // silently swallows clicks on the form (keyboard TAB/ENTER still works) —
-    // reproduced on laptop-height screens, fine on tall desktops/iPad.
-    <pre
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none select-none font-mono leading-[0.95] text-sys-orange/90"
-      style={{
-        fontSize: 'clamp(6px, 0.85vw, 10px)',
-        filter: 'drop-shadow(0 0 14px rgba(249,115,22,0.28))',
-      }}
-    />
-  )
-}
-
-// ── Mock atmosphere data ────────────────────────────────────────────────────
-const RECENT_UPLOADS = [
-  { date: '2026.05.05', file: 'KLSTR_DF.WAV' },
-  { date: '2026.05.03', file: 'OBSCURA.AIF' },
-  { date: '2026.05.01', file: 'SIGNAL_07.FLAC' },
-  { date: '2026.04.28', file: 'RUIDO_SYS.MP3' },
-  { date: '2026.04.25', file: 'CINTA_11.WAV' },
-]
-
-const LOG_LINES = [
-  '[18:59:02] CONEXIÓN ENTRANTE: 187.214.**.**',
-  '[18:59:03] VERIFICANDO ORIGEN...',
-  '[18:59:05] RUTA ALTERNATIVA ESTABLECIDA',
-  '[18:59:07] ACCESO TEMPORAL CONCEDIDO',
-]
-
-// ── Animated spectrum — bottom-strip atmosphere ───────────────────────────
-//
-// Block-glyph histogram of fake "signal" levels. Each column gets its own
-// slow wobble (sum of two sines at different frequencies) so the bars
-// breathe over time. Static pattern under reduced-motion. Same rAF cap
-// as the vinyl renderer.
-function SpectrumAscii() {
-  const ref = useRef<HTMLPreElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const COLS = 90
-    const ROWS = 4
-    const BLOCKS = ' ▁▂▃▄▅▆▇█'
-
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    let raf = 0
-    let last = 0
-    const FRAME_MS = 1000 / 24
-
-    const renderAt = (t: number) => {
-      const lines: string[] = []
-      for (let r = 0; r < ROWS; r++) {
-        let line = ''
-        for (let c = 0; c < COLS; c++) {
-          // Per-column wobble — each column has a stable seed phase.
-          const seed = c * 0.41 + r * 1.3
-          const h =
-            (Math.sin(seed + t * 1.4) + 1) * 0.5 * 0.6 +
-            (Math.sin(seed * 1.7 + t * 0.6) + 1) * 0.5 * 0.4
-          // Row decay so the top rows are sparser than the bottom — reads
-          // as "signal noise floor + occasional peaks."
-          const rowBias = 1 - r / ROWS
-          const v = Math.min(1, h * rowBias * 1.15)
-          line += BLOCKS[Math.min(BLOCKS.length - 1, Math.floor(v * BLOCKS.length))]
-        }
-        lines.push(line)
-      }
-      el.textContent = lines.join('\n')
-    }
-
-    if (reduced) {
-      renderAt(0)
-      return
-    }
-
-    const tick = (now: number) => {
-      if (now - last >= FRAME_MS) {
-        last = now
-        renderAt(now / 1000)
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  return (
-    <pre
-      ref={ref}
-      aria-hidden
-      className="select-none font-mono text-[9px] leading-[1] text-sys-orange/55"
-    />
-  )
+        ? 'Este código expiró'
+        : 'Código no reconocido'
+  return <p className="wl-peek wl-peek-bad">⚠ {msg}</p>
 }

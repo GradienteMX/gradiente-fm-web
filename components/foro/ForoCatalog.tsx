@@ -6,7 +6,7 @@ import { Plus, Search, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { useVibe } from '@/context/VibeContext'
 import { FORO_THREAD_CAP, useThreads } from '@/lib/foro'
-import { genresIntersectVibeRange, getGenreById, getTagById } from '@/lib/genres'
+import { genresIntersectVibeRange, getGenreById, tagLabel } from '@/lib/genres'
 import type { ForoThread } from '@/lib/types'
 import { ThreadTile } from './ThreadTile'
 import { ThreadOverlay } from './ThreadOverlay'
@@ -32,7 +32,7 @@ function threadHaystack(t: ForoThread): string {
     ...t.genres,
     ...t.genres.map((id) => getGenreById(id)?.name ?? ''),
     ...t.tags,
-    ...t.tags.map((id) => getTagById(id)?.name ?? ''),
+    ...t.tags.map((id) => tagLabel(id)),
   ]
     .join(' ')
     .toLowerCase()

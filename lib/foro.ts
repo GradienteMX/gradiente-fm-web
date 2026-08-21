@@ -17,6 +17,7 @@
 // inserts the id comes back from the server — composers POST input shapes
 // instead, get the new id, and route to the thread.
 
+import type { Tag } from './types'
 import {
   invalidateThread,
   invalidateThreadList,
@@ -64,6 +65,55 @@ export async function createThread(input: CreateThreadInput): Promise<CreateResu
     const json = await res.json()
     invalidateThreadList()
     return { ok: true, id: json.thread?.id ?? '' }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'network error' }
+  }
+}
+
+// ── Custom tags ────────────────────────────────────────────────────────────
+//
+// The composer's tag list is the static catalog (lib/genres.ts TAGS) unioned
+// with whatever users have created (table `foro_tags`, migración 0047).
+// Both calls fail soft: if the registry is unavailable the composer still
+// works off the static catalog, and a tag the user just typed can still be
+// attached to their thread (foro_threads.tags is free-form text[]).
+
+export async function fetchCustomTags(): Promise<Tag[]> {
+  try {
+    const res = await fetch('/api/foro/tags')
+    if (!res.ok) return []
+    const json = await res.json()
+    const rows: unknown = json?.tags
+    if (!Array.isArray(rows)) return []
+    return rows
+      .filter(
+        (t): t is { id: string; name: string } =>
+          !!t && typeof t.id === 'string' && typeof t.name === 'string',
+      )
+      .map((t) => ({ id: t.id, name: t.name, custom: true }))
+  } catch {
+    return []
+  }
+}
+
+export type CreateTagResult =
+  | { ok: true; tag: Tag }
+  | { ok: false; error: string }
+
+export async function createTag(name: string): Promise<CreateTagResult> {
+  try {
+    const res = await fetch('/api/foro/tags', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) return { ok: false, error: json?.error ?? `HTTP ${res.status}` }
+    const tag = json?.tag
+    if (!tag || typeof tag.id !== 'string') {
+      return { ok: false, error: 'respuesta inválida del servidor' }
+    }
+    return { ok: true, tag: { id: tag.id, name: tag.name ?? name, custom: true } }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'network error' }
   }
