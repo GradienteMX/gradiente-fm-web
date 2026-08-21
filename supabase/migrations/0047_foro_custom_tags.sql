@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0045_foro_custom_tags — user-created tags for the foro composer
+-- 0047_foro_custom_tags — user-created tags for the foro composer
 -- ============================================================================
 --
 -- The foro composer requires 1–5 tags on a new thread but until now could

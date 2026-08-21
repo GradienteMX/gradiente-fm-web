@@ -73,7 +73,7 @@ export async function createThread(input: CreateThreadInput): Promise<CreateResu
 // ── Custom tags ────────────────────────────────────────────────────────────
 //
 // The composer's tag list is the static catalog (lib/genres.ts TAGS) unioned
-// with whatever users have created (table `foro_tags`, migration 0045).
+// with whatever users have created (table `foro_tags`, migración 0047).
 // Both calls fail soft: if the registry is unavailable the composer still
 // works off the static catalog, and a tag the user just typed can still be
 // attached to their thread (foro_threads.tags is free-form text[]).

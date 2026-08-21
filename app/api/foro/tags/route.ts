@@ -6,7 +6,7 @@ import { TAG_NAME_MAX, getTagById, slugifyTag } from '@/lib/genres'
 // POST /api/foro/tags { name }   → { tag: { id, name } }      create one
 //
 // The static catalog in lib/genres.ts stays the baseline; this endpoint owns
-// the growable half (migration 0045, table `foro_tags`). The composer unions
+// the growable half (migration 0047, table `foro_tags`). The composer unions
 // the two, so a tag created here is visible to everyone on the next load.
 //
 // Creating an id that already exists — in either the static catalog or the
