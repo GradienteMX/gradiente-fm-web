@@ -151,7 +151,11 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     date: tsOrNull(item.date),
     end_date: tsOrNull(item.endDate),
     expires_at: tsOrNull(item.expiresAt),
-    source: item.source ?? null,
+    // Archivo Vivo rows are file-side only (lib/data/archiveSeed.json) — the
+    // DB content_source enum doesn't carry 'archive:wayback' until the
+    // living-archive schema lands. Guard the write boundary instead of
+    // widening the generated DB types.
+    source: item.source === 'archive:wayback' ? null : item.source ?? null,
     external_id: item.externalId ?? null,
     elevated: item.elevated ?? false,
     venue: item.venue ?? null,

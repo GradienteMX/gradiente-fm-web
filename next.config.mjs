@@ -37,6 +37,18 @@ const nextConfig = {
       { protocol: 'https', hostname: 'substackcdn.com' },
       { protocol: 'https', hostname: 'is1-ssl.mzstatic.com' },
       { protocol: 'https', hostname: 'i.discogs.com' },
+      // Archivo Vivo (living-archive pilot) — Wayback `im_` snapshots are
+      // full-size scans on a slow origin; the optimizer's resize + 1-year
+      // cache is what makes the /mapa archive band paint acceptably. YouTube
+      // thumbs cover the archive posts whose only art is a video still.
+      // The pathname restriction is load-bearing: without it /_next/image
+      // would proxy the ENTIRE archived web — including Wayback's state-
+      // changing /save/ endpoint — from our domain. /web/** covers every
+      // seed URL and nothing else. (Accepted residual: any archived IMAGE
+      // under /web/ is still fetchable through the optimizer; closing that
+      // fully would need an owned proxy route validating against the seed.)
+      { protocol: 'https', hostname: 'web.archive.org', pathname: '/web/**' },
+      { protocol: 'https', hostname: 'i.ytimg.com' },
     ],
   },
   // Guarantees per-icon tree-shaking for lucide-react (imported across ~58

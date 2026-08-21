@@ -124,7 +124,8 @@ function itemToRow(item: ContentItem): ItemInsert {
     date: item.date ?? null,
     end_date: item.endDate ?? null,
     expires_at: item.expiresAt ?? null,
-    source: item.source ?? null,
+    // archive:wayback is file-side only — see contentItemToRow in lib/data/items.ts
+    source: item.source === 'archive:wayback' ? null : item.source ?? null,
     external_id: item.externalId ?? null,
     elevated: item.elevated ?? false,
     venue: item.venue ?? null,

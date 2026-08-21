@@ -39,6 +39,7 @@ The mockups are full-bleed multi-column pages; a centered modal can't do them ju
 
 ## Links
 - [[PartnerOverlay]] — the peek that links here
+- [[Spatial Identity Canvas]] — draft future rework that would turn this dossier route into a focused state inside the global honeycomb
 - [[Partners Isolation]] · [[Contained Single Surface]] — the decisions this relaxes
 - [[Marketplace]] · [[MarketplaceListingDetail]]
 - [[Size and Position as Only Signals]] — why vanity stats are cut

@@ -6,6 +6,7 @@ import { AdminUsersEditor } from '@/components/admin/AdminUsersEditor'
 import { AdminPartnersComposer } from '@/components/admin/AdminPartnersComposer'
 import { AdminTabNav, type AdminTab } from '@/components/admin/AdminTabNav'
 import { AdminEventsEditor } from '@/components/admin/AdminEventsEditor'
+import { AdminWaitlist, type WaitlistAdminRow } from '@/components/admin/AdminWaitlist'
 import { getAllEventsAdmin } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import type { Database } from '@/lib/supabase/database.types'
@@ -57,6 +58,8 @@ export default async function AdminPage({
       ? 'partners'
       : searchParams.tab === 'events'
       ? 'events'
+      : searchParams.tab === 'espera'
+      ? 'espera'
       : 'invites'
 
   // Partners are needed by BOTH tabs (invite-code partner dropdown +
@@ -78,9 +81,21 @@ export default async function AdminPage({
   let roleCounts: Partial<Record<string, number>> = {}
   let modCount = 0
   let events: ContentItem[] = []
+  let waitlistRows: WaitlistAdminRow[] = []
 
   if (tab === 'events') {
     events = await getAllEventsAdmin()
+  } else if (tab === 'espera') {
+    // Queue order (oldest first) — row index IS the queue position. The
+    // invite embed rides the invite_code FK; used_at is what upgrades a row
+    // to REGISTRADO in the UI. Errors (e.g. migration 0045 not applied yet)
+    // degrade to an empty list rather than crashing the panel.
+    const { data } = await supabase
+      .from('waitlist_signups')
+      .select('*, invite:invite_codes ( used_at )')
+      .order('created_at', { ascending: true })
+      .limit(1000)
+    waitlistRows = (data as WaitlistAdminRow[] | null) ?? []
   } else if (tab === 'invites') {
     // Load the full code book (184 and growing slowly) so a specific person's
     // code is always present for the client-side filter. The old .limit(50)
@@ -176,6 +191,7 @@ export default async function AdminPage({
           partners={(partners as PartnerOption[] | null) ?? []}
         />
       )}
+      {tab === 'espera' && <AdminWaitlist initialRows={waitlistRows} />}
       {tab === 'users' && (
         <AdminUsersEditor
           elevatedUsers={elevatedUsers}

@@ -83,6 +83,10 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-industrial",
+    // Explicit partner attribution — Club Japan publishes this item.
+    // Mirrors prod, where items.partner_id stamps the venue's own nights
+    // (see wiki/70-Roadmap/Spatial Identity Canvas.md § focus eligibility).
+    partnerId: "pa-club-japan",
     slug: "japan-cdmx-industrial-night-abr26",
     type: "evento",
     title: "CLUB JAPAN — INDUSTRIAL NIGHT",
@@ -155,6 +159,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-rat-pack",
+    partnerId: "pa-club-japan",
     slug: "club-japan-rat-pack-crew-may26",
     type: "evento",
     title: "CLUB JAPAN × RAT PACK CREW",
@@ -249,6 +254,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-hardtechno-may",
+    partnerId: "pa-club-japan",
     slug: "club-japan-hard-techno-residency-may26",
     type: "evento",
     title: "CLUB JAPAN — Hard Techno Residency",
@@ -452,6 +458,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "mx-002",
+    hp: 120,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "espectro-mix-002-rat-pack",
     type: "mix",
     title: "ESPECTRO MIX 002",
@@ -514,6 +522,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "mx-004",
+    partnerId: "pa-club-japan",
     slug: "japan-cdmx-mixcloud-best-of",
     type: "mix",
     title: "Japan CDMX Mixcloud — Best Of 2025",
@@ -554,6 +563,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "mx-006",
+    hp: 60,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "aquiles-navarro-ambient-ritual-vol3",
     type: "mix",
     title: "Ritual Acústico — Vol. III",
@@ -629,6 +640,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "no-002",
+    partnerId: "pa-club-japan",
     slug: "club-japan-10-aniversario",
     type: "noticia",
     title:
@@ -666,6 +678,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "no-004",
+    hp: 70,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "espacio-clandestino-cierra",
     type: "noticia",
     title: "Espacio Clandestino cierra sus puertas después de 8 años",
@@ -704,6 +718,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-001",
+    hp: 110,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "review-kode9-el-under",
     type: "review",
     title: "Kode9 @ El Under fue un terremoto sónico",
@@ -744,6 +760,10 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-003",
+    // Editorial partner attachment — this piece is explicitly about Club
+    // Japan (spec eligibility precedence 5: an editor attached the partner
+    // entity). Same items.partner_id mechanism as publisher attribution.
+    partnerId: "pa-club-japan",
     slug: "review-club-japan-noche-tipica",
     type: "review",
     title: "Club Japan: una noche típica en el sótano de Roma Norte",
@@ -763,6 +783,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-004",
+    hp: 55,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "review-fascinoma-2024-puebla",
     type: "review",
     title: "FASCiNOMA 2024 — Tres días en la Exfábrica Textil de Puebla",
@@ -784,6 +806,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ed-001",
+    partnerId: "pa-club-japan",
     slug: "shawn-raynaldo-club-japan-pedagogia",
     type: "editorial",
     title: "Club Japan y la pedagogía de la oscuridad",
@@ -807,6 +830,10 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ed-002",
+    // HL variation stamp (dev seed only) — fresh hp so the /mapa terrain
+    // exercises the 1/3/7 polyhex tiers; beta posture, no prod meaning.
+    hp: 140,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "editorial-hard-techno-moral-panic",
     type: "editorial",
     title: "El hard techno y el pánico moral: ¿de qué le tenemos miedo?",
@@ -850,6 +877,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ed-004",
+    hp: 100,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "editorial-venues-cdmx-crisis",
     type: "editorial",
     title: "La crisis de venues en CDMX: sobrevivir o desaparecer",
@@ -890,6 +919,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ar-001",
+    hp: 95,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "festivales-latam-presion-europea-2026",
     type: "articulo",
     title:
@@ -1045,6 +1076,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ar-002",
+    partnerId: "pa-club-japan",
     slug: "soundsystem-mexicano-linaje-oculto",
     type: "articulo",
     title: "El sound system mexicano: un linaje oculto",
@@ -1129,6 +1161,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ar-003",
+    hp: 50,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "tatiana-heuman-entrevista-obra-nueva",
     type: "articulo",
     title: 'Tatiana Heuman: "El silencio también es una frecuencia"',
@@ -1280,6 +1314,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "li-hard-techno-cdmx-2026",
+    partnerId: "pa-club-japan",
     slug: "cinco-tracks-hard-techno-cdmx-2026",
     type: "listicle",
     title: "5 tracks que definieron el hard techno en CDMX",
@@ -1448,6 +1483,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "li-eventos-mayo-2026",
+    hp: 130,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "cinco-eventos-imperdibles-mayo-2026",
     type: "listicle",
     title: "5 eventos imperdibles · Mayo 2026",
@@ -2029,6 +2066,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-cierre-temporada",
+    partnerId: "pa-club-japan",
     slug: "club-japan-cierre-temporada-jun26",
     type: "evento",
     title: "CLUB JAPAN — CIERRE DE TEMPORADA",
@@ -2180,6 +2218,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "mx-013",
+    hp: 85,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "girl-ultra-live-set-alicia",
     type: "mix",
     title: "Girl Ultra — Live @ Multiforo Alicia",
@@ -2243,6 +2283,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-005",
+    hp: 65,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "review-vladimir-ivkovic-el-bajo",
     type: "review",
     title: "Vladimir Ivkovic convirtió El Bajo en otro tiempo",
@@ -2263,6 +2305,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-006",
+    partnerId: "pa-club-japan",
     slug: "review-cosmetic-residency-japan",
     type: "review",
     title: "Cøsmetic en residencia: cómo dominar un venue en 90 minutos",
@@ -2568,6 +2611,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "op-001",
+    hp: 80,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "opinion-underground-mainstream",
     type: "opinion",
     title: "El underground mainstream ya no es underground",
@@ -2624,6 +2669,8 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "op-004",
+    hp: 45,
+    hpLastUpdatedAt: "2026-08-17T12:00:00Z",
     slug: "opinion-gentrificacion-venues",
     type: "opinion",
     title: "La gentrificación llegó a los clubs y la estamos dejando pasar",
@@ -2782,6 +2829,54 @@ const RAW_ITEMS: ContentItem[] = [
     partnerKind: "venue",
     partnerUrl: "https://instagram.com/japan_cdmx",
     partnerLastUpdated: "2026-04-16T12:00:00",
+    // Marketplace — dev-seed mirror of an approved marketplace partner, so
+    // the /mapa focus cluster can demo listing nodes (mockup: the East Asia
+    // Electronics Network LP cell). Listings ride the partner row jsonb.
+    marketplaceEnabled: true,
+    marketplaceDescription:
+      "Selección física del sótano: vinilos de la red East Asia Electronics, cassettes de sesiones residentes y merch del club.",
+    marketplaceLocation: "Monterrey 56, Roma Norte, CDMX",
+    marketplaceCurrency: "MXN",
+    marketplaceListings: [
+      {
+        id: "cj-mk-east-asia-vol3",
+        title: "Various Artists — East Asia Electronics Network Vol. 3 LP",
+        category: "vinyl",
+        subcategory: "LP",
+        price: 520,
+        condition: "NEW",
+        images: ["/flyers/rf-021.jpg"],
+        status: "available",
+        description:
+          "Compilado en vinilo de la red East Asia Electronics — prensado limitado distribuido por Club Japan.",
+        tags: ["limited", "compilado"],
+        publishedAt: "2026-04-14T12:00:00",
+      },
+      {
+        id: "cj-mk-sesiones-cassette",
+        title: "Sesiones Residentes 2025 — Cassette",
+        category: "cassette",
+        subcategory: "Mixtape",
+        price: 180,
+        condition: "NEW",
+        images: ["/flyers/rf-023.jpg"],
+        status: "reserved",
+        description:
+          "Mixtape físico con lo mejor de las residencias 2025 del sótano.",
+        publishedAt: "2026-04-10T12:00:00",
+      },
+      {
+        id: "cj-mk-ragga-tee",
+        title: "Camiseta Club Japan — Serie Industrial",
+        category: "merch",
+        subcategory: "Camiseta",
+        price: 350,
+        condition: "NEW",
+        images: ["/flyers/rf-024.jpg"],
+        status: "available",
+        publishedAt: "2026-04-05T12:00:00",
+      },
+    ],
   },
   {
     id: "pa-fascinoma",

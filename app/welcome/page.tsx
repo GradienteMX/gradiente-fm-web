@@ -8,6 +8,11 @@ import { peekInviteCard, type InviteCard } from '@/lib/invitations'
 import { normalizeInviteCode } from '@/lib/identity'
 import { RegistroCard } from '@/components/welcome/RegistroCard'
 import { PrismField } from '@/components/welcome/PrismField'
+import {
+  WAITLIST_ALIAS_MAX,
+  WAITLIST_CITIES,
+  // WAITLIST_SOURCES — lo usa el campo "¿cómo nos encontraste?", apagado abajo.
+} from '@/lib/waitlist'
 
 // The full invitación-3d experience is heavy (three.js + assets) — load it only
 // when a valid code resolves, so the gate page stays light for everyone else.
@@ -20,25 +25,6 @@ const InviteExperience = dynamic(
 // Space Grotesk) — the holo card + overlay chrome need them.
 const INVITE_FONTS =
   'https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@300;400;500&display=swap'
-
-// Waitlist origin options — same list as the prototype.
-const CIUDADES = [
-  'Ciudad de México, MX',
-  'Área Metropolitana, MX',
-  'Guadalajara, MX',
-  'Monterrey, MX',
-  'Otra ciudad, MX',
-  'Fuera de México',
-]
-const FUENTES = [
-  'Señal en X (Twitter)',
-  'Instagram',
-  'TikTok',
-  'Un amigo / boca a boca',
-  'Flyer / QR en un evento',
-  'Un DJ / colectivo',
-  'Otro canal',
-]
 
 // /welcome — invite-only landing for anonymous visitors. Middleware redirects
 // everyone here when they have no session, and bounces them off again once
@@ -688,7 +674,7 @@ function CodigoPanel({
 function WaitlistPanel({ onBack }: { onBack: () => void }) {
   const [alias, setAlias] = useState('')
   const [email, setEmail] = useState('')
-  const [city, setCity] = useState<string>(CIUDADES[0])
+  const [city, setCity] = useState<string>(WAITLIST_CITIES[0])
   // Honeypot. Los usuarios reales nunca lo ven; los bots lo autocompletan y el
   // route finge que todo salió bien sin insertar nada.
   const [tel, setTel] = useState('')
@@ -755,7 +741,7 @@ function WaitlistPanel({ onBack }: { onBack: () => void }) {
             id="wl-alias"
             ref={aliasRef}
             type="text"
-            maxLength={20}
+            maxLength={WAITLIST_ALIAS_MAX}
             placeholder="NOMADA_77"
             autoComplete="nickname"
             value={alias}
@@ -776,18 +762,19 @@ function WaitlistPanel({ onBack }: { onBack: () => void }) {
         <div className="wl-f">
           <label htmlFor="wl-city">Ciudad / Zona</label>
           <select id="wl-city" value={city} onChange={(e) => setCity(e.target.value)}>
-            {CIUDADES.map((c) => (
+            {WAITLIST_CITIES.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
         </div>
 
-        {/* APAGADO — "¿Cómo nos encontraste?". El campo y su catálogo (FUENTES)
-            se quedan aquí para reactivarlos sin volver a escribirlos:
+        {/* APAGADO — "¿Cómo nos encontraste?". El campo se queda aquí para
+            reactivarlo sin volver a escribirlo (el catálogo vive en
+            WAITLIST_SOURCES de lib/waitlist):
             <div className="wl-f">
               <label htmlFor="wl-src">¿Cómo nos encontraste?</label>
-              <select id="wl-src" defaultValue={FUENTES[0]}>
-                {FUENTES.map((f) => (
+              <select id="wl-src" defaultValue={WAITLIST_SOURCES[0]}>
+                {WAITLIST_SOURCES.map((f) => (
                   <option key={f}>{f}</option>
                 ))}
               </select>

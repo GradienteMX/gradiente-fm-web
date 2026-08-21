@@ -1102,6 +1102,50 @@ export type Database = {
           },
         ]
       }
+      waitlist_signups: {
+        Row: {
+          alias: string
+          city: string | null
+          created_at: string
+          email: string
+          id: string
+          invite_code: string | null
+          invited_at: string | null
+          source: string | null
+          status: string
+        }
+        Insert: {
+          alias?: string
+          city?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invite_code?: string | null
+          invited_at?: string | null
+          source?: string | null
+          status?: string
+        }
+        Update: {
+          alias?: string
+          city?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invite_code?: string | null
+          invited_at?: string | null
+          source?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_signups_invite_code_fkey"
+            columns: ["invite_code"]
+            isOneToOne: false
+            referencedRelation: "invite_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       entities: {
         Row: {
           bio: string | null

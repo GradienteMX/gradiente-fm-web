@@ -456,3 +456,130 @@ body {
   }
 }
 
+
+/* ── Spatial Identity Canvas (/mapa) — semantic zoom bands ──────────────────
+   The canvas root carries data-band="far|mid|near" (set imperatively from the
+   camera zoom in MapaCanvas). Cell text detail resolves with scale — imagery
+   and silhouette dominate at distance, metadata appears close-up. This is the
+   "semantic scale, not just CSS magnification" behavior from the Spatial
+   Identity Canvas spec, band-gated in CSS so pan/zoom never re-renders cells. */
+.mapa-cell-label,
+.mapa-cell-title,
+.mapa-cell-meta {
+  transition: opacity 0.25s ease;
+}
+.mapa-root[data-band='far'] .mapa-cell-label,
+.mapa-root[data-band='far'] .mapa-cell-meta {
+  opacity: 0;
+}
+/* Far band: silhouette + imagery only — titles survive on rosettes alone
+   (trihex titles at ≤0.45 zoom render below legibility and read as noise,
+   which the synthetic-HL terrain made obvious: 70+ trihexes of smudge). */
+.mapa-root[data-band='far'] [data-size='1'] .mapa-cell-title,
+.mapa-root[data-band='far'] [data-size='3'] .mapa-cell-title {
+  opacity: 0;
+}
+.mapa-root[data-band='mid'] [data-size='1'] .mapa-cell-meta {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mapa-cell-label,
+  .mapa-cell-title,
+  .mapa-cell-meta {
+    transition: none;
+  }
+}
+
+/* ── /mapa — focus dim + zoom-burst hints ───────────────────────────────────
+   .mapa-cell--dim / --emph: partner-focus terrain treatment — everything not
+   attributed to the focused identity recedes; attributed cells keep full
+   color (their rim boost is inline SVG props).
+   .mapa-zooming: transitions suspended while the scale is actively changing —
+   a band flip mid-zoom otherwise starts an opacity transition on every
+   visible label at once. */
+.mapa-cell--off {
+  opacity: 0;
+  pointer-events: none;
+}
+.mapa-cell--dim .mapa-cell-media {
+  filter: brightness(0.35) saturate(0.5);
+}
+.mapa-cell--dim .mapa-cell-text {
+  opacity: 0.25;
+}
+.mapa-cell--dim .mapa-cell-media,
+.mapa-cell--dim .mapa-cell-text {
+  transition:
+    filter 0.3s ease,
+    opacity 0.3s ease;
+}
+.mapa-zooming .mapa-cell-label,
+.mapa-zooming .mapa-cell-title,
+.mapa-zooming .mapa-cell-meta,
+.mapa-zooming .mapa-cell-media,
+.mapa-zooming .mapa-cell-img,
+.mapa-zooming .mapa-cell-rim {
+  transition: none;
+}
+
+/* ── /mapa — boot entrance ripple ───────────────────────────────────────────
+   Center-out staggered reveal: each cell's wrapper animates once at boot,
+   delayed by its distance from the terrain center (--mapa-enter-delay, set
+   inline by MapaCanvas). Scoped to .mapa-booting — the class drops ~1.2s
+   after mount, so cells mounted later by virtualization never re-animate.
+   The wrapper (not the cell root) animates: the root's transform belongs to
+   focus/compaction deltas. */
+.mapa-booting .mapa-cell-anim {
+  animation: mapa-cell-enter 0.5s ease-out backwards;
+  animation-delay: var(--mapa-enter-delay, 0s);
+}
+@keyframes mapa-cell-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── /mapa — pointer feel ───────────────────────────────────────────────────
+   Hover press: the image scales slightly INSIDE its hex clip (glass-press
+   feel, compositor-only). Rim brightens in step. While the terrain is being
+   dragged (.mapa-dragging, class-toggled off the render path) cells stop
+   receiving pointer events: no hover churn mid-pan, grabbing cursor
+   everywhere. */
+.mapa-cell-img {
+  transition: transform 0.3s ease-out;
+}
+.group\/cell:hover .mapa-cell-img,
+.group\/cell:focus-visible .mapa-cell-img {
+  transform: scale(1.045);
+}
+.mapa-cell-rim {
+  transition: stroke-opacity 0.15s ease;
+}
+.group\/cell:hover .mapa-cell-rim,
+.group\/cell:focus-visible .mapa-cell-rim {
+  stroke-opacity: 1;
+}
+.mapa-dragging {
+  cursor: grabbing;
+}
+.mapa-dragging [data-item-id] {
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mapa-booting .mapa-cell-anim {
+    animation: none;
+  }
+  .mapa-cell-img,
+  .mapa-cell-rim {
+    transition: none;
+  }
+  .group\/cell:hover .mapa-cell-img,
+  .group\/cell:focus-visible .mapa-cell-img {
+    transform: none;
+  }
+}
