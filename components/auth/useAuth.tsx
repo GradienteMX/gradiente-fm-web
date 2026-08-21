@@ -18,7 +18,7 @@ import {
   clearSavedCommentIds,
 } from '@/lib/savedCommentsCache'
 import {
-  setSavedItemIds,
+  setSavedItemEntries,
   clearSavedItemIds,
 } from '@/lib/itemSavesCache'
 import {
@@ -188,11 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     supabase
       .from('user_saves')
-      .select('item_id')
+      .select('item_id, saved_at')
       .eq('user_id', authId)
       .then(({ data }) => {
         if (cancelled) return
-        setSavedItemIds((data ?? []).map((r) => r.item_id))
+        setSavedItemEntries(
+          (data ?? []).map((r) => ({ itemId: r.item_id, savedAt: r.saved_at })),
+        )
       })
     // Drafts: load all of the user's drafts and prime the module cache so
     // sync `getItemById` / `useDraftItems` reads work from the dashboard

@@ -34,11 +34,14 @@ export function GlobalPlayerBar() {
   const has = !!item
 
   // Home keeps ONLY the left rail player (NowPlayingHud) — the top bar is for
-  // the other pages (agenda / foro / marketplace / empieza aquí / dashboard)
-  // where there's no rail. Hooks run before this early return so hook order
-  // stays stable across routes; hiding the bar never touches the global
-  // provider, so playback continues uninterrupted across navigations.
-  if (pathname === '/') return null
+  // the other pages (agenda / foro / marketplace / empieza aquí) where
+  // there's no rail. /dashboard has its own transport (REPRODUCTOR widget +
+  // MiniTransport — one-transport rule; belt-and-braces with ChromeFrame's
+  // null-list). Hooks run before this early return so hook order stays
+  // stable across routes; hiding the bar never touches the global provider,
+  // so playback continues uninterrupted across navigations.
+  if (pathname === '/' || pathname === '/dashboard' || pathname === '/lab/dashboard')
+    return null
 
   const progress =
     audio.duration > 0 ? Math.min(1, audio.currentTime / audio.duration) : 0

@@ -1,6 +1,7 @@
 'use client'
 
 import { ReactNode, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { CRTShader } from './CRTShader'
 import { CRTPostProcess } from './CRTPostProcess'
 
@@ -54,6 +55,13 @@ export function CRTOverlay({ children }: { children: ReactNode }) {
   // hydrated tree matches what the server emitted. After mount we know the
   // capabilities and switch.
   const [mode, setMode] = useState<Mode | null>(null)
+  // /dashboard («EL PLIEGO») is a light print surface — the scanline shader
+  // reads as grey striping on cream, so it's suppressed there (OFF, not
+  // attenuated). The shader is a SIBLING of children, so toggling it never
+  // re-parents the app tree or drops state.
+  const pathname = usePathname()
+  const onDashboard =
+    (pathname?.startsWith('/dashboard') || pathname === '/lab/dashboard') ?? false
 
   useEffect(() => {
     setMode(pickMode())
@@ -62,11 +70,13 @@ export function CRTOverlay({ children }: { children: ReactNode }) {
   }, [])
 
   if (mode === null) return <>{children}</>
+  // Path B (?pathB=1, experimental) wraps the whole app in a canvas and has
+  // no per-route suppression yet — left as-is; it's opt-in only.
   if (mode === 'B') return <CRTPostProcess>{children}</CRTPostProcess>
   return (
     <>
       {children}
-      <CRTShader />
+      {!onDashboard && <CRTShader />}
     </>
   )
 }

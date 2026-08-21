@@ -583,3 +583,237 @@ body {
     transform: none;
   }
 }
+
+/* ── /dashboard — «EL PLIEGO» light surface ─────────────────────────────────
+   Everything below is scoped under .dash-shell (plus the html.dash-route
+   toggle WP1's layout effect flips while /dashboard is mounted). The dark
+   chrome and the .mapa-* blocks above are untouched. Hex values mirror the
+   dashboard tokens in tailwind.config.ts (paper/ink/acid) — lockstep. */
+.dash-shell {
+  background-color: #EDEBE3; /* paper */
+  color: #111111; /* ink */
+  min-height: 100dvh;
+  /* The shell owns its scroll — no dark rubber-band flash may frame the
+     paper. */
+  overscroll-behavior-y: none;
+}
+
+/* Route-scoped ground: toggled on <html> by app/dashboard/layout.tsx so
+   overscroll and scrollbar gutters show paper, never #0D0D0D. */
+html.dash-route,
+html.dash-route body {
+  background-color: #EDEBE3;
+}
+
+/* Selection inside the shell: ink on acid — the accent's legal ground. */
+.dash-shell ::selection {
+  background-color: #D8FF00;
+  color: #111111;
+}
+
+/* Scrollbar: paper track, ink thumb. Scoped to the shell and its scrollable
+   rails; overlays mounted outside the shell keep the dark chrome bars. */
+.dash-shell::-webkit-scrollbar,
+.dash-shell *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: #EDEBE3;
+}
+.dash-shell::-webkit-scrollbar-track,
+.dash-shell *::-webkit-scrollbar-track {
+  background: #EDEBE3;
+}
+.dash-shell::-webkit-scrollbar-thumb,
+.dash-shell *::-webkit-scrollbar-thumb {
+  background: #111111;
+  /* paper border mats the thumb off the track edge — reads as a hairline
+     instrument slider, not a browser default */
+  border: 2px solid #EDEBE3;
+}
+.dash-shell,
+.dash-shell * {
+  scrollbar-color: #111111 #EDEBE3; /* Firefox */
+}
+
+/* ══ dash-press — «EL PLIEGO» compose press-bed reskin (FIX-A, ADDITIVE) ═════
+   ComposeSheet (§4) mounts the byte-untouched dashboard forms inside its
+   press bed; this block re-inks their legacy dark/orange chrome to the
+   pliego register (warm-ink ground, paper text, acid accent) from OUTSIDE
+   the form files. Scope: every selector requires the `.dash-press` ancestor
+   that only ComposeSheet renders — /admin and the dark site mount the same
+   forms with no such ancestor and are untouched. Hexes mirror the pliego
+   tokens in tailwind.config.ts (paper #EDEBE3 / ink #111111 / acid #D8FF00);
+   #161513 is the §1.7-sanctioned dark-printed-object ground. Inline-style
+   remaps match both the browser serialization (rgb(249, 115, 22)) and the
+   authored hex (#F97316); !important only where an inline style must lose. */
+.dash-press {
+  background-color: #161513; /* press bed — dark composer as printed object */
+  color: #EDEBE3;
+}
+/* Grounds: panels raise, input wells recess — all in the warm-ink family. */
+.dash-press .bg-surface { background-color: #1E1C18; }
+.dash-press .bg-base { background-color: #12110F; }
+.dash-press .bg-base\/95 { background-color: rgba(22, 21, 19, 0.95); }
+.dash-press .bg-black { background-color: #0E0D0B; }
+.dash-press .bg-black\/30 { background-color: rgba(14, 13, 11, 0.55); }
+.dash-press .bg-elevated { background-color: #262420; }
+.dash-press .bg-elevated\/30 { background-color: rgba(38, 36, 32, 0.4); }
+/* Borders: cold grays (#2E2E2E class / #242424 inline) → warm hairlines. */
+.dash-press .border-border { border-color: #3A362E; }
+.dash-press [style*="rgb(36, 36, 36)"],
+.dash-press [style*="#242424"] { border-color: #35322B !important; }
+/* Type: paper-on-ink (inputs ≥7:1), warm secondary/muted, legible labels. */
+.dash-press .text-primary { color: #EDEBE3; }
+.dash-press .text-secondary { color: #C2BCAE; }
+.dash-press .text-muted { color: #9A9384; }
+.dash-press .sys-label { color: #A39C8C; }
+.dash-press ::placeholder { color: #857E6F; }
+.dash-press [style*="rgb(136, 136, 136)"],
+.dash-press [style*="#888888"] { color: #B6B0A2 !important; }
+/* EVA-orange chrome → acid accent (legal on ink grounds — palette.ts). */
+.dash-press .text-sys-orange,
+.dash-press .text-sys-orange\/80 { color: #D8FF00; }
+.dash-press .accent-sys-orange { accent-color: #D8FF00; }
+.dash-press [style*="rgb(249, 115, 22)"],
+.dash-press [style*="rgba(249, 115, 22"],
+.dash-press [style*="rgba(249,115,22"],
+.dash-press [style*="#F97316"] {
+  color: #D8FF00 !important;
+  border-color: #D8FF00 !important;
+}
+/* …solid orange fills → solid acid; translucent orange washes → acid wash. */
+.dash-press [style*="background-color: rgb(249, 115, 22)"],
+.dash-press [style*="background-color:#F97316"] {
+  background-color: #D8FF00 !important;
+  color: #111111 !important;
+}
+.dash-press [style*="rgba(249, 115, 22"],
+.dash-press [style*="rgba(249,115,22"] {
+  background-color: rgba(216, 255, 0, 0.12) !important;
+}
+/* Green status glyphs join the acid register; the pulse loop dies (§6 —
+   no fade loops on the pliego; doubles as the reduced-motion guarantee). */
+.dash-press .bg-sys-green { background-color: #D8FF00; }
+.dash-press .text-sys-green,
+.dash-press .text-sys-green\/70 { color: #D8FF00; }
+.dash-press .animate-pulse { animation: none; }
+/* Interaction states — declared AFTER the base remaps so ties in specificity
+   resolve to the state (the base .text-muted override would otherwise eat
+   the forms' hover feedback). Orange states go acid; red stays red. */
+.dash-press .hover\:text-primary:hover { color: #EDEBE3; }
+.dash-press .hover\:text-sys-red:hover { color: #E63329; }
+.dash-press .hover\:border-sys-red:hover { border-color: #E63329; }
+.dash-press .hover\:text-sys-orange:hover { color: #D8FF00; }
+.dash-press .hover\:border-sys-orange:hover { border-color: #D8FF00 !important; }
+.dash-press .focus\:border-sys-orange:focus { border-color: #D8FF00 !important; }
+.dash-press .focus-visible\:ring-sys-orange:focus-visible { --tw-ring-color: #D8FF00; }
+
+/* ── COSECHAR modal reskin (byte-untouched HarvestConfirmModal) — FIX-A ─────
+   Scoped to dashboard surfaces via html.dash-route (app/dashboard/layout.tsx
+   + the /lab toggle) AND the modal's unique root signature
+   (.z-[100].backdrop-blur-sm — the only such element; CRTShader's z-[100]
+   overlay has no backdrop-blur and is suppressed on /dashboard anyway).
+   Globally-mounted chrome (PublishConfirmOverlay, player) sits outside this
+   root and is untouched. Same register as .dash-press: warm-ink panel, acid
+   replaces the legacy orange, the harvest ceremony itself is intact. */
+html.dash-route .z-\[100\].backdrop-blur-sm .bg-surface { background-color: #161513; }
+html.dash-route .z-\[100\].backdrop-blur-sm .bg-base\/40 { background-color: rgba(14, 13, 11, 0.5); }
+html.dash-route .z-\[100\].backdrop-blur-sm .border-sys-orange { border-color: #D8FF00; }
+html.dash-route .z-\[100\].backdrop-blur-sm .text-sys-orange { color: #D8FF00; }
+html.dash-route .z-\[100\].backdrop-blur-sm .bg-sys-orange\/10 { background-color: rgba(216, 255, 0, 0.1); }
+html.dash-route .z-\[100\].backdrop-blur-sm .border-border { border-color: #3A362E; }
+html.dash-route .z-\[100\].backdrop-blur-sm .border-border\/60 { border-color: rgba(58, 54, 46, 0.75); }
+html.dash-route .z-\[100\].backdrop-blur-sm .text-secondary { color: #C2BCAE; }
+html.dash-route .z-\[100\].backdrop-blur-sm .text-muted { color: #9A9384; }
+/* State compensators (ties with the remaps above resolve to the state). */
+html.dash-route .z-\[100\].backdrop-blur-sm .hover\:text-primary:hover { color: #EDEBE3; }
+html.dash-route .z-\[100\].backdrop-blur-sm .hover\:text-secondary:hover { color: #EDEBE3; }
+html.dash-route .z-\[100\].backdrop-blur-sm .hover\:border-secondary:hover { border-color: #C2BCAE; }
+html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/10:hover { background-color: rgba(216, 255, 0, 0.1); }
+html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/20:hover { background-color: rgba(216, 255, 0, 0.18); }
+
+/* ── Pressed states — «EL PLIEGO» deliberate :active (fix 10, ADDITIVE) ─────
+   Diagnosis: NO :active rule exists anywhere in this sheet — the red-on-black
+   flash on pressed pliego buttons is the legacy global ::selection above
+   (#E63329 on #000, «Selection color» block): a press-drag / double-click
+   starts a text selection on the control's label, and dash surfaces mounted
+   OUTSIDE .dash-shell (the portal'd harvest modal) miss the shell's acid
+   selection override entirely. Two-part fix, all scoped:
+   (1) press hygiene — controls never start a selection or UA tap flash;
+   (2) a deliberate active state — one-step fill inversion, zero tween (§6). */
+
+/* (1) Press hygiene on the shell's interactive elements. */
+.dash-shell :where(button, [role='button'], a) {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* (2) The pressed register: paper/raised controls invert to an ink slab with
+   paper text. :where() keeps the element part at zero specificity so the
+   variant rules below win on source order, while the whole selector still
+   out-specifies bare utility classes (hover:bg-paper etc.). */
+.dash-shell :where(button, [role='button'], a):active:not(:disabled) {
+  background-color: #111111; /* ink */
+  border-color: #111111;
+  color: #EDEBE3; /* paper */
+}
+/* Nested label text joins the inversion (rows carry their own text-ink /
+   text-ink-soft utilities that would otherwise vanish on the ink ground);
+   hairline chips redraw in the inverted color. Momentary by nature. */
+.dash-shell :where(button, [role='button'], a):active:not(:disabled)
+  :where(p, span, h1, h2, h3, h4, h5, h6, strong, em, time, small) {
+  color: inherit;
+  border-color: currentColor;
+}
+/* Inside a black panel the inversion flips the other way — paper ground,
+   ink text (an ink slab on ink would be no feedback at all). */
+.dash-shell .bg-panel :where(button, [role='button'], a):active:not(:disabled) {
+  background-color: #EDEBE3;
+  border-color: #EDEBE3;
+  color: #111111;
+}
+/* Acid-filled controls (CREAR) keep the accent's voltage while pressed:
+   ink ground, acid text — the §1.1-legal acid-on-ink pairing (≈13:1). */
+.dash-shell :where(button, [role='button'], a).bg-acid:active:not(:disabled) {
+  background-color: #111111;
+  border-color: #111111;
+  color: #D8FF00;
+}
+/* Ink-filled controls (LISTO) invert to paper — same one-step grammar. */
+.dash-shell :where(button, [role='button'], a).bg-ink:active:not(:disabled) {
+  background-color: #EDEBE3;
+  border-color: #111111;
+  color: #111111;
+}
+/* Destructive commits (EditModeBar CONFIRMAR) press into the red they are
+   about to execute — never the generic ink inversion. */
+.dash-shell .dash-active-danger:active:not(:disabled) {
+  background-color: #C42B20; /* sys-red-paper */
+  border-color: #C42B20;
+  color: #EDEBE3;
+}
+
+/* The harvest modal mounts OUTSIDE .dash-shell (portal): its selection joins
+   the pliego register here so no press on a dash surface can flash the
+   legacy red-on-black selection. Same root signature as the reskin above. */
+html.dash-route .z-\[100\].backdrop-blur-sm ::selection {
+  background-color: #D8FF00;
+  color: #111111;
+}
+
+/* ── ACTIVIDAD ledger — the directed void (fix 9a, ADDITIVE) ────────────────
+   Sparse days leave room between the last activity row and the pinned
+   footnotes; this zone rules itself like an empty printed ledger — hairline
+   baseline rules on the 24px line grid (§1.4), ink-faint at low alpha — so
+   the space reads as «room reserved for signals», never breakage. Pure
+   background: zero fake rows, zero extra DOM per rule. */
+.dash-ledger {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 23px,
+    rgba(92, 88, 80, 0.22) 23px, /* ink-faint, low alpha */
+    rgba(92, 88, 80, 0.22) 24px
+  );
+}
