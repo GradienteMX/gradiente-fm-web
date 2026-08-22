@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 import { getItems } from '@/lib/data/items'
 import { MOCK_ITEMS } from '@/lib/mockData'
+import {
+  NOCHE_NEGRA_ITEMS,
+  NOCHE_NEGRA_PARTNER,
+} from '@/lib/nocheNegraSeed'
 import archiveSeedJson from '@/lib/data/archiveSeed.json'
 import {
   partnerClusters,
@@ -64,6 +68,13 @@ function datasetKey(items: readonly ContentItem[], nowMs: number): string {
   return `${nowMs}:${items.length}:${h >>> 0}`
 }
 
+// Noche Negra demo catalogue (2026-08-20, Iker's ask): the mature-partner-
+// focus demo must be visible in EVERY dev context — an authed local session
+// reads the live DB, where the catalogue's rows don't exist (it is file-side
+// mock data), so without this merge the demo only appeared for anonymous
+// sessions. Dev-only: prod never shows the mock catalogue.
+const NN_DEMO = process.env.NODE_ENV !== 'production'
+
 export default async function MapaPage({ searchParams }: PageProps) {
   const fetched = await getItems()
   // Dev-seed fallback: anonymous/unauthenticated contexts read zero rows
@@ -71,7 +82,22 @@ export default async function MapaPage({ searchParams }: PageProps) {
   // the rest of the app leans on — real Gradiente content, not invented
   // placeholder. In production authed sessions `fetched` is always non-empty
   // (real rows + visible seed rows).
-  const all = fetched.length > 0 ? fetched : MOCK_ITEMS
+  let all = fetched.length > 0 ? fetched : MOCK_ITEMS
+  if (NN_DEMO) {
+    const hasNN = all.some(
+      (i) => i.type !== 'partner' && i.partnerId === NOCHE_NEGRA_PARTNER.id,
+    )
+    if (!hasNN) {
+      // Replace the DB's bare partner row with the demo one (marketplace-
+      // enabled, listings) and add the catalogue items that aren't present.
+      const ids = new Set(all.map((i) => i.id))
+      all = [
+        ...all.filter((i) => i.id !== NOCHE_NEGRA_PARTNER.id),
+        NOCHE_NEGRA_PARTNER,
+        ...NOCHE_NEGRA_ITEMS.filter((i) => !ids.has(i.id)),
+      ]
+    }
+  }
 
   // Archivo Vivo 2005-2013 (living-archive pilot) — file-side seed built by
   // scripts/buildArchiveSeed.ts from the gradiente-ops dataset. Map-only for

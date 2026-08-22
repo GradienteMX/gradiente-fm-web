@@ -23,6 +23,7 @@ import {
 import {
   computeFocusArrangement,
   computeLensArrangement,
+  placeGlobalListings,
   rankRelatedPartners,
 } from '@/lib/mapa/focus'
 
@@ -109,6 +110,92 @@ function build() {
   const [cluster] = partnerClusters(layout, [PARTNER_ROW])
   return { items, layout, cluster }
 }
+
+describe('global marketplace satellites', () => {
+  const LISTINGS: MarketplaceListing[] = [
+    {
+      id: 'gmk-1',
+      title: 'Global LP',
+      category: 'vinyl',
+      price: 500,
+      condition: 'NEW',
+      images: [],
+      status: 'available',
+      publishedAt: '2026-04-14T12:00:00',
+    },
+    {
+      id: 'gmk-2',
+      title: 'Global Deck',
+      category: 'turntable',
+      price: 9000,
+      condition: 'VG+',
+      images: [],
+      status: 'available',
+      publishedAt: '2026-04-10T12:00:00',
+    },
+    {
+      id: 'gmk-3',
+      title: 'Global Tee',
+      category: 'merch',
+      price: 300,
+      condition: 'NEW',
+      images: [],
+      status: 'sold',
+      publishedAt: '2026-04-05T12:00:00',
+    },
+  ]
+  function buildWithMarketplace() {
+    const items = makeDataset()
+    const layout = placeItems(items, NOW)
+    const row = {
+      ...PARTNER_ROW,
+      marketplaceEnabled: true,
+      marketplaceListings: LISTINGS,
+    }
+    const clusters = partnerClusters(layout, [row])
+    return { layout, clusters }
+  }
+
+  it('places every listing on a free cell, deterministically', () => {
+    const a = buildWithMarketplace()
+    const b = buildWithMarketplace()
+    const ga = placeGlobalListings(a.layout, a.clusters)
+    const gb = placeGlobalListings(b.layout, b.clusters)
+    assert.equal(ga.length, LISTINGS.length)
+    assert.deepEqual(
+      ga.map((g) => ({ id: g.placement.listing.id, cell: g.placement.cell })),
+      gb.map((g) => ({ id: g.placement.listing.id, cell: g.placement.cell })),
+    )
+    const seen = new Set<string>()
+    for (const g of ga) {
+      const k = cellKey(g.placement.cell)
+      assert.ok(!a.layout.cellOwner[k], `${k} collides with terrain`)
+      assert.ok(!seen.has(k), `${k} doubly-claimed by listings`)
+      seen.add(k)
+    }
+  })
+
+  it('keeps satellites near their cluster and anchored to real members', () => {
+    const { layout, clusters } = buildWithMarketplace()
+    const globals = placeGlobalListings(layout, clusters)
+    const memberIds = new Set(clusters[0].itemIds)
+    for (const g of globals) {
+      let min = Infinity
+      for (const c of clusters[0].cells) {
+        const d = hexDistance(c, g.placement.cell)
+        if (d < min) min = d
+      }
+      assert.ok(min <= 6, `satellite ${g.placement.listing.id} drifted ${min} hexes out`)
+      assert.ok(memberIds.has(g.anchorItemId), 'anchor is a cluster member')
+    }
+  })
+
+  it('skips partners without marketplace', () => {
+    const { layout } = buildWithMarketplace()
+    const bare = partnerClusters(layout, [PARTNER_ROW])
+    assert.equal(placeGlobalListings(layout, bare).length, 0)
+  })
+})
 
 // ── Mindshare geography — identity bearings ─────────────────────────────────
 
@@ -223,14 +310,29 @@ describe('focus reflow', () => {
     const arrB = computeFocusArrangement(b.layout, b.cluster)
     assert.deepEqual(arrA.deltas, arrB.deltas)
     assert.deepEqual(arrA.identityCell, arrB.identityCell)
+    assert.deepEqual(arrA.identityCells, arrB.identityCells)
     assert.deepEqual(arrA.derived.cellOwner, arrB.derived.cellOwner)
   })
 
-  it('gathers all members into one contiguous cluster around the identity hex', () => {
+  it('identity claims a full rosette centered on the nucleus cell', () => {
+    const { layout, cluster } = build()
+    const arr = computeFocusArrangement(layout, cluster)
+    assert.equal(arr.identityCells.length, 7)
+    assert.deepEqual(arr.identityCells[0], arr.identityCell)
+    for (const d of HEX_DIRS) {
+      const n = axialAdd(arr.identityCell, d)
+      assert.ok(
+        arr.identityCells.some((c) => c.q === n.q && c.r === n.r),
+        `rosette missing neighbor ${cellKey(n)}`,
+      )
+    }
+  })
+
+  it('gathers all members into one contiguous cluster around the identity rosette', () => {
     const { layout, cluster } = build()
     const arr = computeFocusArrangement(layout, cluster)
     const memberIds = new Set(cluster.itemIds)
-    const focusCells = [arr.identityCell]
+    const focusCells = [...arr.identityCells]
     for (const p of arr.derived.placed) {
       if (memberIds.has(p.item.id)) focusCells.push(...p.cells)
     }
@@ -268,15 +370,17 @@ describe('focus reflow', () => {
     }
     assert.equal(arr.derived.placed.length, layout.placed.length)
     assert.equal(Object.keys(arr.derived.cellOwner).length, total)
-    // The identity cell is chrome, never content-owned.
-    assert.ok(!arr.derived.cellOwner[cellKey(arr.identityCell)])
+    // The identity rosette is chrome, never content-owned.
+    for (const c of arr.identityCells) {
+      assert.ok(!arr.derived.cellOwner[cellKey(c)])
+    }
   })
 
   it('non-members end up fully outside the cluster + buffer ring', () => {
     const { layout, cluster } = build()
     const arr = computeFocusArrangement(layout, cluster)
     const memberIds = new Set(cluster.itemIds)
-    const reserve = new Set<string>([cellKey(arr.identityCell)])
+    const reserve = new Set<string>(arr.identityCells.map(cellKey))
     for (const p of arr.derived.placed) {
       if (memberIds.has(p.item.id)) {
         for (const c of p.cells) reserve.add(cellKey(c))
@@ -324,7 +428,7 @@ describe('focus reflow', () => {
     const arr = computeFocusArrangement(layout, cluster, listings)
     assert.equal(arr.listings.length, 2)
     const memberIds = new Set(cluster.itemIds)
-    const occupied = new Set<string>([cellKey(arr.identityCell)])
+    const occupied = new Set<string>(arr.identityCells.map(cellKey))
     for (const p of arr.derived.placed) {
       if (memberIds.has(p.item.id)) {
         for (const c of p.cells) occupied.add(cellKey(c))
@@ -368,7 +472,7 @@ describe('focus reflow', () => {
     // Belt cells sit OUTSIDE the focus reserve (cluster + one-ring buffer)
     // but within a short walk of the cluster.
     const memberIds = new Set(cluster.itemIds)
-    const focusCells = [arr.identityCell]
+    const focusCells = [...arr.identityCells]
     for (const p of arr.derived.placed) {
       if (memberIds.has(p.item.id)) focusCells.push(...p.cells)
     }

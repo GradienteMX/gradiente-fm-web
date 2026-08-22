@@ -117,6 +117,32 @@ updated: 2026-08-18
     when their hidden peers were the connective tissue — focus-gather
     unaffected; a cohesion term is the named fix if it bothers in practice.
 
+12. **AFINIDAD lets the terrain breathe into continents.** (2026-08-20,
+    Iker's call.) The one OPT-IN toggle in the filter column — the inverse
+    of a kill-switch: it hides nothing. The engine
+    ([continents.ts](../../lib/mapa/continents.ts)) reads the map's own
+    affinity structure: adjacent items whose pairwise affinity clears a
+    threshold fuse into LANDMASSES (union-find over adjacency edges), and
+    each mass drifts rigidly away from the terrain centroid
+    (`CONTINENT_SPREAD`) so **ocean opens between masses** while every mass
+    keeps its exact internal geography. Masses of ≥`CONTINENT_MIN_ITEMS`
+    are ringed as continents (dashed sys-orange perimeter + live count on
+    the toggle); islets and singles drift too, with narrower water
+    (`ISLET_MIN_OCEAN` 1 vs `CONTINENT_MIN_OCEAN` 2 — uniform wide oceans
+    measured ~3× area blow-up on the dev seed). The threshold is
+    **adaptive**: it escalates from the affinity floor (2) until the
+    largest mass holds ≤`CONTINENT_MAX_SHARE` (35%) of the terrain —
+    a fixed floor percolates into Pangaea (dev seed: one 150-item mass at
+    t=2) — and backs off if escalation leaves no major area. Collision
+    repair is nearest-fit ring search around each mass's scaled target
+    (pure radial pushes were measured to stack crowded bearings into long
+    rays). Pure + deterministic per layout; translation-only; reversible;
+    deep-linkable as `?afinidad=1` (replaceState — Back stays reserved for
+    focus). Precedence: focus reflow > affinity continents > filter
+    compaction > global; hiding a category while AFINIDAD is up fades cells
+    in place inside their continents (no compaction). Camera clamp/fit
+    follow the expanded bounds while active.
+
 ## What this buys
 
 - **Learnability** — bearings make the geography memorable across visits.
@@ -133,9 +159,18 @@ updated: 2026-08-18
 - **Genre-community bearings**: should the big root genres (techno, ambient,
   dub…) also own directions so unattributed content gets macro structure? Or
   does that recreate category districts through the back door? Undecided.
-- **Global marketplace nodes** (listings on the global terrain, not just in
-  focus) — needs a placement identity for listings (rule 4 would use the
-  owning partner's bearing).
+- ~~**Global marketplace nodes**~~ — DONE 2026-08-20 (`placeGlobalListings`
+  in [focus.ts](../../lib/mapa/focus.ts)): listings are single-hex MERCADO
+  satellites BFS-placed on the free cells nearest their partner's cluster —
+  the stable terrain is never displaced (rule 9 holds; the interspersed
+  center often has no free neighbors, so satellites take the nearest coast
+  and chain into an arc). Each records its nearest member as ANCHOR and
+  rides that member's delta through view arrangements; satellites dim
+  during another partner's focus, hand over to the focus arc during their
+  own, fade during compaction (the repack can claim their coast), and obey
+  the MERCADO kill-switch. Engine-level placement (listings as first-class
+  terrain items pulled toward the partner bearing) remains the eventual
+  refinement if satellites ever need to sit deeper than the coast.
 - Tunables (`W_ANCHOR`, `ANCHOR_RADIUS`, affinity weights) are code constants
   pending an editorial tuning pass with real data.
 - **Synthetic HL retirement**: the rule-2 beta amendment must come out once

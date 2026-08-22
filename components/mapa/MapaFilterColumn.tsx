@@ -6,6 +6,11 @@
 // fade out in place (nothing moves, nothing regroups; the geography stays
 // learnable, rule 11). Active hexes wear their category color; deactivated
 // ones go hollow. Types on top, the two eras below.
+//
+// Below the eras sits the one OPT-IN toggle of the column: AFINIDAD. Unlike
+// the kill-switches it hides nothing — activating it lets the terrain's
+// affinity structure breathe: high-affinity regions ring up as continents
+// and ocean opens between the masses (see lib/mapa/continents.ts).
 
 import { memo } from 'react'
 import type { ContentType } from '@/lib/types'
@@ -32,6 +37,8 @@ interface ToggleHexProps {
   visible: boolean
   onToggle: () => void
   ariaLabel: string
+  /** Kill-switches strike the label when off; opt-in toggles don't. */
+  strike?: boolean
 }
 
 function ToggleHex({
@@ -41,6 +48,7 @@ function ToggleHex({
   visible,
   onToggle,
   ariaLabel,
+  strike = true,
 }: ToggleHexProps) {
   return (
     <button
@@ -73,7 +81,12 @@ function ToggleHex({
         className="relative z-10 flex h-full w-full flex-col items-center justify-center font-mono leading-none tracking-[0.06em]"
         style={{ color: visible ? color : '#6A6A6A', fontSize: 8.5 }}
       >
-        <span className={clsx('max-w-[86%] truncate', !visible && 'line-through')}>
+        <span
+          className={clsx(
+            'max-w-[86%] truncate',
+            strike && !visible && 'line-through',
+          )}
+        >
           {label}
         </span>
         {sub && <span className="mt-0.5 text-[7px] opacity-60">{sub}</span>}
@@ -91,16 +104,29 @@ export interface MapaFilterColumnProps {
   typeOptions: [string, number][]
   /** [contemporary count, archive count]. */
   eraCounts: [number, number]
-  /** Deactivated keys: content types and 'era:ahora' / 'era:archivo'. */
+  /**
+   * Marketplace listings that can materialize on the map (focus-state
+   * MERCADO nodes). 0 → the hex doesn't render (honest chips).
+   */
+  mercadoCount: number
+  /** Deactivated keys: content types, 'mercado', 'era:ahora'/'era:archivo'. */
   hidden: ReadonlySet<string>
   onToggle: (key: string) => void
+  /** AFINIDAD continent mode — number of detected continents while active. */
+  affinityOn: boolean
+  affinityCount: number | null
+  onToggleAffinity: () => void
 }
 
 export const MapaFilterColumn = memo(function MapaFilterColumn({
   typeOptions,
   eraCounts,
+  mercadoCount,
   hidden,
   onToggle,
+  affinityOn,
+  affinityCount,
+  onToggleAffinity,
 }: MapaFilterColumnProps) {
   return (
     <div
@@ -123,6 +149,18 @@ export const MapaFilterColumn = memo(function MapaFilterColumn({
           />
         )
       })}
+      {mercadoCount > 0 && (
+        <ToggleHex
+          label="MERCADO"
+          sub={String(mercadoCount)}
+          color="#D6B37A"
+          visible={!hidden.has('mercado')}
+          onToggle={() => onToggle('mercado')}
+          ariaLabel={`${
+            hidden.has('mercado') ? 'Mostrar' : 'Ocultar'
+          } artículos de mercado (${mercadoCount})`}
+        />
+      )}
       <div aria-hidden className="my-1 h-px w-8 bg-border" />
       {(
         [
@@ -143,6 +181,20 @@ export const MapaFilterColumn = memo(function MapaFilterColumn({
           />
         )
       })}
+      <div aria-hidden className="my-1 h-px w-8 bg-border" />
+      <ToggleHex
+        label="AFINIDAD"
+        sub={affinityOn && affinityCount !== null ? String(affinityCount) : '◈'}
+        color="#F97316"
+        visible={affinityOn}
+        strike={false}
+        onToggle={onToggleAffinity}
+        ariaLabel={
+          affinityOn
+            ? 'Desactivar continentes de afinidad — volver al terreno global'
+            : 'Activar continentes de afinidad — separar las zonas de mayor afinidad'
+        }
+      />
     </div>
   )
 })

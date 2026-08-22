@@ -13,7 +13,12 @@ export function categoryColor(type: ContentType): string {
     case 'noticia':   return '#F5F5F5'
     case 'opinion':   return '#A78BFA'
     case 'articulo':  return '#FDE68A'
-    case 'listicle':  return '#FB923C'
+    // Magenta (2026-08-20): the old orange #FB923C sat ΔE2000 9.4 from
+    // review's amber and 7.7 from the sys-orange chrome — three categories
+    // plus chrome, sand and the vibe hot arm were sharing one warm sector.
+    // Magenta is the system's only vacant hue family (nearest neighbor:
+    // opinión violet at ΔE 25.8; 5.5:1 on the dark ground).
+    case 'listicle':  return '#EC4899'
     case 'partner':   return '#6B7280'
   }
 }
