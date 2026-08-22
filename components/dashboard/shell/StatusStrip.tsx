@@ -138,7 +138,7 @@ export function StatusStrip() {
     segments.push({
       key: 'borradores',
       label: `${borradores} ${borradores === 1 ? 'BORRADOR' : 'BORRADORES'}`,
-      widget: 'cultivar',
+      widget: 'crear',
     })
   }
 

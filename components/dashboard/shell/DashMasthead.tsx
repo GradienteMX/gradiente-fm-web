@@ -6,7 +6,6 @@ import { useSearch } from '@/components/search/useSearch'
 import { SystemObject } from '@/components/brand/SystemObject'
 import { SmartImage } from '@/components/SmartImage'
 import { canAssignRoles } from '@/lib/permissions'
-import { scrollToDashWidget } from '@/components/dashboard/shell/StatusStrip'
 import type { User } from '@/lib/types'
 
 // ── DashMasthead — the 48px black strip (FINAL_SPEC §7.3) ───────────────────
@@ -118,7 +117,9 @@ export function DashMasthead({
         {currentUser && (
           <button
             type="button"
-            onClick={() => scrollToDashWidget('perfil')}
+            // The identity document lives at the top of the page now (the
+            // PERFIL widget was absorbed into the spine — revision-2 point 6).
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             aria-label={`Perfil de @${username ?? currentUser.username}`}
             className={`flex h-full shrink-0 items-center ${FOCUS_ON_PANEL}`}
             data-cue="tick"

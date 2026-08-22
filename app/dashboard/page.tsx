@@ -4,7 +4,7 @@
 //
 // The page composes: DashboardDataProvider (the single data layer) →
 // DashMasthead (48px black strip) → IdentitySpine + StatusStrip → the WP3
-// WidgetGrid mount point → DashColophon, with DashOverlayHost resolving
+// WidgetGrid mount point, with DashOverlayHost resolving
 // cold `?item=` deep links in place.
 //
 // URL contracts that survive the rebuild (§7.5):
@@ -27,7 +27,6 @@ import { DashboardDataProvider, useDashboardData } from '@/components/dashboard/
 import { DashMasthead } from '@/components/dashboard/shell/DashMasthead'
 import { IdentitySpine } from '@/components/dashboard/shell/IdentitySpine'
 import { StatusStrip, scrollToDashWidget } from '@/components/dashboard/shell/StatusStrip'
-import { DashColophon } from '@/components/dashboard/shell/DashColophon'
 import { MiniTransport } from '@/components/dashboard/shell/MiniTransport'
 import { DashOverlayHost } from '@/components/dashboard/overlayhost/DashOverlayHost'
 import { WidgetGrid } from '@/components/dashboard/grid/WidgetGrid'
@@ -56,22 +55,15 @@ function isSupportedType(t: string | null): t is SupportedType {
   return !!t && (SUPPORTED as string[]).includes(t)
 }
 
-// ── Legacy `?section=` map (FINAL_SPEC §7.5, verbatim) ──────────────────────
-// Facet vocabulary matches GUARDADOS' chips (§3.3): the resolved facet rides
-// as `?guardados=<facet>` for the widget (WP6) to preselect.
-
-type GuardadosFacet =
-  | 'todo'
-  | 'eventos'
-  | 'mixes'
-  | 'articulos'
-  | 'noticias'
-  | 'resenas'
-  | 'comentarios'
+// ── Legacy `?section=` map (§7.5, revision-2) ───────────────────────────────
+// GUARDADOS lost its facets (revision-2 point 12), so the old facet values
+// collapse onto their owning widget: mixes → REPRODUCTOR, everything else →
+// GUARDADOS. 'profile' scrolls to the top — the identity spine absorbed the
+// PERFIL widget (point 6).
 
 interface LegacyTarget {
   widget?: WidgetId
-  facet?: GuardadosFacet
+  top?: boolean
 }
 
 function resolveLegacySection(
@@ -79,27 +71,24 @@ function resolveLegacySection(
   flags: { isAdmin: boolean; isPartnerTeam: boolean },
 ): LegacyTarget {
   switch (raw) {
-    case 'nuevo': // CULTIVAR Zone A — the chips are visible, the form 1 click away
-    case 'drafts': // Zone B
-    case 'publicados': // Zone C
+    case 'nuevo': // the CREAR widget owns composition now
+    case 'drafts': // drafts live in CREAR's BORRADORES popup
+      return { widget: 'crear' }
+    case 'publicados':
       return { widget: 'cultivar' }
     case 'guardados-feed':
-      return { widget: 'guardados', facet: 'todo' }
     case 'guardados-noticias':
-      return { widget: 'guardados', facet: 'noticias' }
     case 'guardados-reviews':
-      return { widget: 'guardados', facet: 'resenas' }
     case 'guardados-editoriales':
     case 'guardados-articulos':
-      return { widget: 'guardados', facet: 'articulos' }
-    case 'guardados-mixes':
-      return { widget: 'guardados', facet: 'mixes' }
     case 'guardados-comentarios':
-      return { widget: 'guardados', facet: 'comentarios' }
+      return { widget: 'guardados' }
+    case 'guardados-mixes':
+      return { widget: 'reproductor' }
     case 'guardados-agenda':
       return { widget: 'agenda' }
     case 'profile':
-      return { widget: 'perfil' }
+      return { top: true }
     case 'mi-partner':
       return flags.isPartnerTeam ? { widget: 'mercado' } : {}
     case 'aprobaciones-mkt': // the key the old explorer actually used
@@ -110,6 +99,7 @@ function resolveLegacySection(
       return {}
   }
 }
+
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
@@ -169,10 +159,10 @@ function DashboardPageInner() {
     const target = resolveLegacySection(rawSection, { isAdmin, isPartnerTeam })
     const params = new URLSearchParams(search?.toString() ?? '')
     params.delete('section')
-    if (target.facet) params.set('guardados', target.facet)
     const qs = params.toString()
     router.replace(qs ? `/dashboard?${qs}` : '/dashboard')
     if (target.widget) scrollToDashWidget(target.widget)
+    else if (target.top) window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [
     hydrated,
     authResolved,
@@ -219,7 +209,6 @@ function DashboardPageInner() {
             )}
           </section>
 
-          <DashColophon />
         </div>
       )}
 

@@ -1,30 +1,40 @@
 'use client'
 
-// ── WidgetFrame — the §1.3 widget chrome anatomy ────────────────────────────
+// ── WidgetFrame — the widget chrome anatomy (revision-2 standard) ───────────
 //
-//   // NOMBRE DEL WIDGET          3 ●          [una acción]
+//   NOMBRE DEL WIDGET          3 ●          [una acción]
 //   ─────────────────────────────────────────── (hairline)
 //   content register (d15 body / d28 numerals)
 //
-// Headers carry AT MOST: eyebrow-title, one true count/badge, ONE working
-// action — no gears, no collapse carets, no refresh buttons (the props make
-// more impossible). Compact mode (§2.5 data-aware boot) collapses the frame
-// to a single 1-row teaching strip. Loading is one hairline shimmer bar —
-// never skeleton theater (§2.6).
+// Revision-2 header law (Iker point 5): the title is a BIG BOLD Syne line —
+// the CREAR NUEVO register — clean, no '//' prefix anywhere on the panel
+// (point 1). d28's 32px line-height keeps the SCALE-PASS chrome arithmetic
+// intact (header line = 32px, total chrome = 87px), so every existing
+// content budget still holds.
+//
+// Headers carry AT MOST: title, one true count/badge, ONE working action —
+// no gears, no collapse carets, no refresh buttons (the props make more
+// impossible). Compact mode (§2.5 data-aware boot) collapses the frame to a
+// single 1-row teaching strip. Loading is one hairline shimmer bar — never
+// skeleton theater (§2.6).
+//
+// `tone: 'acid'` paints the WHOLE frame acid (revision-2 point 3 — the CREAR
+// NUEVO widget owns the block color; §1.1 legal use #1: acid fill with ink
+// on top). No inner boxes ride on it — the frame IS the block.
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { WidgetId } from '@/lib/dashboard/layout'
 
 export const WIDGET_LABELS: Record<WidgetId, string> = {
+  crear: 'CREAR NUEVO',
   cultivar: 'CULTIVAR',
   actividad: 'ACTIVIDAD',
   guardados: 'GUARDADOS',
   reproductor: 'REPRODUCTOR',
-  novedades: 'NOVEDADES',
+  novedades: 'FRANJAS',
   agenda: 'AGENDA',
   mapa: 'MAPA',
-  perfil: 'PERFIL',
   mercado: 'MERCADO',
 }
 
@@ -57,19 +67,26 @@ export interface WidgetFrameProps {
   compact?: boolean
   loading?: boolean
   cue?: string
+  // 'acid' paints the whole frame acid (CREAR NUEVO — revision-2 point 3).
+  tone?: 'paper' | 'acid'
   children: ReactNode
 }
 
-// shrink-0 on every fixed header tenant (eyebrow, count, action): the copy
+// shrink-0 on every fixed header tenant (title, count, action): the copy
 // region is the row's ONLY flexible tenant, so its min-w-0 flex budget is
 // real — the chrome can never squeeze it into a mid-sentence ellipsis.
-// leading-8 pins the header LINE to exactly 32px (SCALE PASS S5) — the count
-// and action hang off this baseline, so every widget's header measures the
-// same regardless of which optional tenants it carries.
-function EyebrowTitle({ title }: { title: string }) {
+// leading-8 pins the header LINE to exactly 32px (SCALE PASS S5) — d28's
+// native line-height — so the count and action hang off this baseline and
+// every widget's header measures the same regardless of optional tenants.
+// The compact teaching row uses the d18 register (a d28 title inside the
+// 96px strip would crowd its single line).
+function FrameTitle({ title, compact }: { title: string; compact?: boolean }) {
   return (
-    <h3 className="shrink-0 whitespace-nowrap font-mono text-d11 font-bold uppercase leading-8 tracking-widest text-ink-soft">
-      {'// '}
+    <h3
+      className={`shrink-0 whitespace-nowrap font-syne font-bold uppercase leading-8 text-ink ${
+        compact ? 'text-d18' : 'text-d28'
+      }`}
+    >
       {title}
     </h3>
   )
@@ -128,8 +145,10 @@ export function WidgetFrame({
   compact,
   loading,
   cue,
+  tone,
   children,
 }: WidgetFrameProps) {
+  const ground = tone === 'acid' ? 'bg-acid' : 'bg-paper-raised'
   if (compact) {
     // Single teaching row: eyebrow + one sentence + one working action inline.
     // The copy region is the only flexible tenant (min-w-0 flex-1 against
@@ -139,9 +158,9 @@ export function WidgetFrame({
     return (
       <section
         data-cue={cue}
-        className="flex h-full min-h-11 items-center gap-4 border border-ink bg-paper-raised px-5"
+        className={`flex h-full min-h-11 items-center gap-4 border border-ink px-5 ${ground}`}
       >
-        <EyebrowTitle title={title} />
+        <FrameTitle title={title} compact />
         {typeof count === 'number' && <CountBadge count={count} accent={accent} />}
         <div className="min-w-0 flex-1 whitespace-normal leading-snug">
           {loading ? <ShimmerBar /> : children}
@@ -160,13 +179,13 @@ export function WidgetFrame({
   //     h4 → 4×96 + 3×24 − 87 = 369px
   //   Design fixed portions (S1) to these numbers; never to overflow.
   return (
-    <section data-cue={cue} className="flex h-full flex-col border border-ink bg-paper-raised">
+    <section data-cue={cue} className={`flex h-full flex-col border border-ink ${ground}`}>
       {/* ONE standardized header line: eyebrow · count · action on a shared
           baseline inside a 32px line (S5). flex-wrap: when the frame is
           narrow the action drops to its own line — never overlaps and never
           crushes the eyebrow. */}
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink px-5 py-1.5">
-        <EyebrowTitle title={title} />
+        <FrameTitle title={title} />
         {typeof count === 'number' && <CountBadge count={count} accent={accent} />}
         <div className="flex-1" />
         {action && <ActionButton action={action} />}
@@ -245,8 +264,7 @@ export function WidgetPlaceholder({ id, compact }: { id: WidgetId; compact?: boo
   return (
     <WidgetFrame title={WIDGET_LABELS[id]} compact={compact}>
       <p className="font-mono text-d13 text-ink-soft">
-        {'// '}MÓDULO SIN REGISTRAR — {WIDGET_LABELS[id]} se conecta en la fase de
-        widgets.
+        MÓDULO SIN REGISTRAR — {WIDGET_LABELS[id]} se conecta en la fase de widgets.
       </p>
     </WidgetFrame>
   )

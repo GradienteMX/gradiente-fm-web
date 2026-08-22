@@ -17,8 +17,6 @@
 
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/components/auth/useAuth'
-import { canCreateContent } from '@/lib/permissions'
 import { categoryColorOnLight } from '@/lib/dashboard/palette'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import type { ContentType } from '@/lib/types'
@@ -115,7 +113,7 @@ export function TypeDot({ type }: { type: ContentType }) {
 // floor — and keep the full min-h-11 (44px) touch target below md. px-3 +
 // gap-2, per the CULTIVAR prescription. NEVER give these a squeezed flex
 // context: the judge-r2 0px collapse must not regress.
-function TypeChip({ type, onPick }: { type: ComposeType; onPick: (t: ComposeType) => void }) {
+export function TypeChip({ type, onPick }: { type: ComposeType; onPick: (t: ComposeType) => void }) {
   return (
     <button
       type="button"
@@ -129,70 +127,7 @@ function TypeChip({ type, onPick }: { type: ComposeType; onPick: (t: ComposeType
   )
 }
 
-export function CrearZone({ compact }: { compact?: boolean }) {
-  const { currentUser } = useAuth()
-
-  const allowed = COMPOSE_TYPES.filter((t) => canCreateContent(currentUser, t))
-
-  // 1 click: chip → compose sheet on the current surface. The URL guard is
-  // the second gate layer.
-  const pick = useComposeNav()
-
-  if (allowed.length === 0) {
-    // Honest permissions state — consequence copy in full ink ≥13px (§1.1).
-    return (
-      <div className="flex h-full flex-col gap-2 border border-dashed border-ink p-4">
-        <span className="font-mono text-d11 font-bold tracking-widest text-ink-soft">
-          {'// SIN PERMISOS DE COMPOSICIÓN'}
-        </span>
-        <p className="font-grotesk text-d13 leading-snug text-ink">
-          Tu rol no compone contenido publicable. Los lectores leen, comentan y
-          participan en el foro; la composición editorial está reservada a
-          redacción (curador / guía / insider). Un admin puede ajustar tu rol.
-        </p>
-      </div>
-    )
-  }
-
-  if (compact) {
-    // Teaching-row variant — the chips stay visible even here (§3.1 law).
-    return (
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
-        <span className="whitespace-nowrap font-syne text-d18 font-bold text-ink">
-          CREAR NUEVO
-        </span>
-        {allowed.map((t) => (
-          <TypeChip key={t} type={t} onPick={pick} />
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    // Natural height — never h-full into a squeezed flex item: the chips are
-    // LAW-visible (§3.1), so the container is shrink-proof and unscrolled
-    // (judge round-2 fix 1: overflow-y-auto + min-h-0 collapsed this to 0px).
-    //
-    // SCALE PASS slab arithmetic at the md:w-80 column (interior 320 − p-4 32
-    // − border 2 = 286px): 36px chips at px-3/gap-2 wrap to 4 rows for the
-    // full 8-chip set ([MIX LISTA EVENTO][RESEÑA ARTÍCULO][EDITORIAL OPINIÓN]
-    // [NOTICIA]) → chips 4×36 + 3×8 = 168. Slab = border 2 + p-4 32 + d28
-    // title 28 + gap 12 + d11 line 16 + gap 12 + 168 = 270px — inside the
-    // 284px top-band budget CultivarWidget proves at h4, so NO scroll and NO
-    // squeeze at the default size. Guide (7 chips) → 3 rows (226); partner
-    // (5) → 2 rows (182).
-    <div className="flex flex-col gap-3 border border-ink bg-acid p-4">
-      <span className="font-syne text-d28 font-bold leading-none text-ink">
-        CREAR NUEVO
-      </span>
-      <span className="font-mono text-d11 font-bold tracking-widest text-ink">
-        {'// UNA PIEZA NUEVA, UN CLIC'}
-      </span>
-      <div className="flex shrink-0 flex-wrap content-start gap-2">
-        {allowed.map((t) => (
-          <TypeChip key={t} type={t} onPick={pick} />
-        ))}
-      </div>
-    </div>
-  )
-}
+// The CrearZone slab itself retired in revision-2 (Iker point 3): CREAR NUEVO
+// is a whole widget now — components/dashboard/widgets/CrearWidget.tsx. This
+// module stays as the compose-vocabulary home (labels, types, nav, TypeDot,
+// TypeChip) because the compose tree imports from this path.

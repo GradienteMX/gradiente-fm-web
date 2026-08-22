@@ -8,6 +8,28 @@
 
 ---
 
+## 2026-08-22 · INGEST · «EL PLIEGO» revisión 2 — los 17 puntos de Iker · working tree en `main`, SIN COMMIT
+
+Iker's 17-point review of the merged dashboard, all landed in one pass. Verified: tsc · 66/66 tests · `next build` clean (/dashboard 350 kB) · live walkthrough on /lab/dashboard?scenario=rich (headless captures — the pane could not composite this session).
+
+- **Sin `//` en todo el panel (1)** + **header estándar (5)**: WidgetFrame titles are now the CREAR NUEVO register — Syne d28 bold, clean — and d28's 32px line keeps the S5 chrome arithmetic (87px) intact, so every content budget survived. All `{'// '}` JSX prefixes swept from the panel tree (compose surface untouched).
+- **CREAR NUEVO es su propio widget (3, 4, 10)**: new `crear` WidgetId + CrearWidget — the WHOLE frame acid (`tone='acid'` on WidgetFrame), chips 1-click, «una pieza nueva, un clic» deleted. BORRADORES = ink-filled button + DashPopup listing drafts in the old CONTINUAR row anatomy (dot · título · BORRADOR · HACE N · CONTINUAR). The CONTINUAR zone is gone; empty popup says just «SIN BORRADORES.» CrearZone.tsx stays as the compose-vocabulary module (the compose tree imports from that path).
+- **CULTIVAR = carrusel de publicaciones (8)**: the three.js JARDÍN retired (HarvestGarden/GardenFallback/PublishedRail/DraftRows deleted). One publication at a time — cover, tipo, título, **HP scalar en azul** + bracket, COSECHAR con el eco estimado (+0.4×HP, lockstep con HarvestConfirmModal/SQL 0022), ‹ › n/N, EXPANDIR → popup con todas las publicaciones. R1 harvest recipe ported VERBATIM (synchronous broken-seal re-upsert + 409 reconcile).
+- **Spine (2, 6, 7, 9)**: «Hola,» dead — H1 is `@handle`. PERFIL widget absorbed: avatar upload (≤2 clicks), NOMBRE/CIUDAD/BIO/FIRMA edit-in-place (document-at-rest, one debounced PATCH), TrophyStrip moved up. Right block = **HP · HUMAN PRESENCE giant in HP blue (#1D4ED8, 5.5:1 on paper — new `hp` token in tailwind + DASH_HP_BLUE)**, scalar + próximo-hito bar in blue, VIBE PERSONAL words absorbed as a light strip. PRIVADO·SOLO TÚ framing removed (display only — the scalar still renders nowhere else).
+- **ACTIVIDAD (11)**: smaller register (d13/d11, 24px identity, 40px rows → 5 visibles en h3, 8 en h4), nombres SIN fecha, footnotes SONDEO/DM eliminados; row click abre el overlay del contenido con la columna de comentarios (`?comment=`) para responder ahí mismo.
+- **GUARDADOS (12)**: facetas fuera — todo lo que NO es mix (partners nunca), saved_at real, QUITAR+undo intactos, VER TODO→{12,3} rail. Saved-comments perdió su superficie (consecuencia directa del corte de facetas — señalado a Iker).
+- **REPRODUCTOR (12)**: los mixes guardados viven aquí como carrusel (‹ › n/N), portada/título abren el overlay, PLAY = playQueue síncrono en el gesto (ley intacta), y un **mini VibeFader REAL** (fricción drag-to-commit intacta) sobre una banda negra de faceplate, atado al mix enfocado y keyed por id.
+- **FRANJAS (13)**: NOVEDADES renombrado; acción «SEGUIDOS · N» → popup TUS FRANJAS (partners seguidos con VER FRANJA ↗ → /p/slug) + el picker completo.
+- **AGENDA (14)**: lista de próximos (4 filas en h3, 7 en h4) + pie doble ASISTIDOS (pasados guardados — proxy honesto) | VER AGENDA ↗.
+- **MAPA (15)**: screenshot estático del terreno real (`public/dash/mapa-screenshot.jpg`, capturado headless del dev /mapa con seed NN, sharp 198KB) — TODO el widget es un click → /mapa. CdmxSchematic borrado (venueGeo se queda: el provider lo usa). Posición: centro de la fila 2 entre GUARDADOS y REPRODUCTOR.
+- **MERCADO (16)**: «PUBLICA TU PRIMER ITEM».
+- **Colofón fuera (17)**: DashColophon borrado (GRADIENTE·PANEL DE USUARIO·SONDEO ya no existe).
+- **Más resize**: WIDGET_DEFS ahora 4-6 estados por widget (el grip los cicla). Layout default nuevo: crear{4,3}+cultivar{8,3} / guardados{4,3}+mapa{4,3}+reproductor{4,3} / franjas+agenda+actividad{4,3} / mercado{6,2}. **Schema v:4** — layouts v3 normalizan a defaults. Legacy `?section=`: nuevo/drafts→crear, publicados→cultivar, guardados-mixes→reproductor, profile→scroll-top; el param `?guardados=` murió con las facetas.
+- **Infra**: DashPopup (portal, z-55, Esc/scrim) es la superficie compartida de popups; tests actualizados (layout 32 sigue completo, cotas 2-6 estados, packedHeight 11, CREAR neverCompact).
+- **Pendiente de la revisión**: el tono acid del CREAR no se pudo fotografiar (el lab corre sin sesión → copy de permisos); eyeball autenticado de Iker lo cubre. Popup BORRADORES igual (misma razón); EXPANDIR y FRANJAS verificados en vivo.
+
+---
+
 ## 2026-08-21 · INGEST · «EL PLIEGO DE COMPOSICIÓN» — the draft editor rebuilt light, preview killed · `865873d` (pushed)
 
 Iker's third directive of the day, with a second mockup: the compose experience ("complicated, clunky, and it has a preview which honestly isn't needed") becomes a clean full-page pliego editor. Built via recon (2 readers mapping the reuse seam) → 6-package build → judge round 6 (8/10) → all 10 fixes applied + live-verified.

@@ -1,6 +1,11 @@
 'use client'
 
-// ── NOVEDADES — explicit follows, mechanical feed (FINAL_SPEC §3.5) ─────────
+// ── FRANJAS (né NOVEDADES) — explicit follows, mechanical feed ──────────────
+//
+// Revision-2 point 13: the widget is FRANJAS — contents from who you follow —
+// and the header action opens the FRANJAS popup: your followed partners as
+// rows linking to their franja page (/p/<slug>, the partner page), plus the
+// picker to follow more. The feed stays the same mechanical lens.
 //
 // Follows are EXPLICIT {kind:'partner'|'genre', key} choices in localStorage
 // (lib/dashboard/localState — private-class, per-uid). The widget WRITES
@@ -40,7 +45,10 @@
 // the honest maximum, stated here rather than slicing the VerRow.)
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
+import { DashPopup } from '@/components/dashboard/DashPopup'
+import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
 import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
@@ -196,14 +204,14 @@ function FollowPicker({
       {partnerOptions.length > 0 && (
         <section>
           <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-            {'// COLECTIVOS Y ESPACIOS'}
+            COLECTIVOS Y ESPACIOS
           </h4>
           <div className="flex flex-wrap gap-2">{partnerChips}</div>
         </section>
       )}
       <section>
         <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-          {'// GÉNEROS'}
+          GÉNEROS
         </h4>
         <div className="flex flex-wrap gap-2">{genreChips}</div>
       </section>
@@ -289,9 +297,20 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
   const uid = currentUser?.id ?? null
   const ctx = useDashboardData()
   const openItem = useOpenItem()
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const router = useRouter()
+  const [franjasOpen, setFranjasOpen] = useState(false)
   const [deadSlug, setDeadSlug] = useState<string | null>(null)
   const watermark = useActivityWatermark(uid)
+
+  // Followed partners resolved against the real catalogue — each one links
+  // to its franja page (/p/<slug>, the partner page). Genre follows have no
+  // page; they list as removable chips.
+  const followedPartners = useMemo(() => {
+    const keys = new Set(
+      ctx.follows.filter((f) => f.kind === 'partner').map((f) => f.key),
+    )
+    return ctx.partnerOptions.filter((p) => keys.has(p.id))
+  }, [ctx.follows, ctx.partnerOptions])
 
   const feed = useMemo(
     () => filterByFollows(ctx.novedades, ctx.follows),
@@ -315,7 +334,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
   // ── Compact teaching row — the row IS the picker (§3.5 + §2.6) ────────────
   if (compact) {
     return (
-      <WidgetFrame title="NOVEDADES" compact loading={loading}>
+      <WidgetFrame title="FRANJAS" compact loading={loading}>
         {failed ? (
           <ErrorLine onRetry={retry} />
         ) : (
@@ -338,7 +357,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
   }
 
   // ── Full widget ───────────────────────────────────────────────────────────
-  const showPicker = pickerOpen || (!loading && !failed && feed.length === 0)
+  const showPicker = !loading && !failed && feed.length === 0
 
   // Fixed portion (S1 — header arithmetic): when the feed fits whole it all
   // renders (≤ cap); when it overflows, one row-slot yields to the VerRow.
@@ -349,14 +368,15 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
   const feedOverflow = feed.length > visibleFeed.length
 
   return (
+    <div id={dashWidgetDomId('novedades')} className="h-full scroll-mt-14">
     <WidgetFrame
-      title="NOVEDADES"
+      title="FRANJAS"
       count={newCount > 0 ? newCount : undefined}
       accent
       loading={loading}
       action={{
-        label: showPicker && pickerOpen ? 'CERRAR' : `SIGUIENDO: ${ctx.follows.length}`,
-        onClick: () => setPickerOpen((open) => !open),
+        label: `SEGUIDOS · ${ctx.follows.length}`,
+        onClick: () => setFranjasOpen(true),
         cue: 'latch',
       }}
     >
@@ -390,12 +410,72 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
               <VerRow label="VER MOSAICO" href="/" external />
             </div>
           )}
-          <p className="mt-auto shrink-0 pt-2 font-mono text-d11 tracking-wide text-ink-soft">
-            {'// seguimiento entre dispositivos: futuro con nombre (user_follows).'}
-          </p>
         </div>
       )}
     </WidgetFrame>
+
+    {/* ── The FRANJAS popup (point 13): who you follow, each partner row a
+        door to its franja page, plus the picker to follow more. ─────────── */}
+    {franjasOpen && (
+      <DashPopup
+        title="FRANJAS"
+        count={ctx.follows.length}
+        onClose={() => setFranjasOpen(false)}
+      >
+        <div className="flex flex-col gap-5">
+          {followedPartners.length > 0 && (
+            <section>
+              <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                TUS FRANJAS
+              </h4>
+              <div className="flex flex-col">
+                {followedPartners.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex min-h-12 items-center gap-3 border-b border-ink py-1.5 last:border-b-0"
+                  >
+                    <span
+                      aria-hidden
+                      className="relative block h-8 w-8 shrink-0 overflow-hidden border border-ink bg-paper-raised"
+                    >
+                      {p.imageUrl && (
+                        <SmartImage src={p.imageUrl} alt="" sizes="32px" className="object-cover" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-grotesk text-d15 font-medium text-ink">
+                      {p.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFranjasOpen(false)
+                        router.push(`/p/${p.slug}`)
+                      }}
+                      data-cue="tick"
+                      className={`flex min-h-11 shrink-0 items-center gap-1.5 font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline md:min-h-0 ${FOCUS_RING}`}
+                    >
+                      VER FRANJA <span aria-hidden>↗</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          <section>
+            <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+              SEGUIR
+            </h4>
+            <FollowPicker
+              layout="panel"
+              uid={uid}
+              follows={ctx.follows}
+              partnerOptions={ctx.partnerOptions}
+            />
+          </section>
+        </div>
+      </DashPopup>
+    )}
+    </div>
   )
 }
 
@@ -404,7 +484,7 @@ function ErrorLine({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex min-h-11 items-center gap-3">
       <p className="font-mono text-d13 font-bold uppercase tracking-widest text-ink">
-        {'// SEÑAL INTERRUMPIDA'}
+        {'SEÑAL INTERRUMPIDA'}
       </p>
       <button
         type="button"

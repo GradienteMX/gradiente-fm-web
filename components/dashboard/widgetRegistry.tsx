@@ -8,6 +8,7 @@
 // the layout vocabulary in lib/dashboard/layout.ts governs which ids exist.
 
 import type { WidgetRegistry } from '@/components/dashboard/grid/WidgetGrid'
+import { CrearWidget } from '@/components/dashboard/widgets/CrearWidget'
 import { CultivarWidget } from '@/components/dashboard/widgets/CultivarWidget'
 import { ActividadWidget } from '@/components/dashboard/widgets/ActividadWidget'
 import { GuardadosWidget } from '@/components/dashboard/widgets/GuardadosWidget'
@@ -15,10 +16,10 @@ import { ReproductorWidget } from '@/components/dashboard/widgets/ReproductorWid
 import { NovedadesWidget } from '@/components/dashboard/widgets/NovedadesWidget'
 import { AgendaWidget } from '@/components/dashboard/widgets/AgendaWidget'
 import { MapaWidget } from '@/components/dashboard/widgets/MapaWidget'
-import { PerfilWidget } from '@/components/dashboard/widgets/PerfilWidget'
 import { MercadoWidget } from '@/components/dashboard/widgets/MercadoWidget'
 
 export const DASH_WIDGETS: WidgetRegistry = {
+  crear: CrearWidget,
   cultivar: CultivarWidget,
   actividad: ActividadWidget,
   guardados: GuardadosWidget,
@@ -26,6 +27,5 @@ export const DASH_WIDGETS: WidgetRegistry = {
   novedades: NovedadesWidget,
   agenda: AgendaWidget,
   mapa: MapaWidget,
-  perfil: PerfilWidget,
   mercado: MercadoWidget,
 }

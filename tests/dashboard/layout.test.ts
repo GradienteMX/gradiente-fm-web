@@ -71,10 +71,10 @@ function shuffle<T>(input: readonly T[], seed: number): T[] {
 // ── Registry + defaults ──────────────────────────────────────────────────────
 
 describe('registry and defaults', () => {
-  it('every widget declares 2–4 allowed sizes within grid bounds', () => {
+  it('every widget declares 2–6 allowed sizes within grid bounds', () => {
     for (const id of ALL_WIDGET_IDS) {
       const sizes = WIDGET_DEFS[id].allowedSizes
-      assert.ok(sizes.length >= 2 && sizes.length <= 4, `${id} has ${sizes.length} states`)
+      assert.ok(sizes.length >= 2 && sizes.length <= 6, `${id} has ${sizes.length} states`)
       for (const size of sizes) {
         assert.ok(size.w >= 1 && size.w <= DESKTOP_COLS, `${id} width in bounds`)
         assert.ok(size.h >= 1, `${id} height positive`)
@@ -100,33 +100,33 @@ describe('registry and defaults', () => {
 
   it('default mobile order matches §2.5 stack exactly', () => {
     assert.deepEqual(DEFAULT_MOBILE_ORDER, [
+      'crear',
       'cultivar',
       'actividad',
       'reproductor',
       'guardados',
       'agenda',
       'novedades',
-      'perfil',
       'mapa',
       'mercado',
     ])
   })
 
   it('defaultSize is the first declared state', () => {
-    assert.deepEqual(defaultSize('cultivar'), { w: 8, h: 4 })
-    assert.deepEqual(defaultSize('mapa'), { w: 3, h: 3 })
+    assert.deepEqual(defaultSize('cultivar'), { w: 8, h: 3 })
+    assert.deepEqual(defaultSize('mapa'), { w: 4, h: 3 })
   })
 
   it('nextAllowedSize cycles the declared states and wraps', () => {
     const first = defaultSize('actividad')
-    const second = nextAllowedSize('actividad', first)
-    const third = nextAllowedSize('actividad', second)
-    const fourth = nextAllowedSize('actividad', third)
-    const wrapped = nextAllowedSize('actividad', fourth)
-    assert.deepEqual(second, { w: 4, h: 3 })
-    assert.deepEqual(third, { w: 4, h: 2 })
-    assert.deepEqual(fourth, { w: 6, h: 3 })
-    assert.deepEqual(wrapped, first)
+    let cursor = first
+    const seen = [cursor]
+    for (let i = 0; i < WIDGET_DEFS.actividad.allowedSizes.length - 1; i++) {
+      cursor = nextAllowedSize('actividad', cursor)
+      seen.push(cursor)
+    }
+    assert.deepEqual(seen, [...WIDGET_DEFS.actividad.allowedSizes])
+    assert.deepEqual(nextAllowedSize('actividad', cursor), first)
   })
 })
 
@@ -204,7 +204,7 @@ describe('packer', () => {
   })
 
   it('packedHeight reports the bottom edge', () => {
-    assert.equal(packedHeight(DEFAULT_DESKTOP_LAYOUT), 12)
+    assert.equal(packedHeight(DEFAULT_DESKTOP_LAYOUT), 11)
     assert.equal(packedHeight([]), 0)
   })
 })
@@ -233,9 +233,9 @@ describe('tablet remap', () => {
     assert.deepEqual(remapToTablet(shuffle(DEFAULT_DESKTOP_LAYOUT, 42)), reference)
   })
 
-  it('keeps reading order stable: cultivar still leads', () => {
+  it('keeps reading order stable: crear still leads', () => {
     const remapped = remapToTablet(DEFAULT_DESKTOP_LAYOUT)
-    assert.equal(deriveMobileOrder(remapped)[0], 'cultivar')
+    assert.equal(deriveMobileOrder(remapped)[0], 'crear')
   })
 })
 
@@ -244,14 +244,14 @@ describe('tablet remap', () => {
 describe('mobileOrder', () => {
   it('derives reading order (y, then x) from a layout', () => {
     assert.deepEqual(deriveMobileOrder(DEFAULT_DESKTOP_LAYOUT), [
+      'crear',
       'cultivar',
-      'actividad',
       'guardados',
+      'mapa',
       'reproductor',
       'novedades',
       'agenda',
-      'mapa',
-      'perfil',
+      'actividad',
       'mercado',
     ])
   })
@@ -280,7 +280,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('drops unknown widget ids everywhere', () => {
     const meta = normalizeLayoutMeta({
-      v: 3,
+      v: 4,
       layout: [
         { id: 'cultivar', x: 0, y: 0, w: 8, h: 3 },
         { id: 'widgetzilla', x: 0, y: 3, w: 4, h: 2 },
@@ -296,8 +296,8 @@ describe('normalizeLayoutMeta', () => {
 
   it('appends missing widgets at the bottom at their default size', () => {
     const meta = normalizeLayoutMeta({
-      v: 3,
-      layout: [{ id: 'cultivar', x: 0, y: 0, w: 8, h: 4 }],
+      v: 4,
+      layout: [{ id: 'cultivar', x: 0, y: 0, w: 8, h: 3 }],
       hidden: [],
       mobileOrder: [],
     })
@@ -315,7 +315,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('snaps stored sizes to the nearest allowed state', () => {
     const meta = normalizeLayoutMeta({
-      v: 3,
+      v: 4,
       layout: [{ id: 'guardados', x: 0, y: 0, w: 9, h: 2 }], // 9 is not a state; 7 or 12
       hidden: [],
       mobileOrder: [],
@@ -326,11 +326,11 @@ describe('normalizeLayoutMeta', () => {
 
   it('drops duplicate entries (first wins) and malformed rows', () => {
     const meta = normalizeLayoutMeta({
-      v: 3,
+      v: 4,
       layout: [
         { id: 'agenda', x: 0, y: 0, w: 4, h: 2 },
         { id: 'agenda', x: 4, y: 0, w: 6, h: 2 },
-        { id: 'perfil', x: 'NaNsense', y: 0, w: 6, h: 2 },
+        { id: 'crear', x: 'NaNsense', y: 0, w: 6, h: 2 },
         42,
       ],
       hidden: [],
@@ -339,13 +339,13 @@ describe('normalizeLayoutMeta', () => {
     assert.equal(meta.layout.filter((e) => e.id === 'agenda').length, 1)
     const agenda = meta.layout.find((e) => e.id === 'agenda')
     assert.deepEqual({ x: agenda?.x, y: agenda?.y }, { x: 0, y: 0 })
-    // perfil's malformed row is dropped, then perfil re-appends at default.
-    assert.equal(meta.layout.filter((e) => e.id === 'perfil').length, 1)
+    // crear's malformed row is dropped, then crear re-appends at default.
+    assert.equal(meta.layout.filter((e) => e.id === 'crear').length, 1)
   })
 
   it('preserves a stored mobileOrder and appends missing ids in reading order', () => {
     const meta = normalizeLayoutMeta({
-      v: 3,
+      v: 4,
       layout: [...DEFAULT_DESKTOP_LAYOUT],
       hidden: [],
       mobileOrder: ['mapa', 'agenda'],
@@ -358,7 +358,7 @@ describe('normalizeLayoutMeta', () => {
     const registry = ALL_WIDGET_IDS.filter((id) => id !== 'mercado')
     const meta = normalizeLayoutMeta(
       {
-        v: 3,
+        v: 4,
         layout: [...DEFAULT_DESKTOP_LAYOUT],
         hidden: ['mercado'],
         mobileOrder: [...DEFAULT_MOBILE_ORDER],
@@ -377,10 +377,10 @@ describe('normalizeLayoutMeta', () => {
 
   it('is deterministic for identical raw input', () => {
     const raw = {
-      v: 3,
+      v: 4,
       layout: shuffle(DEFAULT_DESKTOP_LAYOUT, 5),
       hidden: ['mapa'],
-      mobileOrder: ['perfil'],
+      mobileOrder: ['crear'],
     }
     assert.deepEqual(normalizeLayoutMeta(raw), normalizeLayoutMeta(raw))
   })
@@ -391,13 +391,13 @@ describe('normalizeLayoutMeta', () => {
 describe('visibleEntries', () => {
   it('excludes hidden widgets and collapses their space', () => {
     const meta = normalizeLayoutMeta({
-      v: 3,
+      v: 4,
       layout: [...DEFAULT_DESKTOP_LAYOUT],
-      hidden: ['cultivar', 'actividad'], // the whole first band
+      hidden: ['crear', 'cultivar'], // the whole first band
       mobileOrder: [],
     })
     const visible = visibleEntries(meta)
-    assert.ok(!visible.some((e) => e.id === 'cultivar' || e.id === 'actividad'))
+    assert.ok(!visible.some((e) => e.id === 'crear' || e.id === 'cultivar'))
     assertNoOverlap(visible, DESKTOP_COLS)
     // guardados floats up into the vacated rows.
     assert.equal(visible.find((e) => e.id === 'guardados')?.y, 0)
@@ -408,24 +408,25 @@ describe('applyCompactModes', () => {
   it('collapses empty widgets to h=1 and re-packs the space', () => {
     const { entries, compact } = applyCompactModes(DEFAULT_DESKTOP_LAYOUT, {
       guardados: false,
+      mapa: false,
       reproductor: false,
     })
-    assert.deepEqual([...compact].sort(), ['guardados', 'reproductor'])
+    assert.deepEqual([...compact].sort(), ['guardados', 'mapa', 'reproductor'])
     const guardados = entries.find((e) => e.id === 'guardados')
     assert.equal(guardados?.h, COMPACT_H)
     assertNoOverlap(entries, DESKTOP_COLS)
     // The row below the collapsed band floats up by the freed height.
     const novedades = entries.find((e) => e.id === 'novedades')
-    assert.equal(novedades?.y, 5)
+    assert.equal(novedades?.y, 4)
     assert.ok(packedHeight(entries) < packedHeight(DEFAULT_DESKTOP_LAYOUT))
   })
 
-  it('never compacts CULTIVAR (CREAR zone is unconditional content)', () => {
+  it('never compacts CREAR (the chips are unconditional content)', () => {
     const { entries, compact } = applyCompactModes(DEFAULT_DESKTOP_LAYOUT, {
-      cultivar: false,
+      crear: false,
     })
     assert.equal(compact.size, 0)
-    assert.equal(entries.find((e) => e.id === 'cultivar')?.h, 4)
+    assert.equal(entries.find((e) => e.id === 'crear')?.h, 3)
   })
 
   it('treats undefined presence as has-data (no compaction on unknown)', () => {

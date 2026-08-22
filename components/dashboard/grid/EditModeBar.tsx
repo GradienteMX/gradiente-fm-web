@@ -20,23 +20,25 @@ import { CUT_IN_DURATION, stepEase } from './useGridDrag'
 const CONFIRM_REVERT_MS = 4000
 
 // Live tray counts — each one traces to a provider slice (§3.10); widgets
-// with no meaningful scalar (PERFIL) render without a count.
+// with no meaningful scalar (MAPA is a static door now) render without one.
 function widgetCount(id: WidgetId, data: DashboardData): number | null {
   switch (id) {
+    case 'crear':
+      return data.drafts.length
     case 'cultivar':
-      return data.drafts.length + data.published.length
+      return data.published.length
     case 'actividad':
       return data.activity.length
     case 'guardados':
-      return data.saves.length + data.savedComments.comments.length
+      return data.saves.filter((item) => item.type !== 'mix' && item.type !== 'partner')
+        .length
     case 'reproductor':
       return data.saves.filter((item) => item.type === 'mix').length
     case 'novedades':
       return filterByFollows(data.novedades, data.follows).length
     case 'agenda':
-    case 'mapa':
       return data.events.length
-    case 'perfil':
+    case 'mapa':
       return null
     case 'mercado':
       return data.partner?.listings.length ?? null
@@ -77,7 +79,7 @@ export function EditModeBar({ hidden, onRestore, onReset, onDone }: EditModeBarP
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
         <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-          {'// '}EDICIÓN DEL PANEL
+          EDICIÓN DEL PANEL
         </span>
         <span className="font-mono text-d13 text-ink">
           Arrastra para reordenar. Cada cambio se guarda solo.
@@ -86,7 +88,7 @@ export function EditModeBar({ hidden, onRestore, onReset, onDone }: EditModeBarP
         {hidden.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-              {'// '}OCULTOS
+              OCULTOS
             </span>
             {hidden.map((id) => {
               const count = widgetCount(id, data)

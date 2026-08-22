@@ -22,7 +22,6 @@ import { isComposeType } from '@/components/dashboard/widgets/cultivar/CrearZone
 import { DashMasthead } from '@/components/dashboard/shell/DashMasthead'
 import { IdentitySpine } from '@/components/dashboard/shell/IdentitySpine'
 import { StatusStrip } from '@/components/dashboard/shell/StatusStrip'
-import { DashColophon } from '@/components/dashboard/shell/DashColophon'
 import { MiniTransport } from '@/components/dashboard/shell/MiniTransport'
 import { DashOverlayHost } from '@/components/dashboard/overlayhost/DashOverlayHost'
 import { WidgetGrid } from '@/components/dashboard/grid/WidgetGrid'
@@ -216,7 +215,6 @@ export default function DashboardLabPage() {
                   onEditingChange={setEditing}
                 />
               </section>
-              <DashColophon />
             </div>
             <MiniTransport />
             <DashOverlayHost />

@@ -16,6 +16,9 @@ export const DASH_INK_SOFT = '#3D3A33'
 export const DASH_INK_FAINT = '#5C5850'
 export const DASH_ACID = '#D8FF00'
 export const DASH_SYS_RED = '#C42B20'
+// HP blue — Human Presence (revision-2 point 7): the identity spine's big HP
+// block + the CULTIVAR scalar. ≥4.5:1 on both paper grounds (5.5:1 on paper).
+export const DASH_HP_BLUE = '#1D4ED8'
 export const DASH_PANEL = '#111111'
 export const DASH_PANEL_TEXT = '#EDEBE3'
 

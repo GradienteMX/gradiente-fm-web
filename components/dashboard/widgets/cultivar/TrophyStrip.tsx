@@ -111,7 +111,7 @@ export function TrophyStrip() {
   return (
     <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-3 overflow-hidden border-t border-ink pt-2">
       <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-ink-soft">
-        {'// TROFEOS'}
+        TROFEOS
       </span>
 
       <div className="flex shrink-0 items-center gap-1">

@@ -58,6 +58,8 @@ const config: Config = {
         // whitelisted in lib/dashboard/palette.ts (ACID_LEGAL_USES).
         acid: '#D8FF00',
         'sys-red-paper': '#C42B20',
+        // HP blue — Human Presence (revision-2 point 7). 5.5:1 on paper.
+        hp: '#1D4ED8',
         panel: '#111111',
         'panel-text': '#EDEBE3',
       },

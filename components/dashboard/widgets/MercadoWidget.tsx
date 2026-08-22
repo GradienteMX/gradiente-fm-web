@@ -287,7 +287,7 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
                 data-cue="latch"
                 className={`min-h-11 w-fit text-left font-grotesk text-d15 font-medium text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
               >
-                PUBLICA TU PRIMERA PIEZA EN EL MARKETPLACE
+                PUBLICA TU PRIMER ITEM
               </button>
             ) : (
               <ul className="min-h-0 flex-1 overflow-y-auto">
@@ -310,7 +310,7 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
 
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="font-mono text-d11 tracking-widest text-ink-soft">
-                {'// OFERTAS · SONDEO CADA 5 MIN'}
+                {'OFERTAS · SONDEO CADA 5 MIN'}
               </p>
               {/* Return snap (PERFIL «VISTA BREVE» precedent) — visual d13
                   mark, ::before pads the hit area to ≥44px. */}
@@ -371,7 +371,7 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
               data-cue="latch"
               className={`min-h-11 w-fit text-left font-grotesk text-d15 font-medium text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
             >
-              PUBLICA TU PRIMERA PIEZA EN EL MARKETPLACE
+              PUBLICA TU PRIMER ITEM
             </button>
           ) : (
             <ul className="grid grid-cols-2 gap-3">
@@ -400,7 +400,7 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
           )}
 
           <p className="font-mono text-d11 tracking-widest text-ink-soft">
-            {'// OFERTAS · SONDEO CADA 5 MIN'}
+            {'OFERTAS · SONDEO CADA 5 MIN'}
           </p>
         </div>
       </WidgetFrame>
@@ -698,7 +698,7 @@ function ListingThread({
         </div>
       ) : comments.length === 0 ? (
         <p className="font-mono text-d13 text-ink-soft">
-          {'// SIN COMENTARIOS EN ESTA PIEZA TODAVÍA.'}
+          {'SIN COMENTARIOS EN ESTA PIEZA TODAVÍA.'}
         </p>
       ) : (
         <ul className="flex max-h-44 flex-col gap-2 overflow-y-auto">
@@ -1043,7 +1043,7 @@ function AdminAprobaciones({ compact }: { compact: boolean }) {
             </div>
           ) : filtered.length === 0 ? (
             <p className="font-mono text-d13 text-ink-soft">
-              {'// NINGÚN PARTNER COINCIDE CON LA BÚSQUEDA.'}
+              {'NINGÚN PARTNER COINCIDE CON LA BÚSQUEDA.'}
             </p>
           ) : (
             <ul className="min-h-0 flex-1 overflow-y-auto">
@@ -1054,7 +1054,7 @@ function AdminAprobaciones({ compact }: { compact: boolean }) {
           )}
 
           <p className="font-mono text-d11 tracking-widest text-ink-soft">
-            {'// AL ACTIVAR, EL EQUIPO DEL PARTNER EDITA SU MERCADO DESDE ESTE PANEL.'}
+            {'AL ACTIVAR, EL EQUIPO DEL PARTNER EDITA SU MERCADO DESDE ESTE PANEL.'}
           </p>
         </div>
       </WidgetFrame>

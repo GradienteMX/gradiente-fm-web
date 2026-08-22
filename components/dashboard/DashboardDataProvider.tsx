@@ -708,10 +708,9 @@ export function DashboardDataProvider({
       isLoaded ? has : has ? true : undefined
     const followedNow = filterByFollows(novedades, follows)
     return {
-      cultivar: present(
-        loaded.published && loaded.drafts,
-        published.length + drafts.length > 0,
-      ),
+      // CREAR is neverCompact (chips are unconditional content); CULTIVAR is
+      // the publications carousel — drafts moved to CREAR's popup.
+      cultivar: present(loaded.published, published.length > 0),
       actividad: present(loaded.activity, activity.length > 0),
       guardados: present(
         loaded.saves && loaded.savedComments,
@@ -724,21 +723,17 @@ export function DashboardDataProvider({
       novedades: present(loaded.novedades, followedNow.length > 0),
       agenda: present(loaded.events, eventsSlice.length > 0),
       mapa: present(loaded.events, eventsSlice.length > 0),
-      perfil: fixtureMode || currentUser ? true : undefined,
       mercado: partnerSlice ? partnerSlice.listings.length > 0 : undefined,
     }
   }, [
     loaded,
     published,
-    drafts,
     activity,
     saves,
     savedComments.comments,
     novedades,
     follows,
     eventsSlice,
-    fixtureMode,
-    currentUser,
     partnerSlice,
   ])
 
