@@ -61,6 +61,25 @@ export function composeTypeLabel(t: string): string {
   return isComposeType(t) ? COMPOSE_TYPE_LABELS[t] : t.toUpperCase()
 }
 
+// Sentence-case display register for the compose H1 («Editar borrador / Mix»
+// — the mockup's register). composeTypeLabel and COMPOSE_TYPE_LABELS stay
+// the uppercase chip register untouched (chips, rail PUBLICAR, breadcrumb —
+// the breadcrumb uppercases via CSS, so it can take either register).
+export const COMPOSE_TYPE_DISPLAY: Record<ComposeType, string> = {
+  mix: 'Mix',
+  listicle: 'Lista',
+  evento: 'Evento',
+  review: 'Reseña',
+  articulo: 'Artículo',
+  editorial: 'Editorial',
+  opinion: 'Opinión',
+  noticia: 'Noticia',
+}
+
+export function composeTypeDisplay(t: string): string {
+  return isComposeType(t) ? COMPOSE_TYPE_DISPLAY[t] : t
+}
+
 // Compose navigation on the CURRENT surface (judge round-2 fix 2): the lab
 // mounts the sheet on its own pathname, so opening compose must never eject
 // /lab visitors onto production. On /dashboard this is byte-equivalent to
