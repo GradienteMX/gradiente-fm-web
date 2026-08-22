@@ -8,7 +8,7 @@
 
 ---
 
-## 2026-08-22 · INGEST · «EL PLIEGO» revisión 2 — los 17 puntos de Iker · working tree en `main`, SIN COMMIT
+## 2026-08-22 · INGEST · «EL PLIEGO» revisión 2 — los 17 puntos de Iker · `811cf7c` (pushed to `main`)
 
 Iker's 17-point review of the merged dashboard, all landed in one pass. Verified: tsc · 66/66 tests · `next build` clean (/dashboard 350 kB) · live walkthrough on /lab/dashboard?scenario=rich (headless captures — the pane could not composite this session).
 
