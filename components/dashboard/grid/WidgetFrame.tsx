@@ -13,6 +13,7 @@
 // never skeleton theater (§2.6).
 
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import type { WidgetId } from '@/lib/dashboard/layout'
 
 export const WIDGET_LABELS: Record<WidgetId, string> = {
@@ -62,9 +63,12 @@ export interface WidgetFrameProps {
 // shrink-0 on every fixed header tenant (eyebrow, count, action): the copy
 // region is the row's ONLY flexible tenant, so its min-w-0 flex budget is
 // real — the chrome can never squeeze it into a mid-sentence ellipsis.
+// leading-8 pins the header LINE to exactly 32px (SCALE PASS S5) — the count
+// and action hang off this baseline, so every widget's header measures the
+// same regardless of which optional tenants it carries.
 function EyebrowTitle({ title }: { title: string }) {
   return (
-    <h3 className="shrink-0 whitespace-nowrap font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+    <h3 className="shrink-0 whitespace-nowrap font-mono text-d11 font-bold uppercase leading-8 tracking-widest text-ink-soft">
       {'// '}
       {title}
     </h3>
@@ -90,7 +94,11 @@ function ActionButton({ action }: { action: WidgetFrameAction }) {
       type="button"
       onClick={action.onClick}
       data-cue={action.cue ?? 'tick'}
-      className={`min-h-11 shrink-0 whitespace-nowrap font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline md:min-h-0 ${FOCUS_RING}`}
+      // Judge r5 fix 4: the desktop header action renders as an 18px text
+      // line — the relative + ::before pad extends its hit box to ~42px
+      // inside the 44px header band without shifting the baseline (the
+      // horizontal pad stays modest so it never overlaps the count).
+      className={`relative min-h-11 shrink-0 whitespace-nowrap font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline md:min-h-0 ${FOCUS_RING}`}
     >
       {label}
       {external && (
@@ -143,21 +151,90 @@ export function WidgetFrame({
     )
   }
 
+  // SCALE PASS chrome arithmetic (S5) — desktop, single header line:
+  //   1 (border-t) + 6 (header pt) + 32 (header line) + 6 (header pb)
+  //   + 1 (hairline) + 20 (content pt) + CONTENT + 20 (content pb) + 1 (border-b)
+  //   = 87px of chrome.  Widget CONTENT budgets (ROW_UNIT 96, GUTTER 24):
+  //     h2 → 2×96 + 1×24 − 87 = 129px
+  //     h3 → 3×96 + 2×24 − 87 = 249px
+  //     h4 → 4×96 + 3×24 − 87 = 369px
+  //   Design fixed portions (S1) to these numbers; never to overflow.
   return (
     <section data-cue={cue} className="flex h-full flex-col border border-ink bg-paper-raised">
-      {/* flex-wrap: when the frame is narrow the action drops to its own
-          header line — never overlaps and never crushes the eyebrow. */}
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink px-5 pb-3 pt-5">
+      {/* ONE standardized header line: eyebrow · count · action on a shared
+          baseline inside a 32px line (S5). flex-wrap: when the frame is
+          narrow the action drops to its own line — never overlaps and never
+          crushes the eyebrow. */}
+      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink px-5 py-1.5">
         <EyebrowTitle title={title} />
         {typeof count === 'number' && <CountBadge count={count} accent={accent} />}
         <div className="flex-1" />
         {action && <ActionButton action={action} />}
       </header>
-      {/* eyebrow→content gap 12px (§1.4); internal padding 20px, one value */}
-      <div className="min-h-0 flex-1 overflow-hidden px-5 pb-5 pt-3">
+      {/* content register padding 20px on every side (S5); stack gaps inside
+          the widget are the 12/16px rhythm, owned by the widget itself */}
+      <div className="min-h-0 flex-1 overflow-hidden p-5">
         {loading ? <ShimmerBar /> : children}
       </div>
     </section>
+  )
+}
+
+// ── VerRow — the S4 overflow/portal affordance ──────────────────────────────
+
+export interface VerRowProps {
+  // Mono uppercase label, e.g. 'VER TODO' / 'TODOS LOS BORRADORES'.
+  label: string
+  // One true count, rendered tabular, right-aligned before the arrow.
+  count?: number
+  // In-surface action (facet commit, in-place expansion, scroll). Ignored for
+  // navigation when `href` is present.
+  onClick?: () => void
+  // Route target when the affordance LEAVES the dashboard ('/agenda' etc.).
+  href?: string
+  // Surface-leaving mark: renders ↗ instead of → (same rule as the frame's
+  // header action — ↗ ONLY when leaving the surface).
+  external?: boolean
+  // CUE table hook (§6) — same plumbing as the frame's action chips.
+  cue?: string
+}
+
+/**
+ * VerRow — GLOBAL LAW S4 (SCALE PASS, reference ACCESOS RÁPIDOS pattern).
+ *
+ * The ONE sanctioned widget-foot overflow affordance. Every widget that holds
+ * more items than its fixed default portion MUST declare the remainder with
+ * this row — «VER TODO · N», «VER AGENDA ↗», «MOSTRAR ANTERIORES · N» — never
+ * with an internal scroll rail, snap arrows, or a position readout at default
+ * size. Full-width bordered row, mono d13 tracking-widest, count tabular
+ * right-aligned before the arrow, min-h-11 (44px touch), hover fill
+ * inversion, FOCUS_RING. `href` renders a Link (pair with `external` for the
+ * ↗ mark); `onClick` renders a button for in-surface commits/expansions.
+ */
+export function VerRow({ label, count, onClick, href, external, cue }: VerRowProps) {
+  const rowClass = `flex min-h-11 w-full items-center gap-3 border border-ink px-4 text-left font-mono text-d13 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`
+  const body = (
+    <>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {typeof count === 'number' && (
+        <span className="shrink-0 tabular-nums">{count}</span>
+      )}
+      <span aria-hidden className="shrink-0">
+        {external ? '↗' : '→'}
+      </span>
+    </>
+  )
+  if (href) {
+    return (
+      <Link href={href} data-cue={cue ?? 'tick'} className={rowClass}>
+        {body}
+      </Link>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} data-cue={cue ?? 'tick'} className={rowClass}>
+      {body}
+    </button>
   )
 }
 

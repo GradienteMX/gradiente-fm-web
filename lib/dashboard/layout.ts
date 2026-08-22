@@ -65,11 +65,17 @@ export const WIDGET_DEFS: Record<WidgetId, WidgetDef> = {
     neverCompact: true,
   },
   actividad: { allowedSizes: [{ w: 4, h: 4 }, { w: 4, h: 3 }, { w: 4, h: 2 }, { w: 6, h: 3 }] },
-  guardados: { allowedSizes: [{ w: 7, h: 2 }, { w: 12, h: 2 }] },
-  reproductor: { allowedSizes: [{ w: 5, h: 2 }, { w: 4, h: 2 }] },
-  novedades: { allowedSizes: [{ w: 5, h: 2 }, { w: 6, h: 2 }] },
-  agenda: { allowedSizes: [{ w: 4, h: 2 }, { w: 6, h: 2 }] },
-  mapa: { allowedSizes: [{ w: 3, h: 2 }, { w: 8, h: 4 }] },
+  // SCALE PASS (round-4): the middle band grows h2 → h3 by default so every
+  // widget renders a FIXED portion of WHOLE, generous items (S1/S2) instead
+  // of pills behind hidden scroll rails. h2 states remain the user's tighter
+  // options; guardados {12,3} is its sanctioned large state (rail returns).
+  guardados: {
+    allowedSizes: [{ w: 7, h: 3 }, { w: 12, h: 3 }, { w: 7, h: 2 }, { w: 12, h: 2 }],
+  },
+  reproductor: { allowedSizes: [{ w: 5, h: 3 }, { w: 5, h: 2 }, { w: 4, h: 2 }] },
+  novedades: { allowedSizes: [{ w: 5, h: 3 }, { w: 5, h: 2 }, { w: 6, h: 2 }] },
+  agenda: { allowedSizes: [{ w: 4, h: 3 }, { w: 4, h: 2 }, { w: 6, h: 2 }] },
+  mapa: { allowedSizes: [{ w: 3, h: 3 }, { w: 3, h: 2 }, { w: 8, h: 4 }] },
   perfil: { allowedSizes: [{ w: 6, h: 2 }, { w: 4, h: 3 }] },
   mercado: { allowedSizes: [{ w: 6, h: 2 }, { w: 12, h: 2 }] },
 }
@@ -92,7 +98,9 @@ export type LayoutEntry = { id: WidgetId; x: number; y: number; w: number; h: nu
 // profile_meta.dashboard — LAYOUT ONLY (public-readable column; nothing
 // behavioral/private lives here — follows + watermark are localStorage).
 export type DashboardLayoutMeta = {
-  v: 2
+  // v3 = the SCALE-PASS schema (taller middle-band defaults). v≠3 normalizes
+  // to defaults — only judging-era layouts predate it; nuking them is correct.
+  v: 3
   layout: LayoutEntry[] // desktop, 12-col units
   hidden: WidgetId[]
   mobileOrder: WidgetId[] // defaults to layout reading order; user-overridable later
@@ -104,13 +112,14 @@ export const DEFAULT_DESKTOP_LAYOUT: readonly LayoutEntry[] = [
   // Row 1 is a clean h4 band (cultivar's column budgets + actividad's rows).
   { id: 'cultivar', x: 0, y: 0, w: 8, h: 4 },
   { id: 'actividad', x: 8, y: 0, w: 4, h: 4 },
-  { id: 'guardados', x: 0, y: 4, w: 7, h: 2 },
-  { id: 'reproductor', x: 7, y: 4, w: 5, h: 2 },
-  { id: 'novedades', x: 0, y: 6, w: 5, h: 2 },
-  { id: 'agenda', x: 5, y: 6, w: 4, h: 2 },
-  { id: 'mapa', x: 9, y: 6, w: 3, h: 2 },
-  { id: 'perfil', x: 0, y: 8, w: 6, h: 2 },
-  { id: 'mercado', x: 6, y: 8, w: 6, h: 2 },
+  // Rows 2–3 are h3 bands (SCALE PASS): whole covers, whole rows, no rails.
+  { id: 'guardados', x: 0, y: 4, w: 7, h: 3 },
+  { id: 'reproductor', x: 7, y: 4, w: 5, h: 3 },
+  { id: 'novedades', x: 0, y: 7, w: 5, h: 3 },
+  { id: 'agenda', x: 5, y: 7, w: 4, h: 3 },
+  { id: 'mapa', x: 9, y: 7, w: 3, h: 3 },
+  { id: 'perfil', x: 0, y: 10, w: 6, h: 2 },
+  { id: 'mercado', x: 6, y: 10, w: 6, h: 2 },
 ]
 
 // Mobile stack default (§2.5) — intentionally NOT the desktop reading order.
@@ -135,7 +144,7 @@ export function defaultLayoutMeta(
 ): DashboardLayoutMeta {
   const allowed = new Set(widgets)
   return {
-    v: 2,
+    v: 3,
     layout: packLayout(
       DEFAULT_DESKTOP_LAYOUT.filter((entry) => allowed.has(entry.id)),
       DESKTOP_COLS
@@ -241,7 +250,7 @@ export function normalizeLayoutMeta(
   widgets: readonly WidgetId[] = ALL_WIDGET_IDS
 ): DashboardLayoutMeta {
   const allowed = new Set(widgets)
-  if (!isRecord(raw) || raw.v !== 2) return defaultLayoutMeta(widgets)
+  if (!isRecord(raw) || raw.v !== 3) return defaultLayoutMeta(widgets)
 
   const seen = new Set<WidgetId>()
   const layout: LayoutEntry[] = []
@@ -271,7 +280,7 @@ export function normalizeLayoutMeta(
     if (!mobileOrder.includes(id)) mobileOrder.push(id)
   }
 
-  return { v: 2, layout: packed, hidden, mobileOrder }
+  return { v: 3, layout: packed, hidden, mobileOrder }
 }
 
 // ── Render helpers ───────────────────────────────────────────────────────────

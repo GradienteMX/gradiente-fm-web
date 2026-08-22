@@ -19,12 +19,31 @@
 //
 // «N NUEVOS» derives from the single lastSeenActivity watermark (state, not
 // a second ledger) — the same key ACTIVIDAD advances; this widget only reads.
+//
+// SCALE PASS (S1/S2/S3/S4) — fixed portions, no internal feed scroll, 48px
+// thumbs. The feed renders a DESIGN-FIXED number of whole 52px rows; overflow
+// is declared by ONE foot affordance (VerRow «VER MOSAICO ↗» → '/', the home
+// mosaic — surface-leaving, so ↗). Follow mechanics untouched; the picker
+// panel keeps its own scroll (FINAL_SPEC §3.5 mandates the FULL real partner
+// + genre catalogues inline — a chooser the user explicitly opened, not a
+// content portion).
+//
+// Portion arithmetic ({5,3} default, content budget h3 = 249px; h2 = 129px —
+// WidgetFrame chrome math). Rows are h-[52px] box-border (border-b inside);
+// VerRow 44 (+ mt-2 8); footnote line 16 (+ pt-2 8):
+//   h3, feed ≤ 4:  4×52 + 24 = 232 ≤ 249            → all rows, no VerRow
+//   h3, feed > 4:  3×52 + 8 + 44 + 24 = 232 ≤ 249    → 3 rows + VER MOSAICO
+//   h2, feed ≤ 2:  2×52 + 24 = 128 ≤ 129             → all rows, no VerRow
+//   h2, feed > 2:  1×52 + 8 + 44 + 24 = 128 ≤ 129    → 1 row + VER MOSAICO
+// (The spec's ideal «exactly 4» portion holds whenever the feed fits whole;
+// with overflow, 4×52 + 44 = 252 > 249 — three whole rows + the affordance is
+// the honest maximum, stated here rather than slicing the VerRow.)
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
-import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
 import { useOpenItem } from '@/lib/dashboard/openItem'
 import {
   countNewSince,
@@ -38,7 +57,7 @@ import {
   subscribeLastSeenActivity,
   type DashboardFollow,
 } from '@/lib/dashboard/localState'
-import { categoryColorOnLight } from '@/lib/dashboard/palette'
+import { categoryColorOnLight, typeCode } from '@/lib/dashboard/palette'
 import { getRootGenres } from '@/lib/genres'
 import { SmartImage } from '@/components/SmartImage'
 import type { ContentItem } from '@/lib/types'
@@ -193,6 +212,11 @@ function FollowPicker({
 }
 
 // ── Feed row ────────────────────────────────────────────────────────────────
+// S3 imagery-first: 48px artwork thumb (ink border) or an honest typographic
+// type-code block when the item has no artwork — never an empty grey square.
+// 52px fixed box (border-b drawn inside — box-border); two-line register:
+// title d15 over swatch + type code + honest timestamp (hue is never the sole
+// type signal — the 2-letter code rides beside every swatch).
 
 function NovedadRow({
   item,
@@ -210,15 +234,43 @@ function NovedadRow({
       type="button"
       onClick={onOpen}
       data-cue="tick"
-      className={`group flex min-h-11 w-full items-center gap-3 border-b border-ink py-2 text-left last:border-b-0 ${FOCUS_RING}`}
+      className={`group flex h-[52px] w-full items-center gap-3 border-b border-ink text-left last:border-b-0 ${FOCUS_RING}`}
     >
       <span
         aria-hidden
-        className="h-2 w-2 shrink-0"
-        style={{ backgroundColor: categoryColorOnLight(item.type) }}
-      />
-      <span className="min-w-0 flex-1 truncate text-d15 text-ink group-hover:underline">
-        {item.title}
+        className="relative h-12 w-12 shrink-0 overflow-hidden border border-ink"
+      >
+        {item.imageUrl ? (
+          <SmartImage src={item.imageUrl} alt="" sizes="48px" className="object-cover" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center bg-paper font-mono text-d11 uppercase tracking-widest text-ink-soft">
+            {typeCode(item.type)}
+          </span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-d15 text-ink group-hover:underline">
+          {item.title}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 border border-ink"
+            style={{ backgroundColor: categoryColorOnLight(item.type) }}
+          />
+          <span className="shrink-0 font-mono text-d11 uppercase tracking-widest text-ink-soft">
+            {typeCode(item.type)}
+          </span>
+          {dead ? (
+            <span className="truncate font-mono text-d13 font-bold text-ink">
+              NO DISPONIBLE
+            </span>
+          ) : (
+            <span className="truncate font-mono text-d13 tabular-nums text-ink-faint">
+              {timeAgoShort(item.publishedAt)}
+            </span>
+          )}
+        </span>
       </span>
       {isNew && (
         <span
@@ -226,20 +278,13 @@ function NovedadRow({
           className="h-2 w-2 shrink-0 rounded-full border border-ink bg-acid"
         />
       )}
-      <span className="shrink-0 font-mono text-d13 tabular-nums text-ink-faint">
-        {dead ? (
-          <span className="font-bold text-ink">NO DISPONIBLE</span>
-        ) : (
-          timeAgoShort(item.publishedAt)
-        )}
-      </span>
     </button>
   )
 }
 
 // ── The widget ──────────────────────────────────────────────────────────────
 
-export function NovedadesWidget({ compact }: DashboardWidgetProps) {
+export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
   const { currentUser } = useAuth()
   const uid = currentUser?.id ?? null
   const ctx = useDashboardData()
@@ -295,6 +340,14 @@ export function NovedadesWidget({ compact }: DashboardWidgetProps) {
   // ── Full widget ───────────────────────────────────────────────────────────
   const showPicker = pickerOpen || (!loading && !failed && feed.length === 0)
 
+  // Fixed portion (S1 — header arithmetic): when the feed fits whole it all
+  // renders (≤ cap); when it overflows, one row-slot yields to the VerRow.
+  // Computed from counts at design-time rules — never from measurement.
+  const slotCap = size.h >= 3 ? 4 : 2
+  const slots = feed.length > slotCap ? slotCap - 1 : slotCap
+  const visibleFeed = feed.slice(0, slots)
+  const feedOverflow = feed.length > visibleFeed.length
+
   return (
     <WidgetFrame
       title="NOVEDADES"
@@ -318,8 +371,9 @@ export function NovedadesWidget({ compact }: DashboardWidgetProps) {
         />
       ) : (
         <div className="flex h-full min-h-0 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {feed.map((item) => (
+          {/* Fixed portion — whole rows only, NO internal scroll (S1). */}
+          <div className="shrink-0">
+            {visibleFeed.map((item) => (
               <NovedadRow
                 key={item.id}
                 item={item}
@@ -329,7 +383,14 @@ export function NovedadesWidget({ compact }: DashboardWidgetProps) {
               />
             ))}
           </div>
-          <p className="pt-2 font-mono text-d11 tracking-wide text-ink-soft">
+          {feedOverflow && (
+            // S4 foot affordance — the remainder lives in the home mosaic;
+            // surface-leaving, so ↗.
+            <div className="mt-2 shrink-0">
+              <VerRow label="VER MOSAICO" href="/" external />
+            </div>
+          )}
+          <p className="mt-auto shrink-0 pt-2 font-mono text-d11 tracking-wide text-ink-soft">
             {'// seguimiento entre dispositivos: futuro con nombre (user_follows).'}
           </p>
         </div>

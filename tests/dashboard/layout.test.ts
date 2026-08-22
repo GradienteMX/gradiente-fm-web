@@ -114,7 +114,7 @@ describe('registry and defaults', () => {
 
   it('defaultSize is the first declared state', () => {
     assert.deepEqual(defaultSize('cultivar'), { w: 8, h: 4 })
-    assert.deepEqual(defaultSize('mapa'), { w: 3, h: 2 })
+    assert.deepEqual(defaultSize('mapa'), { w: 3, h: 3 })
   })
 
   it('nextAllowedSize cycles the declared states and wraps', () => {
@@ -204,7 +204,7 @@ describe('packer', () => {
   })
 
   it('packedHeight reports the bottom edge', () => {
-    assert.equal(packedHeight(DEFAULT_DESKTOP_LAYOUT), 10)
+    assert.equal(packedHeight(DEFAULT_DESKTOP_LAYOUT), 12)
     assert.equal(packedHeight([]), 0)
   })
 })
@@ -268,8 +268,10 @@ describe('mobileOrder', () => {
 
 describe('normalizeLayoutMeta', () => {
   it('unknown v → defaults win', () => {
-    // v1 = the pre-ship judging-era schema, retired by the round-3 bump.
+    // v1 = pre-ship judging schema (round-3 bump); v2 = the pre-scale-pass
+    // schema, retired by the round-4 bump. Both normalize to v3 defaults.
     assert.deepEqual(normalizeLayoutMeta({ v: 1, layout: [] }), defaultLayoutMeta())
+    assert.deepEqual(normalizeLayoutMeta({ v: 2, layout: [] }), defaultLayoutMeta())
     assert.deepEqual(normalizeLayoutMeta({ v: 99, layout: [] }), defaultLayoutMeta())
     assert.deepEqual(normalizeLayoutMeta(null), defaultLayoutMeta())
     assert.deepEqual(normalizeLayoutMeta(undefined), defaultLayoutMeta())
@@ -278,7 +280,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('drops unknown widget ids everywhere', () => {
     const meta = normalizeLayoutMeta({
-      v: 2,
+      v: 3,
       layout: [
         { id: 'cultivar', x: 0, y: 0, w: 8, h: 3 },
         { id: 'widgetzilla', x: 0, y: 3, w: 4, h: 2 },
@@ -294,7 +296,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('appends missing widgets at the bottom at their default size', () => {
     const meta = normalizeLayoutMeta({
-      v: 2,
+      v: 3,
       layout: [{ id: 'cultivar', x: 0, y: 0, w: 8, h: 4 }],
       hidden: [],
       mobileOrder: [],
@@ -313,7 +315,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('snaps stored sizes to the nearest allowed state', () => {
     const meta = normalizeLayoutMeta({
-      v: 2,
+      v: 3,
       layout: [{ id: 'guardados', x: 0, y: 0, w: 9, h: 2 }], // 9 is not a state; 7 or 12
       hidden: [],
       mobileOrder: [],
@@ -324,7 +326,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('drops duplicate entries (first wins) and malformed rows', () => {
     const meta = normalizeLayoutMeta({
-      v: 2,
+      v: 3,
       layout: [
         { id: 'agenda', x: 0, y: 0, w: 4, h: 2 },
         { id: 'agenda', x: 4, y: 0, w: 6, h: 2 },
@@ -343,7 +345,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('preserves a stored mobileOrder and appends missing ids in reading order', () => {
     const meta = normalizeLayoutMeta({
-      v: 2,
+      v: 3,
       layout: [...DEFAULT_DESKTOP_LAYOUT],
       hidden: [],
       mobileOrder: ['mapa', 'agenda'],
@@ -356,7 +358,7 @@ describe('normalizeLayoutMeta', () => {
     const registry = ALL_WIDGET_IDS.filter((id) => id !== 'mercado')
     const meta = normalizeLayoutMeta(
       {
-        v: 2,
+        v: 3,
         layout: [...DEFAULT_DESKTOP_LAYOUT],
         hidden: ['mercado'],
         mobileOrder: [...DEFAULT_MOBILE_ORDER],
@@ -375,7 +377,7 @@ describe('normalizeLayoutMeta', () => {
 
   it('is deterministic for identical raw input', () => {
     const raw = {
-      v: 2,
+      v: 3,
       layout: shuffle(DEFAULT_DESKTOP_LAYOUT, 5),
       hidden: ['mapa'],
       mobileOrder: ['perfil'],
@@ -389,7 +391,7 @@ describe('normalizeLayoutMeta', () => {
 describe('visibleEntries', () => {
   it('excludes hidden widgets and collapses their space', () => {
     const meta = normalizeLayoutMeta({
-      v: 2,
+      v: 3,
       layout: [...DEFAULT_DESKTOP_LAYOUT],
       hidden: ['cultivar', 'actividad'], // the whole first band
       mobileOrder: [],

@@ -5,10 +5,11 @@
 // Two size states from the stored vocabulary (§2.5), each composed to its
 // slot (judge fix 12 — a printed dossier never ends mid-rule):
 //   {6,2} short banner (default) — exactly the blocks that COMPLETE inside
-//   the ~133px content box: avatar plate | @handle + badge + SaveIndicator +
-//   NOMBRE/CIUDAD | VIBE PERSONAL panel. No hidden scroll rail at desktop
-//   widths; «EDITAR BIO Y FIRMA» snaps to the tall state in place through
-//   the provider's ONE layout write path (the MAPA precedent).
+//   the 129px content box (SCALE PASS chrome arithmetic): 96px avatar plate |
+//   @handle + badge + SaveIndicator + NOMBRE/CIUDAD side-by-side + VerRow
+//   «EDITAR BIO Y FIRMA» | VIBE PERSONAL panel. No hidden scroll rail at
+//   desktop widths; the VerRow snaps to the tall state in place through the
+//   provider's ONE layout write path (the MAPA precedent).
 //   {4,3} tall dossier — the full document: identity + all four fields +
 //   VIBE PERSONAL + FLAIR + «VISTA BREVE» return snap (whole blocks stack;
 //   this opt-in state may scroll).
@@ -49,7 +50,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
-import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
 import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
 import { SmartImage } from '@/components/SmartImage'
 import { useUserRank } from '@/lib/hooks/useUserRank'
@@ -284,16 +285,22 @@ export function PerfilWidget({ size, compact }: DashboardWidgetProps) {
     ? { label: 'VER PERFIL PÚBLICO ↗', onClick: () => router.push(publicHref) }
     : undefined
 
-  // group/avatar scopes the QUITAR reveal to this plate — the document reads
-  // calm at rest, the affordance appears on hover/focus (judge fix 20).
+  // group/avatar scopes the reveals to this plate — the document reads calm
+  // at rest, the affordances appear on hover/focus (judge fix 20). SCALE PASS:
+  // the plate is 96px (h-24) and QUITAR is an OVERLAY strip (min-h-9 = 36px
+  // visual, S2) at the plate's top edge instead of a below-plate chip, so the
+  // avatar column's flow height stays exactly 96px inside the {6,2} banner
+  // budget. It stays in the DOM at opacity-0 so the keyboard path holds (tab
+  // reaches it; focus reveals it); pointer-events are gated so an invisible
+  // strip can never swallow a stray tap.
   const avatarPlate = (
-    <div className="group/avatar flex shrink-0 flex-col gap-1.5">
+    <div className="group/avatar relative h-24 w-24 shrink-0">
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={avatarUploading}
         aria-label={currentUser.avatarUrl ? 'Cambiar avatar' : 'Subir avatar'}
-        className={`group relative block h-20 w-20 shrink-0 overflow-hidden border border-ink bg-paper ${FOCUS_RING}`}
+        className={`group relative block h-24 w-24 shrink-0 overflow-hidden border border-ink bg-paper ${FOCUS_RING}`}
         style={frame}
       >
         {currentUser.avatarUrl ? (
@@ -301,7 +308,7 @@ export function PerfilWidget({ size, compact }: DashboardWidgetProps) {
             src={currentUser.avatarUrl}
             alt={`avatar @${handle}`}
             className="object-cover"
-            sizes="80px"
+            sizes="96px"
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center font-syne text-d28 font-extrabold uppercase text-ink">
@@ -313,22 +320,17 @@ export function PerfilWidget({ size, compact }: DashboardWidgetProps) {
             SUBIENDO
           </span>
         ) : (
-          <span className="absolute inset-x-0 bottom-0 hidden justify-center bg-ink py-0.5 font-mono text-d11 tracking-widest text-paper group-hover:flex group-focus-visible:flex">
+          <span className="absolute inset-x-0 bottom-0 hidden min-h-6 items-center justify-center bg-ink py-0.5 font-mono text-d11 tracking-widest text-paper group-hover:flex group-focus-visible:flex">
             {currentUser.avatarUrl ? 'CAMBIAR' : 'SUBIR'}
           </span>
         )}
       </button>
       {currentUser.avatarUrl && (
-        // De-alarmed ink-outline chip (judge fix 20): revealed on avatar
-        // hover/focus only. It stays in the DOM at opacity-0 so the keyboard
-        // path holds (tab reaches it; focus reveals it); pointer-events are
-        // gated so an invisible chip can never swallow a stray tap. ::before
-        // pads the hit area to ≥44px.
         <button
           type="button"
           onClick={() => void patch({ avatar_url: null })}
           disabled={avatarUploading}
-          className={`pointer-events-none relative inline-flex w-20 items-center justify-center border border-ink bg-paper px-2 py-0.5 font-mono text-d11 tracking-widest text-ink opacity-0 before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-[''] focus-visible:opacity-100 group-hover/avatar:pointer-events-auto group-hover/avatar:opacity-100 group-focus-within/avatar:pointer-events-auto group-focus-within/avatar:opacity-100 hover:underline ${FOCUS_RING}`}
+          className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex min-h-9 items-center justify-center border-b border-ink bg-paper font-mono text-d11 tracking-widest text-ink opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover/avatar:pointer-events-auto group-hover/avatar:opacity-100 group-focus-within/avatar:pointer-events-auto group-focus-within/avatar:opacity-100 hover:underline ${FOCUS_RING}`}
         >
           QUITAR
         </button>
@@ -383,37 +385,56 @@ export function PerfilWidget({ size, compact }: DashboardWidgetProps) {
     />
   )
 
-  // ── {6,2} short banner (judge fix 12) — completes cleanly, whole rows ────
-  // The 96×2+24 slot leaves ~133px of content: the banner carries exactly the
-  // blocks that finish inside it — avatar plate | @handle + badge +
-  // SaveIndicator + NOMBRE/CIUDAD | VIBE panel — and nothing dangles on a
-  // hidden scroll rail. BIO, FIRMA, ALTA and FLAIR live at the {4,3} dossier,
-  // one real size snap away («EDITAR BIO Y FIRMA»). Direct-edit-in-place and
-  // the words-only vibe readout are untouched.
+  // ── {6,2} short banner (judge fix 12 + SCALE PASS) — completes cleanly ───
+  // Content budget at h2 (WidgetFrame chrome arithmetic): 2×96 + 24 − 87 =
+  // 129px. The banner's three columns each COMPLETE inside it, no scroll rail
+  // at desktop widths (S1):
+  //   · avatar column  = 96px plate (QUITAR overlays, zero flow height)
+  //   · middle column  = 24 (handle line, d18) + 8 + 44 (NOMBRE/CIUDAD
+  //     side-by-side, min-h-11) + ≥9 breathing (mt-auto) + 44 (VerRow
+  //     «EDITAR BIO Y FIRMA», S4/S2 ≥36px) = 129px exact
+  //   · vibe column    = 102px panel (2 border + 32 pad + 16 + 12 + 10 +
+  //     12 + 18)
+  // BIO, FIRMA, ALTA and FLAIR live at the {4,3} dossier, one real size snap
+  // away. Direct-edit-in-place and the words-only vibe readout are untouched.
+  // Sub-lg the columns stack and may scroll (mobile fallback, not the desktop
+  // default state).
   if (short) {
     return (
       <div id={dashWidgetDomId('perfil')} className="h-full">
         <WidgetFrame title="PERFIL" action={frameAction}>
-          <div className="grid h-full min-h-0 grid-cols-1 content-start gap-x-5 gap-y-4 overflow-y-auto lg:grid-cols-[auto_minmax(0,1fr)_minmax(200px,220px)]">
+          <div className="grid h-full min-h-0 grid-cols-1 content-start gap-x-5 gap-y-4 overflow-y-auto lg:grid-cols-[auto_minmax(0,1fr)_minmax(210px,240px)] lg:gap-y-0 lg:overflow-visible">
             {avatarPlate}
 
-            <div className="flex min-w-0 flex-col gap-2">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="min-w-0 truncate font-syne text-d18 font-extrabold text-ink">
+            <div className="flex h-full min-w-0 flex-col gap-2">
+              {/* One 24px line — the IDENTITY never truncates (it is the point
+                  of the widget); at narrow widths the badge/indicator shrink
+                  first, and truncation falls on the indicator, never @handle
+                  (handles are short by schema; a 61px box showing «@i…» while
+                  AUTOGUARDADO rode whole was backwards). */}
+              <div className="flex min-w-0 items-baseline gap-x-3">
+                <span className="shrink-0 font-syne text-d18 font-extrabold text-ink">
                   @{handle}
                 </span>
                 {badgeChip}
-                <span className="flex-1" />
-                <SaveIndicator status={status} error={error} />
+                <span className="ml-auto min-w-0 shrink truncate">
+                  <SaveIndicator status={status} error={error} />
+                </span>
               </div>
-              {nameField}
-              {cityField}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-x-4">
+                {nameField}
+                {cityField}
+              </div>
+              <div className="mt-auto pt-2">
+                <VerRow
+                  label="EDITAR BIO Y FIRMA"
+                  onClick={expandDossier}
+                  cue="latch"
+                />
+              </div>
             </div>
 
-            <div className="flex min-w-0 flex-col gap-1.5">
-              {vibePanel}
-              <SizeSnap label="EDITAR BIO Y FIRMA" onClick={expandDossier} />
-            </div>
+            <div className="flex min-w-0 flex-col">{vibePanel}</div>
           </div>
         </WidgetFrame>
       </div>
@@ -497,7 +518,7 @@ export function PerfilWidget({ size, compact }: DashboardWidgetProps) {
                         ? `Trofeo ganado: ${t.label}`
                         : `Trofeo bloqueado: ${t.description}`
                     }
-                    className={`flex h-6 w-6 items-center justify-center border border-ink font-mono text-d13 font-bold ${
+                    className={`flex h-8 w-8 items-center justify-center border border-ink font-mono text-d15 font-bold ${
                       earned ? 'bg-ink text-paper' : 'bg-transparent text-ink-faint'
                     }`}
                   >
@@ -508,27 +529,13 @@ export function PerfilWidget({ size, compact }: DashboardWidgetProps) {
             </div>
           </div>
 
-          <SizeSnap label="VISTA BREVE" onClick={collapseDossier} />
+          {/* In-place size snap (the MAPA precedent — §2.4 one write path);
+              rendered as the shared S4 VerRow so the affordance is 44px and
+              identical to every other widget foot. No ↗ — nothing leaves. */}
+          <VerRow label="VISTA BREVE" onClick={collapseDossier} cue="latch" />
         </div>
       </WidgetFrame>
     </div>
-  )
-}
-
-// In-place size snap (the MAPA expand/collapse precedent — §2.4 one write
-// path, cue 'latch', no ↗ because nothing leaves the panel). Visual d13 mark;
-// the ::before inset pads the hit area to ≥44px so the completed banner rows
-// never inflate.
-function SizeSnap({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-cue="latch"
-      className={`relative w-fit self-start font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-[''] hover:underline ${FOCUS_RING}`}
-    >
-      {label}
-    </button>
   )
 }
 

@@ -7,6 +7,13 @@
 // component additionally renders null for anyone else, so a non-partner user
 // never sees a widget-shaped bookmark.
 //
+// SCALE PASS (S1/S2/S4): {6,2} is a FIXED portion — two whole 48px-thumb
+// listing cells side-by-side + VerRow «VER TODO · N» + the sondeo footnote,
+// zero internal scroll (129px h2 budget; the arithmetic lives at the default
+// branch). {12,2} is the depth state: full-width 52px rows, inline threads,
+// the composer, and legal internal scroll. Every depth gesture (row click,
+// NUEVA PIEZA, VER TODO) grows the widget first via ctx.commitLayout.
+//
 // PARTNER VARIANT — reads the provider's `partner` slice (GET /api/partners/
 // [id] + /inbox on the ≥5-min floor; the widget itself never polls):
 //   · listings with portada, estado and price; OFERTA badge = acid dot on
@@ -42,7 +49,8 @@ import { es } from 'date-fns/locale/es'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
-import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import type { WidgetSize } from '@/lib/dashboard/layout'
 import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
 import { SmartImage } from '@/components/SmartImage'
 import { compressAndUploadImage } from '@/lib/imageUpload'
@@ -127,11 +135,48 @@ export function MercadoWidget({ size, compact }: DashboardWidgetProps) {
 
 // ── PARTNER VARIANT ─────────────────────────────────────────────────────────
 
-function PartnerMercado({ compact }: { compact: boolean } & Partial<DashboardWidgetProps>) {
+function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean }) {
   const { currentUser } = useAuth()
-  const { partner, loaded, errors, afterMutation } = useDashboardData()
+  const ctx = useDashboardData()
+  const { partner, loaded, errors, afterMutation } = ctx
   const [composing, setComposing] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // §2.5 stored vocabulary: {6,2} = fixed default portion, {12,2} = the
+  // widget's largest state — the ONLY state where internal scroll is legal
+  // (SCALE PASS S1).
+  const large = size.w >= 12
+
+  // Size snap through the provider's ONE layout write path (the MAPA/PERFIL
+  // precedent).
+  const setMercadoSize = useCallback(
+    (w: number, h: number) => {
+      const current = ctx.layoutMeta
+      ctx.commitLayout({
+        ...current,
+        layout: current.layout.map((entry) =>
+          entry.id === 'mercado' ? { ...entry, w, h } : entry,
+        ),
+      })
+    },
+    [ctx],
+  )
+  const expandDepth = useCallback(() => setMercadoSize(12, 2), [setMercadoSize])
+  const collapseDepth = useCallback(() => {
+    setExpandedId(null)
+    setComposing(false)
+    setMercadoSize(6, 2)
+  }, [setMercadoSize])
+
+  // The composer and thread expansion only render at {12,2}; if the widget
+  // returns to the fixed portion by any path (grid editing included), clear
+  // them so the header never shows a dangling CERRAR.
+  useEffect(() => {
+    if (!compact && !large) {
+      setComposing(false)
+      setExpandedId(null)
+    }
+  }, [compact, large])
 
   const unanswered = useMemo(
     () => new Set(partner?.unansweredListingIds ?? []),
@@ -159,10 +204,21 @@ function PartnerMercado({ compact }: { compact: boolean } & Partial<DashboardWid
     await afterMutation('partner')
   }, [afterMutation])
 
+  // Depth-first composing (S1): the composer strip needs room the {6,2}
+  // fixed portion does not have, so at default size NUEVA PIEZA grows the
+  // widget to {12,2} before opening the strip. Compact keeps its own inline
+  // strip (single teaching row — no grid portion to protect).
   const composerAction = partner
     ? {
         label: composing ? 'CERRAR' : compact ? 'PUBLICAR PIEZA' : 'NUEVA PIEZA',
-        onClick: () => setComposing((c) => !c),
+        onClick: () => {
+          if (composing) {
+            setComposing(false)
+            return
+          }
+          if (!compact && !large) expandDepth()
+          setComposing(true)
+        },
         cue: 'latch',
       }
     : undefined
@@ -192,6 +248,100 @@ function PartnerMercado({ compact }: { compact: boolean } & Partial<DashboardWid
     )
   }
 
+  // ── {12,2} depth state — the widget's largest size: internal scroll is
+  // legal here (S1), the inline thread expansion and the composer live here.
+  if (large) {
+    return (
+      <div id={dashWidgetDomId('mercado')} className="h-full">
+        <WidgetFrame
+          title="MERCADO"
+          count={ofertas > 0 ? ofertas : undefined}
+          accent={ofertas > 0}
+          action={composerAction}
+        >
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            {composing && partner && uid && (
+              <ComposerStrip
+                partnerId={partner.id}
+                uid={uid}
+                currency={currency}
+                onCreated={onCreated}
+              />
+            )}
+
+            {!partner && errors.partner ? (
+              <p className="font-mono text-d13 text-ink">
+                SEÑAL INTERRUMPIDA — el mercado se reintenta con el próximo
+                sondeo.
+              </p>
+            ) : !partner && !loaded.partner ? (
+              <div aria-hidden className="h-0.5 w-1/2 bg-ink motion-safe:animate-blink" />
+            ) : listings.length === 0 ? (
+              // §3.9 empty state — the copy IS the working affordance: it opens
+              // the same composer strip as the header action.
+              // In-place action (opens the composer strip) — no arrow (§ the ↗
+              // rule marks route-leaving links only).
+              <button
+                type="button"
+                onClick={() => setComposing(true)}
+                data-cue="latch"
+                className={`min-h-11 w-fit text-left font-grotesk text-d15 font-medium text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
+              >
+                PUBLICA TU PRIMERA PIEZA EN EL MARKETPLACE
+              </button>
+            ) : (
+              <ul className="min-h-0 flex-1 overflow-y-auto">
+                {listings.map((listing) => (
+                  <ListingRow
+                    key={listing.id}
+                    listing={listing}
+                    currency={currency}
+                    oferta={unanswered.has(listing.id)}
+                    expanded={expandedId === listing.id}
+                    onToggle={() =>
+                      setExpandedId((cur) => (cur === listing.id ? null : listing.id))
+                    }
+                    partnerSlug={partner?.slug ?? null}
+                    onReplied={() => void afterMutation('partner')}
+                  />
+                ))}
+              </ul>
+            )}
+
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p className="font-mono text-d11 tracking-widest text-ink-soft">
+                {'// OFERTAS · SONDEO CADA 5 MIN'}
+              </p>
+              {/* Return snap (PERFIL «VISTA BREVE» precedent) — visual d13
+                  mark, ::before pads the hit area to ≥44px. */}
+              <button
+                type="button"
+                onClick={collapseDepth}
+                data-cue="latch"
+                className={`relative font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-[''] hover:underline ${FOCUS_RING}`}
+              >
+                VISTA BREVE
+              </button>
+            </div>
+          </div>
+        </WidgetFrame>
+      </div>
+    )
+  }
+
+  // ── {6,2} default — FIXED portion, zero internal scroll (S1) ─────────────
+  // Content budget at h2 (WidgetFrame chrome arithmetic): 2×96 + 24 − 87 =
+  // 129px. Three stacked 52px rows + a 44px VerRow (the prescribed portion)
+  // measure 3×52 + 44 = 200px — they cannot exist inside 129px, so the
+  // honest maximum holding S1 (whole items) + S2 (≥52px rows, 48px thumbs)
+  // + S4 (VerRow) is TWO whole reference-scale cells SIDE-BY-SIDE:
+  //   cells 54 (2 border + 4 pad + 48 thumb) + VerRow 44 + footnote 16
+  //   = 114px ≤ 129px  (justify-between breathes the ~15px remainder).
+  // OFERTAS sort first, so the two most urgent listings are always the two
+  // visible; the header count + acid dot and the VerRow's N declare the rest.
+  // Opening a listing (or the composer) is a depth gesture: it grows the
+  // widget to {12,2} first, where the inline thread has room and scroll is
+  // legal — the ≤2-clicks reply flow is preserved (click row → reply).
   return (
     <div id={dashWidgetDomId('mercado')} className="h-full">
       <WidgetFrame
@@ -200,16 +350,7 @@ function PartnerMercado({ compact }: { compact: boolean } & Partial<DashboardWid
         accent={ofertas > 0}
         action={composerAction}
       >
-        <div className="flex h-full min-h-0 flex-col gap-3">
-          {composing && partner && uid && (
-            <ComposerStrip
-              partnerId={partner.id}
-              uid={uid}
-              currency={currency}
-              onCreated={onCreated}
-            />
-          )}
-
+        <div className="flex h-full min-h-0 flex-col justify-between">
           {!partner && errors.partner ? (
             <p className="font-mono text-d13 text-ink">
               SEÑAL INTERRUMPIDA — el mercado se reintenta con el próximo
@@ -218,35 +359,44 @@ function PartnerMercado({ compact }: { compact: boolean } & Partial<DashboardWid
           ) : !partner && !loaded.partner ? (
             <div aria-hidden className="h-0.5 w-1/2 bg-ink motion-safe:animate-blink" />
           ) : listings.length === 0 ? (
-            // §3.9 empty state — the copy IS the working affordance: it opens
-            // the same composer strip as the header action.
-            // In-place action (opens the composer strip) — no arrow (§ the ↗
+            // §3.9 empty state — the copy IS the working affordance; it grows
+            // to {12,2} and opens the composer (depth-first, no arrow: the ↗
             // rule marks route-leaving links only).
             <button
               type="button"
-              onClick={() => setComposing(true)}
+              onClick={() => {
+                expandDepth()
+                setComposing(true)
+              }}
               data-cue="latch"
               className={`min-h-11 w-fit text-left font-grotesk text-d15 font-medium text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
             >
               PUBLICA TU PRIMERA PIEZA EN EL MARKETPLACE
             </button>
           ) : (
-            <ul className="min-h-0 flex-1 overflow-y-auto">
-              {listings.map((listing) => (
-                <ListingRow
+            <ul className="grid grid-cols-2 gap-3">
+              {listings.slice(0, 2).map((listing) => (
+                <ListingCell
                   key={listing.id}
                   listing={listing}
                   currency={currency}
                   oferta={unanswered.has(listing.id)}
-                  expanded={expandedId === listing.id}
-                  onToggle={() =>
-                    setExpandedId((cur) => (cur === listing.id ? null : listing.id))
-                  }
-                  partnerSlug={partner?.slug ?? null}
-                  onReplied={() => void afterMutation('partner')}
+                  onOpen={() => {
+                    setExpandedId(listing.id)
+                    expandDepth()
+                  }}
                 />
               ))}
             </ul>
+          )}
+
+          {listings.length > 2 && (
+            <VerRow
+              label="VER TODO"
+              count={listings.length}
+              onClick={expandDepth}
+              cue="latch"
+            />
           )}
 
           <p className="font-mono text-d11 tracking-widest text-ink-soft">
@@ -255,6 +405,87 @@ function PartnerMercado({ compact }: { compact: boolean } & Partial<DashboardWid
         </div>
       </WidgetFrame>
     </div>
+  )
+}
+
+// ── Listing cell — the {6,2} fixed-portion tile ─────────────────────────────
+// One whole reference-scale listing: 48px portada thumb (S3), d15 title, d11
+// meta, price + OFERTA badge right-aligned. 54px tall (2 border + 4 pad + 48
+// thumb ≥ the 52px row floor). Clicking is the depth gesture wired by the
+// parent (grow to {12,2} + expand this listing's thread).
+function ListingCell({
+  listing,
+  currency,
+  oferta,
+  onOpen,
+}: {
+  listing: MarketplaceListing
+  currency: string | null
+  oferta: boolean
+  onOpen: () => void
+}) {
+  const portada = listing.images[0]
+  const sold = listing.status === 'sold'
+  return (
+    <li className="min-w-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        data-cue="tick"
+        className={`flex min-h-[52px] w-full items-center gap-3 border border-ink bg-paper px-2 py-0.5 text-left ${FOCUS_RING}`}
+      >
+        <span className="relative block h-12 w-12 shrink-0 overflow-hidden border border-ink bg-paper">
+          {portada ? (
+            <SmartImage
+              src={portada}
+              alt={listing.title}
+              className="object-cover"
+              sizes="48px"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center font-mono text-d11 font-bold text-ink-soft">
+              {CATEGORY_LABEL[listing.category]?.slice(0, 2) ?? '··'}
+            </span>
+          )}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate font-grotesk text-d15 font-medium ${
+              sold ? 'text-ink-faint line-through' : 'text-ink'
+            }`}
+          >
+            {listing.title}
+          </span>
+          <span className="block truncate font-mono text-d11 tracking-widest text-ink-soft">
+            {CATEGORY_LABEL[listing.category] ?? listing.category}
+            {' · '}
+            {listing.condition}
+            {' · '}
+            {STATUS_LABEL[listing.status] ?? listing.status}
+          </span>
+        </span>
+
+        <span className="flex shrink-0 flex-col items-end gap-0.5">
+          <span
+            className={`font-mono text-d13 tabular-nums ${
+              sold ? 'text-ink-faint' : 'text-ink'
+            }`}
+          >
+            {formatPrice(listing.price, currency)}
+          </span>
+          {oferta && (
+            <span className="flex items-center gap-1.5 font-mono text-d11 font-bold tracking-widest text-ink">
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full border border-ink bg-acid"
+              />
+              OFERTA
+            </span>
+          )}
+        </span>
+      </button>
+    </li>
   )
 }
 
@@ -286,15 +517,15 @@ function ListingRow({
         onClick={onToggle}
         aria-expanded={expanded}
         data-cue="tick"
-        className={`flex min-h-11 w-full items-center gap-3 py-2 text-left ${FOCUS_RING}`}
+        className={`flex min-h-[52px] w-full items-center gap-3 py-2 text-left ${FOCUS_RING}`}
       >
-        <span className="relative block h-10 w-10 shrink-0 overflow-hidden border border-ink bg-paper">
+        <span className="relative block h-12 w-12 shrink-0 overflow-hidden border border-ink bg-paper">
           {portada ? (
             <SmartImage
               src={portada}
               alt={listing.title}
               className="object-cover"
-              sizes="40px"
+              sizes="48px"
             />
           ) : (
             <span className="flex h-full w-full items-center justify-center font-mono text-d11 font-bold text-ink-soft">

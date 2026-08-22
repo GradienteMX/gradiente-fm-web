@@ -18,6 +18,13 @@
 //   · NO per-row read state, NO inner tabs — sources are distinguished by
 //     the d13 mono chip only.
 //
+// SCALE PASS (S1/S2/S3/S4): exactly 5 whole 52px rows at the {4,4} default —
+// computed by design, never by overflow — each led by a 28px identity block
+// (actor avatar / initial-letter / trophy sigil). NO internal scroll region
+// exists at default size; overflow is declared by ONE VerRow
+// «MOSTRAR ANTERIORES · N» that expands the list in place, and only that
+// explicit depth choice makes the list scrollable.
+//
 // Row clicks open the target IN PLACE via lib/dashboard/openItem (1 click,
 // cold-cache safe). Foro rows deep-link /foro?thread= — the sanctioned page
 // exception. LOGRO rows are informational (no destination exists → no
@@ -32,7 +39,8 @@ import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
-import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { SmartImage } from '@/components/SmartImage'
+import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
 import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
 import {
@@ -46,12 +54,17 @@ import {
 } from '@/lib/dashboard/localState'
 import { latestActivityTimestamp, type ActivityRow } from '@/lib/dashboard/activity'
 import { useOpenItem } from '@/lib/dashboard/openItem'
+import type { User } from '@/lib/types'
 import { useResolvedUser } from '@/lib/userOverrides'
 import { trophyByKey } from '@/lib/trophies'
 
 // §3.2 watermark semantics: ≥50% visible for 2s before the badge clears.
 const DWELL_MS = 2_000
 const NOTICE_MS = 4_000
+
+// SCALE PASS S1 — the fixed default portion. Exactly this many whole rows
+// render at the {4,4} default; the remainder lives behind the VerRow.
+const VISIBLE_ROWS = 5
 
 // Display names for the source chips (activity.ts ships accent-free enum
 // values; the chip is UI copy).
@@ -100,6 +113,45 @@ function rowSentence(row: ActivityRow, actorName: string): string {
   }
 }
 
+// ── S3 identity block ───────────────────────────────────────────────────────
+//
+// The 28px block leading every row: actor avatar (SmartImage, object-cover,
+// 1px ink border) when the profile carries one; an honest initial-letter
+// block (ink plate, paper letter) when it does not; LOGRO rows carry the
+// trophy sigil stamp instead. Never an empty grey square (S3).
+
+function RowIdentityBlock({ row, actor }: { row: ActivityRow; actor: User | undefined }) {
+  if (row.kind === 'logro') {
+    const sigil = trophyByKey(row.trophyKey ?? '')?.sigil ?? '◇'
+    return (
+      <span
+        aria-hidden
+        className="flex h-7 w-7 shrink-0 items-center justify-center border border-ink bg-paper font-mono text-d13 text-ink"
+      >
+        {sigil}
+      </span>
+    )
+  }
+  if (actor?.avatarUrl) {
+    return (
+      <span aria-hidden className="relative block h-7 w-7 shrink-0 overflow-hidden border border-ink">
+        <SmartImage src={actor.avatarUrl} alt="" sizes="28px" className="object-cover" />
+      </span>
+    )
+  }
+  // No avatar (or no resolvable actor, e.g. collapsed REACCIÓN rows) →
+  // typographic block: the actor's initial, or a neutral middot.
+  const initial = (actor?.displayName || actor?.username || '·').charAt(0).toUpperCase()
+  return (
+    <span
+      aria-hidden
+      className="flex h-7 w-7 shrink-0 items-center justify-center border border-ink bg-ink font-mono text-d13 uppercase text-paper"
+    >
+      {initial}
+    </span>
+  )
+}
+
 // ── Single row ──────────────────────────────────────────────────────────────
 
 function ActivityRowView({
@@ -114,7 +166,6 @@ function ActivityRowView({
   const actor = useResolvedUser(row.actorId ?? undefined)
   const actorName = actor ? actor.displayName || `@${actor.username}` : 'Alguien'
   const sentence = rowSentence(row, actorName)
-  const sigil = row.kind === 'logro' ? trophyByKey(row.trophyKey ?? '')?.sigil : undefined
 
   // Destination resolution (§3.2): item overlay in place · foro page ·
   // MERCADO (OFERTA) · none (LOGRO / unresolved targets → informational row).
@@ -126,19 +177,20 @@ function ActivityRowView({
         ? 'mercado'
         : null
 
+  // SCALE PASS S2 row anatomy — min-h 52px, identity block 28px, single-line
+  // sentence + excerpt (truncate keeps the row height deterministic for the
+  // S1 portion arithmetic).
   const body = (
     <>
+      <RowIdentityBlock row={row} actor={actor} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-grotesk text-d15 text-ink">
-          {sigil ? `${sigil} ` : ''}
-          {sentence}
-        </p>
+        <p className="truncate font-grotesk text-d15 text-ink">{sentence}</p>
         {row.excerpt && (
           <p className="truncate font-grotesk text-d13 text-ink-faint">{row.excerpt}</p>
         )}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-0.5">
-        <span className="border border-ink px-1 font-mono text-d13 uppercase tracking-widest text-ink-soft">
+        <span className="border border-ink px-1.5 font-mono text-d13 uppercase tracking-widest text-ink-soft">
           {SOURCE_LABEL[row.source]}
         </span>
         <span className="font-mono text-d11 text-ink-soft">{timeAgo(row.createdAt)}</span>
@@ -149,7 +201,7 @@ function ActivityRowView({
   if (!target) {
     // Informational row — no destination exists, so no control (zero dead
     // chrome; a non-working button would be worse than none).
-    return <div className="flex min-h-10 items-center gap-2 py-1">{body}</div>
+    return <div className="flex min-h-[52px] items-center gap-3 py-1">{body}</div>
   }
 
   const onClick = () => {
@@ -173,7 +225,7 @@ function ActivityRowView({
       type="button"
       onClick={onClick}
       data-cue="tick"
-      className={`flex min-h-11 w-full items-center gap-2 py-1 text-left hover:bg-paper ${FOCUS_RING}`}
+      className={`flex min-h-[52px] w-full items-center gap-3 py-1 text-left hover:bg-paper ${FOCUS_RING}`}
     >
       {body}
     </button>
@@ -244,14 +296,30 @@ export function ActividadWidget({ compact }: DashboardWidgetProps) {
 
   const goCrear = () => router.push('/dashboard?section=nuevo')
 
-  // Split at the watermark: rows since the last visit above the rule line.
+  // SCALE PASS S1 — in-place depth expansion. Default renders exactly
+  // VISIBLE_ROWS whole rows; the VerRow toggles the full list, and ONLY that
+  // explicit choice makes the list a scroll region.
+  const [wantsExpanded, setWantsExpanded] = useState(false)
+  const overflowCount = Math.max(0, activity.length - VISIBLE_ROWS)
+  // Derived, not stored: if the list shrinks back under the portion there is
+  // nothing to expand — the widget returns to the fixed-portion state instead
+  // of idling in a scroll state with no toggle.
+  const expanded = wantsExpanded && overflowCount > 0
+
+  // Split the visible slice at the watermark: rows since the last visit
+  // render above the rule line. `activity` is reverse-chron and the watermark
+  // partitions by createdAt, so slicing first preserves the merged order.
+  const visibleRows = useMemo(
+    () => (expanded ? activity : activity.slice(0, VISIBLE_ROWS)),
+    [activity, expanded],
+  )
   const newRows = useMemo(
-    () => activity.filter((row) => !watermark || row.createdAt > watermark),
-    [activity, watermark],
+    () => visibleRows.filter((row) => !watermark || row.createdAt > watermark),
+    [visibleRows, watermark],
   )
   const seenRows = useMemo(
-    () => activity.filter((row) => !!watermark && row.createdAt <= watermark),
-    [activity, watermark],
+    () => visibleRows.filter((row) => !!watermark && row.createdAt <= watermark),
+    [visibleRows, watermark],
   )
 
   const isLoading = loaded.activity !== true && !errors.activity && activity.length === 0
@@ -333,10 +401,14 @@ export function ActividadWidget({ compact }: DashboardWidgetProps) {
             </div>
           ) : (
             <>
-              {/* Rows take only their natural height (flex-basis: content,
-                  shrink-to-scroll on overflow); the remainder below is the
-                  DIRECTED ledger zone, not a stretched void. */}
-              <div className="min-h-0 max-h-96 overflow-y-auto md:max-h-none">
+              {/* SCALE PASS portion arithmetic (S1, {4,4} default) — content
+                  budget 369px (WidgetFrame chrome arithmetic: 4×96 + 3×24 −
+                  87). Fixed portion: 5 rows × 52px = 260 · watermark rule
+                  20 (16 line + 4 py) · VerRow 4 (mt) + 44 = 48 · footnotes
+                  39 (1 border + 6 pt + 2×16 lines) → worst case 367 ≤ 369.
+                  NO internal scroll at default — overflow-y-auto exists ONLY
+                  in the expanded state the user chose. */}
+              <div className={expanded ? 'min-h-0 flex-1 overflow-y-auto' : 'shrink-0'}>
                 {newRows.map((row) => (
                   <ActivityRowView
                     key={row.key}
@@ -345,7 +417,7 @@ export function ActividadWidget({ compact }: DashboardWidgetProps) {
                   />
                 ))}
                 {newRows.length > 0 && seenRows.length > 0 && (
-                  <div className="flex items-center gap-2 py-1">
+                  <div className="flex items-center gap-2 py-0.5">
                     <span className="whitespace-nowrap font-mono text-d11 tracking-widest text-ink-soft">
                       {'// '}DESDE TU ÚLTIMA VISITA
                     </span>
@@ -360,20 +432,36 @@ export function ActividadWidget({ compact }: DashboardWidgetProps) {
                   />
                 ))}
               </div>
+              {/* S4 overflow declaration — the ONE affordance for the rows
+                  beyond the fixed portion. Expands in place (explicit depth
+                  choice) and toggles back. */}
+              {overflowCount > 0 && (
+                <div className="mt-1 shrink-0">
+                  <VerRow
+                    label={expanded ? 'MOSTRAR MENOS' : 'MOSTRAR ANTERIORES'}
+                    count={expanded ? undefined : overflowCount}
+                    onClick={() => setWantsExpanded(!expanded)}
+                  />
+                </div>
+              )}
               {/* The ledger (judge r2 fix 9a): on sparse days the room between
                   the last row and the footnotes is ruled like an empty printed
                   ledger — hairline baseline rules on the 24px grid
                   (.dash-ledger, globals.css) — «room reserved for signals»,
                   not breakage. flex-1 with basis 0 means it consumes ONLY free
-                  space: a full list collapses it to nothing and scrolls. Zero
-                  fake rows; one mono line, only while the list is sparse. */}
-              <div aria-hidden className="dash-ledger min-h-0 flex-1 overflow-hidden">
-                {activity.length <= 3 && (
-                  <p className="font-mono text-d11 leading-6 text-ink-soft">
-                    {'// '}espacio reservado para señales.
-                  </p>
-                )}
-              </div>
+                  space: a full portion collapses it to nothing. Zero fake
+                  rows; one mono line, only while the list is sparse. In the
+                  expanded state the scrolling list owns the flex budget, so
+                  the ledger stands down. */}
+              {!expanded && (
+                <div aria-hidden className="dash-ledger min-h-0 flex-1 overflow-hidden">
+                  {activity.length <= 3 && (
+                    <p className="font-mono text-d11 leading-6 text-ink-soft">
+                      {'// '}espacio reservado para señales.
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
 

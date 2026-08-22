@@ -4,11 +4,12 @@
 //
 // The black panel hosting the JARDÍN DE SEÑAL is this zone's ground AND the
 // CULTIVAR centerpiece (judge FIX-B 2): full zone width, flex-1 with a 160px
-// floor on desktop (at the default h3 budget it lands at exactly 160px tall ×
-// ~610px wide at 1440px). The seal rail runs beneath it as a 44px strip of
-// pill rows sorted `currentHp()` desc — ripest items first, no arrow-paging.
-// Each pill carries a REAL COSECHAR button at every breakpoint (judge FIX-B
-// 1): ≥44px tall on touch, 36px tall on md+ — never crushed to a sliver.
+// floor on desktop (at the h4 default it lands at ~187px tall — see
+// CultivarWidget's band arithmetic). The seal rail runs beneath it as a
+// size-aware strip of pill rows sorted `currentHp()` desc — ripest items
+// first, no arrow-paging. Each pill carries a REAL COSECHAR button at every
+// breakpoint (judge FIX-B 1): ≥44px tall on touch, 40px (h4) / 36px (h3) on
+// md+ — never crushed to a sliver.
 //
 // One count per surface (judge FIX-B 4): the zone's single numeral is the
 // «// MIS PUBLICACIONES · N» eyebrow printed on the garden panel; the rail
@@ -31,6 +32,7 @@ import dynamic from 'next/dynamic'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { HarvestConfirmModal } from '@/components/dashboard/HarvestConfirmModal'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
+import type { WidgetSize } from '@/lib/dashboard/layout'
 import { getPublishedItemSync, setPublishedItemLocal } from '@/lib/publishedItemsCache'
 import { ITEM_ROW_SELECT, mapItemRowToContentItem } from '@/lib/dashboard/openItem'
 import { createClient } from '@/lib/supabase/client'
@@ -60,9 +62,23 @@ const HarvestGarden = dynamic(
 )
 
 // ── The zone ────────────────────────────────────────────────────────────────
+//
+// SCALE PASS (S2) size adaptation — `size` is the widget's stored desktop
+// state (CultivarWidget passes it through). Judge-r5 geometry: h4 pills are
+// TWO-LINE (title owns line 1 whole; bracket + h-9 seal on line 2):
+//   h4 sizes  rail md:h-16 (64px): pill py-1 8 + title 16 + gap 4 + row 36
+//             = 64 exact. Garden = 284 − 8 − 64 − 8 − trophies 33 = 171 ≥
+//             the 160px centerpiece floor. Portion 2 ({8,4}) / 3 ({12,4}).
+//   h3 sizes  rail md:h-11 (44px), single-line pill, portion 1 (title wins
+//             the whole pill) — h3 is the user's tighter option; Zone C is
+//             garden 160 + 8 + 44 + 8 + trophies 33 = 253 against the 249px
+//             h3 frame content (the 4px overshoot clips into the trophy
+//             strip's pt-2, same as the pre-pass build — never into a row).
 
-export function PublishedRail({ frozen }: { frozen: boolean }) {
+export function PublishedRail({ frozen, size }: { frozen: boolean; size: WidgetSize }) {
   const { published, afterMutation, lastTickAt } = useDashboardData()
+  const tall = size.h >= 4
+  const twoLine = tall && size.w >= 12
 
   // Card DOM anchors for the garden's onSelect (mass click → scroll to card).
   const cardRefs = useRef(new Map<string, HTMLLIElement>())
@@ -92,16 +108,44 @@ export function PublishedRail({ frozen }: { frozen: boolean }) {
 
   const gardenItems = useMemo(() => rows.map((r) => r.item), [rows])
 
-  const scrollToCard = useCallback((id: string) => {
-    const el = cardRefs.current.get(id)
-    if (!el) return
-    const behavior: ScrollBehavior = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
-      ? 'auto'
-      : 'smooth'
-    el.scrollIntoView({ behavior, block: 'nearest', inline: 'center' })
-  }, [])
+  // SCALE PASS S1 — the desktop rail is a FIXED PORTION, never a scroller:
+  // the CAP ripest pills render whole; the GARDEN is the index to the rest
+  // (its eyebrow already counts the full set). Clicking a mass whose pill is
+  // not in the portion swaps it into the FOCUS SLOT (last position) — every
+  // publication is reachable in one click with zero hidden overflow. The
+  // remainder is declared by a mono line, not a control. Mobile stacks ALL
+  // pills vertically (page-level scroll — not internal — is the mobile law).
+  // Two-line pills need ~250-330px each to carry whole titles: {12,4} holds 3,
+  // {8,4} holds 2, h3 (single-line pills, tighter option) holds 1 whole.
+  const railCap = twoLine ? 3 : tall ? 2 : 1
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const mdVisibleIds = useMemo(() => {
+    const ids = rows.slice(0, railCap).map((r) => r.item.id)
+    if (focusedId && rows.some((r) => r.item.id === focusedId) && !ids.includes(focusedId)) {
+      ids[Math.max(0, railCap - 1)] = focusedId
+    }
+    return new Set(ids)
+  }, [rows, railCap, focusedId])
+  const mdOverflow = Math.max(0, rows.length - mdVisibleIds.size)
+
+  const scrollToCard = useCallback(
+    (id: string) => {
+      // Garden mass click: pull the pill into the focus slot first (it may be
+      // md:hidden outside the portion), then scroll once it is visible.
+      setFocusedId(id)
+      requestAnimationFrame(() => {
+        const el = cardRefs.current.get(id)
+        if (!el) return
+        const behavior: ScrollBehavior = window.matchMedia(
+          '(prefers-reduced-motion: reduce)',
+        ).matches
+          ? 'auto'
+          : 'smooth'
+        el.scrollIntoView({ behavior, block: 'nearest', inline: 'center' })
+      })
+    },
+    [],
+  )
 
   const openHarvest = useCallback((item: ContentItem) => {
     harvestedRef.current = false
@@ -164,15 +208,23 @@ export function PublishedRail({ frozen }: { frozen: boolean }) {
         </div>
       </div>
 
-      {/* The seal rail — 44px pill rows, horizontal on md+ (scrollbar hidden;
-          ripest items are already first), vertical stack on mobile. */}
+      {/* The seal rail — S1 fixed portion on md+ (the CAP ripest pills, whole,
+          + the garden-selected focus slot; NO scroll, NO hidden scrollbar),
+          vertical all-pills stack on mobile (page scroll). The «+N» line is
+          informational mono text, not a control — the garden IS the index. */}
       {rows.length === 0 ? null : (
-        <ul className="flex flex-col gap-1.5 md:h-11 md:shrink-0 md:flex-row md:overflow-y-hidden [scrollbar-width:none] md:overflow-x-auto [&::-webkit-scrollbar]:hidden">
+        <ul
+          className={`flex flex-col gap-1.5 md:shrink-0 md:flex-row md:overflow-hidden ${
+            tall ? 'md:h-16' : 'md:h-11'
+          }`}
+        >
           {rows.map(({ item, hp }) => (
             <PublishedCard
               key={item.id}
               item={item}
               hp={hp}
+              tall={tall}
+              mdHidden={!mdVisibleIds.has(item.id)}
               onHarvest={openHarvest}
               refCb={(el) => {
                 if (el) cardRefs.current.set(item.id, el)
@@ -180,6 +232,14 @@ export function PublishedRail({ frozen }: { frozen: boolean }) {
               }}
             />
           ))}
+          {mdOverflow > 0 && (
+            <li
+              aria-hidden
+              className="hidden shrink-0 items-center pl-1 font-mono text-d11 tracking-widest text-ink-faint md:flex"
+            >
+              +{mdOverflow} EN EL JARDÍN
+            </li>
+          )}
         </ul>
       )}
 
@@ -199,19 +259,27 @@ export function PublishedRail({ frozen }: { frozen: boolean }) {
 
 // ── Pill row ────────────────────────────────────────────────────────────────
 // Judge FIX-B 1: the COSECHAR seal is a REAL button at every breakpoint —
-// min-h-11 (44px) on touch, h-9 (36px, ≥ the 32px desktop floor) on md+.
-// The pill compresses the old card to a 44px row: two stacked lines (dot +
-// title / bracket + status) with the seal on the right. Full title, type
-// label, and bracket ride the pill's title attr.
+// min-h-11 (44px) on touch; on md+ h-10 (40px) at the h4 sizes, h-9 (36px)
+// at h3 — never below the 36px primary-action floor (SCALE PASS S2), never
+// crushed to a sliver. Two stacked lines (dot + title / bracket + status)
+// with the seal on the right; at {12,4} the title gets TWO whole lines
+// (line-clamp-2) and the pill widens to md:w-80. Full title, type label, and
+// bracket always ride the pill's title attr.
 
 function PublishedCard({
   item,
   hp,
+  tall,
+  mdHidden,
   onHarvest,
   refCb,
 }: {
   item: ContentItem
   hp: number
+  tall: boolean
+  // S1 fixed portion: pills beyond the rail cap (and outside the focus slot)
+  // hide on md+ only — mobile stacks the full set.
+  mdHidden: boolean
   onHarvest: (item: ContentItem) => void
   refCb: (el: HTMLLIElement | null) => void
 }) {
@@ -225,56 +293,75 @@ function PublishedCard({
     <li
       ref={refCb}
       title={`${composeTypeLabel(item.type)} · ${item.title} · ${hlBracket(hp)}`}
-      className="flex w-full items-center gap-2 border border-ink bg-paper px-2 py-1 md:h-full md:w-72 md:shrink-0"
+      // Flexible on md+ (S1): the portion's pills SHARE the rail width at any
+      // zone/viewport size; max-w keeps a lone pill from stretching absurdly.
+      //
+      // TWO-LINE geometry at the h4 sizes (judge r5 fix 1): the title OWNS
+      // line 1 whole (the seal button no longer sits beside it — a 119px seal
+      // inside a ~246px pill left titles 27px: «Gu…», Iker's literal
+      // complaint); line 2 = bracket/status left + seal right. h3 keeps the
+      // single-line row (portion drops to 1 there so the title still wins).
+      className={`flex w-full flex-col justify-center gap-1 border border-ink bg-paper px-2 py-1 md:h-full md:w-auto md:min-w-0 md:max-w-[26rem] md:flex-1 ${
+        tall ? '' : 'md:flex-row md:items-center md:gap-2'
+      } ${mdHidden ? 'md:hidden' : ''}`}
     >
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <TypeDot type={item.type} />
-          <span className="min-w-0 truncate font-grotesk text-d13 font-semibold leading-tight text-ink">
-            {item.title}
+      <span
+        className={`flex w-full min-w-0 items-center gap-1.5 ${
+          tall ? '' : 'md:w-auto md:flex-1'
+        }`}
+      >
+        <TypeDot type={item.type} />
+        <span className="min-w-0 flex-1 truncate font-grotesk text-d13 font-semibold leading-tight text-ink">
+          {item.title}
+        </span>
+      </span>
+      <span
+        className={`flex w-full min-w-0 items-center gap-1.5 font-mono text-d11 tracking-widest ${
+          tall ? '' : 'md:w-auto md:flex-1'
+        }`}
+      >
+        {/* Live HL bracket — words, never a number (R9-adjacent). */}
+        <span className="shrink-0 font-bold text-ink">◇ {hlBracket(hp)}</span>
+        {decaying && (
+          <span
+            aria-hidden
+            title="Señal en decaimiento"
+            className="shrink-0 text-ink-soft"
+          >
+            ▾
           </span>
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5 font-mono text-d11 tracking-widest">
-          {/* Live HL bracket — words, never a number (R9-adjacent). */}
-          <span className="shrink-0 font-bold text-ink">◇ {hlBracket(hp)}</span>
-          {decaying && (
-            <span
-              aria-hidden
-              title="Señal en decaimiento"
-              className="shrink-0 text-ink-soft"
-            >
-              ▾
-            </span>
-          )}
-          {harvested && (
-            // Broken seal — CUE/SEAL-BREAK landed here (2-frame swap at flip).
-            <span
-              data-cue="seal-break"
-              title={
-                freshlyHarvested
-                  ? 'COSECHADO · LLEGA CON EL PRÓXIMO CICLO (≤5 MIN)'
-                  : undefined
-              }
-              className="min-w-0 tabular-nums text-ink md:truncate"
-            >
-              ◈ COSECHADO · ECO +{(item.harvestedAmount ?? 0).toFixed(1)}
-              {freshlyHarvested && ' · LLEGA CON EL PRÓXIMO CICLO (≤5 MIN)'}
-            </span>
-          )}
-        </span>
-      </div>
-
-      {!harvested && (
-        // Harvest click 1 of 2 (click 2 = the modal's single confirm).
-        <button
-          type="button"
-          onClick={() => onHarvest(item)}
-          data-cue="seal-break"
-          className={`flex min-h-11 shrink-0 items-center justify-center gap-1 border border-ink px-2.5 font-mono text-d13 font-bold tracking-widest text-ink hover:bg-ink hover:text-paper md:min-h-0 md:h-9 ${FOCUS_RING}`}
-        >
-          ◇ COSECHAR
-        </button>
-      )}
+        )}
+        {harvested ? (
+          // Broken seal — CUE/SEAL-BREAK landed here (2-frame swap at flip).
+          <span
+            data-cue="seal-break"
+            title={
+              freshlyHarvested
+                ? 'COSECHADO · LLEGA CON EL PRÓXIMO CICLO (≤5 MIN)'
+                : undefined
+            }
+            className="min-w-0 tabular-nums text-ink md:truncate"
+          >
+            ◈ COSECHADO · ECO +{(item.harvestedAmount ?? 0).toFixed(1)}
+            {freshlyHarvested && ' · LLEGA CON EL PRÓXIMO CICLO (≤5 MIN)'}
+          </span>
+        ) : (
+          // Harvest click 1 of 2 (click 2 = the modal's single confirm).
+          // h4 two-line: h-9 (36px floor) so line1 16 + gap 4 + row 36 = 56
+          // fits the 64px rail's inner 56px exactly.
+          <button
+            type="button"
+            onClick={() => onHarvest(item)}
+            data-cue="seal-break"
+            // «COSECHAR» alone — the ◇ glyph cost 27px that line 2 does not
+            // have at the {8,4} pill width (bracket 60 + gap + seal must fit
+            // ~169px inner); the border + seal-break cue carry the ritual.
+            className={`ml-auto flex min-h-11 shrink-0 items-center justify-center border border-ink px-2 font-mono text-d13 font-bold tracking-widest text-ink hover:bg-ink hover:text-paper md:min-h-0 md:h-9 ${FOCUS_RING}`}
+          >
+            COSECHAR
+          </button>
+        )}
+      </span>
     </li>
   )
 }

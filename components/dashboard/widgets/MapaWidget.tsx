@@ -1,16 +1,26 @@
 'use client'
 
-// ── MAPA — schematic city (FINAL_SPEC §3.7) ─────────────────────────────────
+// ── MAPA — schematic city (FINAL_SPEC §3.7 · SCALE PASS) ────────────────────
 //
-// Two size states from the stored layout vocabulary (§2.5):
-//   {3,2} compact-cream (default) — mini black-panel schematic thumbnail
-//   (real dots only) beside the inline list (venue · date · ★) delivering
-//   the FULL payload at 0 clicks; «AMPLIAR MAPA» snaps the widget to its
-//   expanded state (in-place — no ↗), «VER MAPA ↗» routes to /mapa.
+// Size states from the stored layout vocabulary (§2.5):
+//   {3,3} cream (default) — the black-panel schematic thumbnail GROWN to a
+//   full-width band (real dots only) above exactly 2 WHOLE list rows
+//   (title / venue · date · ★); the count lives in the header ONLY.
+//   PORTION ARITHMETIC (desktop, border-box; h3 content budget = 249px):
+//     thumb flex-1 (249 − 8 − 105 − 4 − 44 = 88px) + mt-2 8
+//     + 2 rows (52+1+52 = 105) + foot pt-1 4 + VerRow 44 → 249 EXACT.
+//     (The prescribed ~110px thumb cannot coexist with 2×52px rows + the
+//     44px S4 foot inside 249 — 110+105+44 = 259 before gaps — so the thumb
+//     takes the flex remainder ≈88px: still a full-width panel band, not the
+//     old 64px sliver.) No internal scroll at any default size (S1).
+//   {3,2} tighter option — the old side-by-side composition: w-16 thumb
+//   beside 1 whole row + the VerRow foot (129px budget: 53+4+44 = 101 ✓).
+//   «AMPLIAR MAPA» snaps the widget to its expanded state (in-place — no ↗),
+//   the VerRow «VER MAPA ↗» foot routes to /mapa.
 //   {8,4} expanded — the ONE widget-borne black panel of this widget:
 //   CdmxSchematic linework in panel-text ink with acid dots, matted ≥20px
 //   cream inside the widget (R5 — WidgetFrame's 20px content padding is the
-//   mat; the panel never touches a widget edge).
+//   mat; the panel never touches a widget edge). Unchanged by the SCALE pass.
 //
 // MAP-HONESTY LAW: dots arrive ONLY from lib/dashboard/venueGeo resolution.
 // Unresolved events (TBA family, empty venue, unknown rooms, non-CDMX) list
@@ -38,7 +48,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
-import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
 import { useOpenItem } from '@/lib/dashboard/openItem'
 import { resolveVenueGeo, type VenueGeoPoint } from '@/lib/dashboard/venueGeo'
 import { DASH_ACID, DASH_PANEL_TEXT } from '@/lib/dashboard/palette'
@@ -68,7 +78,7 @@ interface MapRow {
   saved: boolean
 }
 
-// ── Mini schematic (the {3,2} thumbnail — real dots only, aria-hidden) ──────
+// ── Mini schematic (the default-state thumbnail — real dots, aria-hidden) ───
 // A tiny black-panel echo of CdmxSchematic so the map identity is present at
 // every size (judge fix 14): the city limit + the Insurgentes/Reforma spines
 // in panel-text hairline, plus dots ONLY from venueGeo-resolved events —
@@ -273,7 +283,8 @@ export function MapaWidget({ size, compact }: DashboardWidgetProps) {
     [ctx],
   )
   const expand = useCallback(() => setMapaSize(8, 4), [setMapaSize])
-  const collapse = useCallback(() => setMapaSize(3, 2), [setMapaSize])
+  // Collapse lands on the {3,3} SCALE-PASS default (allowedSizes[0]).
+  const collapse = useCallback(() => setMapaSize(3, 3), [setMapaSize])
 
   // ── Compact teaching row (zero upcoming events platform-wide) ─────────────
   // The sentence stays WHOLE (judge fix 8): the route link lives in the
@@ -295,12 +306,13 @@ export function MapaWidget({ size, compact }: DashboardWidgetProps) {
         {failed ? (
           <ErrorLine onRetry={retry} />
         ) : (
-          <div className="flex min-w-0 items-center gap-3">
-            <MinimapGlyph />
-            <p className="min-w-0 font-mono text-d13 font-bold uppercase tracking-widest text-ink">
-              {'// SIN EVENTOS PRÓXIMOS.'}
-            </p>
-          </div>
+          // Judge r5 fix 2: the {3,x} compact strip is ~250px of copy room —
+          // the glyph + long sentence wrapped into a 3-line squeeze against
+          // the frame action. One short WHOLE line; the glyph belongs to the
+          // full-size states.
+          <p className="min-w-0 truncate font-mono text-d13 font-bold uppercase tracking-widest text-ink">
+            {'// SIN EVENTOS.'}
+          </p>
         )}
       </WidgetFrame>
     )
@@ -397,12 +409,57 @@ export function MapaWidget({ size, compact }: DashboardWidgetProps) {
     )
   }
 
-  // ── Default {3,2} — mini schematic thumbnail + full-payload list ──────────
-  // The map identity is present at this size too (judge fix 14): a tiny
-  // black-panel CdmxSchematic echo with the REAL located dots beside the
-  // list. ONE count only — the frame's header badge (fix 16); the expand
-  // action is an in-place size snap, so no ↗ (the route link below carries
-  // it). The list still delivers the full payload at 0 clicks.
+  // ── Default states — schematic thumb + FIXED whole rows (S1/S2) ───────────
+  // The map identity is present at every size (judge fix 14): a black-panel
+  // CdmxSchematic echo with the REAL located dots. ONE count only — the
+  // frame's header badge (fix 16); the expand action is an in-place size
+  // snap, so no ↗ (the VerRow foot carries the route). No internal scroll:
+  // the portion is computed by design (header comment arithmetic) and the
+  // remainder is declared by the header count + the S4 foot.
+  const tall = size.h >= 3
+  const portion = rows.slice(0, tall ? 2 : 1)
+
+  if (tall) {
+    // {3,3} default — full-width grown thumb above 2 whole rows.
+    return (
+      <WidgetFrame
+        title="MAPA"
+        count={rows.length > 0 ? rows.length : undefined}
+        loading={loading}
+        action={{ label: 'AMPLIAR MAPA', onClick: expand, cue: 'latch' }}
+      >
+        {failed ? (
+          <ErrorLine onRetry={retry} />
+        ) : (
+          <div className="flex h-full min-h-0 flex-col">
+            {/* Grown thumbnail band — matted by the frame's cream padding
+                (R5); flex-1 hands it the exact leftover (~88px at h3). */}
+            <div
+              aria-hidden
+              className="relative min-h-0 w-full flex-1 border border-ink bg-panel"
+            >
+              <MiniSchematic dots={dots} />
+            </div>
+            <div className="mt-2 shrink-0">
+              {portion.map((row) => (
+                <MapListRow
+                  key={row.item.id}
+                  row={row}
+                  dead={deadSlug === row.item.slug}
+                  onOpen={() => void handleOpen(row.item.slug)}
+                />
+              ))}
+            </div>
+            <div className="mt-auto shrink-0 pt-1">
+              <VerRow label="VER MAPA" href="/mapa" external cue="tick" />
+            </div>
+          </div>
+        )}
+      </WidgetFrame>
+    )
+  }
+
+  // {3,2} tighter option — side-by-side thumb + 1 whole row.
   return (
     <WidgetFrame
       title="MAPA"
@@ -422,8 +479,8 @@ export function MapaWidget({ size, compact }: DashboardWidgetProps) {
             <MiniSchematic dots={dots} />
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {rows.map((row) => (
+            <div className="min-h-0 shrink-0">
+              {portion.map((row) => (
                 <MapListRow
                   key={row.item.id}
                   row={row}
@@ -432,15 +489,9 @@ export function MapaWidget({ size, compact }: DashboardWidgetProps) {
                 />
               ))}
             </div>
-            <p>
-              <Link
-                href="/mapa"
-                data-cue="tick"
-                className={`inline-flex min-h-11 items-center font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
-              >
-                VER MAPA ↗
-              </Link>
-            </p>
+            <div className="mt-auto pt-1">
+              <VerRow label="VER MAPA" href="/mapa" external cue="tick" />
+            </div>
           </div>
         </div>
       )}

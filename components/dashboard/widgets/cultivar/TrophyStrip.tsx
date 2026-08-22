@@ -18,29 +18,7 @@
 
 import type { ReactNode } from 'react'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
-import { TROPHY_CATALOG, trophyByKey, type TrophyKey } from '@/lib/trophies'
-
-// Presence thresholds — mirrored from apply_trophy_unlocks() (migration
-// 0019) and the IdentitySpine's ported EngagementWidget math. Change in
-// lockstep with both.
-const PRESENCE_THRESHOLDS = [
-  { key: 'presence_logged', target: 10 },
-  { key: 'presence_deep', target: 25 },
-  { key: 'presence_persistent', target: 50 },
-  { key: 'presence_insider_track', target: 100 },
-] as const
-
-function presencePct(hp: number): { pct: number; nextKey: string } | null {
-  const next = PRESENCE_THRESHOLDS.find((t) => hp < t.target)
-  if (!next) return null
-  let prev = 0
-  for (const t of PRESENCE_THRESHOLDS) {
-    if (hp >= t.target) prev = t.target
-    else break
-  }
-  const pct = Math.min(100, Math.max(0, ((hp - prev) / (next.target - prev)) * 100))
-  return { pct, nextKey: next.key }
-}
+import { TROPHY_CATALOG, type TrophyKey } from '@/lib/trophies'
 
 // ── The pictograph set (judge FIX-B 3) ──────────────────────────────────────
 // 14×14 viewBox, currentColor only (earned chips are ink blocks → paper
@@ -128,11 +106,7 @@ function TrophyGlyph({ trophyKey }: { trophyKey: TrophyKey }) {
 }
 
 export function TrophyStrip() {
-  const { trophies, engagement } = useDashboardData()
-
-  const hp = engagement?.hp ?? null
-  const progress = hp !== null ? presencePct(hp) : null
-  const nextLabel = progress ? trophyByKey(progress.nextKey)?.label ?? null : null
+  const { trophies } = useDashboardData()
 
   return (
     <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-3 overflow-hidden border-t border-ink pt-2">
@@ -162,18 +136,12 @@ export function TrophyStrip() {
         })}
       </div>
 
-      {/* Hairline toward the next presence trophy — words only, no numerals
-          (the raw scalar lives solely in the spine's PRIVADO block). */}
-      {progress && nextLabel && (
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="min-w-0 truncate font-mono text-d11 tracking-widest text-ink-soft">
-            PRÓXIMO: {nextLabel}
-          </span>
-          <div className="h-1 min-w-12 flex-1 border border-ink bg-paper">
-            <div className="h-full bg-ink" style={{ width: `${progress.pct}%` }} />
-          </div>
-        </div>
-      )}
+      {/* Judge r5 fix 3, final form: the strip is TROPHIES ONLY. The next-hito
+          echo («PRÓXIMO: …») could never render whole beside 10 sigil chips in
+          the {8,4} zone (it cropped in two successive builds), and the spine's
+          PRIVADO block already prints the same fact whole with its progress
+          bar. One surface, one readout — the duplicate dies rather than
+          truncates. */}
     </div>
   )
 }
