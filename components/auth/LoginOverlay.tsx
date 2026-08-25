@@ -1,11 +1,27 @@
 'use client'
 
+// ── LoginOverlay — the auth door, in «EL PLIEGO» chrome ─────────────────────
+//
+// The EVA login-terminal skin is retired: the modal now speaks the dashboard
+// language (paper sheet, ink hairlines, Syne title + CERRAR chip — the
+// DashPopup anatomy — mono d11/d13 registers, acid reserved for the submit
+// fill-block, red #C42B20 for errors, one 2px-ink focus grammar). It fronts
+// the prisma-2008 landing, so the sheet is opaque paper over an ink scrim.
+//
+// The logic is untouched from the terminal version: mode state machine,
+// guarded submit (every field disabled while submitting), Esc close, body
+// scroll lock, focus timing, ?codigo= pre-fill.
+
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
 import { useAuth } from './useAuth'
 import { normalizeInviteCode, normalizeUsername } from '@/lib/identity'
 
 type Mode = 'login' | 'signup'
+
+// The page-wide focus grammar (§10(14)) — inlined so auth stays free of
+// dashboard imports.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 export function LoginOverlay() {
   const { loginOpen, closeLogin, login, signup, loginInitialMode, loginInitialCode } = useAuth()
@@ -109,80 +125,67 @@ export function LoginOverlay() {
       className="overlay-backdrop-in fixed inset-0 z-[60] flex items-center justify-center p-4"
       onClick={closeLogin}
     >
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" aria-hidden />
+      {/* Ink scrim — the DashPopup ground. */}
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines overlay-panel-in relative z-10 flex w-full max-w-md flex-col overflow-hidden bg-base"
+        className="overlay-panel-in relative z-10 flex w-full max-w-md flex-col overflow-hidden border border-ink bg-paper text-ink"
         style={{ transformOrigin: 'center center' }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <span
-              className="shrink-0 font-mono text-[10px] tracking-widest"
-              style={{ color: '#F97316' }}
-            >
-              //AUTH
-            </span>
-            <span className="sys-label hidden truncate uppercase text-muted sm:inline">
-              {mode === 'login' ? 'login·terminal' : 'signup·terminal'}
-            </span>
-          </div>
+        {/* ── Head — Syne title + CERRAR chip (DashPopup anatomy) ─────────── */}
+        <div className="flex items-baseline gap-3 border-b border-ink px-5 py-1.5">
+          <h1 className="min-w-0 truncate font-syne text-d28 font-bold uppercase leading-8">
+            {mode === 'login' ? 'Identifícate' : 'Nueva identidad'}
+          </h1>
+          <div className="flex-1" />
           <button
             onClick={closeLogin}
             aria-label="Cerrar"
-            className="flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+            className={`shrink-0 border border-ink px-2 py-0.5 font-mono text-d13 tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           >
-            <span className="hidden sm:inline">[ESC]</span>
-            <X size={14} className="sm:hidden" />
-            <span>CERRAR</span>
+            CERRAR
           </button>
         </div>
 
-        {/* Mode tabs */}
-        <div className="flex border-b border-border bg-base/95 font-mono text-[10px] tracking-widest">
+        {/* ── Mode tabs — latch fill-inversion chips ──────────────────────── */}
+        <div className="flex border-b border-ink font-mono text-d13 tracking-widest">
           <button
             type="button"
             onClick={() => switchMode('login')}
-            className={`flex-1 px-4 py-2 transition-colors ${
-              mode === 'login' ? 'text-primary' : 'text-muted hover:text-secondary'
-            }`}
-            style={mode === 'login' ? { borderBottom: '2px solid #F97316' } : undefined}
+            aria-pressed={mode === 'login'}
+            data-cue="latch"
+            className={`min-h-11 flex-1 px-4 uppercase transition-colors ${
+              mode === 'login'
+                ? 'bg-ink font-bold text-paper'
+                : 'text-ink-soft hover:bg-paper-raised hover:text-ink'
+            } ${FOCUS_RING}`}
           >
-            ▶ INGRESAR
+            Ingresar
           </button>
+          <span aria-hidden className="w-px bg-ink" />
           <button
             type="button"
             onClick={() => switchMode('signup')}
-            className={`flex-1 px-4 py-2 transition-colors ${
-              mode === 'signup' ? 'text-primary' : 'text-muted hover:text-secondary'
-            }`}
-            style={mode === 'signup' ? { borderBottom: '2px solid #F97316' } : undefined}
+            aria-pressed={mode === 'signup'}
+            data-cue="latch"
+            className={`min-h-11 flex-1 px-4 uppercase transition-colors ${
+              mode === 'signup'
+                ? 'bg-ink font-bold text-paper'
+                : 'text-ink-soft hover:bg-paper-raised hover:text-ink'
+            } ${FOCUS_RING}`}
           >
-            ▶ REGISTRARSE
+            Registrarse
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex flex-col gap-5 p-6">
-          <header className="flex flex-col gap-2">
-            <span
-              className="inline-flex w-fit items-center gap-2 border px-2 py-0.5 font-mono text-[10px] tracking-widest"
-              style={{ borderColor: '#F97316', color: '#F97316' }}
-            >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-              SISTEMA·ACCESO
-            </span>
-            <h1 className="font-syne text-2xl font-black leading-tight text-primary">
-              {mode === 'login' ? 'IDENTIFÍCATE' : 'NUEVA IDENTIDAD'}
-            </h1>
-            <p className="font-mono text-[11px] leading-relaxed text-secondary">
-              {mode === 'login'
-                ? 'Acceso a redacción, partners y lectores del subsistema.'
-                : 'Necesitas un código de invitación para crear una cuenta.'}
-            </p>
-          </header>
+        {/* ── Body ────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 p-5">
+          <p className="font-grotesk text-d13 leading-snug text-ink-soft">
+            {mode === 'login'
+              ? 'Acceso a redacción, partners y lectores del subsistema.'
+              : 'Necesitas un código de invitación para crear una cuenta.'}
+          </p>
 
           <form onSubmit={submit} className="flex flex-col gap-3">
             {mode === 'login' ? (
@@ -235,63 +238,51 @@ export function LoginOverlay() {
                   value={inviteCode}
                   onChange={setInviteCode}
                   autoComplete="off"
+                  mono
                   disabled={submitting || justAuthed}
                 />
               </>
             )}
 
+            {/* Consequence copy — full red register, never a soft tint. */}
             {error && (
-              <div
-                className="border px-3 py-2 font-mono text-[10px] leading-relaxed tracking-widest"
-                style={{
-                  borderColor: '#E63329',
-                  color: '#E63329',
-                  backgroundColor: '#E6332910',
-                }}
-              >
-                {error}
+              <div className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold leading-relaxed tracking-widest text-sys-red-paper">
+                ⚠ {error}
               </div>
             )}
 
+            {/* Positive stamp — the acid block with ink on top. */}
             {justAuthed && (
-              <div
-                className="border px-3 py-2 font-mono text-[10px] tracking-widest"
-                style={{
-                  borderColor: '#4ADE80',
-                  color: '#4ADE80',
-                  backgroundColor: '#4ADE8015',
-                }}
-              >
+              <div className="border border-ink bg-acid px-3 py-2 font-mono text-d13 font-bold tracking-widest text-ink">
                 ACCESO CONCEDIDO · REDIRIGIENDO…
               </div>
             )}
 
+            {/* Primary submit — acid fill-block, arrow glyph, 44px. */}
             <button
               type="submit"
               disabled={submitting || justAuthed}
-              className="mt-2 border px-4 py-2.5 font-mono text-[11px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                borderColor: '#F97316',
-                color: '#F97316',
-                backgroundColor: 'rgba(249,115,22,0.08)',
-              }}
+              className={`mt-1 flex min-h-11 items-center justify-between gap-3 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 ${FOCUS_RING}`}
             >
-              {submitting
-                ? '▶ PROCESANDO…'
-                : mode === 'login'
-                ? '▶ ENTRAR AL SUBSISTEMA'
-                : '▶ CREAR IDENTIDAD'}
+              <span>
+                {submitting
+                  ? 'PROCESANDO…'
+                  : mode === 'login'
+                  ? 'ENTRAR AL SUBSISTEMA'
+                  : 'CREAR IDENTIDAD'}
+              </span>
+              <span aria-hidden>→</span>
             </button>
           </form>
 
-          <p className="font-mono text-[10px] leading-relaxed text-muted">
+          <p className="font-grotesk text-d13 leading-snug text-ink-soft">
             {mode === 'login' ? (
               <>
                 ¿No tienes cuenta?{' '}
                 <button
                   type="button"
                   onClick={() => switchMode('signup')}
-                  className="text-secondary underline transition-colors hover:text-primary"
+                  className={`text-ink underline underline-offset-4 hover:no-underline ${FOCUS_RING}`}
                 >
                   Regístrate con un código de invitación.
                 </button>
@@ -302,7 +293,7 @@ export function LoginOverlay() {
                 <button
                   type="button"
                   onClick={() => switchMode('login')}
-                  className="text-secondary underline transition-colors hover:text-primary"
+                  className={`text-ink underline underline-offset-4 hover:no-underline ${FOCUS_RING}`}
                 >
                   Inicia sesión.
                 </button>
@@ -322,6 +313,7 @@ function Field({
   type = 'text',
   inputRef,
   autoComplete,
+  mono,
   disabled,
 }: {
   label: string
@@ -330,11 +322,13 @@ function Field({
   type?: 'text' | 'password' | 'email'
   inputRef?: React.RefObject<HTMLInputElement>
   autoComplete?: string
+  // Codes are mono material; identity fields read in the grotesk body.
+  mono?: boolean
   disabled?: boolean
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="sys-label">{label}</span>
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="font-mono text-d11 tracking-widest text-ink-soft">{label}</span>
       <input
         ref={inputRef}
         type={type}
@@ -346,8 +340,9 @@ function Field({
         autoCorrect="off"
         spellCheck={false}
         disabled={disabled}
-        className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none transition-colors focus:border-sys-orange disabled:opacity-60"
-        style={{ borderColor: '#242424' }}
+        className={`min-h-11 border border-ink bg-paper-raised px-3 py-2 text-d15 text-ink transition-colors focus:bg-white disabled:opacity-60 ${
+          mono ? 'font-mono tracking-wide' : 'font-grotesk'
+        } ${FOCUS_RING}`}
       />
     </label>
   )
