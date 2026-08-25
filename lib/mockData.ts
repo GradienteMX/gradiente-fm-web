@@ -1,6 +1,5 @@
 import type { ContentItem } from "./types";
 import { SCRAPED_EVENTS } from "./scrapedEvents";
-import { NOCHE_NEGRA_SEED } from "./nocheNegraSeed";
 
 // All imageUrl values reference /flyers/* — served from public/flyers/
 // Real info: Fascinoma (fascinoma.space · @fascinoma_mx) + Club Japan (Monterrey 56, Roma Norte · @japan_cdmx)
@@ -2928,9 +2927,6 @@ const RAW_ITEMS: ContentItem[] = [
 
 export const MOCK_ITEMS: ContentItem[] = [
   ...RAW_ITEMS,
-  // Noche Negra partner catalogue — own module (lib/nocheNegraSeed.ts) so the
-  // demo stays separable from the legacy seed; /mapa also merges it directly.
-  ...NOCHE_NEGRA_SEED,
   ...SCRAPED_EVENTS,
 ].map((item) => ({
   ...item,

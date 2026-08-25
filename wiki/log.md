@@ -8,6 +8,31 @@
 
 ---
 
+## 2026-08-25 · INGEST · scrape RA ago-oct + catálogo Noche Negra a datos reales · `main` (sin commit)
+
+**Contexto: la agenda estaba a oscuras.** Cero eventos futuros en toda la DB — el último ingest RA fue el 2026-06-24 y su cobertura terminaba el 2026-08-01, así que `/agenda`, EventosRail y el calendario llevaban 24 días vacíos.
+
+**1. Scrape RA (firehose CDMX).** Ventana `listingDate` 2026-08-25 → 2026-10-10, área 399, 6 páginas de `eventListings`. **114 eventos únicos ingeridos, 0 fallos** (~0.73 s/evento por el rehost server-side, chunks de 8 resumibles vía `doneIdx` en `window.name`). Resultado en prod: **115 PRÓXIMOS** en `/agenda`, del 27 ago al 11 oct, 46 venues, 100/114 con flyer rehosteado a storage, 68 con excerpt (la realidad RA: ~60% traen `content`), 78 con géneros mapeados a taxonomía + banda de vibe sembrada (canario verificado: `Reggaeton`→`reggaeton`, banda 5-7).
+- **Gotcha nuevo:** el perfil de Chrome debug había perdido la sesión de gradiente.org (`/api/ingest` es cookie-auth). Verificar login ANTES de bridgear. `window.name` sobrevive el login (es navegación same-tab) y además se respaldó el payload a disco.
+- El hueco 2026-08-01 → 08-25 se dejó sin cubrir a propósito: son fechas ya pasadas y la agenda es date-forward.
+
+**2. Noche Negra: de mock a filas reales.** El catálogo de `lib/nocheNegraSeed.ts` (pase 14-15, demo dev-only de `/mapa`) es ahora contenido real en prod: **24 items + 8 listings de mercado**, y la fila partner `pa-noche-negra` enriquecida en sitio. Cero migraciones — el esquema ya tenía todas las columnas.
+- Nuevo `scripts/seedNocheNegra.ts` (dry-run · `--apply` · `--revert`). **No se usó `/api/items`** (estampa `published_at = now()` y aplanaría las fechas 2017-2026 al día de hoy, tirando 24 items a la cabeza del feed) **ni `scripts/seed.ts`** (borra las 160 filas seed + usuarios + comments + foro antes de reinsertar: destructivo contra prod, y ahora que `MOCK_ITEMS` ya no hace spread del catálogo ese footgun queda desarmado).
+- Items con `seed=true` (marca de procedencia, coherente con las otras 160; `--revert` es un delete acotado por id). La fila partner se **UPDATEa**, nunca se borra: es una fila real de prod (creada 2026-06-23) y conserva `seed=false`, su HP acumulado (22.98) y su `published_at`.
+- **Decisiones de Iker (esta sesión):** catálogo completo incluyendo mercado · `seed=true` · las **7 firmas inventadas** (Emiliano Vega ×3, Sofía Quintero ×2, Lucía Barragán ×2) **re-atribuidas a «Redacción Gradiente»** — publicar reseñas y columnas bajo nombres de periodistas ficticios era la única parte del import que podía costar credibilidad. Las firmas de mixes (Coco María, Carlos René, Sonido Martines…) son artistas reales y se quedan.
+- **Corregido durante la verificación:** los 10 items sin `articleBody` no salen en blanco — el `bodyPreview` se renderiza como cuerpo — pero su `readTime` declaraba 4-5 min para ~640 caracteres (~40 s de lectura). Se bajó a 1 min en los 10; los 3 listicles con cuerpo real quedaron intactos.
+- `marketplace_enabled` es el kill-switch del escaparate: los 8 listings son oferta comercial real a nombre de un colectivo real, así que si Noche Negra necesita confirmar, ese booleano los oculta sin tocar filas.
+
+**Limpieza:** borrado el merge dev-only de `/mapa` (`NN_DEMO`) y el spread `NOCHE_NEGRA_SEED` de `lib/mockData.ts` — el mapa ya lee filas reales como todo lo demás. `lib/nocheNegraSeed.ts` se queda como entrada del importador.
+
+**Verificado:** tsc limpio · 64/64 tests de mapa · `next build` limpio (`/mapa` 22.2 kB) · lint sin warnings nuevos · en prod: `/agenda` 115 próximos, `/marketplace` 9 items con las 8 imágenes cargando, `/reviews` con las reseñas NN atribuidas «PROMOTORA · NOCHE NEGRA», `/mapa` 463 en AHORA y 0 errores de consola.
+
+**Cerrado en la misma sesión:** Iker aplicó `0047_foro_custom_tags.sql` en el SQL editor — crea la tabla `foro_tags` (ojo: el fichero se llama `_custom_tags` pero la tabla es `foro_tags`, por eso una comprobación por nombre de fichero engaña); `/api/foro/tags` ya responde 200 `{"tags":[]}` en prod, antes fallaba. 0046 ya estaba aplicada de antes. Código commiteado + pusheado a `main`.
+
+**Pendiente:** 4 borradores IG de Club Japan de junio, ya pasados, siguen en BORRADORES · confirmar con Noche Negra los 8 listings del mercado.
+
+---
+
 ## 2026-08-22 · INGEST · /welcome "prisma 2008" re-chromed to «EL PLIEGO» · branch `feat/genre-taxonomy-and-media-embeds` (local commit, sin push)
 
 Iker's directive: the new welcome/signup landing (3b6d8ff, "prisma 2008") is the right direction but must speak the dashboard's design language for coherence. The BONES stay — PrismField shader untouched, grotesco face untouched, the door's three paths and the whole invitación-3d flow byte-identical — the CHROME was translated:
