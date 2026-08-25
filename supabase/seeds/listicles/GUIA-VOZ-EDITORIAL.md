@@ -232,6 +232,11 @@ Banco vigente:
 
 `lalo_timestretch` · `Nena Tempest` · `Chava Rufige` · `ruidoso_kru` · `Mich Dubplate`
 `Renata Hardstep` · `Pau Ragga Twin` · `bicho_amen` · `Tona Skam` · `vato_junglist`
+`Naty Geocities`
+
+`Naty Geocities` es territorio nuevo: hypnagogic pop, proto-vaporwave, todo lo que
+suena a nostalgia de internet de los 2000. Le tocan los sellos como Hippos in Tanks,
+Arbutus, Tri Angle. No usa puntos suspensivos, escribe más seco que `lalo_timestretch`.
 
 **Cada autor tiene su territorio y sus tics.** Si `lalo_timestretch` firmó ambient y
 experimental, no le toca el listicle de dembow. Y si uno usa mucho los puntos
