@@ -30,12 +30,21 @@ const INVITE_FONTS =
 // everyone here when they have no session, and bounces them off again once
 // they're logged in.
 //
-// The skin is the `landing-v2.html` "prisma 2008" prototype from
-// _Gradiente Ops/prototypes/fractal-hero: paper ground, the grotesco face on
-// stage, and the animated prism field behind everything (see PrismField). The
-// terminal-cockpit version it replaces is gone; what survived the reskin is the
-// door itself — iniciar sesión, insertar código, lista de espera — plus the
-// whole invitación path underneath it, untouched.
+// The bones are the `landing-v2.html` "prisma 2008" prototype (paper ground,
+// grotesco face on stage, the animated prism field behind everything); the
+// CHROME speaks «EL PLIEGO» — the dashboard's editorial-brutalist language —
+// so the door and the panel share one voice:
+//   · tokens: paper #EDEBE3 / raised #F6F4EC / ink #111111 (+soft/faint),
+//     acid #D8FF00 only as a fill-block with ink on top, red #C42B20
+//   · type: Syne bold for titles, Space Grotesk 15/22 body, Space Mono
+//     11/16 · 13/18 for labels and controls (the dashboard's d-scale, as raw
+//     px — this branch predates the dashboard tailwind tokens)
+//   · chrome: straight 1px ink borders + hairline-headed panels (the
+//     DashPopup anatomy), NO bracket corners, no »« arrow dressing
+//   · interaction: ink-fill hover inversion, 2px ink focus ring at 2px
+//     offset, ≥44px targets
+// What survived untouched is the door itself — iniciar sesión, insertar
+// código, lista de espera — plus the whole invitación path underneath.
 export default function WelcomePage() {
   const { openLogin, isAuthed, authResolved } = useAuth()
   const router = useRouter()
@@ -129,13 +138,20 @@ export default function WelcomePage() {
       <div className="wl-fallback" aria-hidden />
       <PrismField />
       {/* Readability scrim. Over a field this saturated, darkening dirties the
-          color — lifting toward white keeps it clean. It concentrates behind
+          color — lifting toward paper keeps it clean. It concentrates behind
           the content and leaves the edges of the composition intact: that's
           where the prism lives. */}
       <div className="wl-scrim" aria-hidden />
 
       <main className="wl-main">
         <section className={`wl-hero${formOpen ? ' wl-form-open' : ''}`}>
+          {/* Brand line — the masthead anchor of the dashboard, in ink on
+              paper. The only Syne display moment of the gate. */}
+          <header className="wl-brand">
+            <span className="wl-wordmark">GRADIENTE</span>
+            <span className="wl-brand-tag">ACCESO · SOLO INVITACIÓN</span>
+          </header>
+
           <div className="wl-stage">
             <img
               className="wl-face"
@@ -159,7 +175,7 @@ export default function WelcomePage() {
                 <div className="wl-gate">
                   <button
                     type="button"
-                    className="wl-cell wl-brk"
+                    className="wl-cell"
                     onClick={() => openLogin('login')}
                   >
                     <span className="wl-ic" aria-hidden="true">
@@ -168,8 +184,8 @@ export default function WelcomePage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
                       >
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                         <circle cx="12" cy="7" r="4" />
@@ -183,7 +199,7 @@ export default function WelcomePage() {
 
                   <button
                     type="button"
-                    className="wl-cell wl-brk"
+                    className="wl-cell"
                     onClick={() => setPanel('codigo')}
                   >
                     <span className="wl-ic" aria-hidden="true">
@@ -192,8 +208,8 @@ export default function WelcomePage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                        strokeLinecap="square"
+                        strokeLinejoin="miter"
                       >
                         <path d="m9 8-4 4 4 4" />
                         <path d="m15 8 4 4-4 4" />
@@ -206,12 +222,11 @@ export default function WelcomePage() {
                   </button>
                 </div>
 
-                <button
-                  className="wl-bar wl-brk"
-                  type="button"
-                  onClick={() => setPanel('wait')}
-                >
-                  ¿Sin código? &gt;&gt; Unirme a la lista de espera &lt;&lt;
+                {/* The acid moment — one fill-block with ink on top, the same
+                    weight CREAR NUEVO carries on the dashboard. */}
+                <button className="wl-bar" type="button" onClick={() => setPanel('wait')}>
+                  <span>¿SIN CÓDIGO? — UNIRME A LA LISTA DE ESPERA</span>
+                  <span aria-hidden="true">→</span>
                 </button>
               </>
             )}
@@ -238,12 +253,22 @@ export default function WelcomePage() {
 
       <style jsx global>{`
         .wl-root {
-          --wl-ink: #14141b;
-          --wl-paper: #f6f3ee;
+          /* EL PLIEGO tokens (lib/dashboard/palette.ts values — this branch
+             predates the dashboard tailwind tokens, so they live here as CSS
+             custom properties; change in lockstep). */
+          --wl-ink: #111111;
+          --wl-ink-soft: #3d3a33;
+          --wl-ink-faint: #5c5850;
+          --wl-paper: #edebe3;
+          --wl-raised: #f6f4ec;
+          --wl-acid: #d8ff00;
+          --wl-red: #c42b20;
+          --wl-syne: var(--font-syne), sans-serif;
           --wl-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
           background: var(--wl-paper);
           color: var(--wl-ink);
-          font: 400 16px/1.5 var(--font-space-grotesk), ui-sans-serif, -apple-system, sans-serif;
+          /* d15 body register */
+          font: 400 15px/1.47 var(--font-space-grotesk), ui-sans-serif, -apple-system, sans-serif;
           -webkit-font-smoothing: antialiased;
           overflow-x: hidden;
         }
@@ -253,7 +278,7 @@ export default function WelcomePage() {
           z-index: 0;
           background: linear-gradient(
             100deg,
-            #f4f1e6 0%,
+            #edebe3 0%,
             #eef0f6 26%,
             #cfd6ea 33%,
             #ff4fa0 38%,
@@ -272,17 +297,17 @@ export default function WelcomePage() {
           background:
             radial-gradient(
               40% 44% at 52% 40%,
-              rgba(249, 247, 243, 0.72) 0%,
-              rgba(249, 247, 243, 0.44) 48%,
-              rgba(249, 247, 243, 0.16) 72%,
+              rgba(237, 235, 227, 0.74) 0%,
+              rgba(237, 235, 227, 0.46) 48%,
+              rgba(237, 235, 227, 0.16) 72%,
               transparent 88%
             ),
             linear-gradient(
               to bottom,
-              rgba(249, 247, 243, 0.3) 0%,
+              rgba(237, 235, 227, 0.34) 0%,
               transparent 22%,
               transparent 70%,
-              rgba(249, 247, 243, 0.42) 100%
+              rgba(237, 235, 227, 0.44) 100%
             );
         }
         .wl-main {
@@ -298,7 +323,7 @@ export default function WelcomePage() {
           display: flex;
           flex-direction: column;
           text-align: center;
-          padding: clamp(16px, 2.4vw, 28px) clamp(16px, 4vw, 48px) clamp(26px, 4.5vh, 54px);
+          padding: clamp(14px, 2vw, 24px) clamp(16px, 4vw, 48px) clamp(26px, 4.5vh, 54px);
         }
         .wl-stage {
           flex: 1 1 auto;
@@ -315,6 +340,37 @@ export default function WelcomePage() {
         }
         .wl-hero.wl-form-open .wl-stage {
           flex: 0 0 auto;
+        }
+
+        /* ── brand line ───────────────────────────────────────── */
+        .wl-brand {
+          flex: 0 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          text-align: left;
+        }
+        /* Both marks ride paper-glass chips so they stay legible wherever the
+           prism's hue cycle happens to be dark. */
+        .wl-wordmark,
+        .wl-brand-tag {
+          border: 1px solid var(--wl-ink);
+          background: rgba(246, 244, 236, 0.78);
+          backdrop-filter: blur(7px) saturate(1.1);
+          -webkit-backdrop-filter: blur(7px) saturate(1.1);
+        }
+        .wl-wordmark {
+          padding: 2px 10px;
+          font: 800 18px/24px var(--wl-syne);
+          letter-spacing: -0.01em;
+          color: var(--wl-ink);
+        }
+        .wl-brand-tag {
+          padding: 5px 10px;
+          font: 700 11px/16px var(--wl-mono);
+          letter-spacing: 0.14em;
+          color: var(--wl-ink-soft);
         }
 
         .wl-face {
@@ -345,55 +401,40 @@ export default function WelcomePage() {
           }
         }
 
-        /* Bracket corners. They're the current site's signature and survive the
-           change of skin without needing color. */
-        .wl-brk {
-          position: relative;
-        }
-        .wl-brk::before,
-        .wl-brk::after {
-          content: '';
-          position: absolute;
-          width: 13px;
-          height: 13px;
-          border: 1.5px solid var(--wl-ink);
-          opacity: 0.5;
-          pointer-events: none;
-        }
-        .wl-brk::before {
-          top: -1px;
-          left: -1px;
-          border-right: 0;
-          border-bottom: 0;
-        }
-        .wl-brk::after {
-          bottom: -1px;
-          right: -1px;
-          border-left: 0;
-          border-top: 0;
+        /* One focus grammar, page-wide: 2px ink outline at 2px offset. */
+        .wl-cell:focus-visible,
+        .wl-bar:focus-visible,
+        .wl-go:focus-visible,
+        .wl-chip:focus-visible,
+        .wl-f input:focus-visible,
+        .wl-f select:focus-visible {
+          outline: 2px solid var(--wl-ink);
+          outline-offset: 2px;
         }
 
+        /* Door cells — straight 1px ink boxes on a translucent paper-raised
+           surface (the prism needs the glass); hover is the dashboard's
+           ink-fill inversion, no bracket corners. */
         .wl-cell {
           display: flex;
           align-items: center;
           gap: 15px;
-          padding: 17px 19px;
-          border: 1px solid rgba(22, 22, 28, 0.26);
-          /* Over the prism a 13% fill isn't enough: the cell needs its own
-             surface or the text is lost in the glow. */
-          background: rgba(250, 248, 244, 0.74);
-          backdrop-filter: blur(7px) saturate(1.15);
-          -webkit-backdrop-filter: blur(7px) saturate(1.15);
-          color: inherit;
+          min-height: 44px;
+          padding: 16px 18px;
+          border: 1px solid var(--wl-ink);
+          background: rgba(246, 244, 236, 0.78);
+          backdrop-filter: blur(7px) saturate(1.1);
+          -webkit-backdrop-filter: blur(7px) saturate(1.1);
+          color: var(--wl-ink);
           text-align: left;
           cursor: pointer;
           transition:
-            background 0.2s ease,
-            border-color 0.2s ease;
+            background 0.15s ease,
+            color 0.15s ease;
         }
         .wl-cell:hover {
-          background: rgba(252, 251, 248, 0.9);
-          border-color: rgba(22, 22, 28, 0.5);
+          background: var(--wl-ink);
+          color: var(--wl-paper);
         }
         .wl-cell .wl-ic {
           flex: 0 0 auto;
@@ -401,7 +442,7 @@ export default function WelcomePage() {
           height: 40px;
           display: grid;
           place-items: center;
-          border: 1px solid rgba(22, 22, 28, 0.3);
+          border: 1px solid currentColor;
         }
         .wl-cell .wl-ic svg {
           width: 19px;
@@ -409,188 +450,217 @@ export default function WelcomePage() {
         }
         .wl-cell b {
           display: block;
-          font: 500 14px/1.2 var(--wl-mono);
-          letter-spacing: 0.1em;
+          font: 700 13px/18px var(--wl-mono);
+          letter-spacing: 0.12em;
           text-transform: uppercase;
         }
         .wl-cell i {
           display: block;
-          margin-top: 4px;
-          font: 400 10px/1.2 var(--wl-mono);
+          margin-top: 3px;
+          font: 400 11px/16px var(--wl-mono);
           letter-spacing: 0.14em;
           text-transform: uppercase;
-          opacity: 0.52;
+          opacity: 0.62;
           font-style: normal;
         }
 
+        /* The waitlist bar is the page's ONE acid use: a fill-block with ink
+           on top (the CREAR NUEVO weight). Hover inverts to ink. */
         .wl-bar {
           width: min(760px, 94vw);
           margin: clamp(10px, 1.4vw, 16px) auto 0;
-          display: block;
-          padding: 15px 18px;
-          border: 1px solid rgba(22, 22, 28, 0.26);
-          background: rgba(250, 248, 244, 0.74);
-          backdrop-filter: blur(7px) saturate(1.15);
-          -webkit-backdrop-filter: blur(7px) saturate(1.15);
-          color: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          min-height: 44px;
+          padding: 13px 18px;
+          border: 1px solid var(--wl-ink);
+          background: var(--wl-acid);
+          color: var(--wl-ink);
           cursor: pointer;
-          font: 500 12px/1.3 var(--wl-mono);
-          letter-spacing: 0.11em;
+          font: 700 13px/18px var(--wl-mono);
+          letter-spacing: 0.12em;
           text-transform: uppercase;
+          text-align: left;
           transition:
-            background 0.2s ease,
-            border-color 0.2s ease;
+            background 0.15s ease,
+            color 0.15s ease;
         }
         .wl-bar:hover {
-          background: rgba(252, 251, 248, 0.9);
-          border-color: rgba(22, 22, 28, 0.5);
+          background: var(--wl-ink);
+          color: var(--wl-paper);
         }
 
         /* ── panels (waitlist / código) ───────────────────────── */
-        /* Same as the cells: over the prism the block needs its own surface.
-           Labels and small type don't survive without it. */
+        /* The DashPopup anatomy: Syne title + one working control on a
+           hairline-headed sheet. Solid enough surface for small labels. */
         .wl-panel {
           width: min(560px, 94vw);
           margin: 0 auto;
           text-align: left;
-          padding: clamp(18px, 2.4vw, 26px) clamp(18px, 2.6vw, 28px) clamp(16px, 2vw, 20px);
-          border: 1px solid rgba(22, 22, 28, 0.24);
-          background: rgba(250, 248, 244, 0.8);
-          backdrop-filter: blur(8px) saturate(1.15);
-          -webkit-backdrop-filter: blur(8px) saturate(1.15);
+          border: 1px solid var(--wl-ink);
+          background: rgba(246, 244, 236, 0.9);
+          backdrop-filter: blur(8px) saturate(1.1);
+          -webkit-backdrop-filter: blur(8px) saturate(1.1);
         }
-        .wl-panel .wl-head {
-          text-align: center;
-          margin-bottom: clamp(12px, 1.6vw, 16px);
+        .wl-panel-head {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 7px 18px;
+          border-bottom: 1px solid var(--wl-ink);
         }
-        /* Único texto del panel — ya no hay encabezado encima, así que no es un
-           subtítulo: sube un punto de tamaño y de opacidad. */
-        .wl-panel .wl-head p {
+        .wl-panel-head h2 {
           margin: 0;
-          font: 400 12.5px/1.55 var(--wl-mono);
-          opacity: 0.72;
-          text-align: center;
+          font: 700 22px/32px var(--wl-syne);
+          text-transform: uppercase;
+          letter-spacing: 0;
+          color: var(--wl-ink);
+        }
+        .wl-chip {
+          flex: 0 0 auto;
+          padding: 3px 9px;
+          border: 1px solid var(--wl-ink);
+          background: transparent;
+          color: var(--wl-ink);
+          cursor: pointer;
+          font: 400 13px/18px var(--wl-mono);
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease;
+        }
+        .wl-chip:hover {
+          background: var(--wl-ink);
+          color: var(--wl-paper);
+        }
+        .wl-panel-body {
+          padding: clamp(16px, 2.2vw, 22px) clamp(16px, 2.4vw, 24px) clamp(14px, 1.8vw, 18px);
+        }
+        .wl-copy {
+          margin: 0 0 14px;
+          font: 400 13px/1.55 var(--font-space-grotesk), ui-sans-serif, sans-serif;
+          color: var(--wl-ink-soft);
         }
 
         .wl-f {
-          margin-bottom: 9px;
+          margin-bottom: 10px;
         }
         .wl-f label {
           display: flex;
           justify-content: space-between;
           align-items: baseline;
-          font: 400 10px/1 var(--wl-mono);
+          font: 400 11px/16px var(--wl-mono);
           letter-spacing: 0.14em;
           text-transform: uppercase;
-          opacity: 0.55;
-          margin-bottom: 6px;
+          color: var(--wl-ink-soft);
+          margin-bottom: 5px;
         }
         .wl-f input,
         .wl-f select {
           width: 100%;
-          padding: 10px 12px;
-          border: 1px solid rgba(22, 22, 28, 0.26);
-          background: rgba(252, 250, 247, 0.8);
+          min-height: 44px;
+          padding: 9px 12px;
+          border: 1px solid var(--wl-ink);
+          background: var(--wl-raised);
           color: var(--wl-ink);
-          font: 400 13.5px/1.2 var(--wl-mono);
-          letter-spacing: 0.02em;
+          font: 400 15px/22px var(--font-space-grotesk), ui-sans-serif, sans-serif;
           border-radius: 0;
-          transition:
-            border-color 0.18s ease,
-            background 0.18s ease;
+          transition: background 0.15s ease;
+        }
+        /* Codes are mono material. */
+        .wl-f input#wl-codigo {
+          font: 400 15px/22px var(--wl-mono);
+          letter-spacing: 0.04em;
         }
         .wl-f input::placeholder {
-          color: rgba(22, 22, 28, 0.32);
+          color: var(--wl-ink-faint);
+          opacity: 0.7;
         }
         .wl-f input:focus,
         .wl-f select:focus {
-          outline: none;
-          border-color: rgba(22, 22, 28, 0.7);
-          background: rgba(255, 255, 255, 0.94);
+          background: #ffffff;
         }
         .wl-f select {
           appearance: none;
           cursor: pointer;
-          background-image: linear-gradient(45deg, transparent 50%, rgba(22, 22, 28, 0.5) 50%),
-            linear-gradient(135deg, rgba(22, 22, 28, 0.5) 50%, transparent 50%);
+          background-image: linear-gradient(45deg, transparent 50%, var(--wl-ink) 50%),
+            linear-gradient(135deg, var(--wl-ink) 50%, transparent 50%);
           background-position: calc(100% - 17px) 55%, calc(100% - 12px) 55%;
           background-size: 5px 5px, 5px 5px;
           background-repeat: no-repeat;
         }
 
+        /* Primary submit — acid fill-block, ink on top, arrow glyph. */
         .wl-go {
           width: 100%;
-          margin-top: 3px;
-          padding: 13px 18px;
+          margin-top: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          min-height: 44px;
+          padding: 12px 16px;
           border: 1px solid var(--wl-ink);
-          background: transparent;
+          background: var(--wl-acid);
           color: var(--wl-ink);
-          font: 500 12px/1.3 var(--wl-mono);
+          font: 700 13px/18px var(--wl-mono);
           letter-spacing: 0.12em;
           text-transform: uppercase;
+          text-align: left;
           cursor: pointer;
           transition:
-            background 0.2s ease,
-            color 0.2s ease;
+            background 0.15s ease,
+            color 0.15s ease;
         }
         .wl-go:hover {
           background: var(--wl-ink);
-          color: #f3f1ec;
-        }
-
-        .wl-back {
-          display: block;
-          width: 100%;
-          margin-top: 10px;
-          padding: 0;
-          border: 0;
-          background: none;
-          color: inherit;
-          cursor: pointer;
-          font: 400 10.5px/1 var(--wl-mono);
-          letter-spacing: 0.13em;
-          text-transform: uppercase;
-          opacity: 0.5;
-          text-align: center;
-        }
-        .wl-back:hover {
-          opacity: 0.85;
+          color: var(--wl-paper);
         }
         .wl-go[disabled] {
-          opacity: 0.5;
+          opacity: 0.45;
           cursor: default;
         }
+        .wl-go[disabled]:hover {
+          background: var(--wl-acid);
+          color: var(--wl-ink);
+        }
+
         .wl-error {
-          margin: 4px 0 8px;
-          font: 400 10.5px/1.4 var(--wl-mono);
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: #b32a22;
-          text-align: center;
+          margin: 6px 0 8px;
+          font: 700 13px/18px var(--wl-mono);
+          letter-spacing: 0.06em;
+          color: var(--wl-red);
+          text-align: left;
         }
 
         .wl-peek {
           width: min(560px, 94vw);
           margin: 0 auto clamp(10px, 1.4vw, 16px);
           padding: 11px 16px;
-          border: 1px solid rgba(22, 22, 28, 0.26);
-          background: rgba(250, 248, 244, 0.8);
-          backdrop-filter: blur(8px) saturate(1.15);
-          -webkit-backdrop-filter: blur(8px) saturate(1.15);
-          font: 500 11px/1.4 var(--wl-mono);
-          letter-spacing: 0.13em;
+          border: 1px solid var(--wl-ink);
+          background: rgba(246, 244, 236, 0.9);
+          backdrop-filter: blur(8px) saturate(1.1);
+          -webkit-backdrop-filter: blur(8px) saturate(1.1);
+          font: 700 13px/18px var(--wl-mono);
+          letter-spacing: 0.12em;
           text-transform: uppercase;
           text-align: center;
+          color: var(--wl-ink);
         }
         .wl-peek.wl-peek-bad {
-          border-color: rgba(200, 42, 34, 0.55);
-          color: #b32a22;
+          border-color: var(--wl-red);
+          color: var(--wl-red);
         }
 
         @media (prefers-reduced-motion: reduce) {
           .wl-face,
           .wl-cell,
           .wl-bar,
+          .wl-chip,
           .wl-go {
             transition: none;
           }
@@ -623,42 +693,46 @@ function CodigoPanel({
   }, [])
 
   return (
-    <div className="wl-panel wl-brk">
-      <div className="wl-head">
+    <div className="wl-panel">
+      <div className="wl-panel-head">
         <h2>Insertar código</h2>
-        <p>Escribe el código de tu invitación tal como llegó.</p>
+        <button className="wl-chip" type="button" onClick={onBack}>
+          VOLVER
+        </button>
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          onSubmit()
-        }}
-        noValidate
-      >
-        <div className="wl-f">
-          <label htmlFor="wl-codigo">01_ Código de invitación</label>
-          <input
-            id="wl-codigo"
-            ref={inputRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="INV-XXXXXXXXXXXXXXXX"
-            autoComplete="off"
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            inputMode="text"
-          />
-        </div>
+      <div className="wl-panel-body">
+        <p className="wl-copy">Escribe el código de tu invitación tal como llegó.</p>
 
-        <button className="wl-go" type="submit">
-          &gt;&gt; Activar código &lt;&lt;
-        </button>
-        <button className="wl-back" type="button" onClick={onBack}>
-          &lt; Regresar al acceso
-        </button>
-      </form>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            onSubmit()
+          }}
+          noValidate
+        >
+          <div className="wl-f">
+            <label htmlFor="wl-codigo">Código de invitación</label>
+            <input
+              id="wl-codigo"
+              ref={inputRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="INV-XXXXXXXXXXXXXXXX"
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="text"
+            />
+          </div>
+
+          <button className="wl-go" type="submit">
+            <span>ACTIVAR CÓDIGO</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -668,9 +742,6 @@ function CodigoPanel({
 // Envía al mismo /api/waitlist que usa /espera — misma tabla, misma posición en
 // la cola, mismo honeypot. Este panel es la entrada inline desde la puerta; la
 // página /espera sigue siendo la versión larga con estadísticas.
-//
-// Sin encabezado, sin contador y sin numeración en las etiquetas: una sola
-// línea de copy arriba y los campos. El texto de relleno se fue a propósito.
 function WaitlistPanel({ onBack }: { onBack: () => void }) {
   const [alias, setAlias] = useState('')
   const [email, setEmail] = useState('')
@@ -714,94 +785,104 @@ function WaitlistPanel({ onBack }: { onBack: () => void }) {
 
   if (state === 'done') {
     return (
-      <div className="wl-panel wl-brk">
-        <div className="wl-head">
-          <p>Señal recibida. Te avisaremos cuando la puerta se abra.</p>
+      <div className="wl-panel">
+        <div className="wl-panel-head">
+          <h2>Lista de espera</h2>
+          <button className="wl-chip" type="button" onClick={onBack}>
+            VOLVER
+          </button>
         </div>
-        <button className="wl-back" type="button" onClick={onBack}>
-          &lt; Regresar al acceso
-        </button>
+        <div className="wl-panel-body">
+          <p className="wl-copy">
+            Señal recibida. Te avisaremos cuando la puerta se abra.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="wl-panel wl-brk">
-      <div className="wl-head">
-        <p>
-          Deja tus datos y te avisaremos cuando la puerta se abra. Solo usaremos tu correo
-          para avisarte del acceso. Nada más.
-        </p>
+    <div className="wl-panel">
+      <div className="wl-panel-head">
+        <h2>Lista de espera</h2>
+        <button className="wl-chip" type="button" onClick={onBack}>
+          VOLVER
+        </button>
       </div>
 
-      <form onSubmit={submit} noValidate>
-        <div className="wl-f">
-          <label htmlFor="wl-alias">Nombre / Alias</label>
+      <div className="wl-panel-body">
+        <p className="wl-copy">
+          Deja tus datos y te avisaremos cuando la puerta se abra. Solo usaremos tu
+          correo para avisarte del acceso. Nada más.
+        </p>
+
+        <form onSubmit={submit} noValidate>
+          <div className="wl-f">
+            <label htmlFor="wl-alias">Nombre / Alias</label>
+            <input
+              id="wl-alias"
+              ref={aliasRef}
+              type="text"
+              maxLength={WAITLIST_ALIAS_MAX}
+              placeholder="NOMADA_77"
+              autoComplete="nickname"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+            />
+          </div>
+          <div className="wl-f">
+            <label htmlFor="wl-mail">Correo electrónico</label>
+            <input
+              id="wl-mail"
+              type="email"
+              placeholder="tu@señal.net"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="wl-f">
+            <label htmlFor="wl-city">Ciudad / Zona</label>
+            <select id="wl-city" value={city} onChange={(e) => setCity(e.target.value)}>
+              {WAITLIST_CITIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* APAGADO — "¿Cómo nos encontraste?". El campo se queda aquí para
+              reactivarlo sin volver a escribirlo (el catálogo vive en
+              WAITLIST_SOURCES de lib/waitlist):
+              <div className="wl-f">
+                <label htmlFor="wl-src">¿Cómo nos encontraste?</label>
+                <select id="wl-src" defaultValue={WAITLIST_SOURCES[0]}>
+                  {WAITLIST_SOURCES.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+          */}
+
+          {/* Honeypot — fuera de pantalla, nunca visible ni tabulable. */}
           <input
-            id="wl-alias"
-            ref={aliasRef}
             type="text"
-            maxLength={WAITLIST_ALIAS_MAX}
-            placeholder="NOMADA_77"
-            autoComplete="nickname"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
+            name="tel"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            value={tel}
+            onChange={(e) => setTel(e.target.value)}
+            style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
           />
-        </div>
-        <div className="wl-f">
-          <label htmlFor="wl-mail">Correo electrónico</label>
-          <input
-            id="wl-mail"
-            type="email"
-            placeholder="tu@señal.net"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="wl-f">
-          <label htmlFor="wl-city">Ciudad / Zona</label>
-          <select id="wl-city" value={city} onChange={(e) => setCity(e.target.value)}>
-            {WAITLIST_CITIES.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </div>
 
-        {/* APAGADO — "¿Cómo nos encontraste?". El campo se queda aquí para
-            reactivarlo sin volver a escribirlo (el catálogo vive en
-            WAITLIST_SOURCES de lib/waitlist):
-            <div className="wl-f">
-              <label htmlFor="wl-src">¿Cómo nos encontraste?</label>
-              <select id="wl-src" defaultValue={WAITLIST_SOURCES[0]}>
-                {WAITLIST_SOURCES.map((f) => (
-                  <option key={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-        */}
+          {state === 'error' && <p className="wl-error">⚠ {error}</p>}
 
-        {/* Honeypot — fuera de pantalla, nunca visible ni tabulable. */}
-        <input
-          type="text"
-          name="tel"
-          tabIndex={-1}
-          autoComplete="off"
-          aria-hidden="true"
-          value={tel}
-          onChange={(e) => setTel(e.target.value)}
-          style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
-        />
-
-        {state === 'error' && <p className="wl-error">{error}</p>}
-
-        <button className="wl-go" type="submit" disabled={state === 'sending'}>
-          {state === 'sending' ? '>> Enviando <<' : '>> Unirme a la lista de espera <<'}
-        </button>
-        <button className="wl-back" type="button" onClick={onBack}>
-          &lt; Regresar al acceso
-        </button>
-      </form>
+          <button className="wl-go" type="submit" disabled={state === 'sending'}>
+            <span>{state === 'sending' ? 'ENVIANDO…' : 'UNIRME A LA LISTA DE ESPERA'}</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -817,14 +898,14 @@ function InvitePeekStrip({
   state: 'loading' | 'used' | 'expired' | 'invalid'
 }) {
   if (state === 'loading') {
-    return <p className="wl-peek">Verificando código…</p>
+    return <p className="wl-peek">VERIFICANDO CÓDIGO…</p>
   }
 
   const msg =
     state === 'used'
-      ? 'Este código ya fue activado'
+      ? 'ESTE CÓDIGO YA FUE ACTIVADO'
       : state === 'expired'
-        ? 'Este código expiró'
-        : 'Código no reconocido'
+        ? 'ESTE CÓDIGO EXPIRÓ'
+        : 'CÓDIGO NO RECONOCIDO'
   return <p className="wl-peek wl-peek-bad">⚠ {msg}</p>
 }

@@ -8,6 +8,22 @@
 
 ---
 
+## 2026-08-22 · INGEST · /welcome "prisma 2008" re-chromed to «EL PLIEGO» · branch `feat/genre-taxonomy-and-media-embeds` (local commit, sin push)
+
+Iker's directive: the new welcome/signup landing (3b6d8ff, "prisma 2008") is the right direction but must speak the dashboard's design language for coherence. The BONES stay — PrismField shader untouched, grotesco face untouched, the door's three paths and the whole invitación-3d flow byte-identical — the CHROME was translated:
+
+- **Tokens**: the page's scoped CSS vars now carry the exact PLIEGO palette (paper #EDEBE3 / raised #F6F4EC / ink #111111 + soft/faint / acid #D8FF00 / red #C42B20). This branch predates the dashboard tailwind tokens (it merged main at 113080e), so they live as `--wl-*` custom properties in the page's styled-jsx — change in lockstep with lib/dashboard/palette.ts.
+- **Type**: Syne 700 22/32 panel titles (the WidgetFrame register), Space Grotesk 15/22 body (d15), Space Mono 11/16 labels + 13/18 controls (d11/d13), uppercase + tracking-widest on all control copy. The 10px/opacity-0.55 label register is gone.
+- **Chrome**: bracket corners (.wl-brk) deleted — straight 1px FULL-ink borders everywhere; panels adopt the DashPopup anatomy (Syne title · VOLVER chip · hairline · body); the `>> … <<` arrow dressing became the house → glyph.
+- **Acid discipline**: exactly one accent — the waitlist bar and the panel submits are acid fill-blocks with ink on top (the CREAR NUEVO weight); everything else is ink on paper.
+- **Interaction**: hover = ink-fill inversion (bg-ink/text-paper) on cells, bars, chips; ONE focus grammar (2px ink outline, 2px offset) on every control; all targets ≥44px.
+- **Brand anchor**: new top line — GRADIENTE (Syne 800) + ACCESO · SOLO INVITACIÓN mono chip — both on paper-glass chips so they survive the prism's dark hue phases.
+- **States**: peek strip + errors in the mono-bold register, red #C42B20; VOLVER moved into the panel head (DashPopup precedent) replacing the bottom ghost link.
+
+Verified: tsc clean · dev serve from a worktree (`welcome-wt`, junctioned node_modules) · headless walkthrough at 1440×900 + 390×844 (gate, código, waitlist, mobile stack; focus ring visible on the autofocused field). NOTE: under headless ANGLE the prism renders far more saturated than the prototype — the shader is untouched, so judge the background on real hardware.
+
+---
+
 ## 2026-08-18 · INGEST · `/mapa` pass 13 — synthetic HL injection + packed-grid engine (4.3×) + interaction/animation pass · [[Mapa Placement Rules]]
 
 Session opened by COMMITTING passes 1-12 per the handoff: branch `experiment/mapa-canvas`, commit `8074c6c` (33 files — not pushed). Iker's focus: optimization, interactions, animations, **"artificial HL injection to see more variation in the sizes of the cells."** Migration 0046 STILL pending (SQL editor).
