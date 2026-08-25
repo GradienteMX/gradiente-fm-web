@@ -22,6 +22,8 @@ Iker's directive: the new welcome/signup landing (3b6d8ff, "prisma 2008") is the
 
 Verified: tsc clean · dev serve from a worktree (`welcome-wt`, junctioned node_modules) · headless walkthrough at 1440×900 + 390×844 (gate, código, waitlist, mobile stack; focus ring visible on the autofocused field). NOTE: under headless ANGLE the prism renders far more saturated than the prototype — the shader is untouched, so judge the background on real hardware.
 
+**Follow-up (same day, Iker's review):** (1) the striping over the landing was the site-wide CRT shader — CRTOverlay now suppresses on /welcome too (same paper-surface rule as /dashboard; the internal flag renamed onDashboard → onPaperSurface). (2) The branch predated «EL PLIEGO», so `main` (revision 2, `3ec23d8`) was MERGED IN (`109ed7c`; one conflict, wiki/log.md top-insertion race, both entries kept) — /dashboard on this branch is now the revision-2 panel, and the welcome page could later migrate its `--wl-*` vars to the real tailwind tokens the merge brought. Verified post-merge: tsc · 64/64 mapa · 66/66 dashboard · /welcome shows ONE canvas (the prism — CRT gone) · /lab/dashboard renders the revision-2 spine.
+
 ---
 
 ## 2026-08-22 · INGEST · «EL PLIEGO» revisión 2 — los 17 puntos de Iker · `811cf7c` (pushed to `main`)

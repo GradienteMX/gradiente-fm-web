@@ -55,13 +55,17 @@ export function CRTOverlay({ children }: { children: ReactNode }) {
   // hydrated tree matches what the server emitted. After mount we know the
   // capabilities and switch.
   const [mode, setMode] = useState<Mode | null>(null)
-  // /dashboard («EL PLIEGO») is a light print surface — the scanline shader
-  // reads as grey striping on cream, so it's suppressed there (OFF, not
-  // attenuated). The shader is a SIBLING of children, so toggling it never
-  // re-parents the app tree or drops state.
+  // /dashboard («EL PLIEGO») and /welcome (the prisma-2008 landing, same
+  // light-paper language) are print surfaces — the scanline shader reads as
+  // grey striping on cream, so it's suppressed there (OFF, not attenuated).
+  // The shader is a SIBLING of children, so toggling it never re-parents the
+  // app tree or drops state.
   const pathname = usePathname()
-  const onDashboard =
-    (pathname?.startsWith('/dashboard') || pathname === '/lab/dashboard') ?? false
+  const onPaperSurface =
+    (pathname?.startsWith('/dashboard') ||
+      pathname === '/lab/dashboard' ||
+      pathname === '/welcome') ??
+    false
 
   useEffect(() => {
     setMode(pickMode())
@@ -76,7 +80,7 @@ export function CRTOverlay({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      {!onDashboard && <CRTShader />}
+      {!onPaperSurface && <CRTShader />}
     </>
   )
 }
