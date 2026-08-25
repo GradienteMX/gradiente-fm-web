@@ -39,12 +39,19 @@ import {
 } from '@/lib/mapa/layout'
 import {
   computeFocusArrangement,
+  placeGlobalListings,
   rankRelatedPartners,
   type FocusArrangement,
 } from '@/lib/mapa/focus'
+import {
+  computeContinentArrangement,
+  type ContinentArrangement,
+} from '@/lib/mapa/continents'
 import { recordItems } from '@/lib/itemsCache'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
+import { SmartImage } from '@/components/SmartImage'
+import { KIND_LABEL } from '@/components/overlay/PartnerOverlay'
 import { MapaCell } from './MapaCell'
 import { MapaFilterColumn } from './MapaFilterColumn'
 import { MapaListingCell } from './MapaListingCell'
@@ -191,13 +198,35 @@ export function MapaCanvas({
     })
   }, [])
 
+  // AFINIDAD continent mode (opt-in): the terrain's affinity structure
+  // breathes — high-affinity regions ring up as continents and ocean opens
+  // between the masses. Nothing hides; everything drifts rigidly. Computed
+  // once per layout (deterministic) and cached; suspended while a partner
+  // focus owns the geometry.
+  const [affinityOn, setAffinityOn] = useState(false)
+  const continentCache = useRef<{
+    layout: MapaLayout
+    arr: ContinentArrangement | null
+  } | null>(null)
+  const continentArrangement = useMemo(() => {
+    if (!affinityOn || focusArrangement) return null
+    if (continentCache.current?.layout !== layout) {
+      continentCache.current = {
+        layout,
+        arr: computeContinentArrangement(layout),
+      }
+    }
+    return continentCache.current.arr
+  }, [affinityOn, focusArrangement, layout])
+
   // Positional restructuring: with categories hidden, the visible terrain
   // re-tessellates through the same placement rules — the map as if those
   // categories never existed. Cached per hidden-combination; suspended while
-  // a partner focus is up (focus already owns the geometry).
+  // a partner focus or the continent drift owns the geometry (hidden cells
+  // then fade in place inside their continents).
   const compactCache = useRef(new Map<string, CompactArrangement | null>())
   const compactArrangement = useMemo(() => {
-    if (!hiddenItemIds || focusArrangement) return null
+    if (!hiddenItemIds || focusArrangement || continentArrangement) return null
     const key = [...hidden].sort().join(',')
     if (compactCache.current.has(key)) {
       return compactCache.current.get(key) ?? null
@@ -205,13 +234,20 @@ export function MapaCanvas({
     const arr = compactLayout(layout, hiddenItemIds)
     compactCache.current.set(key, arr)
     return arr
-  }, [focusArrangement, hidden, hiddenItemIds, layout])
+  }, [continentArrangement, focusArrangement, hidden, hiddenItemIds, layout])
 
-  // One geometry driver at a time: focus reflow > filter compaction > global.
-  const moveDeltas = focusArrangement?.deltas ?? compactArrangement?.deltas
+  // One geometry driver at a time:
+  // focus reflow > affinity continents > filter compaction > global.
+  const moveDeltas =
+    focusArrangement?.deltas ??
+    continentArrangement?.deltas ??
+    compactArrangement?.deltas
   // Keyboard traversal follows whichever geometry is live.
   const navLayout =
-    focusArrangement?.derived ?? compactArrangement?.derived ?? layout
+    focusArrangement?.derived ??
+    continentArrangement?.derived ??
+    compactArrangement?.derived ??
+    layout
   // The relevance belt: full-color exterior during focus.
   const relatedIds = useMemo(
     () => (focusArrangement ? new Set(focusArrangement.relatedIds) : null),
@@ -246,6 +282,29 @@ export function MapaCanvas({
     }
     return [ahora, archivo]
   }, [layout])
+  // Marketplace listings that can materialize on this map (they render as
+  // MERCADO nodes inside their partner's focus cluster). Drives the MERCADO
+  // kill-switch — honest chip: absent when no clustered partner sells.
+  const mercadoCount = useMemo(() => {
+    let n = 0
+    for (const c of clusters) {
+      if (c.partner.marketplaceEnabled) {
+        n += c.partner.marketplaceListings?.length ?? 0
+      }
+    }
+    return n
+  }, [clusters])
+  // The focused partner's member items — the obi derives its contextual
+  // per-kind lines (próxima fecha, mercado count…) from the real cluster.
+  const focusMemberItems = useMemo(
+    () =>
+      focusMemberIds
+        ? layout.placed
+            .filter((p) => focusMemberIds.has(p.item.id))
+            .map((p) => p.item)
+        : [],
+    [focusMemberIds, layout.placed],
+  )
 
   // Partner selector panel + the identities that have no cluster yet.
   const [partnersOpen, setPartnersOpen] = useState(false)
@@ -256,40 +315,56 @@ export function MapaCanvas({
       .sort((a, b) => a.title.localeCompare(b.title))
   }, [clusters, partners])
 
+  // Global MERCADO satellites — every marketplace partner's listings placed
+  // at the free cells nearest its cluster (see placeGlobalListings). They
+  // exist at EVERY view; the focused partner's satellites hand over to the
+  // focus arrangement's own listing arc.
+  const globalListings = useMemo(
+    () => placeGlobalListings(layout, clusters),
+    [clusters, layout],
+  )
+
   // Marketplace listing detail — one INDIVIDUAL listing's canonical detail
-  // surface (?partner=&listing=), mounted directly over the map. Closing it
-  // returns straight to the focus state, never to a marketplace grid.
-  const [openListingId, setOpenListingId] = useState<string | null>(null)
+  // surface (?partner=&listing=), mounted directly over the map (openable
+  // from the global satellites too, not only from focus). Closing it
+  // returns straight to the map state underneath, never to a grid.
+  const [openListingRef, setOpenListingRef] = useState<{
+    partnerSlug: string
+    listingId: string
+  } | null>(null)
   const openListing = useCallback(
-    (listing: MarketplaceListing) => {
-      if (!focusedCluster) return
+    (listing: MarketplaceListing, partnerSlug: string) => {
       const url = new URL(window.location.href)
-      url.searchParams.set('partner', focusedCluster.partner.slug)
+      url.searchParams.set('partner', partnerSlug)
       url.searchParams.set('listing', listing.id)
       window.history.pushState(window.history.state, '', url.toString())
-      setOpenListingId(listing.id)
+      setOpenListingRef({ partnerSlug, listingId: listing.id })
     },
-    [focusedCluster],
+    [],
   )
   const closeListing = useCallback(() => {
     const url = new URL(window.location.href)
     url.searchParams.delete('partner')
     url.searchParams.delete('listing')
     window.history.replaceState(window.history.state, '', url.toString())
-    setOpenListingId(null)
+    setOpenListingRef(null)
   }, [])
   // Resolve the open listing + its 1-based index (publishedAt-desc, the same
   // ordering every marketplace surface uses for its grid badges).
   const openListingEntry = useMemo(() => {
-    if (!openListingId || !focusedCluster) return null
-    const sorted = [...(focusedCluster.partner.marketplaceListings ?? [])].sort(
+    if (!openListingRef) return null
+    const cluster = clusters.find(
+      (c) => c.partner.slug === openListingRef.partnerSlug,
+    )
+    if (!cluster) return null
+    const sorted = [...(cluster.partner.marketplaceListings ?? [])].sort(
       (a, b) =>
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     )
-    const idx = sorted.findIndex((l) => l.id === openListingId)
+    const idx = sorted.findIndex((l) => l.id === openListingRef.listingId)
     if (idx < 0) return null
-    return { listing: sorted[idx], index: idx + 1 }
-  }, [focusedCluster, openListingId])
+    return { listing: sorted[idx], index: idx + 1, partner: cluster.partner }
+  }, [clusters, openListingRef])
 
   // Warm the overlay slug cache with every map item + ALL partner identity
   // rows, so cell clicks and ?item= deep links resolve through OverlayRouter
@@ -318,9 +393,13 @@ export function MapaCanvas({
 
   // ── Camera core ────────────────────────────────────────────────────────────
 
+  // The continent drift expands the terrain — camera clamp and global fit
+  // follow whichever bounds are live.
+  const activeBounds = continentArrangement?.bounds ?? layout.bounds
+
   const clampCamera = useCallback(
     (cam: Camera): Camera => {
-      const b = layout.bounds
+      const b = activeBounds
       const insetX = Math.min(b.width * 0.12, 320)
       const insetY = Math.min(b.height * 0.12, 320)
       return {
@@ -329,7 +408,7 @@ export function MapaCanvas({
         z: Math.min(Math.max(cam.z, ZMIN), ZMAX),
       }
     },
-    [layout.bounds],
+    [activeBounds],
   )
 
   const applyCamera = useCallback(() => {
@@ -408,14 +487,14 @@ export function MapaCanvas({
   )
 
   const globalFitCamera = useCallback((): Camera => {
-    const b = layout.bounds
+    const b = activeBounds
     const { w, h } = viewportRef.current
     const z = Math.min(
       Math.max(Math.min(w / b.width, h / b.height) * 1.15, ZMIN),
       0.7,
     )
     return { cx: b.x + b.width / 2, cy: b.y + b.height / 2, z }
-  }, [layout.bounds])
+  }, [activeBounds])
 
   const focusCameraFor = useCallback(
     (
@@ -486,6 +565,30 @@ export function MapaCanvas({
     [animateTo, globalFitCamera, writeFocusToUrl],
   )
 
+  // AFINIDAD toggle — URL via replaceState (like ?ocultar: a view setting,
+  // not a navigation step; Back is reserved for the focus contract).
+  const toggleAffinity = useCallback(() => {
+    setAffinityOn((prev) => {
+      const next = !prev
+      const url = new URL(window.location.href)
+      if (next) url.searchParams.set('afinidad', '1')
+      else url.searchParams.delete('afinidad')
+      window.history.replaceState(window.history.state, '', url.toString())
+      return next
+    })
+  }, [])
+
+  // Camera refit when the mode flips: the drift and the zoom-out travel
+  // together. While a partner focus is up the focus camera owns the view —
+  // unfocusing refits through zoomGlobal (which already reads activeBounds).
+  const prevAffinityRef = useRef(false)
+  useEffect(() => {
+    if (prevAffinityRef.current === affinityOn) return
+    prevAffinityRef.current = affinityOn
+    if (focusSlug) return
+    animateTo(globalFitCamera(), 800)
+  }, [affinityOn, animateTo, focusSlug, globalFitCamera])
+
   // Browser Back/Forward restores the previous scale + camera (spec).
   useEffect(() => {
     const onPop = () => {
@@ -509,12 +612,12 @@ export function MapaCanvas({
     {
       const params = new URL(window.location.href).searchParams
       const listingParam = params.get('listing')
-      if (
-        initialFocusSlug &&
-        listingParam &&
-        params.get('partner') === initialFocusSlug
-      ) {
-        setOpenListingId(listingParam)
+      const partnerParam = params.get('partner')
+      if (listingParam && partnerParam) {
+        setOpenListingRef({
+          partnerSlug: partnerParam,
+          listingId: listingParam,
+        })
       }
       // Visibility deep link: ?ocultar=evento,era:archivo — categories the
       // viewer has toggled off.
@@ -524,10 +627,16 @@ export function MapaCanvas({
           .split(',')
           .filter(
             (k) =>
-              k in LENS_TYPE_LABEL || k === 'era:ahora' || k === 'era:archivo',
+              k in LENS_TYPE_LABEL ||
+              k === 'era:ahora' ||
+              k === 'era:archivo' ||
+              k === 'mercado',
           )
         if (keys.length > 0) setHidden(new Set(keys))
       }
+      // Continent-mode deep link: ?afinidad=1. Cells mount at their global
+      // spots and glide into the drift — the refit effect follows.
+      if (params.get('afinidad') === '1') setAffinityOn(true)
     }
 
     const measure = () => {
@@ -943,6 +1052,31 @@ export function MapaCanvas({
           />
         ))}
 
+        {/* Continent rings — the identified major affinity areas. They fade
+            in behind the 700ms drift so the water opens first. */}
+        {continentArrangement && (
+          <svg
+            aria-hidden
+            className="animate-fade-in pointer-events-none absolute left-0 top-0 overflow-visible"
+            style={{ animationDelay: '0.55s', animationFillMode: 'backwards' }}
+            width="0"
+            height="0"
+          >
+            {continentArrangement.continents.map((c) => (
+              <path
+                key={c.itemIds[0]}
+                d={c.perimeter}
+                fill="none"
+                stroke="#F97316"
+                strokeOpacity="0.35"
+                strokeWidth="2"
+                strokeDasharray="4 10"
+                strokeLinejoin="round"
+              />
+            ))}
+          </svg>
+        )}
+
         {/* Perimeter ring around the focused cluster. */}
         {focusArrangement && (
           <svg
@@ -963,9 +1097,29 @@ export function MapaCanvas({
           </svg>
         )}
 
-        {/* Focus state: identity nucleus + marketplace listing nodes. The
-            nucleus is the mockup's central partner hex — identity chrome
-            materialized in terrain only while focused; links to the dossier. */}
+        {/* Focus state: identity rosette + marketplace listing nodes. The
+            identity is a full 7-cell rosette carrying the partner image at
+            dominant-slab scale (2026-08-20, Iker's call — the single-hex
+            nucleus was too small to read or hit); links to the dossier. */}
+        {/* Global MERCADO satellites — at every view except their own
+            partner's focus (the focus arrangement re-places those). They
+            ride their anchor member's delta, dim like non-member terrain
+            while another identity is focused, and fade during compaction
+            (the repack can claim their coast). */}
+        {globalListings
+          .filter((g) => g.partnerSlug !== focusSlug)
+          .map((g) => (
+            <MapaListingCell
+              key={g.placement.listing.id}
+              placement={g.placement}
+              currency={g.currency}
+              hidden={hidden.has('mercado') || compactArrangement != null}
+              dimmed={focusArrangement != null}
+              delta={moveDeltas?.[g.anchorItemId] ?? null}
+              onOpen={(l) => openListing(l, g.partnerSlug)}
+            />
+          ))}
+
         {focusArrangement && focusedCluster && (
           <>
             {focusArrangement.listings.map((lp) => (
@@ -973,7 +1127,8 @@ export function MapaCanvas({
                 key={lp.listing.id}
                 placement={lp}
                 currency={focusedCluster.partner.marketplaceCurrency ?? 'MXN'}
-                onOpen={openListing}
+                hidden={hidden.has('mercado')}
+                onOpen={(l) => openListing(l, focusedCluster.partner.slug)}
               />
             ))}
             <Link
@@ -988,27 +1143,40 @@ export function MapaCanvas({
                 height: focusArrangement.identityBox.height,
               }}
             >
+              {/* Media stack — the partner image FILLS the rosette (same
+                  treatment as a dominant content slab). */}
               <div
                 className="absolute inset-0 bg-[#101010]"
                 style={{
                   clipPath: `path('${focusArrangement.identityOutline}')`,
                 }}
               >
-                <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-[18%] text-center">
-                  {focusedCluster.partner.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                {focusedCluster.partner.imageUrl && (
+                  <div className="absolute inset-0">
+                    <SmartImage
                       src={focusedCluster.partner.imageUrl}
                       alt=""
+                      sizes="640px"
                       draggable={false}
-                      className="h-10 w-10 border border-border object-cover"
+                      className="object-cover"
                     />
-                  )}
-                  <span className="font-syne text-base font-extrabold uppercase leading-none tracking-tight text-primary">
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-black/70" />
+                {/* Prominent identity type — the cell must read as THE
+                    partner, not as one more content slab. */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-[14%] text-center">
+                  <span className="inline-flex w-fit items-center border border-primary/70 bg-[#0D0D0DCC] px-2 py-0.5 font-mono text-[11px] tracking-[0.2em] text-primary">
+                    {'//'}PARTNER
+                    {focusedCluster.partner.partnerKind
+                      ? ` · ${KIND_LABEL[focusedCluster.partner.partnerKind]}`
+                      : ''}
+                  </span>
+                  <span className="font-syne text-5xl font-extrabold uppercase leading-[0.95] tracking-tight text-primary [text-shadow:0_2px_18px_rgba(0,0,0,0.85)]">
                     {focusedCluster.partner.title}
                   </span>
                   {focusedCluster.partner.subtitle && (
-                    <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-primary/45">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary/75">
                       {focusedCluster.partner.subtitle}
                     </span>
                   )}
@@ -1025,8 +1193,8 @@ export function MapaCanvas({
                   d={focusArrangement.identityOutline}
                   fill="none"
                   stroke="#F0F0F0"
-                  strokeOpacity="0.4"
-                  strokeWidth="2"
+                  strokeOpacity="0.75"
+                  strokeWidth="3.5"
                   strokeLinejoin="round"
                 />
               </svg>
@@ -1183,14 +1351,21 @@ export function MapaCanvas({
       <MapaFilterColumn
         typeOptions={typeOptions}
         eraCounts={eraCounts}
+        mercadoCount={mercadoCount}
         hidden={hidden}
         onToggle={toggleHidden}
+        affinityOn={affinityOn}
+        affinityCount={
+          continentArrangement ? continentArrangement.continents.length : null
+        }
+        onToggleAffinity={toggleAffinity}
       />
 
       {/* Partner identity strip — contextual chrome, never terrain. */}
       {focusedCluster && (
         <PartnerObi
           cluster={focusedCluster}
+          items={focusMemberItems}
           relatedPartners={rankedPartners.map((r) => ({
             slug: r.cluster.partner.slug,
             title: r.cluster.partner.title,
@@ -1201,11 +1376,12 @@ export function MapaCanvas({
       )}
 
       {/* One individual listing's canonical detail (?partner=&listing=),
-          directly over the map — no marketplace grid in between. */}
-      {openListingEntry && focusedCluster && (
+          directly over the map — no marketplace grid in between. Opens from
+          the global satellites and from the focus arc alike. */}
+      {openListingEntry && (
         <MarketplaceListingDetail
           listing={openListingEntry.listing}
-          partner={focusedCluster.partner}
+          partner={openListingEntry.partner}
           index={openListingEntry.index}
           onClose={closeListing}
         />

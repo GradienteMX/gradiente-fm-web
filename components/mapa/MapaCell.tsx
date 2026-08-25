@@ -21,7 +21,8 @@
 
 import { memo, useCallback, useRef, type CSSProperties, type KeyboardEvent } from 'react'
 import type { ContentItem, ContentType } from '@/lib/types'
-import type { PlacedItem } from '@/lib/mapa/layout'
+import { HEX_R, type PlacedItem } from '@/lib/mapa/layout'
+import { hexToPixel } from '@/lib/mapa/hex'
 import { SmartImage } from '@/components/SmartImage'
 import { categoryColor, clsx, fmtDateShort } from '@/lib/utils'
 
@@ -114,10 +115,27 @@ export const MapaCell = memo(function MapaCell({
   onArrow,
   onFocusItem,
 }: MapaCellProps) {
-  const { item, bbox, outline, size } = placed
+  const { item, bbox, outline, size, cells } = placed
   const ref = useRef<HTMLDivElement>(null)
   const isArchive = item.source === 'archive:wayback'
   const rim = isArchive ? ARCHIVE_RIM : categoryColor(item.type)
+
+  // Type-chip anchor: the TOPMOST CELL of the polyhex, not the bbox — a
+  // trihex's bbox top-center can fall on the notch between its cells, where
+  // the hex clip crops the chip (2026-08-20, Iker's review). Anchoring to a
+  // real cell keeps the chip inside the slab for every template.
+  let chipCell = cells[0]
+  let chipPx = hexToPixel(chipCell, HEX_R)
+  for (const c of cells) {
+    const p = hexToPixel(c, HEX_R)
+    if (p.y < chipPx.y || (p.y === chipPx.y && p.x < chipPx.x)) {
+      chipCell = c
+      chipPx = p
+    }
+  }
+  const HEX_HALF_H = (Math.sqrt(3) / 2) * HEX_R
+  const chipLeft = chipPx.x - bbox.x
+  const chipTop = chipPx.y - bbox.y - HEX_HALF_H * 0.84
 
   const handleOpen = useCallback(() => {
     onOpen(item, ref.current?.getBoundingClientRect() ?? null)
@@ -221,13 +239,25 @@ export const MapaCell = memo(function MapaCell({
           />
         </svg>
 
-        {/* Text block — hidden/revealed by semantic zoom band (globals.css). */}
-        <div className="mapa-cell-text pointer-events-none absolute inset-0 flex flex-col justify-between px-[16%] pb-[11%] pt-[9%]">
+        {/* Text block — hidden/revealed by semantic zoom band (globals.css).
+            Clipped to the SAME hex path as the media and centered on the
+            widest band of the shape (2026-08-20, Iker's review: bottom-
+            anchored labels overflowed the tapering hex corners and overlapped
+            neighboring cells — text must stay inside its own slab). */}
+        <div
+          className="mapa-cell-text pointer-events-none absolute inset-0"
+          style={{ clipPath: `path('${outline}')` }}
+        >
           {/* Boxed type chip (mockup treatment) — category color as chrome,
               never washing the image. */}
           <span
-            className="mapa-cell-label inline-flex w-fit items-center border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.14em]"
+            className="mapa-cell-label absolute inline-flex w-fit -translate-x-1/2 items-center truncate border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.14em]"
             style={{
+              left: chipLeft,
+              top: chipTop,
+              // Width available at the chip's height inside a flat-top hex
+              // (the shape tapers above ±half-height · 0.66).
+              maxWidth: HEX_R * 1.05,
               color: rim,
               borderColor: `${rim}99`,
               backgroundColor: '#0D0D0DB8',
@@ -236,9 +266,9 @@ export const MapaCell = memo(function MapaCell({
             {'//'}
             {label}
           </span>
-          <div className="min-w-0">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-[15%] text-center">
             <h3
-              className={`mapa-cell-title font-syne font-bold leading-[1.05] text-primary ${
+              className={`mapa-cell-title min-w-0 max-w-full font-syne font-bold leading-[1.05] text-primary ${
                 size >= 7 ? 'text-3xl' : size >= 3 ? 'text-xl' : 'text-[15px]'
               }`}
             >
@@ -247,7 +277,7 @@ export const MapaCell = memo(function MapaCell({
               </span>
             </h3>
             {meta && (
-              <p className="mapa-cell-meta mt-1 truncate font-mono text-[10px] tracking-wide text-primary/60">
+              <p className="mapa-cell-meta mt-1 max-w-full truncate font-mono text-[10px] tracking-wide text-primary/60">
                 {meta}
               </p>
             )}

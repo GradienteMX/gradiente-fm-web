@@ -11,6 +11,7 @@ import { memo, type KeyboardEvent } from 'react'
 import type { MarketplaceListing, MarketplaceListingStatus } from '@/lib/types'
 import type { ListingPlacement } from '@/lib/mapa/focus'
 import { SmartImage } from '@/components/SmartImage'
+import { clsx } from '@/lib/utils'
 
 export const MARKETPLACE_RIM = '#D6B37A' // warm sand (spec § Rim color system)
 
@@ -23,12 +24,25 @@ const STATUS_LABEL: Record<MarketplaceListingStatus, string> = {
 export interface MapaListingCellProps {
   placement: ListingPlacement
   currency: string
+  /** The MERCADO kill-switch — fade in place, same contract as MapaCell. */
+  hidden: boolean
+  /** Partner focus on ANOTHER identity — recede like non-member terrain. */
+  dimmed?: boolean
+  /**
+   * View-arrangement translation (plane px) inherited from the node's anchor
+   * member, so global satellites ride their partner's mass through the
+   * continent drift and focus displacement.
+   */
+  delta?: { dx: number; dy: number } | null
   onOpen: (listing: MarketplaceListing) => void
 }
 
 export const MapaListingCell = memo(function MapaListingCell({
   placement,
   currency,
+  hidden,
+  dimmed = false,
+  delta = null,
   onOpen,
 }: MapaListingCellProps) {
   const { listing, box, outline } = placement
@@ -44,16 +58,30 @@ export const MapaListingCell = memo(function MapaListingCell({
   return (
     <div
       role="button"
-      tabIndex={0}
+      tabIndex={hidden ? -1 : 0}
       data-mapa-node=""
       aria-label={`MERCADO: ${listing.title}. ${meta}`}
+      aria-hidden={hidden || undefined}
       onClick={() => onOpen(listing)}
       onKeyDown={handleKeyDown}
-      className="animate-fade-in group/listing absolute cursor-pointer outline-none [contain:layout_style]"
-      style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+      className={clsx(
+        'animate-fade-in group/listing absolute cursor-pointer outline-none [contain:layout_style]',
+        'transition-[transform,opacity] duration-700 ease-in-out motion-reduce:transition-none',
+        hidden && 'mapa-cell--off',
+        dimmed && 'mapa-cell--dim',
+      )}
+      style={{
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
+        transform: delta
+          ? `translate3d(${delta.dx}px, ${delta.dy}px, 0)`
+          : undefined,
+      }}
     >
       <div
-        className="absolute inset-0"
+        className="mapa-cell-media absolute inset-0"
         style={{ clipPath: `path('${outline}')` }}
       >
         {listing.images[0] ? (
@@ -90,9 +118,14 @@ export const MapaListingCell = memo(function MapaListingCell({
         />
       </svg>
 
-      <div className="mapa-cell-text pointer-events-none absolute inset-0 flex flex-col justify-between px-[16%] pb-[11%] pt-[9%]">
+      {/* Same containment contract as MapaCell: clipped to the hex path,
+          centered on its widest band. */}
+      <div
+        className="mapa-cell-text pointer-events-none absolute inset-0"
+        style={{ clipPath: `path('${outline}')` }}
+      >
         <span
-          className="mapa-cell-label inline-flex w-fit items-center border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.14em]"
+          className="mapa-cell-label absolute left-1/2 top-[8%] inline-flex w-fit -translate-x-1/2 items-center border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.14em]"
           style={{
             color: MARKETPLACE_RIM,
             borderColor: `${MARKETPLACE_RIM}99`,
@@ -101,11 +134,11 @@ export const MapaListingCell = memo(function MapaListingCell({
         >
           {'//'}MERCADO
         </span>
-        <div className="min-w-0">
-          <h3 className="mapa-cell-title font-syne text-[15px] font-bold leading-[1.05] text-primary">
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-[15%] text-center">
+          <h3 className="mapa-cell-title min-w-0 max-w-full font-syne text-[15px] font-bold leading-[1.05] text-primary">
             <span className="line-clamp-2">{listing.title}</span>
           </h3>
-          <p className="mapa-cell-meta mt-1 truncate font-mono text-[10px] tracking-wide text-primary/60">
+          <p className="mapa-cell-meta mt-1 max-w-full truncate font-mono text-[10px] tracking-wide text-primary/60">
             {meta}
           </p>
         </div>

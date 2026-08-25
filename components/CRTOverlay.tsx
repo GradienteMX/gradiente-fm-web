@@ -1,6 +1,7 @@
 'use client'
 
 import { ReactNode, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { CRTShader } from './CRTShader'
 import { CRTPostProcess } from './CRTPostProcess'
 
@@ -54,6 +55,17 @@ export function CRTOverlay({ children }: { children: ReactNode }) {
   // hydrated tree matches what the server emitted. After mount we know the
   // capabilities and switch.
   const [mode, setMode] = useState<Mode | null>(null)
+  // /dashboard («EL PLIEGO») and /welcome (the prisma-2008 landing, same
+  // light-paper language) are print surfaces — the scanline shader reads as
+  // grey striping on cream, so it's suppressed there (OFF, not attenuated).
+  // The shader is a SIBLING of children, so toggling it never re-parents the
+  // app tree or drops state.
+  const pathname = usePathname()
+  const onPaperSurface =
+    (pathname?.startsWith('/dashboard') ||
+      pathname === '/lab/dashboard' ||
+      pathname === '/welcome') ??
+    false
 
   useEffect(() => {
     setMode(pickMode())
@@ -62,11 +74,13 @@ export function CRTOverlay({ children }: { children: ReactNode }) {
   }, [])
 
   if (mode === null) return <>{children}</>
+  // Path B (?pathB=1, experimental) wraps the whole app in a canvas and has
+  // no per-route suppression yet — left as-is; it's opt-in only.
   if (mode === 'B') return <CRTPostProcess>{children}</CRTPostProcess>
   return (
     <>
       {children}
-      <CRTShader />
+      {!onPaperSurface && <CRTShader />}
     </>
   )
 }

@@ -1,21 +1,49 @@
 'use client'
 
 // Spatial Identity Canvas — partner identity strip (obi).
-// Modeled on a Japanese vinyl obi for the Club Japan concept: a narrow paper
-// band along the left edge of the focused viewport. Identity is CONTEXTUAL
-// CHROME — it never consumes honeycomb cells and contains no category
-// navigation (spec § Identity strip).
+// Modeled on a Japanese vinyl obi (reference: the Club Japan obi mock,
+// 2026-08-20): aged-paper band, large logo up top, a dominant VERTICAL
+// wordmark flanked by ornamental katakana and a red seal, then the info
+// block — name, address, contextual per-kind data, contact handle and a
+// social-icon row. Identity is CONTEXTUAL CHROME — it never consumes
+// honeycomb cells and contains no category navigation (spec § Identity
+// strip). All data rows are real fields; nothing decorative pretends to be
+// data (the katakana + seal are explicitly ornament).
 
 import Link from 'next/link'
-import { X } from 'lucide-react'
+import { Facebook, Globe, Instagram, X, Youtube } from 'lucide-react'
+import type { ContentItem } from '@/lib/types'
 import type { PartnerCluster } from '@/lib/mapa/layout'
 import { KIND_LABEL } from '@/components/overlay/PartnerOverlay'
+import { fmtDateShort } from '@/lib/utils'
 
-// Partner-customizable template accents within the controlled Gradiente
-// template (spec allows per-partner skinning). Presentation-only strings —
-// not content, not data.
-const OBI_ACCENTS: Record<string, { vertical?: string }> = {
-  'club-japan': { vertical: 'クラブ・ジャパン' },
+const PAPER = '#EDE6D4'
+const INK = '#111111'
+const SEAL = '#C41E1E'
+
+// Partner-customizable ornament within the controlled Gradiente template
+// (spec allows per-partner skinning). Presentation-only strings — not
+// content, not data.
+const OBI_KATAKANA: Record<string, string> = {
+  'club-japan': 'クラブ・ジャパン',
+  'noche-negra': 'ノーチェ・ネグラ',
+  naafi: 'ナーフィ',
+}
+
+// Kind-derived ornamental fallback so every partner wears the obi's
+// Japanese accent even without a bespoke transliteration.
+const KIND_KATAKANA: Record<string, string> = {
+  venue: 'クラブ',
+  club: 'クラブ',
+  promoter: 'プロモーター',
+  promo: 'プロモ',
+  label: 'レーベル',
+  colectivo: 'コレクティボ',
+  festival: 'フェスティバル',
+  dealer: 'ディーラー',
+  medios: 'メディア',
+  'mix-series': 'ミックス',
+  sponsored: 'スポンサー',
 }
 
 // Derive a display label for the partner's contact link from real data.
@@ -34,8 +62,60 @@ function contactLabel(url: string): string {
   }
 }
 
+// Social platform detection for the icon row — from the partner's real
+// links (ContentItem.links) + partnerUrl, deduped by URL.
+type SocialPlatform =
+  | 'instagram'
+  | 'x'
+  | 'youtube'
+  | 'facebook'
+  | 'soundcloud'
+  | 'bandcamp'
+  | 'mixcloud'
+  | 'web'
+
+function platformOf(url: string): SocialPlatform {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    if (host.includes('instagram.com')) return 'instagram'
+    if (host === 'x.com' || host.includes('twitter.com')) return 'x'
+    if (host.includes('youtube.com') || host === 'youtu.be') return 'youtube'
+    if (host.includes('facebook.com')) return 'facebook'
+    if (host.includes('soundcloud.com')) return 'soundcloud'
+    if (host.includes('bandcamp.com')) return 'bandcamp'
+    if (host.includes('mixcloud.com')) return 'mixcloud'
+    return 'web'
+  } catch {
+    return 'web'
+  }
+}
+
+function SocialIcon({ platform }: { platform: SocialPlatform }) {
+  const cls = 'h-[15px] w-[15px]'
+  switch (platform) {
+    case 'instagram':
+      return <Instagram className={cls} strokeWidth={1.8} />
+    case 'x':
+      return <X className={cls} strokeWidth={2.2} />
+    case 'youtube':
+      return <Youtube className={cls} strokeWidth={1.8} />
+    case 'facebook':
+      return <Facebook className={cls} strokeWidth={1.8} />
+    case 'soundcloud':
+      return <span className="font-mono text-[8px] font-bold tracking-tight">SC</span>
+    case 'bandcamp':
+      return <span className="font-mono text-[8px] font-bold tracking-tight">BC</span>
+    case 'mixcloud':
+      return <span className="font-mono text-[8px] font-bold tracking-tight">MC</span>
+    case 'web':
+      return <Globe className={cls} strokeWidth={1.8} />
+  }
+}
+
 export interface PartnerObiProps {
   cluster: PartnerCluster
+  /** The focused partner's member items — contextual per-kind data source. */
+  items: ContentItem[]
   /** Other clustered identities, most affine first — the carousel order. */
   relatedPartners: { slug: string; title: string }[]
   onFocusPartner: (slug: string) => void
@@ -44,27 +124,79 @@ export interface PartnerObiProps {
 
 export function PartnerObi({
   cluster,
+  items,
   relatedPartners,
   onFocusPartner,
   onZoomGlobal,
 }: PartnerObiProps) {
   const p = cluster.partner
-  const accent = OBI_ACCENTS[p.slug]
   const kind = p.partnerKind ? KIND_LABEL[p.partnerKind] : 'PARTNER'
+  const katakana =
+    OBI_KATAKANA[p.slug] ??
+    (p.partnerKind ? KIND_KATAKANA[p.partnerKind] : undefined)
   const location = p.marketplaceLocation ?? p.subtitle ?? null
-  // Venues program per event — honest template copy, not fabricated data.
-  const schedule = p.partnerKind === 'venue' ? 'HORARIO SEGÚN EVENTO' : null
-  const description = p.excerpt ?? null
   const count = cluster.itemIds.length
+
+  // ── Contextual rows per partner kind — all from real member data ─────────
+  const eventos = items
+    .filter((i) => i.type === 'evento' && i.date)
+    .sort((a, b) => (a.date! < b.date! ? -1 : 1))
+  const nowMs = Date.now()
+  const upcoming = eventos.find(
+    (e) => new Date(e.endDate ?? e.date!).getTime() >= nowMs,
+  )
+  const latestPast = [...eventos]
+    .reverse()
+    .find((e) => new Date(e.date!).getTime() < nowMs)
+  const isVenue = p.partnerKind === 'venue' || p.partnerKind === 'club'
+  const isPromoter =
+    p.partnerKind === 'promoter' ||
+    p.partnerKind === 'colectivo' ||
+    p.partnerKind === 'festival' ||
+    p.partnerKind === 'promo'
+  const listingsCount = p.marketplaceEnabled
+    ? p.marketplaceListings?.length ?? 0
+    : 0
+
+  const contextRows: { label: string; value: string }[] = []
+  if (isVenue) contextRows.push({ label: 'HORARIO', value: 'SEGÚN EVENTO' })
+  if ((isVenue || isPromoter) && upcoming) {
+    contextRows.push({
+      label: 'PRÓXIMA',
+      value: [fmtDateShort(upcoming.date!), upcoming.venue]
+        .filter(Boolean)
+        .join(' · '),
+    })
+  } else if (isPromoter && latestPast) {
+    contextRows.push({
+      label: 'ÚLTIMA',
+      value: [fmtDateShort(latestPast.date!), latestPast.venue]
+        .filter(Boolean)
+        .join(' · '),
+    })
+  }
+  if (listingsCount > 0) {
+    contextRows.push({
+      label: 'MERCADO',
+      value: `${listingsCount} ${listingsCount === 1 ? 'ARTÍCULO' : 'ARTÍCULOS'} EN VENTA`,
+    })
+  }
+
+  // Socials: real links + partnerUrl, deduped by URL.
+  const socialUrls = [
+    ...(p.links ?? []).map((l) => l.url),
+    ...(p.partnerUrl ? [p.partnerUrl] : []),
+  ].filter((url, i, arr) => arr.indexOf(url) === i)
 
   return (
     <aside
       data-mapa-ui
       aria-label={`${p.title}, partner enfocado, ${count} publicaciones en el mapa`}
-      className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex max-h-[42dvh] flex-col overflow-y-auto bg-[#EDE6D4] text-[#111111] shadow-[0_-8px_40px_rgba(0,0,0,0.6)] lg:inset-x-auto lg:bottom-0 lg:left-0 lg:top-0 lg:max-h-none lg:w-[300px] lg:overflow-hidden lg:shadow-[8px_0_40px_rgba(0,0,0,0.6)]"
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex max-h-[46dvh] flex-col overflow-y-auto shadow-[0_-8px_40px_rgba(0,0,0,0.6)] lg:inset-x-auto lg:bottom-0 lg:left-0 lg:top-0 lg:max-h-none lg:w-[300px] lg:overflow-y-auto lg:shadow-[8px_0_40px_rgba(0,0,0,0.6)]"
+      style={{ backgroundColor: PAPER, color: INK }}
     >
       {/* Top band — system label + close */}
-      <div className="flex items-center justify-between border-b border-[#11111122] px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#11111122] px-4 py-2.5">
         <span className="font-mono text-[10px] tracking-[0.16em] text-[#111111]/60">
           {'//PARTNER · '}
           {kind}
@@ -73,95 +205,151 @@ export function PartnerObi({
           type="button"
           onClick={onZoomGlobal}
           aria-label="Cerrar enfoque de partner"
-          className="text-[#111111]/50 transition-colors hover:text-[#111111]"
+          className="font-mono text-[13px] leading-none text-[#111111]/50 transition-colors hover:text-[#111111]"
         >
-          <X size={14} strokeWidth={1.5} />
+          ✕
         </button>
       </div>
 
-      <div className="flex flex-1 flex-row gap-4 px-4 py-4 lg:flex-col lg:gap-5 lg:py-5">
-        {/* Identity block — logo + vertical wordmark (desktop) */}
-        <div className="flex shrink-0 items-start gap-3 lg:h-[38%] lg:gap-4">
-          {p.imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
+      <div className="flex flex-1 flex-col gap-4 px-5 py-4 lg:gap-5 lg:py-6">
+        {/* ── Logo — large, the obi's printed mark ── */}
+        {p.imageUrl && (
+          <div className="flex shrink-0 justify-center lg:pt-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={p.imageUrl}
               alt={`Logo de ${p.title}`}
-              className="h-14 w-14 border border-[#11111133] object-cover lg:h-16 lg:w-16"
+              className="h-20 w-20 border border-[#11111126] object-cover lg:h-24 lg:w-24"
             />
-          )}
-          <div className="flex min-w-0 items-start gap-2">
-            <h2 className="font-syne text-2xl font-extrabold uppercase leading-none tracking-tight lg:text-[26px] lg:[writing-mode:vertical-rl]">
-              {p.title}
-            </h2>
-            {accent?.vertical && (
+          </div>
+        )}
+
+        {/* ── Vertical hero — katakana + seal + dominant wordmark ──
+            Desktop only: the vertical writing needs the strip's height. */}
+        <div className="hidden min-h-0 flex-1 items-start justify-center gap-3 overflow-hidden lg:flex">
+          <div className="flex flex-col items-center gap-3">
+            {katakana && (
               <span
                 aria-hidden
-                className="mt-0.5 font-mono text-[11px] tracking-[0.3em] text-[#111111]/55 lg:[writing-mode:vertical-rl]"
+                className="font-mono text-[13px] leading-none tracking-[0.28em] text-[#111111]/55 [writing-mode:vertical-rl]"
               >
-                {accent.vertical}
+                {katakana}
               </span>
             )}
-            {/* Red seal — Gradiente template mark */}
+            {/* Red seal — Gradiente template mark (hanko ornament) */}
             <span
               aria-hidden
-              className="ml-1 mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center border-2 border-[#C41E1E] font-mono text-[10px] font-bold text-[#C41E1E]"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold leading-none"
+              style={{ backgroundColor: SEAL, color: PAPER }}
             >
               {'//'}
             </span>
           </div>
+          <h2 className="max-h-full font-syne text-[44px] font-extrabold uppercase leading-[0.9] tracking-tight [writing-mode:vertical-rl]">
+            {p.title}
+          </h2>
         </div>
 
-        {/* Data block */}
-        <div className="flex min-w-0 flex-1 flex-col gap-2.5 font-mono text-[11px] leading-relaxed text-[#111111]/85">
-          {p.verified && (
-            <p className="tracking-[0.14em] text-[#C41E1E]">■ VERIFICADO</p>
+        {/* Mobile identity row — horizontal wordmark + inline ornament */}
+        <div className="flex items-center gap-3 lg:hidden">
+          <h2 className="min-w-0 flex-1 font-syne text-2xl font-extrabold uppercase leading-none tracking-tight">
+            {p.title}
+          </h2>
+          {katakana && (
+            <span
+              aria-hidden
+              className="shrink-0 font-mono text-[11px] tracking-[0.24em] text-[#111111]/55"
+            >
+              {katakana}
+            </span>
           )}
-          {description && (
-            <p className="font-grotesk text-[12.5px] leading-snug text-[#111111]/80">
-              {description}
-            </p>
+          <span
+            aria-hidden
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-bold leading-none"
+            style={{ backgroundColor: SEAL, color: PAPER }}
+          >
+            {'//'}
+          </span>
+        </div>
+
+        {/* ── Info block — name, address, contextual data, contact ── */}
+        <div className="flex shrink-0 flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-mono text-[15px] font-bold tracking-[0.14em]">
+              {p.title.toUpperCase()}
+            </h3>
+            {p.verified && (
+              <span
+                className="font-mono text-[9px] tracking-[0.14em]"
+                style={{ color: SEAL }}
+              >
+                ■ VERIFICADO
+              </span>
+            )}
+          </div>
+
+          {location && (
+            <div className="flex flex-col font-mono text-[12px] font-bold uppercase leading-relaxed tracking-[0.1em] text-[#111111]/85">
+              {location.split(/\s*[,·]\s*/).map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </div>
           )}
-          <dl className="flex flex-col gap-1.5">
-            {location && (
-              <div className="flex gap-2">
-                <dt className="shrink-0 text-[#111111]/45">UBICACIÓN</dt>
-                <dd className="uppercase">{location}</dd>
-              </div>
-            )}
-            {schedule && (
-              <div className="flex gap-2">
-                <dt className="shrink-0 text-[#111111]/45">HORARIO</dt>
-                <dd>{schedule}</dd>
-              </div>
-            )}
-            {p.partnerUrl && (
-              <div className="flex gap-2">
-                <dt className="shrink-0 text-[#111111]/45">CONTACTO</dt>
-                <dd>
-                  <a
-                    href={p.partnerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline decoration-[#11111144] underline-offset-2 hover:text-[#C41E1E]"
-                  >
-                    {contactLabel(p.partnerUrl)}
-                  </a>
+
+          <dl className="flex flex-col gap-1 font-mono text-[11px] leading-relaxed">
+            {contextRows.map((row) => (
+              <div key={row.label} className="flex flex-col">
+                <dt className="font-bold tracking-[0.14em] text-[#111111]/85">
+                  {row.label}
+                </dt>
+                <dd className="uppercase tracking-[0.06em] text-[#111111]/65">
+                  {row.value}
                 </dd>
               </div>
-            )}
-            <div className="flex gap-2">
-              <dt className="shrink-0 text-[#111111]/45">EN EL MAPA</dt>
-              <dd>
+            ))}
+            <div className="flex flex-col">
+              <dt className="font-bold tracking-[0.14em] text-[#111111]/85">
+                EN EL MAPA
+              </dt>
+              <dd className="uppercase tracking-[0.06em] text-[#111111]/65">
                 {count} {count === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES'}
               </dd>
             </div>
           </dl>
+
+          {p.partnerUrl && (
+            <a
+              href={p.partnerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-fit font-mono text-[13px] font-bold tracking-[0.12em] underline decoration-[#11111133] underline-offset-4 transition-colors hover:text-[#C41E1E]"
+            >
+              {contactLabel(p.partnerUrl)}
+            </a>
+          )}
+
+          {/* Social icon row — rounded ink chips, one per real link */}
+          {socialUrls.length > 0 && (
+            <div className="flex items-center gap-2">
+              {socialUrls.map((url) => (
+                <a
+                  key={url}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${p.title} en ${platformOf(url)}`}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-70"
+                  style={{ backgroundColor: INK, color: PAPER }}
+                >
+                  <SocialIcon platform={platformOf(url)} />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Affine-partner carousel — ‹ › steps through the other clustered
-            identities by content affinity to this one. Navigation between
-            focus states, camera glides across the shared terrain. */}
+            identities by content affinity to this one. */}
         {relatedPartners.length > 0 && (
           <div className="flex shrink-0 flex-col gap-1.5">
             <span className="font-mono text-[9px] tracking-[0.18em] text-[#111111]/45">

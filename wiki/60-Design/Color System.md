@@ -73,7 +73,7 @@ Returned by [`categoryColor`](../../lib/utils.ts):
 | noticia | `#F5F5F5` | near-white — neutral reportage |
 | opinion | `#A78BFA` | violet — perspective |
 | articulo | `#FDE68A` | pale gold — longform |
-| listicle | `#FB923C` | orange — curated lists |
+| listicle | `#EC4899` | magenta — curated lists (2026-08-20: moved out of the warm sector — the old orange sat ΔE 9.4 from review's amber and 7.7 from sys-orange chrome; magenta was the system's only vacant hue family, nearest neighbor opinión at ΔE 25.8) |
 | partner | `#6B7280` | grey — deliberately desaturated |
 
 > **Redesign 2026:** category hues are retired from card chrome — the `//EVENTO` type badge is plain `text-secondary` now, per the one-expressive-variable rule (§3). `categoryColor()` still exists and still colors the `fresh-glitch` border suite plus non-card uses: [[CategoryRail]] row labels, [[FeedHeader]], [[SearchOverlay]] results, overlay headers, dashboard chrome, empty states.

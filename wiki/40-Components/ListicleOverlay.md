@@ -15,7 +15,7 @@ Renders when [[OverlayRouter]] receives an item with `type: 'listicle'`. File: [
 
 Structure is a trimmed variant of [[ArticuloOverlay]]:
 
-- Header — eyebrow `//LISTA` (orange `#FB923C`), title, subtitle/excerpt, byline strip (POR / FECHA / VIBE), plus an `NN ENTRADAS · COUNTDOWN / ASCENDENTE / SIN·RANGO` tag computed from the ranks of the `track` blocks in the body
+- Header — eyebrow `//LISTA` (magenta `#EC4899` via `categoryColor`), title, subtitle/excerpt, byline strip (POR / FECHA / VIBE), plus an `NN ENTRADAS · COUNTDOWN / ASCENDENTE / SIN·RANGO` tag computed from the ranks of the `track` blocks in the body
 - Hero image with optional caption
 - Three-column reading area:
   - **Left rail:** `LISTA` mini-index listing each track (rank + artist · title) + scroll progress blocks

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
-    "test:mapa": "tsx --test tests/mapa/engine.test.ts tests/mapa/focus.test.ts tests/mapa/archive.test.ts"
+    "test:mapa": "tsx --test tests/mapa/engine.test.ts tests/mapa/focus.test.ts tests/mapa/archive.test.ts tests/mapa/continents.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
