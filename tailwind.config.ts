@@ -45,6 +45,38 @@ const config: Config = {
         'vibe-8': '#FC6C0F',
         'vibe-9': '#FC9414',
         'vibe-10': '#FEB225',
+        // ── /dashboard «EL PLIEGO» light-surface tokens (additive) ──
+        // Scoped by usage to the dashboard tree; dark-site tokens above are
+        // untouched. Hex mirror for canvas/SVG/WebGL code lives in
+        // lib/dashboard/palette.ts — change in lockstep.
+        paper: '#EDEBE3',
+        'paper-raised': '#F6F4EC',
+        ink: '#111111',
+        'ink-soft': '#3D3A33',
+        'ink-faint': '#5C5850',
+        // Acid is BANNED as text/border on paper grounds — legal uses are
+        // whitelisted in lib/dashboard/palette.ts (ACID_LEGAL_USES).
+        acid: '#D8FF00',
+        'sys-red-paper': '#C42B20',
+        // HP blue — Human Presence (revision-2 point 7). 5.5:1 on paper.
+        hp: '#1D4ED8',
+        panel: '#111111',
+        'panel-text': '#EDEBE3',
+      },
+      fontSize: {
+        // Dashboard closed type scale — six sizes, nothing arbitrary.
+        d11: ['11px', { lineHeight: '16px' }],
+        d13: ['13px', { lineHeight: '18px' }],
+        d15: ['15px', { lineHeight: '22px' }],
+        d18: ['18px', { lineHeight: '24px' }],
+        d28: ['28px', { lineHeight: '32px' }],
+        display: ['clamp(44px, 5vw, 64px)', { lineHeight: '1' }],
+      },
+      boxShadow: {
+        // The ONLY shadows on the dashboard: hard offset, zero blur
+        // (drag pick-up 4px, CUE/LIFT deepens to 6px).
+        lift: '4px 4px 0 0 #111111',
+        'lift-deep': '6px 6px 0 0 #111111',
       },
       backgroundImage: {
         // NOTE: no 'vibe-gradient' entry here — the canonical .bg-vibe-gradient

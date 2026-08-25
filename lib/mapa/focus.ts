@@ -16,6 +16,7 @@ import {
   axialAdd,
   cellKey,
   cellsBBox,
+  hexDistance,
   hexToPixel,
   pixelToHex,
   type Axial,
@@ -62,9 +63,16 @@ export interface ListingPlacement {
 export interface FocusArrangement {
   /** Per-item plane-px translation from its global position (movers only). */
   deltas: Record<string, { dx: number; dy: number }>
-  /** The identity nucleus cell (chrome materialized during focus). */
+  /** Center of the identity nucleus (lens: the anchor seed cell). */
   identityCell: Axial
-  /** Identity hex geometry for rendering. */
+  /**
+   * Every cell the identity chrome claims — a full 7-cell ROSETTE during
+   * partner focus (2026-08-20, Iker's call: a single-hex nucleus was too
+   * small to read or hit; the identity now carries the partner image at
+   * dominant-slab scale). Empty for topic lenses (no identity chrome).
+   */
+  identityCells: Axial[]
+  /** Identity rosette geometry for rendering. */
   identityBox: { x: number; y: number; width: number; height: number }
   identityOutline: string
   /**
@@ -146,6 +154,11 @@ function gatherArrangement(
   const members = layout.placed.filter((p) => memberIds.has(p.item.id))
   const nonMembers = layout.placed.filter((p) => !memberIds.has(p.item.id))
   const identityCell = anchorCell
+  // Partner focus: the identity claims a full rosette (center + six
+  // neighbors) so the partner reads at dominant-slab scale.
+  const identityCells = opts.nucleus
+    ? [identityCell, ...HEX_DIRS.map((d) => axialAdd(identityCell, d))]
+    : []
 
   // ── 1. Gather members around the anchor, type-ordered ─────────────────────
 
@@ -158,7 +171,7 @@ function gatherArrangement(
   })
 
   const focusOwner = new Map<string, string>() // cellKey → itemId
-  if (opts.nucleus) focusOwner.set(cellKey(identityCell), '__identity__')
+  for (const c of identityCells) focusOwner.set(cellKey(c), '__identity__')
   const typeById = new Map(members.map((m) => [m.item.id, m.item.type]))
   const newCellsById = new Map<string, Axial[]>()
   const identityPx = hexToPixel(identityCell, HEX_R)
@@ -512,18 +525,20 @@ function gatherArrangement(
   }
 
   const focusCells = [
-    ...(opts.nucleus ? [identityCell] : []),
+    ...identityCells,
     ...[...newCellsById.values()].flat(),
     ...listingPlacements.map((l) => l.cell),
   ]
-  const identityBox = cellsBBox([identityCell], HEX_R)
+  const identityGeomCells = identityCells.length ? identityCells : [identityCell]
+  const identityBox = cellsBBox(identityGeomCells, HEX_R)
 
   return {
     deltas,
     identityCell,
+    identityCells,
     identityBox,
     identityOutline: outlinePath(
-      [identityCell],
+      identityGeomCells,
       HEX_R,
       { x: identityBox.x, y: identityBox.y },
       HEX_GAP,
@@ -541,6 +556,149 @@ function gatherArrangement(
       bounds: layout.bounds,
     },
   }
+}
+
+// ── Global marketplace nodes ─────────────────────────────────────────────────
+//
+// Listings on the GLOBAL terrain, not just in focus (2026-08-20, Iker's
+// review: filtering the map down to MERCADO showed nothing, because listing
+// nodes only materialized during partner focus). Each marketplace-enabled
+// clustered partner gets its listings placed as single-hex satellites on the
+// FREE cells nearest its cluster — a BFS through the occupied terrain finds
+// the closest coast, so the stable global layout is never displaced (rule 9
+// holds; the interspersed center often has zero free neighbors). Nodes
+// prefer to chain into a MERCADO arc. Pure + deterministic: clusters walk in
+// slug order, listings in the canonical publishedAt-desc order, candidates
+// tie-break by (q, r). Each node records the nearest member as its ANCHOR so
+// view arrangements (continent drift, focus displacement) can carry it with
+// its partner's mass.
+
+const GLOBAL_LISTING_BFS_MAX = 40 // hex rings; safety bound, never hit in practice
+
+export interface GlobalListingPlacement {
+  placement: ListingPlacement
+  partnerId: string
+  partnerSlug: string
+  currency: string
+  /** Member item whose view-arrangement delta this node follows. */
+  anchorItemId: string
+}
+
+export function placeGlobalListings(
+  layout: MapaLayout,
+  clusters: readonly PartnerCluster[],
+): GlobalListingPlacement[] {
+  const out: GlobalListingPlacement[] = []
+  const occupied = new Set<string>(Object.keys(layout.cellOwner))
+
+  for (const cluster of clusters) {
+    // clusters arrive slug-sorted (partnerClusters contract)
+    const p = cluster.partner
+    if (!p.marketplaceEnabled) continue
+    const listings = [...(p.marketplaceListings ?? [])].sort((a, b) =>
+      a.publishedAt !== b.publishedAt
+        ? a.publishedAt > b.publishedAt
+          ? -1
+          : 1
+        : a.id < b.id
+          ? -1
+          : 1,
+    )
+    if (listings.length === 0) continue
+
+    const clusterKeys = new Set(cluster.cells.map(cellKey))
+    const centroid = centroidOf(cluster.cells)
+    const ownCells: Axial[] = []
+    const ownKeys = new Set<string>()
+
+    for (const listing of listings) {
+      // Multi-source BFS from the cluster (and the arc so far) through the
+      // occupied terrain to the nearest FREE cells. All free cells at the
+      // minimal depth (+1 ring of slack) are candidates.
+      const visited = new Set<string>([...clusterKeys, ...ownKeys])
+      let ring: Axial[] = [...cluster.cells, ...ownCells]
+      const candidates: Axial[] = []
+      let freeDepth = -1
+      for (let depth = 1; depth <= GLOBAL_LISTING_BFS_MAX; depth++) {
+        if (freeDepth >= 0 && depth > freeDepth + 1) break
+        const next: Axial[] = []
+        for (const cell of ring) {
+          for (const d of HEX_DIRS) {
+            const n = axialAdd(cell, d)
+            const nk = cellKey(n)
+            if (visited.has(nk)) continue
+            visited.add(nk)
+            next.push(n)
+            if (!occupied.has(nk)) {
+              if (freeDepth < 0) freeDepth = depth
+              candidates.push(n)
+            }
+          }
+        }
+        ring = next
+        if (ring.length === 0) break
+      }
+      if (candidates.length === 0) continue // landlocked beyond the bound
+
+      let best: { cell: Axial; score: number; dist: number } | null = null
+      for (const f of [...candidates].sort((a, b) =>
+        a.q !== b.q ? a.q - b.q : a.r - b.r,
+      )) {
+        let contactCluster = 0
+        let contactListing = 0
+        for (const d of HEX_DIRS) {
+          const nk = cellKey(axialAdd(f, d))
+          if (clusterKeys.has(nk)) contactCluster++
+          if (ownKeys.has(nk)) contactListing++
+        }
+        const px = hexToPixel(f, HEX_R)
+        const dist = Math.hypot(px.x - centroid.x, px.y - centroid.y) / HEX_R
+        const score = 3 * contactListing + contactCluster - 0.35 * dist
+        if (
+          !best ||
+          score > best.score ||
+          (score === best.score &&
+            (dist < best.dist ||
+              (dist === best.dist &&
+                (f.q < best.cell.q ||
+                  (f.q === best.cell.q && f.r < best.cell.r)))))
+        ) {
+          best = { cell: f, score, dist }
+        }
+      }
+      const cell = best!.cell
+      const ck = cellKey(cell)
+      occupied.add(ck)
+      ownCells.push(cell)
+      ownKeys.add(ck)
+
+      // Anchor: the member owning the nearest cluster cell.
+      let anchorItemId = cluster.itemIds[0]
+      let bestD = Infinity
+      for (const c of cluster.cells) {
+        const d = hexDistance(c, cell)
+        if (d < bestD) {
+          bestD = d
+          anchorItemId = layout.cellOwner[cellKey(c)] ?? anchorItemId
+        }
+      }
+
+      const box = cellsBBox([cell], HEX_R)
+      out.push({
+        placement: {
+          listing,
+          cell,
+          box,
+          outline: outlinePath([cell], HEX_R, { x: box.x, y: box.y }, HEX_GAP),
+        },
+        partnerId: p.id,
+        partnerSlug: p.slug,
+        currency: p.marketplaceCurrency ?? 'MXN',
+        anchorItemId,
+      })
+    }
+  }
+  return out
 }
 
 // ── Affine partner ranking (focus carousel) ─────────────────────────────────
