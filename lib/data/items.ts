@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Database } from '@/lib/supabase/database.types'
+import type { Database, Json } from '@/lib/supabase/database.types'
 import type {
   ArticleBlock,
   ContentItem,
@@ -140,11 +140,12 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     ...(item.subjectKind !== undefined ? { subject_kind: item.subjectKind } : {}),
     ...(item.country !== undefined ? { country: item.country || null } : {}),
     ...(item.year !== undefined ? { year: item.year ?? null } : {}),
-    // links jsonb (migration 0041, applied). Conditional spread + cast bypasses
-    // the stale generated types. Sent whenever defined so emptying the list
+    // links jsonb (migration 0041). Sent whenever defined so emptying the list
     // writes [] and clears the column; undefined (untouched) leaves it alone.
+    // The cast is still needed — EntityLink is an interface, and interfaces
+    // don't satisfy Json's index signature even when structurally compatible.
     ...(item.links !== undefined
-      ? { links: item.links as unknown as object }
+      ? { links: item.links as unknown as Json }
       : {}),
     image_url: item.imageUrl ?? null,
     published_at: item.publishedAt,

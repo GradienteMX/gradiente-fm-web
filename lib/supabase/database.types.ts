@@ -191,6 +191,62 @@ export type Database = {
           },
         ]
       }
+      entities: {
+        Row: {
+          address: string | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string | null
+          kind: Database["public"]["Enums"]["entity_kind"]
+          links: Json
+          merged_into: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          kind: Database["public"]["Enums"]["entity_kind"]
+          links?: Json
+          merged_into?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          kind?: Database["public"]["Enums"]["entity_kind"]
+          links?: Json
+          merged_into?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       foro_replies: {
         Row: {
           author_id: string
@@ -251,6 +307,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      foro_tags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       foro_threads: {
         Row: {
@@ -362,9 +439,9 @@ export type Database = {
           expires_at: string | null
           folio: number | null
           folio_denominator: number
-          intended_is_mod: boolean
           intended_franja_admin: boolean
           intended_franja_id: string | null
+          intended_is_mod: boolean
           intended_role: Database["public"]["Enums"]["user_role"]
           issued_label: string | null
           used_at: string | null
@@ -378,9 +455,9 @@ export type Database = {
           expires_at?: string | null
           folio?: number | null
           folio_denominator?: number
-          intended_is_mod?: boolean
           intended_franja_admin?: boolean
           intended_franja_id?: string | null
+          intended_is_mod?: boolean
           intended_role?: Database["public"]["Enums"]["user_role"]
           issued_label?: string | null
           used_at?: string | null
@@ -394,9 +471,9 @@ export type Database = {
           expires_at?: string | null
           folio?: number | null
           folio_denominator?: number
-          intended_is_mod?: boolean
           intended_franja_admin?: boolean
           intended_franja_id?: string | null
+          intended_is_mod?: boolean
           intended_role?: Database["public"]["Enums"]["user_role"]
           issued_label?: string | null
           used_at?: string | null
@@ -426,6 +503,42 @@ export type Database = {
           },
         ]
       }
+      item_entities: {
+        Row: {
+          created_at: string
+          entity_id: string
+          item_id: string
+          relation: Database["public"]["Enums"]["entity_relation"]
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          item_id: string
+          relation?: Database["public"]["Enums"]["entity_relation"]
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          item_id?: string
+          relation?: Database["public"]["Enums"]["entity_relation"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_entities_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_entities_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           article_body: Json
@@ -433,6 +546,7 @@ export type Database = {
           author: string | null
           body_preview: string | null
           bpm_range: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           date: string | null
@@ -444,8 +558,13 @@ export type Database = {
           excerpt: string | null
           expires_at: string | null
           external_id: string | null
+          featured_item_id: string | null
           footnotes: Json
           format: Database["public"]["Enums"]["item_format"] | null
+          franja_id: string | null
+          franja_kind: Database["public"]["Enums"]["franja_kind"] | null
+          franja_last_updated: string | null
+          franja_url: string | null
           genres: string[]
           harvested_amount: number | null
           harvested_at: string | null
@@ -455,6 +574,7 @@ export type Database = {
           hp_last_updated_at: string | null
           id: string
           image_url: string | null
+          links: Json
           marketplace_currency: string | null
           marketplace_description: string | null
           marketplace_enabled: boolean
@@ -464,10 +584,6 @@ export type Database = {
           mix_status: Database["public"]["Enums"]["mix_status"] | null
           mix_url: string | null
           musical_key: string | null
-          franja_id: string | null
-          franja_kind: Database["public"]["Enums"]["franja_kind"] | null
-          franja_last_updated: string | null
-          franja_url: string | null
           pinned: boolean
           price: string | null
           published: boolean
@@ -479,6 +595,8 @@ export type Database = {
           seed: boolean
           slug: string
           source: Database["public"]["Enums"]["content_source"] | null
+          sponsored: boolean
+          subject_kind: Database["public"]["Enums"]["item_subject_kind"] | null
           subtitle: string | null
           tags: string[]
           ticket_url: string | null
@@ -488,8 +606,10 @@ export type Database = {
           updated_at: string
           venue: string | null
           venue_city: string | null
+          verified: boolean
           vibe_max: number
           vibe_min: number
+          year: number | null
         }
         Insert: {
           article_body?: Json
@@ -497,6 +617,7 @@ export type Database = {
           author?: string | null
           body_preview?: string | null
           bpm_range?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           date?: string | null
@@ -508,8 +629,13 @@ export type Database = {
           excerpt?: string | null
           expires_at?: string | null
           external_id?: string | null
+          featured_item_id?: string | null
           footnotes?: Json
           format?: Database["public"]["Enums"]["item_format"] | null
+          franja_id?: string | null
+          franja_kind?: Database["public"]["Enums"]["franja_kind"] | null
+          franja_last_updated?: string | null
+          franja_url?: string | null
           genres?: string[]
           harvested_amount?: number | null
           harvested_at?: string | null
@@ -519,6 +645,7 @@ export type Database = {
           hp_last_updated_at?: string | null
           id: string
           image_url?: string | null
+          links?: Json
           marketplace_currency?: string | null
           marketplace_description?: string | null
           marketplace_enabled?: boolean
@@ -528,10 +655,6 @@ export type Database = {
           mix_status?: Database["public"]["Enums"]["mix_status"] | null
           mix_url?: string | null
           musical_key?: string | null
-          franja_id?: string | null
-          franja_kind?: Database["public"]["Enums"]["franja_kind"] | null
-          franja_last_updated?: string | null
-          franja_url?: string | null
           pinned?: boolean
           price?: string | null
           published?: boolean
@@ -543,6 +666,8 @@ export type Database = {
           seed?: boolean
           slug: string
           source?: Database["public"]["Enums"]["content_source"] | null
+          sponsored?: boolean
+          subject_kind?: Database["public"]["Enums"]["item_subject_kind"] | null
           subtitle?: string | null
           tags?: string[]
           ticket_url?: string | null
@@ -552,8 +677,10 @@ export type Database = {
           updated_at?: string
           venue?: string | null
           venue_city?: string | null
+          verified?: boolean
           vibe_max: number
           vibe_min: number
+          year?: number | null
         }
         Update: {
           article_body?: Json
@@ -561,6 +688,7 @@ export type Database = {
           author?: string | null
           body_preview?: string | null
           bpm_range?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           date?: string | null
@@ -572,8 +700,13 @@ export type Database = {
           excerpt?: string | null
           expires_at?: string | null
           external_id?: string | null
+          featured_item_id?: string | null
           footnotes?: Json
           format?: Database["public"]["Enums"]["item_format"] | null
+          franja_id?: string | null
+          franja_kind?: Database["public"]["Enums"]["franja_kind"] | null
+          franja_last_updated?: string | null
+          franja_url?: string | null
           genres?: string[]
           harvested_amount?: number | null
           harvested_at?: string | null
@@ -583,6 +716,7 @@ export type Database = {
           hp_last_updated_at?: string | null
           id?: string
           image_url?: string | null
+          links?: Json
           marketplace_currency?: string | null
           marketplace_description?: string | null
           marketplace_enabled?: boolean
@@ -592,10 +726,6 @@ export type Database = {
           mix_status?: Database["public"]["Enums"]["mix_status"] | null
           mix_url?: string | null
           musical_key?: string | null
-          franja_id?: string | null
-          franja_kind?: Database["public"]["Enums"]["franja_kind"] | null
-          franja_last_updated?: string | null
-          franja_url?: string | null
           pinned?: boolean
           price?: string | null
           published?: boolean
@@ -607,6 +737,8 @@ export type Database = {
           seed?: boolean
           slug?: string
           source?: Database["public"]["Enums"]["content_source"] | null
+          sponsored?: boolean
+          subject_kind?: Database["public"]["Enums"]["item_subject_kind"] | null
           subtitle?: string | null
           tags?: string[]
           ticket_url?: string | null
@@ -616,8 +748,10 @@ export type Database = {
           updated_at?: string
           venue?: string | null
           venue_city?: string | null
+          verified?: boolean
           vibe_max?: number
           vibe_min?: number
+          year?: number | null
         }
         Relationships: [
           {
@@ -629,82 +763,6 @@ export type Database = {
           },
           {
             foreignKeyName: "items_franja_id_fkey"
-            columns: ["franja_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      marketplace_listings: {
-        Row: {
-          category: string
-          condition: string
-          contact_email: string | null
-          description: string | null
-          embeds: Json
-          id: string
-          images: string[]
-          franja_id: string
-          price: number
-          published_at: string
-          related_links: Json
-          sale_url: string | null
-          shipping_mode: string | null
-          status: string
-          subcategory: string | null
-          tags: string[]
-          title: string
-          updated_at: string
-          views: number
-          whatsapp: string | null
-        }
-        Insert: {
-          category: string
-          condition: string
-          contact_email?: string | null
-          description?: string | null
-          embeds?: Json
-          id: string
-          images?: string[]
-          franja_id: string
-          price?: number
-          published_at?: string
-          related_links?: Json
-          sale_url?: string | null
-          shipping_mode?: string | null
-          status?: string
-          subcategory?: string | null
-          tags?: string[]
-          title: string
-          updated_at?: string
-          whatsapp?: string | null
-        }
-        Update: {
-          category?: string
-          condition?: string
-          contact_email?: string | null
-          description?: string | null
-          embeds?: Json
-          id?: string
-          images?: string[]
-          franja_id?: string
-          price?: number
-          published_at?: string
-          related_links?: Json
-          sale_url?: string | null
-          shipping_mode?: string | null
-          status?: string
-          subcategory?: string | null
-          tags?: string[]
-          title?: string
-          updated_at?: string
-          views?: number
-          whatsapp?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "marketplace_listings_franja_id_fkey"
             columns: ["franja_id"]
             isOneToOne: false
             referencedRelation: "items"
@@ -742,6 +800,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "listing_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "listing_comments_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
@@ -753,6 +818,83 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "listing_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_listings: {
+        Row: {
+          category: string
+          condition: string
+          contact_email: string | null
+          description: string | null
+          embeds: Json
+          franja_id: string
+          id: string
+          images: string[]
+          price: number
+          published_at: string
+          related_links: Json
+          sale_url: string | null
+          shipping_mode: string | null
+          status: string
+          subcategory: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          views: number
+          whatsapp: string | null
+        }
+        Insert: {
+          category: string
+          condition: string
+          contact_email?: string | null
+          description?: string | null
+          embeds?: Json
+          franja_id: string
+          id: string
+          images?: string[]
+          price?: number
+          published_at?: string
+          related_links?: Json
+          sale_url?: string | null
+          shipping_mode?: string | null
+          status?: string
+          subcategory?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          views?: number
+          whatsapp?: string | null
+        }
+        Update: {
+          category?: string
+          condition?: string
+          contact_email?: string | null
+          description?: string | null
+          embeds?: Json
+          franja_id?: string
+          id?: string
+          images?: string[]
+          price?: number
+          published_at?: string
+          related_links?: Json
+          sale_url?: string | null
+          shipping_mode?: string | null
+          status?: string
+          subcategory?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          views?: number
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listings_franja_id_fkey"
+            columns: ["franja_id"]
+            isOneToOne: false
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
         ]
@@ -1004,13 +1146,13 @@ export type Database = {
           engagement_hp: number
           engagement_hp_last_updated_at: string | null
           firma: string | null
+          franja_admin: boolean
+          franja_id: string | null
           id: string
           is_mod: boolean
           is_og: boolean
           joined_at: string
           location: string | null
-          franja_admin: boolean
-          franja_id: string | null
           profile_meta: Json
           role: Database["public"]["Enums"]["user_role"]
           seed: boolean
@@ -1023,13 +1165,13 @@ export type Database = {
           engagement_hp?: number
           engagement_hp_last_updated_at?: string | null
           firma?: string | null
+          franja_admin?: boolean
+          franja_id?: string | null
           id: string
           is_mod?: boolean
           is_og?: boolean
           joined_at?: string
           location?: string | null
-          franja_admin?: boolean
-          franja_id?: string | null
           profile_meta?: Json
           role?: Database["public"]["Enums"]["user_role"]
           seed?: boolean
@@ -1042,13 +1184,13 @@ export type Database = {
           engagement_hp?: number
           engagement_hp_last_updated_at?: string | null
           firma?: string | null
+          franja_admin?: boolean
+          franja_id?: string | null
           id?: string
           is_mod?: boolean
           is_og?: boolean
           joined_at?: string
           location?: string | null
-          franja_admin?: boolean
-          franja_id?: string | null
           profile_meta?: Json
           role?: Database["public"]["Enums"]["user_role"]
           seed?: boolean
@@ -1146,95 +1288,6 @@ export type Database = {
           },
         ]
       }
-      entities: {
-        Row: {
-          bio: string | null
-          city: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          image_url: string | null
-          kind: Database["public"]["Enums"]["entity_kind"]
-          links: Json
-          merged_into: string | null
-          name: string
-          slug: string
-          updated_at: string
-        }
-        Insert: {
-          bio?: string | null
-          city?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_url?: string | null
-          kind: Database["public"]["Enums"]["entity_kind"]
-          links?: Json
-          merged_into?: string | null
-          name: string
-          slug: string
-          updated_at?: string
-        }
-        Update: {
-          bio?: string | null
-          city?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_url?: string | null
-          kind?: Database["public"]["Enums"]["entity_kind"]
-          links?: Json
-          merged_into?: string | null
-          name?: string
-          slug?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "entities_merged_into_fkey"
-            columns: ["merged_into"]
-            isOneToOne: false
-            referencedRelation: "entities"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      item_entities: {
-        Row: {
-          created_at: string
-          entity_id: string
-          item_id: string
-          relation: Database["public"]["Enums"]["entity_relation"]
-        }
-        Insert: {
-          created_at?: string
-          entity_id: string
-          item_id: string
-          relation?: Database["public"]["Enums"]["entity_relation"]
-        }
-        Update: {
-          created_at?: string
-          entity_id?: string
-          item_id?: string
-          relation?: Database["public"]["Enums"]["entity_relation"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "item_entities_entity_id_fkey"
-            columns: ["entity_id"]
-            isOneToOne: false
-            referencedRelation: "entities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_entities_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       user_rank_signals: {
@@ -1276,90 +1329,171 @@ export type Database = {
       apply_trophy_unlocks: { Args: never; Returns: undefined }
       apply_user_hp_rollup: { Args: never; Returns: undefined }
       apply_vibe_check_bonuses: { Args: never; Returns: undefined }
+      discard_franja_event: { Args: { p_item_id: string }; Returns: Json }
+      franja_team_add: {
+        Args: { p_franja_id: string; p_user_id: string }
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          display_name: string
+          engagement_hp: number
+          engagement_hp_last_updated_at: string | null
+          firma: string | null
+          franja_admin: boolean
+          franja_id: string | null
+          id: string
+          is_mod: boolean
+          is_og: boolean
+          joined_at: string
+          location: string | null
+          profile_meta: Json
+          role: Database["public"]["Enums"]["user_role"]
+          seed: boolean
+          username: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "users"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      franja_team_remove: {
+        Args: { p_franja_id: string; p_user_id: string }
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          display_name: string
+          engagement_hp: number
+          engagement_hp_last_updated_at: string | null
+          firma: string | null
+          franja_admin: boolean
+          franja_id: string | null
+          id: string
+          is_mod: boolean
+          is_og: boolean
+          joined_at: string
+          location: string | null
+          profile_meta: Json
+          role: Database["public"]["Enums"]["user_role"]
+          seed: boolean
+          username: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "users"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      franja_team_set_admin: {
+        Args: { p_admin: boolean; p_franja_id: string; p_user_id: string }
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          display_name: string
+          engagement_hp: number
+          engagement_hp_last_updated_at: string | null
+          firma: string | null
+          franja_admin: boolean
+          franja_id: string | null
+          id: string
+          is_mod: boolean
+          is_og: boolean
+          joined_at: string
+          location: string | null
+          profile_meta: Json
+          role: Database["public"]["Enums"]["user_role"]
+          seed: boolean
+          username: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "users"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       harvest_item: { Args: { p_item_id: string }; Returns: Json }
-      increment_listing_views: { Args: { p_listing_id: string }; Returns: undefined }
+      increment_listing_views: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
       ingest_scraped_event: {
         Args: {
-          p_source: string
-          p_external_id: string
-          p_franja_id: string | null
-          p_id: string
-          p_slug: string
-          p_title: string
-          p_subtitle: string
-          p_excerpt: string
+          p_artists: string[]
           p_date: string
-          p_end_date: string | null
+          p_end_date: string
+          p_excerpt: string
+          p_external_id: string
+          p_franja_id: string
+          p_genres: string[]
+          p_id: string
+          p_image_url: string
+          p_price: string
+          p_slug: string
+          p_source: string
+          p_subtitle: string
+          p_ticket_url: string
+          p_title: string
           p_venue: string
           p_venue_city: string
-          p_artists: string[]
-          p_ticket_url: string
-          p_price: string
-          p_image_url: string
-          p_genres: string[]
+          p_vibe_max?: number
+          p_vibe_min?: number
         }
         Returns: Json
       }
       peek_invite_card: {
         Args: { p_code: string }
         Returns: {
-          card_name: string | null
+          card_name: string
+          folio: number
+          folio_denominator: number
+          franja_logo_url: string
+          franja_title: string
+          issued_at: string
+          issued_label: string
           role: Database["public"]["Enums"]["user_role"]
-          folio: number | null
-          folio_denominator: number | null
-          issued_label: string | null
-          issued_at: string | null
-          franja_title: string | null
-          franja_logo_url: string | null
           status: string
         }[]
       }
       publish_franja_event: { Args: { p_item_id: string }; Returns: Json }
-      discard_franja_event: { Args: { p_item_id: string }; Returns: Json }
-      franja_team_add: {
-        Args: { p_franja_id: string; p_user_id: string }
-        Returns: Json
-      }
-      franja_team_set_admin: {
-        Args: { p_franja_id: string; p_user_id: string; p_admin: boolean }
-        Returns: Json
-      }
-      franja_team_remove: {
-        Args: { p_franja_id: string; p_user_id: string }
-        Returns: Json
-      }
-      update_franja_event: {
-        Args: {
-          p_item_id: string
-          p_title: string
-          p_subtitle: string
-          p_excerpt: string
-          p_date: string
-          p_end_date: string | null
-          p_venue: string
-          p_venue_city: string
-          p_artists: string[]
-          p_ticket_url: string
-          p_price: string
-          p_image_url: string
-          p_genres: string[]
-          p_vibe_min: number
-          p_vibe_max: number
-        }
-        Returns: Json
-      }
       record_hp_event: {
         Args: { p_base_weight: number; p_item_id: string; p_kind: string }
         Returns: number
       }
       sweep_old_foro_threads: { Args: never; Returns: undefined }
+      update_franja_event: {
+        Args: {
+          p_artists: string[]
+          p_date: string
+          p_end_date: string
+          p_excerpt: string
+          p_genres: string[]
+          p_image_url: string
+          p_item_id: string
+          p_price: string
+          p_subtitle: string
+          p_ticket_url: string
+          p_title: string
+          p_venue: string
+          p_venue_city: string
+          p_vibe_max: number
+          p_vibe_min: number
+        }
+        Returns: Json
+      }
+      verify_login: {
+        Args: { p_password: string; p_username: string }
+        Returns: string
+      }
     }
     Enums: {
       content_source:
         | "scraper:ra"
-        | "scraper:instagram"
         | "manual:editor"
         | "manual:franja"
+        | "scraper:instagram"
       content_type:
         | "evento"
         | "mix"
@@ -1372,8 +1506,6 @@ export type Database = {
         | "franja"
       entity_kind: "artist" | "label" | "venue" | "promoter"
       entity_relation: "subject" | "mention"
-      item_format: "vinyl" | "cassette" | "cd" | "digital" | "mix" | "other"
-      mix_status: "disponible" | "exclusivo" | "archivo" | "proximamente"
       franja_kind:
         | "label"
         | "promoter"
@@ -1385,6 +1517,19 @@ export type Database = {
         | "medios"
         | "mix-series"
         | "plataforma"
+      item_format:
+        | "vinyl"
+        | "cassette"
+        | "cd"
+        | "digital"
+        | "mix"
+        | "other"
+        | "hardcover"
+        | "paperback"
+        | "ebook"
+        | "zine"
+      item_subject_kind: "record" | "book" | "event" | "exhibition"
+      mix_status: "disponible" | "exclusivo" | "archivo" | "proximamente"
       poll_kind: "from-list" | "from-tracklist" | "attendance" | "freeform"
       reaction_kind: "provocative" | "signal"
       user_role: "user" | "curator" | "guide" | "insider" | "admin"
@@ -1515,7 +1660,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      content_source: ["scraper:ra", "scraper:instagram", "manual:editor", "manual:franja"],
+      content_source: [
+        "scraper:ra",
+        "manual:editor",
+        "manual:franja",
+        "scraper:instagram",
+      ],
       content_type: [
         "evento",
         "mix",
@@ -1529,8 +1679,6 @@ export const Constants = {
       ],
       entity_kind: ["artist", "label", "venue", "promoter"],
       entity_relation: ["subject", "mention"],
-      item_format: ["vinyl", "cassette", "cd", "digital", "mix", "other"],
-      mix_status: ["disponible", "exclusivo", "archivo", "proximamente"],
       franja_kind: [
         "label",
         "promoter",
@@ -1543,6 +1691,20 @@ export const Constants = {
         "mix-series",
         "plataforma",
       ],
+      item_format: [
+        "vinyl",
+        "cassette",
+        "cd",
+        "digital",
+        "mix",
+        "other",
+        "hardcover",
+        "paperback",
+        "ebook",
+        "zine",
+      ],
+      item_subject_kind: ["record", "book", "event", "exhibition"],
+      mix_status: ["disponible", "exclusivo", "archivo", "proximamente"],
       poll_kind: ["from-list", "from-tracklist", "attendance", "freeform"],
       reaction_kind: ["provocative", "signal"],
       user_role: ["user", "curator", "guide", "insider", "admin"],
