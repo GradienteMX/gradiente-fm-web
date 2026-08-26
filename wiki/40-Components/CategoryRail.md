@@ -63,7 +63,7 @@ Per [[Contained Single Surface]] — the page is one continuous surface; navigat
 
 ## Counts reflect the home-feed input
 
-The rail is passed `gridItems` (already filtered for home — upcoming, non-partner, non-hero). So the count reflects "how many of this type are currently in the home view", not "total in the database". When a filter is set, the visible card count drops to match the filtered type's row count. (TODOS shows the unfiltered total; that doesn't change as you flip filters.)
+The rail is passed `gridItems` (already filtered for home — upcoming, non-franja, non-hero). So the count reflects "how many of this type are currently in the home view", not "total in the database". When a filter is set, the visible card count drops to match the filtered type's row count. (TODOS shows the unfiltered total; that doesn't change as you flip filters.)
 
 ## Bottom panels
 

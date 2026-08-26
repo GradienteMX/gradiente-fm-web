@@ -36,7 +36,7 @@ Filter is an **array** rather than a single type so editorially-related content 
 | `editoriales` | `['editorial', 'opinion']` | Both read editorially |
 | `articulos` | `['articulo', 'listicle']` | Listicles are structured articles |
 
-`partner` is excluded by design (see [[Partners Isolation]]) — partners are never saveable.
+`franja` is excluded by design (see [[Franjas Isolation]]) — franjas are never saveable.
 
 ## Render
 
@@ -58,4 +58,4 @@ Shown when the filter resolves to zero items. Different copy per filter (`evento
 - [[saves]] · [[DraggableCanvas]] · [[ExplorerSidebar]] · [[Dashboard Explorer]]
 - [[SaveItemButton]] · [[SavedBadge]] — the gestures that fill this surface
 - [[SavedCommentsSection]] — sibling Guardados slot with two-level folder→file structure
-- [[Partners Isolation]] — why `partner` isn't here
+- [[Franjas Isolation]] — why `franja` isn't here

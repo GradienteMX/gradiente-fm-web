@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-08-25 · INGEST · Partner → Franja: renombre completo (schema + código + rutas + wiki) · `96f0a74` + `59a3471` (pushed to `main`), migración `0048` aplicada
+
+- **La llamada (Iker)**: "partner" afirma un acuerdo de dos lados que sólo 1 de 78 filas tenía de verdad (`pa-passline`). Sobre-declara en las otras 77 e implica un opt-in que el producto nunca obtuvo. **Franja** nombra lo que la entidad OCUPA — una banda del dial — y no reclama nada sobre la relación. Aterriza la metáfora FM en el último concepto que seguía hablando inglés de negocios.
+- **Alcance: hasta el schema**, un solo corte. Se rechazó el medio-renombre (sólo UI/TS) porque así nació la deriva `novedades`/FRANJAS.
+- **Taxonomía**: el acuerdo comercial sale del enum y pasa a ser atributo (`items.sponsored`). `promo` → `colectivo` (2 filas: cer0 x cient0, Unos Quantos — colectivos mal archivados). `sponsored` → `plataforma` + `sponsored=true` (1 fila: Passline). Postgres no tiene DROP VALUE → `franja_kind` se creó nuevo y se cambió con `alter column ... using`. **El kind dice QUÉ ES una franja; el flag dice si hay dinero de por medio.**
+- **LA TRAMPA (para futuros renombres)**: Postgres guarda objetos de dos formas y sólo una sobrevive. Políticas RLS + predicados de índice son árboles parseados (enum por OID, columnas por attnum) → las 9 políticas, 4 índices y 4 FKs siguieron solas. **Los cuerpos plpgsql se guardan como TEXTO** → un literal `partner` deja de castear a `content_type` y revienta en runtime. Cinco funciones lo cargaban: `emit_user_hp_on_publish` (trigger — TODO publish falla), `harvest_item`, `apply_hp_rollup` (pg_cron — **falla en silencio**, sin síntoma visible), `partner_team_add`, `peek_invite_card`. Invisible a tsc/lint/tests.
+- **Segunda trampa**: `create or replace function` no puede renombrar un parámetro de entrada ni una columna de `returns table` → DROP+CREATE para `peek_invite_card`, los 3 `franja_team_*` e `ingest_scraped_event`. PostgREST los llama con argumentos NOMBRADOS: el nombre del parámetro es contrato de cliente.
+- **Migración `0048_partner_to_franja.sql`** escrita desde `pg_get_functiondef` EN VIVO, no desde los archivos de migración (desfasados — `discard_partner_event` existe en la DB y en ningún archivo).
+- **Código**: 118 archivos, 2.301 ocurrencias, 14 rutas movidas con `git mv`, `/p/[slug]` → `/f/[slug]` + redirect permanente. tsc limpio · 64/64 mapa + 66/66 dashboard · build limpio.
+- **Fósiles a propósito**: `public/partners/` (60 `image_url` lo apuntan; renombrarlo obliga a re-apuntarlas DESPUÉS del deploy → el rail 404ea en medio) y el prefijo `pa-` de los ids (claves opacas, 4 FKs, cero ganancia visible).
+- **Wiki**: 62 archivos barridos (754 ocurrencias), 8 renombrados. **Excluidos a propósito**: `Clippings/` (texto de terceros — barrerlo lo corrompería) y este `log.md` (append-only: se añade entrada, no se reescribe historia). [[Franjas Isolation]] y [[Franja Authoring]] llevan nota de cabecera: la decisión que registran es anterior al renombre.
+- **Pendiente**: ejercitar en vivo las 5 funciones reescritas (publicar · COSECHAR · peek de invitación · alta/baja de equipo · log de pg_cron) — es lo único que prueba el §4, porque ningún chequeo estático ve dentro de un cuerpo plpgsql. También regenerar `database.types.ts` (editado a mano).
+
+---
+
 ## 2026-08-25 · INGEST · scrape RA ago-oct + catálogo Noche Negra a datos reales · `main` (sin commit)
 
 **Contexto: la agenda estaba a oscuras.** Cero eventos futuros en toda la DB — el último ingest RA fue el 2026-06-24 y su cobertura terminaba el 2026-08-01, así que `/agenda`, EventosRail y el calendario llevaban 24 días vacíos.

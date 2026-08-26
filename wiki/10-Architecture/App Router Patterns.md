@@ -37,7 +37,7 @@ Every page renders inside this shell. See [app/layout.tsx](../../app/layout.tsx)
 - [[Navigation]] — needs `usePathname`, `useState`, clock interval
 - [[VibeSlider]] — pointer events, refs, state
 - [[ContentGrid]] — reads context, Framer Motion layout
-- [[PartnersRail]] — uses `useMemo` (could be server, marked client defensively)
+- [[FranjasRail]] — uses `useMemo` (could be server, marked client defensively)
 - [[VibeContext]] — the Provider itself
 
 **Rule:** mark `'use client'` only when you genuinely need browser-only APIs. Don't propagate `'use client'` upward — wrap an interactive child inside a server parent instead.
@@ -67,7 +67,7 @@ export default async function AgendaPage() {
 }
 ```
 
-All 5 category pages follow this shape. [[Home]] is the only page with more assembly (hero + category rail + partners rail).
+All 5 category pages follow this shape. [[Home]] is the only page with more assembly (hero + category rail + franjas rail).
 
 ## Metadata
 

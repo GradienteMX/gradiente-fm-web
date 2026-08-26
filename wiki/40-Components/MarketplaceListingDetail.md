@@ -4,7 +4,7 @@
 
 ## What it does
 
-Opened when the URL has both `?partner=<slug>&listing=<id>`. Stacks at z-60 above [[MarketplaceOverlay]] (z-50) so the partner overlay stays visible underneath — closing this drops back to the partner card, not the catalog grid. ESC / CERRAR strips `listing=` only; the parent overlay's close handler strips `partner=`.
+Opened when the URL has both `?franja=<slug>&listing=<id>`. Stacks at z-60 above [[MarketplaceOverlay]] (z-50) so the franja overlay stays visible underneath — closing this drops back to the franja card, not the catalog grid. ESC / CERRAR strips `listing=` only; the parent overlay's close handler strips `franja=`.
 
 ## Layout (two-column)
 

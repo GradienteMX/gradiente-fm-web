@@ -20,7 +20,7 @@ When `onClick` is provided the wrapper renders as a `<button>` (opens [[Marketpl
 | Prop | Type | Notes |
 |------|------|-------|
 | `listing` | `MarketplaceListing` | |
-| `partner` | `ContentItem` | For vendor name + currency |
+| `franja` | `ContentItem` | For vendor name + currency |
 | `index` | `number` | 1-based, drives the corner badge |
 | `onClick` | `() => void?` | When provided, renders as `<button>` |
 
@@ -28,4 +28,4 @@ When `onClick` is provided the wrapper renders as a `<button>` (opens [[Marketpl
 
 - [[MarketplaceOverlay]] — grid that renders these cards
 - [[MarketplaceListingDetail]] — sub-overlay opened on click
-- [[MiPartnerSection]] — dashboard surface where partners manage listings
+- [[MiFranjaSection]] — dashboard surface where franjas manage listings

@@ -11,7 +11,7 @@ Static editorial page rendered with [[BrandPageShell]]. Covers:
 3. What content types live on the platform
 4. Connection to [[FASCINOMA]] and Club Japan
 
-Several sections contain `<Redactar>` placeholder markers where the editorial team still needs to write copy (contact info, deeper partner context).
+Several sections contain `<Redactar>` placeholder markers where the editorial team still needs to write copy (contact info, deeper franja context).
 
 ## Structure
 

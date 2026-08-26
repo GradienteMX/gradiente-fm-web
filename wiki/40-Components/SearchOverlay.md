@@ -33,7 +33,7 @@ Two sources, deduped by `slug` (drafts win — an editor's working copy beats th
 - `MOCK_ITEMS` from [[mockData]]
 - `useDraftItems()` from [[drafts]] (sessionStorage)
 
-`partner` items are filtered out (sponsor-rail content, never surfaced through the main reading flow — see [[Partners Isolation]]).
+`franja` items are filtered out (sponsor-rail content, never surfaced through the main reading flow — see [[Franjas Isolation]]).
 
 ## Match algorithm
 

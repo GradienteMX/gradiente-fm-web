@@ -40,7 +40,7 @@ user (0) < curator (1) < {guide, insider} (2) < admin (3)
 
 - `canCreateList` / `canCreatePoll` / `canCreateMarketplaceCard` — curator+. Polls and marketplace surfaces don't exist yet; the gate exists so they slot in cleanly later.
 - `canCreateOpinion` / `canCreateMix` — guide+ (insider qualifies via the sibling-tier check).
-- `canCreateContent(user, type)` — single per-type gate consumed by the dashboard's [[NuevoSection]] template grid + the `?type=…` compose URL guard. `listicle` → curator+; `mix` / `opinion` / `editorial` / `review` / `articulo` / `noticia` / `evento` → guide+; `partner` → admin only. Polls and marketplace slot in here when those types are added.
+- `canCreateContent(user, type)` — single per-type gate consumed by the dashboard's [[NuevoSection]] template grid + the `?type=…` compose URL guard. `listicle` → curator+; `mix` / `opinion` / `editorial` / `review` / `articulo` / `noticia` / `evento` → guide+; `franja` → admin only. Polls and marketplace slot in here when those types are added.
 - `canEditContent` / `canDeleteContent` — admin OR the content's author (matched by username today; switch to `authorId` post-Supabase).
 
 ### Rank derivation

@@ -7,13 +7,13 @@ updated: 2026-04-22
 
 # Admin Dashboard
 
-> A role-gated editor UI at `/admin` for reviewing scraped content, authoring editorials, and managing partners.
+> A role-gated editor UI at `/admin` for reviewing scraped content, authoring editorials, and managing franjas.
 
 ## Who uses it
 
 | Role | Access |
 |---|---|
-| `admin` | Everything — edit any item, manage users, partner CRUD |
+| `admin` | Everything — edit any item, manage users, franja CRUD |
 | `editor` | Review queue, author editorials/reviews/opinions, adjust vibe/flag on any item, pin hero |
 | (nothing) | Public site only — never sees `/admin/*` |
 
@@ -35,7 +35,7 @@ Per-item actions:
 
 Form for creating/editing a content item. Differs by type:
 
-- **Event / mix / partner**: title, subtitle, flyer upload, metadata, vibe slider, genre multi-select, tag multi-select
+- **Event / mix / franja**: title, subtitle, flyer upload, metadata, vibe slider, genre multi-select, tag multi-select
 - **Editorial / review / opinion / noticia**: all the above + `bodyPreview` (teaser) + `body` (full markdown-rendered article) + `author` + `readTime`
 
 All share: `editorial: true`, `pinned: true`, `source` (auto-set to `manual:editor`).
@@ -44,9 +44,9 @@ All share: `editorial: true`, `pinned: true`, `source` (auto-set to `manual:edit
 
 Single-slot pin (see [[Pinned Hero]]). Admin sees current pinned item, can unpin, can pin a different eligible item. UI shows the cadence warning — `SE ACTUALIZA SEMANALMENTE` is a promise.
 
-### 4. Partner management
+### 4. Franja management
 
-Separate flow — partners are in the rail, not the grid. Admin adds/edits partner cards with `partnerKind`, `partnerUrl`, `partnerLastUpdated`. Sort position follows `partnerLastUpdated` desc; editor can bump a partner by re-saving.
+Separate flow — franjas are in the rail, not the grid. Admin adds/edits franja cards with `franjaKind`, `franjaUrl`, `franjaLastUpdated`. Sort position follows `franjaLastUpdated` desc; editor can bump a franja by re-saving.
 
 ## Content body — the full article question
 
@@ -78,7 +78,7 @@ This lets Shawn Raynaldo's Substack pieces remain at their origin (linked), whil
 /admin/items            all items, filterable by type/status
 /admin/items/new        new item form (pick type first)
 /admin/items/[id]       edit existing item
-/admin/partners         partner rail CRUD
+/admin/franjas         franja rail CRUD
 /admin/hero             pinned hero control
 /admin/settings         user/role management (admin only)
 ```

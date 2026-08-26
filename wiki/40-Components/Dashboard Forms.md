@@ -99,7 +99,7 @@ Every form now exposes a context-appropriate **CONTEXTO** block. Two mechanisms,
 
 **Persistence.** Drafts carry `links` for free in the `item_payload` jsonb; published items use `items.links` (0041). `contentItemToRow` writes it whenever defined (emptying clears the column); `rowToContentItem` reads it.
 
-**Deferred:** a `collective` `entity_kind` for crews/colectivos — needs a migration (enum value) + `KIND_LABEL`/placeholder. Distinct from the `colectivo` `partner_kind`.
+**Deferred:** a `collective` `entity_kind` for crews/colectivos — needs a migration (enum value) + `KIND_LABEL`/placeholder. Distinct from the `colectivo` `franja_kind`.
 
 ## Out of scope
 

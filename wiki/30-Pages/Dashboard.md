@@ -34,7 +34,7 @@ Visual-prototype-only credential gate. **`admin / admin`** is the test login. Se
 Supported as of 2026-04-25: `mix`, `listicle`, `articulo`, `evento`, `review`, `editorial`, `opinion`, `noticia`. **8 of 9 ContentTypes.**
 
 Excluded:
-- `partner` — rail-only, separate flow per [[Partners Isolation]].
+- `franja` — rail-only, separate flow per [[Franjas Isolation]].
 
 ## Forms
 

@@ -34,7 +34,7 @@ The fieldset reads `type` from the parent draft and picks the kind:
 | `mix` | `from-tracklist` | prompt + close + multi |
 | `evento` | `attendance` | prompt + close + multi |
 | `noticia` / `review` / `editorial` / `opinion` / `articulo` | `freeform` | prompt + **choices** + close + multi |
-| `partner` | (none) | renders nothing |
+| `franja` | (none) | renders nothing |
 
 Editors don't pick the kind — it's determined by *what they're composing*. This matches the [[Polls As Attachments]] decision: the parent type determines what kind of poll makes sense.
 

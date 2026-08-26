@@ -1,13 +1,13 @@
 ---
 type: external
 status: current
-tags: [external, festival, partner]
+tags: [external, festival, franja]
 updated: 2026-04-22
 ---
 
 # FASCINOMA
 
-> Festival partner. Anchors a significant chunk of [[mockData]] events.
+> Festival franja. Anchors a significant chunk of [[mockData]] events.
 
 ## What
 
@@ -23,11 +23,11 @@ Per [[mockData]] header comment:
 ## On-site relationship
 
 - FASCINOMA events live in [[Content Types|evento]] with `editorial: true` — gets a 50 HP spawn boost.
-- FASCINOMA could (but does not yet in the seed) have a `partner` card in the [[PartnersRail]] with `partnerKind: 'promoter'`.
+- FASCINOMA could (but does not yet in the seed) have a `franja` card in the [[FranjasRail]] with `franjaKind: 'promoter'`.
 - Artists linked to FASCINOMA shows: Surgeon, Donato Dozzy, Sicaria, re:ni, Debit, Vladimir Ivkovic, Intrusion/Echospace, Alpha & Omega, Sully, Dave P.
 
 ## Links
 
 - [[mockData]]
 - [[Content Types]]
-- [[Partners Ecosystem]]
+- [[Franjas Ecosystem]]

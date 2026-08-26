@@ -90,7 +90,7 @@ RA doesn't know the scene — but it DOES tag genre. On ingest the route derives
 New field on `ContentItem`:
 
 ```ts
-source?: 'scraper:ra' | 'scraper:instagram' | 'manual:editor' | 'manual:partner'
+source?: 'scraper:ra' | 'scraper:instagram' | 'manual:editor' | 'manual:franja'
 ```
 
 Provenance for the review queue, for filtering in admin, and for future trust signals.

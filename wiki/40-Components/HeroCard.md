@@ -46,7 +46,7 @@ Mobile: stacked, image first, min-height 260px for each panel.
 - **Vibe edge** — 4px vertical bar on the left of the image, in the item's vibe color
 - **Type badge** top-left of image with `bg-black/75` + backdrop blur
 - **NGE corner bracket** bottom-left of image in vibe color at 50% alpha
-- **Type label** uppercased from a local TYPE_LABEL map (not from utils) — `EVENTO / MIX / NOTICIA / REVIEW / EDITORIAL / OPINIÓN / PARTNER`
+- **Type label** uppercased from a local TYPE_LABEL map (not from utils) — `EVENTO / MIX / NOTICIA / REVIEW / EDITORIAL / OPINIÓN / FRANJA`
 - **Body paragraphs** split from `bodyPreview` on `\n\n`. Falls back to `[excerpt]` if `bodyPreview` is absent.
 - **Paragraph styling tiers:** para 0 → `text-secondary`, para 1+ → `text-muted`, para 2+ hidden on mobile (`hidden md:block`)
 - **CTA** → `LEER COMPLETO` button with lucide `ArrowRight` that translates on hover
@@ -61,7 +61,7 @@ The inner `LEER COMPLETO` button has no separate handler — clicks bubble up to
 
 Lives in [lib/utils.ts](../../lib/utils.ts) (moved out of HeroCard.tsx when HeroCard became a client component — server pages can't call functions from `'use client'` modules).
 
-See [[Pinned Hero]]. Prefers `pinned: true` items; falls back to most-recent `editorial: true`; restricted to text types (no events, mixes, partners).
+See [[Pinned Hero]]. Prefers `pinned: true` items; falls back to most-recent `editorial: true`; restricted to text types (no events, mixes, franjas).
 
 ## Links
 

@@ -21,7 +21,7 @@ updated: 2026-04-24
 | **opinion** | Opinion column | `author`, `readTime`, `bodyPreview` |
 | **articulo** | Deep-dive longform feature | `author`, `readTime`, `articleBody`, `footnotes`, `heroCaption` |
 | **listicle** | Ranked/structured list feature (e.g. "Top N tracks") | `author`, `articleBody` with `track` blocks, `heroCaption` |
-| **partner** | Sponsor / label / venue in rail | `partnerKind`, `partnerUrl`, `partnerLastUpdated` |
+| **franja** | Sponsor / label / venue in rail | `franjaKind`, `franjaUrl`, `franjaLastUpdated` |
 
 See [lib/types.ts](../../lib/types.ts) for the canonical `ContentItem` interface.
 
@@ -110,14 +110,14 @@ Rendered by [[ListicleOverlay]]: hero + lede, then rank-badged track cards inter
 
 Listicle is **not** in the [[Pinned Hero]] allowlist.
 
-### partner
+### franja
 
-**Quarantined** — partners never enter the main mosaic. See [[Partners Isolation]].
+**Quarantined** — franjas never enter the main mosaic. See [[Franjas Isolation]].
 
 Unique fields:
-- `partnerKind`: `'promo' | 'label' | 'promoter' | 'venue' | 'sponsored'`
-- `partnerUrl`: outbound link to site, Instagram, Bandcamp, etc.
-- `partnerLastUpdated`: ISO, overrides `publishedAt` for rail ordering.
+- `franjaKind`: `'promo' | 'label' | 'promoter' | 'venue' | 'sponsored'`
+- `franjaUrl`: outbound link to site, Instagram, Bandcamp, etc.
+- `franjaLastUpdated`: ISO, overrides `publishedAt` for rail ordering.
 
 ## Editorial flags (cross-type)
 
@@ -131,6 +131,6 @@ Unique fields:
 - [[mockData]]
 - [[Vibe Spectrum]]
 - [[HP Curation System]]
-- [[Partners Isolation]]
+- [[Franjas Isolation]]
 - [[Editorial Flag]]
 - [[Pinned Hero]]

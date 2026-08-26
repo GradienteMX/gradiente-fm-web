@@ -111,7 +111,7 @@ Framer Motion was tried first but animations were not firing reliably in this se
 ## Invariants
 
 - Only one overlay open at a time (state is a single slug).
-- `partner` type never opens an overlay — partners live in [[PartnersRail]] and are not clickable-into.
+- `franja` type never opens an overlay — franjas live in [[FranjasRail]] and are not clickable-into.
 - Body scroll is locked while open (via `document.body.style.overflow`); restored on unmount.
 - Section navigation (`/agenda`, `/editorial`, …) still uses Next.js routes. "Contained" applies to **content consumption**, not section switching.
 

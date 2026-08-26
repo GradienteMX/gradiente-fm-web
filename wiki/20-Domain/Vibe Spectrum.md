@@ -71,7 +71,7 @@ The full genre taxonomy lives in [[genres]] — 18 root categories + ~175 leaf s
 
 ## Invariants
 
-- `vibeMin` and `vibeMax` are required on every `ContentItem` (no `| undefined`). Partners have vibe too — typically 5 (neutral).
+- `vibeMin` and `vibeMax` are required on every `ContentItem` (no `| undefined`). Franjas have vibe too — typically 5 (neutral).
 - Both are integers. The slider stores continuous floats internally but snaps to integers for label/chip purposes; items always store integers. DB constraint enforces `0 ≤ vibe_min ≤ vibe_max ≤ 10`.
 
 ## Links

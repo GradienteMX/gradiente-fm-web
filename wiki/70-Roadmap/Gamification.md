@@ -33,7 +33,7 @@ updated: 2026-04-22
 
 7. **Likes / upvotes on content** — ❌ explicitly rejected, see [[Size and Position as Only Signals]].
 8. **User-visible "scene points" or leaderboards** — takes the spotlight off the culture and onto individual clout. Misaligns with "the curator's ear is the source of truth."
-9. **Partner-linked rewards** — drags partners back into the main loop, undoing [[Partners Isolation]].
+9. **Franja-linked rewards** — drags franjas back into the main loop, undoing [[Franjas Isolation]].
 
 ## Design principle (proposed)
 

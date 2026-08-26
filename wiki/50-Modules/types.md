@@ -16,8 +16,8 @@ updated: 2026-04-22
 ## Exports
 
 ```ts
-type ContentType   = 'evento' | 'mix' | 'noticia' | 'review' | 'editorial' | 'opinion' | 'partner'
-type PartnerKind   = 'promo' | 'label' | 'promoter' | 'venue' | 'sponsored'
+type ContentType   = 'evento' | 'mix' | 'noticia' | 'review' | 'editorial' | 'opinion' | 'franja'
+type FranjaKind   = 'promo' | 'label' | 'promoter' | 'venue' | 'sponsored'
 type VibeScore     = number                      // 0-10, conceptually integer
 type VibeRange     = [number, number]            // [min, max]
 interface ContentItem { … }

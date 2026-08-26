@@ -18,7 +18,7 @@ updated: 2026-04-25
 - ~~**`/opinion` route is missing**~~ — **fixed 2026-04-22.** Created `app/opinion/page.tsx`.
 - ~~**Agenda tagline "HOY → PASADO"**~~ — **fixed 2026-04-22.** Changed to `FUTURO → PASADO` to match actual DESC-by-date sort.
 - ~~**[[Editorial]] tagline says "TEXTOS & OPINIÓN"**~~ — **fixed 2026-04-22.** Now `TEXTOS` only; `/opinion` exists as its own page.
-- ~~**`ArticleCard` `TYPE_LABEL` map**~~ — **fixed 2026-04-22.** Added `opinion` and `partner` entries to satisfy `Record<ContentType, string>`. (Component since removed 2026-06-23 — dead code deleted.)
+- ~~**`ArticleCard` `TYPE_LABEL` map**~~ — **fixed 2026-04-22.** Added `opinion` and `franja` entries to satisfy `Record<ContentType, string>`. (Component since removed 2026-06-23 — dead code deleted.)
 - ~~**Every `cursor-pointer` card doesn't link anywhere**~~ — **resolved 2026-04-23.** Cards no longer "link" — they open overlays via [[Overlay System]]. Dedicated routes were explicitly rejected in [[Contained Single Surface]].
 - **Tailwind `base` color collision with `text-base` font-size utility** — the config in [tailwind.config.ts](../../tailwind.config.ts) declares `colors.base: '#000000'`, which makes Tailwind generate `.text-base { color: #000000 }` in addition to the default font-size rule. Anywhere `text-base` or `md:text-base` is used alongside another color class (e.g. `text-secondary`), the black color can override at matching breakpoints and render text invisible on the black background. Hit once in [[MixOverlay]] (fixed locally with `md:text-[15px]`). Root fix is to rename the `base` color token — see spawned task. A spot-check of [[GenericOverlay]] at `text-base` usage is also warranted.
 - **[[ContentGrid]] has no exit fade for filtered-out cards** — `<AnimatePresence>` was removed 2026-04-25 (Chunk 3-B) because it was keeping filtered-out cards mounted at full opacity, silently breaking the in-page category + genre filters. Cards now unmount immediately when the filter drops them. The mount/reflow animation still fires via `motion.div`'s `layout` prop. If a smooth exit fade is wanted later, the path forward is to find a Framer Motion 12 incantation for `popLayout` + the mosaic's `layoutId` that actually lets exits complete (forwardRef on `MosaicItem` was added but didn't fix it on its own).
@@ -34,7 +34,7 @@ updated: 2026-04-25
 - **`body` field on `ContentItem`** — to support full articles in admin / full reader experience. Plus `externalUrl` for Substack-hosted pieces. Currently [[ReaderOverlay]] renders `bodyPreview` only. See [[Admin Dashboard]].
 - ~~**MixOverlay**~~ — **shipped 2026-04-24.** Dedicated terminal-aesthetic overlay with source-tabs (SC/YT/SP/BC/Mixcloud), decorative seeded waveform, CONTEXTO metadata panel, structured tracklist table, keyboard shortcuts (`O` opens active source). Real audio playback deferred to audio-context session.
 - ~~**Dashboard draft injection into the home feed**~~ — **shipped 2026-04-25.** New [[drafts]] module + [[HomeFeedWithDrafts]] wrapper merges session items into the feed. Then tightened: only `_draftState === 'published'` items + the one matching `?pending=<id>` surface — pure drafts stay in [[Dashboard Drafts]].
-- ~~**Articulo dashboard form**~~ — **shipped 2026-04-25.** Self-contained ArticuloForm with full block editor (all 10 kinds) + footnotes editor. Closes dashboard type coverage at 8 of 9 (only `partner` excluded).
+- ~~**Articulo dashboard form**~~ — **shipped 2026-04-25.** Self-contained ArticuloForm with full block editor (all 10 kinds) + footnotes editor. Closes dashboard type coverage at 8 of 9 (only `franja` excluded).
 - **CRT scanline sweep on filter change** — user-suggested polish. See [[CRT Scanline Sweep]]. ~30 min of work, mostly design choices (color, direction, scope).
 - **Audio context / global playback** — decided 2026-04-24 that this needs its own focused session. Covers: persistent audio across overlays and route changes, reactive-from-audio HUD (real waveform driven by Web Audio API), mix transport controls wired to actual playback, inline `track` block embeds in listicles (currently link-outs), click-to-embed facade pattern. See memory: project_audio_vision. Everything iframe-based built before this session should be treated as interim — iframes sandbox the audio stream and cannot feed the reactive HUD, so they get replaced when this session happens.
 - **[[EspectroObsidian]]** — the `.gitignore` references a prior vault (`EspectroObsidian/`) and [[curation]] comments reference `EspectroObsidian/Espectro/02 - Features/Curation Model.md`. Does this spec exist on the lead's machine? Is there content worth migrating into this wiki?
@@ -46,7 +46,7 @@ updated: 2026-04-25
 - **Swipe-down to close on mobile** — skipped for v1 to avoid inner-scroll conflicts. Would need a dedicated drag handle at the top of the panel.
 - **Reading affordances deferred from [[Reader Terminal Layout]]**: `T` for text size, ~~`C` for copy link~~ (shipped 2026-04-25 as [[ShareButton]] in [[OverlayShell]] header), minimap with scroll position + section headings.
 - **Framer Motion fallback** — overlay animations moved to pure CSS after Framer Motion animations would not fire reliably in this setup. Root cause never identified. CSS is fine for current motion vocabulary; revisit if we need layout-shared-element transitions.
-- **Overlay for `partner` type** — currently partners are not clickable (they live in [[PartnersRail]] only, not clickable-into). Is that the final stance, or should partner cards open an overlay with their promo info / external link?
+- **Overlay for `franja` type** — currently franjas are not clickable (they live in [[FranjasRail]] only, not clickable-into). Is that the final stance, or should franja cards open an overlay with their promo info / external link?
 
 ## Dashboard polish (follow-ups from 2026-04-25 chunks 1+2)
 
@@ -61,9 +61,9 @@ updated: 2026-04-25
 - Is there a cadence commitment on [[Pinned Hero]]? Header says `SE ACTUALIZA SEMANALMENTE` — does the editor want to match that?
 - Tracklists exist on mix items but aren't rendered. Where should they appear — on the card? On a mix detail page?
 - Mix playback — in-page `<audio>` / SoundCloud embed, or keep "opens in new tab"?
-- Partner rail — add mobile layout or leave as desktop-only?
+- Franja rail — add mobile layout or leave as desktop-only?
 - **V1 interaction → HP feedback loop** — see [[Guides Not Gatekeepers]]. How do aggregate clicks/plays/reads feed back into HP? What's the infrastructure? (No per-user tracking; aggregate item-level only.) This is how the democratic claim actually delivers.
-- **Espectro → Gradiente content migration** — mix titles (`ESPECTRO MIX ###`), bylines (`Redacción Espectro`), slugs, partner field references. Coordinate with the scraper cutover.
+- **Espectro → Gradiente content migration** — mix titles (`ESPECTRO MIX ###`), bylines (`Redacción Espectro`), slugs, franja field references. Coordinate with the scraper cutover.
 
 ## Gamification / canvas (user-requested exploration)
 

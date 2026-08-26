@@ -22,7 +22,7 @@ updated: 2026-08-18
    published item (or part of one) WITH imagery — the map is a visual
    surface, and imageless items stay reachable through section pages and
    search instead of appearing as dark panels (Iker's call, 2026-08-18).
-   No filler, logos, categories, stats, or spacers. Partner identity rows
+   No filler, logos, categories, stats, or spacers. Franja identity rows
    are never terrain — with one exception: the focus-state identity nucleus
    (rule 10).
 
@@ -40,7 +40,7 @@ updated: 2026-08-18
    Same layout for every viewer; remove the layer when real HP flows.*
 
 3. **Affinity chooses neighbors.** Adjacency is earned through shared
-   structured metadata, weighted in this order: same partner ≫ shared
+   structured metadata, weighted in this order: same franja ≫ shared
    entities > shared artists > same venue > exact genre > genre root > curated
    tags > same creator > date proximity. Weights are global editorial config
    ([affinity.ts](../../lib/mapa/affinity.ts) `AFFINITY_WEIGHTS`), never
@@ -84,9 +84,9 @@ updated: 2026-08-18
    hysteresis beyond this is still open — see below.
 
 10. **Focus reorganizes in rings; globally nothing moves.** Entering a
-    partner focus builds a relevance gradient outward from the center:
+    franja focus builds a relevance gradient outward from the center:
     **core** — the identity nucleus surrounded by ONLY that identity's
-    eligible content (explicit `partner_id` attribution — publisher or
+    eligible content (explicit `franja_id` attribution — publisher or
     editorial attachment, never inferred), arranged in type-ordered arcs
     (evento → mix → review → editorial → opinión → artículo → lista →
     mercado → noticia) with marketplace listings as single-hex nodes;
@@ -95,7 +95,7 @@ updated: 2026-08-18
     each item sliding inward along its original bearing; **far terrain** —
     everything else dims in place. Moves are translation-only; colliding
     static neighbors glide outward; leaving focus reverses every move
-    exactly. Affine PARTNERS are ranked by cross-cluster affinity and
+    exactly. Affine FRANJAS are ranked by cross-cluster affinity and
     navigable as a carousel from the identity strip.
 
 11. **Filters are exclusions, and the survivors close ranks.** (Reworked
@@ -112,8 +112,8 @@ updated: 2026-08-18
     — only defined while something is hidden; toggling everything back
     reverses every move. Hidden cells leave keyboard order and the
     accessibility tree. Deep-linkable as `?ocultar=evento,era:archivo`.
-    Compaction suspends during partner focus (focus owns the geometry).
-    Known tail: a partner's visible members can fragment under hard packing
+    Compaction suspends during franja focus (focus owns the geometry).
+    Known tail: a franja's visible members can fragment under hard packing
     when their hidden peers were the connective tissue — focus-gather
     unaffected; a cohesion term is the named fix if it bothers in practice.
 
@@ -161,15 +161,15 @@ updated: 2026-08-18
   does that recreate category districts through the back door? Undecided.
 - ~~**Global marketplace nodes**~~ — DONE 2026-08-20 (`placeGlobalListings`
   in [focus.ts](../../lib/mapa/focus.ts)): listings are single-hex MERCADO
-  satellites BFS-placed on the free cells nearest their partner's cluster —
+  satellites BFS-placed on the free cells nearest their franja's cluster —
   the stable terrain is never displaced (rule 9 holds; the interspersed
   center often has no free neighbors, so satellites take the nearest coast
   and chain into an arc). Each records its nearest member as ANCHOR and
   rides that member's delta through view arrangements; satellites dim
-  during another partner's focus, hand over to the focus arc during their
+  during another franja's focus, hand over to the focus arc during their
   own, fade during compaction (the repack can claim their coast), and obey
   the MERCADO kill-switch. Engine-level placement (listings as first-class
-  terrain items pulled toward the partner bearing) remains the eventual
+  terrain items pulled toward the franja bearing) remains the eventual
   refinement if satellites ever need to sit deeper than the coast.
 - Tunables (`W_ANCHOR`, `ANCHOR_RADIUS`, affinity weights) are code constants
   pending an editorial tuning pass with real data.

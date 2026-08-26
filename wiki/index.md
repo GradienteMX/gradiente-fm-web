@@ -25,14 +25,14 @@
 - [[Vibe Spectrum]] — 0 glacial → 10 volcán, the core filter axis (mechanics)
 - [[Vibe Checks]] — crowd `[min, max]` votes per item, threshold-gated median fall-through
 - [[HP Curation System]] — decay-based prominence ranking
-- [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, listicle, partner
-- [[Partners Isolation]] — why partners never enter the main grid
+- [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, listicle, franja
+- [[Franjas Isolation]] — why franjas never enter the main grid
 - [[Editorial Flag]] — the one editor lever (boost spawn HP)
 - [[Pinned Hero]] — single slot, portada logic
 
 ## 30 — Pages
 
-- [[Home]] — `/` — pinned hero + curated mosaic + category rail + partners + calendar
+- [[Home]] — `/` — pinned hero + curated mosaic + category rail + franjas + calendar
 - [[Agenda]] — `/agenda` — events only, date-forward
 - [[Editorial]] — `/editorial` — editorials only
 - [[Mixes]] — `/mixes` — mixes only
@@ -40,11 +40,11 @@
 - [[Reviews]] — `/reviews` — reviews only
 - [[Articulos]] — `/articulos` — longform features only
 - [[Foro]] — `/foro` — imageboard-style discussion catalog (threads + flat replies)
-- [[Marketplace Page]] — `/marketplace` — public marketplace catalog; `?partner=<slug>` opens a partner's overlay
-- [[Partner Page]] — `/p/[slug]` — full partner dossier (Concept-1): stats · última actividad · próximos · archivo tabs · mercado · señales mockup · comunidad; the `[ENTRAR]` destination from [[PartnerOverlay]]
+- [[Marketplace Page]] — `/marketplace` — public marketplace catalog; `?franja=<slug>` opens a franja's overlay
+- [[Franja Page]] — `/f/[slug]` — full franja dossier (Concept-1): stats · última actividad · próximos · archivo tabs · mercado · señales mockup · comunidad; the `[ENTRAR]` destination from [[FranjaOverlay]]
 - [[Dashboard]] — `/dashboard` — auth-gated insider surface for composing new content (visual prototype)
 - [[Dashboard Drafts]] — `/dashboard/drafts` — table view of session items with edit / publish / delete actions
-- [[About]] — `/about` — identity surface: what Gradiente is + partner ecosystem
+- [[About]] — `/about` — identity surface: what Gradiente is + franja ecosystem
 - [[Manifesto]] — `/manifesto` — editorial declaration (placeholder copy until team writes)
 - [[Equipo]] — `/equipo` — collaborator list with GH handles + per-person bio placeholders
 
@@ -59,8 +59,8 @@
 - [[EventosRail]] — auto-scrolling horizontal marquee of scraped events under the hero; isolates the RA firehose from the editorial mosaic
 - [[ContentCard]] — sm/md/lg tiered card (image-forward); opens overlay on click
 - [[HeroCard]] — split portada hero; opens overlay on click
-- [[PartnersRail]] — chronological rail, never merges with grid
-- [[PartnerOverlay]] — standalone wide partner dossier peek (own chrome, NOT OverlayShell); catalog facts (vanity cut), folded-in //MERCADO, `[ENTRAR]` → [[Partner Page]]
+- [[FranjasRail]] — chronological rail, never merges with grid
+- [[FranjaOverlay]] — standalone wide franja dossier peek (own chrome, NOT OverlayShell); catalog facts (vanity cut), folded-in //MERCADO, `[ENTRAR]` → [[Franja Page]]
 - [[OverlayShell]] — frame chrome + CRT boot animation for every overlay
 - [[OverlayRouter]] — mount/exit state machine, picks type-specific overlay
 - [[ReaderOverlay]] — terminal reader for editorial / review / opinion / noticia
@@ -90,10 +90,10 @@
 - [[PollCardCanvas]] — card-level poll affordance; chip when closed, replaces card image with vote/results canvas when open
 - [[PollSection]] — overlay-level poll surface; permanent section inside the parent's content overlay
 - [[PollFieldset]] — shared poll-authoring section dropped into every dashboard compose form
-- [[PartnerApprovalsSection]] — admin-only marketplace approval table; toggles `marketplaceEnabled` per partner
-- [[MiPartnerSection]] — partner-team-only dashboard surface (Equipo + Marketplace tabs)
-- [[MarketplaceOverlay]] — per-partner full-screen overlay matching the reference screenshot
-- [[MarketplaceListingDetail]] — sub-overlay (z-60) opened from MarketplaceOverlay; gallery + embeds + meta; URL `?partner=&listing=`
+- [[FranjaApprovalsSection]] — admin-only marketplace approval table; toggles `marketplaceEnabled` per franja
+- [[MiFranjaSection]] — franja-team-only dashboard surface (Equipo + Marketplace tabs)
+- [[MarketplaceOverlay]] — per-franja full-screen overlay matching the reference screenshot
+- [[MarketplaceListingDetail]] — sub-overlay (z-60) opened from MarketplaceOverlay; gallery + embeds + meta; URL `?franja=&listing=`
 - [[MarketplaceCatalog]] · [[MarketplaceCard]] · [[MarketplaceListingCard]] · [[MarketplaceRail]] — public-side surfaces
 - [[DraggableCanvas]] — generic free-form file canvas (sessionStorage-namespaced positions, click-vs-drag threshold)
 - [[SaveItemButton]] — `★ GUARDAR / ★ GUARDADO` chip in OverlayShell header; login-gated
@@ -140,9 +140,9 @@
 
 ## 70 — Roadmap
 
-- [[Spatial Identity Canvas]] — global honeycomb rework: affinity-organized content terrain, semantic zoom into partner/user focus clusters, HL-driven polyhex weight, contextual identity strips; **working prototype at `/mapa`** (2026-08-18, lib/mapa engine + MapaCanvas)
+- [[Spatial Identity Canvas]] — global honeycomb rework: affinity-organized content terrain, semantic zoom into franja/user focus clusters, HL-driven polyhex weight, contextual identity strips; **working prototype at `/mapa`** (2026-08-18, lib/mapa engine + MapaCanvas)
 - [[Mapa Placement Rules]] — the ten placement rules for the `/mapa` honeycomb: mindshare geography, identity bearings, affinity precedence, focus reflow contract
-- [[Mobile Readiness]] — mobile-first pass (branch `mobile/ux-pass` → `main` 2026-06-28): entry/auth unblock, responsive 2-col mosaic, partners swipe-in drawer, overlay drift fix + mobile comments sheet; deferred-polish list inside
+- [[Mobile Readiness]] — mobile-first pass (branch `mobile/ux-pass` → `main` 2026-06-28): entry/auth unblock, responsive 2-col mosaic, franjas swipe-in drawer, overlay drift fix + mobile comments sheet; deferred-polish list inside
 - [[Backend Plan]] — current consolidated plan: Supabase + Vercel + R2 + GH Actions cron, magic-link signup + username/password login, invite-code beta gate, image auto-compression, foro 30-day retention, MWF scraper, SYSTEM UPDATE countdown
 - [[Scraper Pipeline]] — RA → review queue → live feed (core ingestion path)
 - [[Admin Dashboard]] — role-gated editor UI at `/admin` (real-backend version of [[Dashboard]])
@@ -158,19 +158,19 @@
 
 - [[FASCINOMA]] — the festival, role in the site
 - [[Club Japan]] — Monterrey 56, Roma Norte venue
-- [[Partners Ecosystem]] — labels, venues, promoters, sponsored
+- [[Franjas Ecosystem]] — labels, venues, promoters, sponsored
 
 ## 90 — Decisions
 
 - [[Guides Not Gatekeepers]] — the core editorial thesis; editorial content competes with scraped content in the main grid
-- [[Partner Authoring]] — approved partners author `evento` / `mix` / `noticia` into the feed; trust mediated by transparent attribution, not pre-publish review
+- [[Franja Authoring]] — approved franjas author `evento` / `mix` / `noticia` into the feed; trust mediated by transparent attribution, not pre-publish review
 - [[Why NGE Aesthetic]] — the founding design call
 - [[Size and Position as Only Signals]] — no stars, likes, or counters
 - [[No Algorithm]] — editorial curation over engagement metrics
 - [[Novelty Weighting]] — box-breaking under the hood: HP contribution scaled by content-novelty-to-user; reads stay global (No-Algorithm-safe)
 - [[Roles and Ranks]] — three identity axes (creation tier + mod/og flags + auto-rank), !/? reaction palette
 - [[Polls As Attachments]] — poll = optional ContentItem attachment, per-type variant resolution, card-as-canvas voting, anonymous-until-vote
-- [[Marketplace]] — partner-only commerce, dedicated `/marketplace` route, `partnerId` field + `partnerAdmin` flag, four-step approval flow
+- [[Marketplace]] — franja-only commerce, dedicated `/marketplace` route, `franjaId` field + `franjaAdmin` flag, four-step approval flow
 - [[Why Next.js App Router]] — server-first, file routing
 - [[Contained Single Surface]] — card click → overlay, never a route change
 - [[Reader Terminal Layout]] — long-form overlays are reading subsystems, flyer demotes to archival

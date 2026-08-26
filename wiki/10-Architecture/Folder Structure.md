@@ -30,7 +30,7 @@ espectro-fm-web/
 │   ├── ContentGrid.tsx     (mosaic, used)
 │   ├── ContentFeed.tsx     (linear, unused — see [[Dual Feed Systems]])
 │   ├── HeroCard.tsx
-│   ├── PartnersRail.tsx
+│   ├── FranjasRail.tsx
 │   └── cards/
 │       ├── ContentCard.tsx    (sm/md/lg tiered card, used)
 │       ├── EventCard.tsx      (unused)
