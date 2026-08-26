@@ -121,7 +121,7 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
             <span className="text-secondary">
               {invite.name || '—'} · {ROLE_LABEL[invite.role]}
               {invite.folio ? ` · FOLIO ${invite.folio}` : ''}
-              {invite.partner ? ` · ${invite.partner.title}` : ''}
+              {invite.franja ? ` · ${invite.franja.title}` : ''}
             </span>
             <span className="truncate text-muted">CÓDIGO · {invite.code}</span>
           </div>

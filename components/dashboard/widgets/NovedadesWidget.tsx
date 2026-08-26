@@ -3,11 +3,11 @@
 // ── FRANJAS (né NOVEDADES) — explicit follows, mechanical feed ──────────────
 //
 // Revision-2 point 13: the widget is FRANJAS — contents from who you follow —
-// and the header action opens the FRANJAS popup: your followed partners as
-// rows linking to their franja page (/p/<slug>, the partner page), plus the
+// and the header action opens the FRANJAS popup: your followed franjas as
+// rows linking to their franja page (/p/<slug>, the franja page), plus the
 // picker to follow more. The feed stays the same mechanical lens.
 //
-// Follows are EXPLICIT {kind:'partner'|'genre', key} choices in localStorage
+// Follows are EXPLICIT {kind:'franja'|'genre', key} choices in localStorage
 // (lib/dashboard/localState — private-class, per-uid). The widget WRITES
 // follows through localState (addFollow/removeFollow); the provider's
 // `follows` mirror updates through its subscription, and the feed is a pure
@@ -29,7 +29,7 @@
 // thumbs. The feed renders a DESIGN-FIXED number of whole 52px rows; overflow
 // is declared by ONE foot affordance (VerRow «VER MOSAICO ↗» → '/', the home
 // mosaic — surface-leaving, so ↗). Follow mechanics untouched; the picker
-// panel keeps its own scroll (FINAL_SPEC §3.5 mandates the FULL real partner
+// panel keeps its own scroll (FINAL_SPEC §3.5 mandates the FULL real franja
 // + genre catalogues inline — a chooser the user explicitly opened, not a
 // content portion).
 //
@@ -56,7 +56,7 @@ import { useOpenItem } from '@/lib/dashboard/openItem'
 import {
   countNewSince,
   filterByFollows,
-  type PartnerOption,
+  type FranjaOption,
 } from '@/lib/dashboard/novedades'
 import {
   addFollow,
@@ -138,19 +138,19 @@ function FollowChip({
   )
 }
 
-// The picker — real partner catalogue + real genre roots, nothing invented.
+// The picker — real franja catalogue + real genre roots, nothing invented.
 // `rail` = one horizontal scroll strip (the compact teaching row);
 // `panel` = wrapped sections inside the full widget body.
 function FollowPicker({
   layout,
   uid,
   follows,
-  partnerOptions,
+  franjaOptions,
 }: {
   layout: 'rail' | 'panel'
   uid: string | null
   follows: readonly DashboardFollow[]
-  partnerOptions: readonly PartnerOption[]
+  franjaOptions: readonly FranjaOption[]
 }) {
   const roots = getRootGenres()
   const isActive = useCallback(
@@ -172,13 +172,13 @@ function FollowPicker({
     [uid, follows],
   )
 
-  const partnerChips = partnerOptions.map((p) => (
+  const franjaChips = franjaOptions.map((p) => (
     <FollowChip
-      key={`partner:${p.id}`}
+      key={`franja:${p.id}`}
       label={p.title}
       imageUrl={p.imageUrl}
-      active={isActive({ kind: 'partner', key: p.id })}
-      onToggle={() => toggle({ kind: 'partner', key: p.id })}
+      active={isActive({ kind: 'franja', key: p.id })}
+      onToggle={() => toggle({ kind: 'franja', key: p.id })}
     />
   ))
   const genreChips = roots.map((g) => (
@@ -193,7 +193,7 @@ function FollowPicker({
   if (layout === 'rail') {
     return (
       <div className="flex min-w-0 items-center gap-2 overflow-x-auto py-1">
-        {partnerChips}
+        {franjaChips}
         {genreChips}
       </div>
     )
@@ -201,12 +201,12 @@ function FollowPicker({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-1">
-      {partnerOptions.length > 0 && (
+      {franjaOptions.length > 0 && (
         <section>
           <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
             COLECTIVOS Y ESPACIOS
           </h4>
-          <div className="flex flex-wrap gap-2">{partnerChips}</div>
+          <div className="flex flex-wrap gap-2">{franjaChips}</div>
         </section>
       )}
       <section>
@@ -302,15 +302,15 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
   const [deadSlug, setDeadSlug] = useState<string | null>(null)
   const watermark = useActivityWatermark(uid)
 
-  // Followed partners resolved against the real catalogue — each one links
-  // to its franja page (/p/<slug>, the partner page). Genre follows have no
+  // Followed franjas resolved against the real catalogue — each one links
+  // to its franja page (/p/<slug>, the franja page). Genre follows have no
   // page; they list as removable chips.
-  const followedPartners = useMemo(() => {
+  const followedFranjas = useMemo(() => {
     const keys = new Set(
-      ctx.follows.filter((f) => f.kind === 'partner').map((f) => f.key),
+      ctx.follows.filter((f) => f.kind === 'franja').map((f) => f.key),
     )
-    return ctx.partnerOptions.filter((p) => keys.has(p.id))
-  }, [ctx.follows, ctx.partnerOptions])
+    return ctx.franjaOptions.filter((p) => keys.has(p.id))
+  }, [ctx.follows, ctx.franjaOptions])
 
   const feed = useMemo(
     () => filterByFollows(ctx.novedades, ctx.follows),
@@ -348,7 +348,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
               layout="rail"
               uid={uid}
               follows={ctx.follows}
-              partnerOptions={ctx.partnerOptions}
+              franjaOptions={ctx.franjaOptions}
             />
           </div>
         )}
@@ -387,7 +387,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
           layout="panel"
           uid={uid}
           follows={ctx.follows}
-          partnerOptions={ctx.partnerOptions}
+          franjaOptions={ctx.franjaOptions}
         />
       ) : (
         <div className="flex h-full min-h-0 flex-col">
@@ -414,7 +414,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
       )}
     </WidgetFrame>
 
-    {/* ── The FRANJAS popup (point 13): who you follow, each partner row a
+    {/* ── The FRANJAS popup (point 13): who you follow, each franja row a
         door to its franja page, plus the picker to follow more. ─────────── */}
     {franjasOpen && (
       <DashPopup
@@ -423,13 +423,13 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
         onClose={() => setFranjasOpen(false)}
       >
         <div className="flex flex-col gap-5">
-          {followedPartners.length > 0 && (
+          {followedFranjas.length > 0 && (
             <section>
               <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
                 TUS FRANJAS
               </h4>
               <div className="flex flex-col">
-                {followedPartners.map((p) => (
+                {followedFranjas.map((p) => (
                   <div
                     key={p.id}
                     className="flex min-h-12 items-center gap-3 border-b border-ink py-1.5 last:border-b-0"
@@ -449,7 +449,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
                       type="button"
                       onClick={() => {
                         setFranjasOpen(false)
-                        router.push(`/p/${p.slug}`)
+                        router.push(`/f/${p.slug}`)
                       }}
                       data-cue="tick"
                       className={`flex min-h-11 shrink-0 items-center gap-1.5 font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline md:min-h-0 ${FOCUS_RING}`}
@@ -469,7 +469,7 @@ export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
               layout="panel"
               uid={uid}
               follows={ctx.follows}
-              partnerOptions={ctx.partnerOptions}
+              franjaOptions={ctx.franjaOptions}
             />
           </section>
         </div>

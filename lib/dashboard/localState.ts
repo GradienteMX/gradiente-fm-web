@@ -20,8 +20,8 @@
 //                PK(user_id, entity_id))
 // with self-only RLS cloned from `user_saves_self_only`, POST/DELETE
 // /api/follows/[entityId] cloned from the saves routes, and a followsCache
-// module cloned from lib/itemSavesCache. Partners are items (type='partner'),
-// not entities, so the migration either mints an entity per partner or adds a
+// module cloned from lib/itemSavesCache. Franjas are items (type='franja'),
+// not entities, so the migration either mints an entity per franja or adds a
 // second target column. On first boot after the table exists, seed it from
 // this store, then keep localStorage as a mirror.
 //
@@ -29,7 +29,7 @@
 // unread count and ACTIVIDAD's badge both derive from this key — never a
 // second per-row read state.
 
-export type FollowKind = 'partner' | 'genre'
+export type FollowKind = 'franja' | 'genre'
 
 export interface DashboardFollow {
   kind: FollowKind
@@ -99,7 +99,7 @@ export function readFollows(uid: string): DashboardFollow[] {
     return parsed.follows.filter(
       (f): f is DashboardFollow =>
         !!f &&
-        (f.kind === 'partner' || f.kind === 'genre') &&
+        (f.kind === 'franja' || f.kind === 'genre') &&
         typeof f.key === 'string' &&
         f.key.length > 0,
     )

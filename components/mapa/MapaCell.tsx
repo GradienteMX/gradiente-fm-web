@@ -37,7 +37,7 @@ const TYPE_LABEL: Record<ContentType, string> = {
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
   listicle: 'LISTA',
-  partner: 'PARTNER',
+  franja: 'FRANJA',
 }
 
 // Archivo Vivo era treatment: aged-paper rim + //ARCHIVO chip. Era reads at
@@ -70,7 +70,7 @@ function metaLine(item: ContentItem): string {
       return item.author ?? fmtDateShort(item.publishedAt)
     case 'listicle':
       return item.author ?? 'LISTA'
-    case 'partner':
+    case 'franja':
       return ''
   }
 }
@@ -79,9 +79,9 @@ export interface MapaCellProps {
   placed: PlacedItem
   /** Roving tabindex — exactly one cell is tabbable at a time. */
   tabbable: boolean
-  /** Partner focus: this cell is NOT attributed to the focused identity. */
+  /** Franja focus: this cell is NOT attributed to the focused identity. */
   dimmed: boolean
-  /** Partner focus: this cell IS attributed to the focused identity. */
+  /** Franja focus: this cell IS attributed to the focused identity. */
   emphasized: boolean
   /** Category deactivated via the visibility column — fade out in place. */
   hidden: boolean

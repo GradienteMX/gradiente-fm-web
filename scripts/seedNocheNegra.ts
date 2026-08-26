@@ -3,7 +3,7 @@
 // ============================================================================
 // Promotes lib/nocheNegraSeed.ts from a dev-only /mapa demo into real rows:
 // 24 content items (seed=true) + 8 marketplace listings, and ENRICHES the
-// already-existing `pa-noche-negra` partner row in place.
+// already-existing `pa-noche-negra` franja row in place.
 //
 //   npx tsx scripts/seedNocheNegra.ts            # dry run — report only
 //   npx tsx scripts/seedNocheNegra.ts --apply    # write to prod
@@ -25,7 +25,7 @@
 //     batch, consistent with the other 160 seed rows, and makes --revert a
 //     precise scoped delete. Seed rows are fully public; the flag only hides
 //     them from an author's own "Publicados" surface (lib/data/items.ts).
-//   · The partner row is UPDATEd, never deleted/reinserted: it is a real
+//   · The franja row is UPDATEd, never deleted/reinserted: it is a real
 //     prod row (created 2026-06-23, seed=false, accrued HP). We add the
 //     dossier + marketplace fields and leave id/slug/title/image_url/
 //     published_at/hp/seed/created_at untouched.
@@ -40,7 +40,7 @@ import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
 import { resolve } from 'node:path'
 
-import { NOCHE_NEGRA_ITEMS, NOCHE_NEGRA_PARTNER } from '../lib/nocheNegraSeed'
+import { NOCHE_NEGRA_ITEMS, NOCHE_NEGRA_FRANJA } from '../lib/nocheNegraSeed'
 import type { ContentItem } from '../lib/types'
 import type { Database } from '../lib/supabase/database.types'
 
@@ -61,14 +61,14 @@ const supabase = createClient<Database>(SUPABASE_URL, SERVICE_ROLE_KEY, {
 type ItemInsert = Database['public']['Tables']['items']['Insert']
 type ListingInsert = Database['public']['Tables']['marketplace_listings']['Insert']
 
-const PARTNER_ID = NOCHE_NEGRA_PARTNER.id
+const FRANJA_ID = NOCHE_NEGRA_FRANJA.id
 const APPLY = process.argv.includes('--apply')
 const REVERT = process.argv.includes('--revert')
 
 // ── Mapping ─────────────────────────────────────────────────────────────────
 //
 // Extends the local itemToRow in scripts/seed.ts with the columns this
-// catalogue actually uses that the older mapper predates: partner_id (0015),
+// catalogue actually uses that the older mapper predates: franja_id (0015),
 // links (0041), verified / featured_item_id (0040), and the review subject
 // fields format / subject_kind / country / year. Keep in lockstep with
 // contentItemToRow in lib/data/items.ts — that one can't be imported here
@@ -118,9 +118,9 @@ function itemToRow(item: ContentItem): ItemInsert {
     article_body: (item.articleBody ?? []) as unknown as ItemInsert['article_body'],
     footnotes: (item.footnotes ?? []) as unknown as ItemInsert['footnotes'],
     hero_caption: item.heroCaption ?? null,
-    partner_kind: item.partnerKind ?? null,
-    partner_url: item.partnerUrl ?? null,
-    partner_last_updated: item.partnerLastUpdated ?? null,
+    franja_kind: item.franjaKind ?? null,
+    franja_url: item.franjaUrl ?? null,
+    franja_last_updated: item.franjaLastUpdated ?? null,
     marketplace_enabled: item.marketplaceEnabled ?? false,
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
@@ -131,7 +131,7 @@ function itemToRow(item: ContentItem): ItemInsert {
     seed: true,
     // Columns the seed.ts mapper predates — cast where the generated types
     // are still stale (same pattern as contentItemToRow).
-    ...(item.partnerId !== undefined ? { partner_id: item.partnerId } : {}),
+    ...(item.franjaId !== undefined ? { franja_id: item.franjaId } : {}),
     links: (item.links ?? []) as unknown as object,
     format: item.format ?? null,
     subject_kind: item.subjectKind ?? null,
@@ -142,10 +142,10 @@ function itemToRow(item: ContentItem): ItemInsert {
   } as ItemInsert
 }
 
-function listingToRow(partnerId: string, l: NonNullable<ContentItem['marketplaceListings']>[number]): ListingInsert {
+function listingToRow(franjaId: string, l: NonNullable<ContentItem['marketplaceListings']>[number]): ListingInsert {
   return {
     id: l.id,
-    partner_id: partnerId,
+    franja_id: franjaId,
     title: l.title,
     category: l.category,
     subcategory: l.subcategory ?? null,
@@ -165,26 +165,26 @@ function listingToRow(partnerId: string, l: NonNullable<ContentItem['marketplace
   } as ListingInsert
 }
 
-// Dossier + marketplace fields added to the EXISTING partner row. Deliberately
+// Dossier + marketplace fields added to the EXISTING franja row. Deliberately
 // omits id/slug/title/image_url/published_at/hp/seed/created_by — those belong
 // to the real prod row and must survive this import untouched.
-const partnerPatch = {
-  subtitle: NOCHE_NEGRA_PARTNER.subtitle ?? null,
-  partner_kind: NOCHE_NEGRA_PARTNER.partnerKind ?? null,
-  partner_url: NOCHE_NEGRA_PARTNER.partnerUrl ?? null,
-  partner_last_updated: NOCHE_NEGRA_PARTNER.partnerLastUpdated ?? null,
-  links: (NOCHE_NEGRA_PARTNER.links ?? []) as unknown as object,
-  vibe_min: NOCHE_NEGRA_PARTNER.vibeMin,
-  vibe_max: NOCHE_NEGRA_PARTNER.vibeMax,
-  marketplace_enabled: NOCHE_NEGRA_PARTNER.marketplaceEnabled ?? false,
-  marketplace_description: NOCHE_NEGRA_PARTNER.marketplaceDescription ?? null,
-  marketplace_location: NOCHE_NEGRA_PARTNER.marketplaceLocation ?? null,
-  marketplace_currency: NOCHE_NEGRA_PARTNER.marketplaceCurrency ?? null,
+const franjaPatch = {
+  subtitle: NOCHE_NEGRA_FRANJA.subtitle ?? null,
+  franja_kind: NOCHE_NEGRA_FRANJA.franjaKind ?? null,
+  franja_url: NOCHE_NEGRA_FRANJA.franjaUrl ?? null,
+  franja_last_updated: NOCHE_NEGRA_FRANJA.franjaLastUpdated ?? null,
+  links: (NOCHE_NEGRA_FRANJA.links ?? []) as unknown as object,
+  vibe_min: NOCHE_NEGRA_FRANJA.vibeMin,
+  vibe_max: NOCHE_NEGRA_FRANJA.vibeMax,
+  marketplace_enabled: NOCHE_NEGRA_FRANJA.marketplaceEnabled ?? false,
+  marketplace_description: NOCHE_NEGRA_FRANJA.marketplaceDescription ?? null,
+  marketplace_location: NOCHE_NEGRA_FRANJA.marketplaceLocation ?? null,
+  marketplace_currency: NOCHE_NEGRA_FRANJA.marketplaceCurrency ?? null,
 }
 
 const itemRows = NOCHE_NEGRA_ITEMS.map(itemToRow)
-const listingRows = (NOCHE_NEGRA_PARTNER.marketplaceListings ?? []).map((l) =>
-  listingToRow(PARTNER_ID, l),
+const listingRows = (NOCHE_NEGRA_FRANJA.marketplaceListings ?? []).map((l) =>
+  listingToRow(FRANJA_ID, l),
 )
 const itemIds = itemRows.map((r) => r.id)
 const listingIds = listingRows.map((r) => r.id as string)
@@ -199,7 +199,7 @@ function report() {
   console.log('Noche Negra → real rows')
   console.log(`  content items : ${itemRows.length}  (${Object.entries(byType).map(([t, n]) => `${t} ${n}`).join(', ')})`)
   console.log(`  listings      : ${listingRows.length}`)
-  console.log(`  partner row   : ${PARTNER_ID} (UPDATE in place, marketplace_enabled=${partnerPatch.marketplace_enabled})`)
+  console.log(`  franja row   : ${FRANJA_ID} (UPDATE in place, marketplace_enabled=${franjaPatch.marketplace_enabled})`)
   const noBody = itemRows.filter(
     (r) =>
       ['noticia', 'review', 'opinion', 'listicle', 'articulo', 'editorial'].includes(r.type as string) &&
@@ -233,12 +233,12 @@ async function apply() {
   const { error: listErr } = await supabase.from('marketplace_listings').insert(listingRows)
   if (listErr) throw listErr
 
-  console.log('▸ Enriching the partner row…')
-  const { error: partnerErr } = await supabase
+  console.log('▸ Enriching the franja row…')
+  const { error: franjaErr } = await supabase
     .from('items')
-    .update(partnerPatch as never)
-    .eq('id', PARTNER_ID)
-  if (partnerErr) throw partnerErr
+    .update(franjaPatch as never)
+    .eq('id', FRANJA_ID)
+  if (franjaErr) throw franjaErr
 
   console.log('\n✓ Applied.')
 }
@@ -246,12 +246,12 @@ async function apply() {
 async function revert() {
   console.log('\n▸ Removing imported rows…')
   await clearPrevious()
-  console.log('▸ Resetting the partner row to its pre-import stub…')
+  console.log('▸ Resetting the franja row to its pre-import stub…')
   const { error } = await supabase
     .from('items')
     .update({
       subtitle: null,
-      partner_url: null,
+      franja_url: null,
       links: [] as unknown as object,
       vibe_min: 5,
       vibe_max: 5,
@@ -260,7 +260,7 @@ async function revert() {
       marketplace_location: null,
       marketplace_currency: null,
     } as never)
-    .eq('id', PARTNER_ID)
+    .eq('id', FRANJA_ID)
   if (error) throw error
   console.log('\n✓ Reverted.')
 }
@@ -277,11 +277,11 @@ async function main() {
   const { count: items } = await supabase
     .from('items')
     .select('*', { count: 'exact', head: true })
-    .eq('partner_id', PARTNER_ID)
+    .eq('franja_id', FRANJA_ID)
   const { count: listings } = await supabase
     .from('marketplace_listings')
     .select('*', { count: 'exact', head: true })
-    .eq('partner_id', PARTNER_ID)
+    .eq('franja_id', FRANJA_ID)
   console.log(`  verified in DB → ${items} items attributed, ${listings} listings`)
 }
 

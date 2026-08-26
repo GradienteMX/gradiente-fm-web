@@ -8,7 +8,7 @@
 // scenario switcher. Until the shell/grid packages land, a plain diagnostic
 // dump renders every context slice so cadences/presence/errors are auditable.
 //
-// Initial scenario can be forced via ?scenario=<fresh|rich|partner|admin|
+// Initial scenario can be forced via ?scenario=<fresh|rich|franja|admin|
 // smallN|error> (read after mount to keep hydration clean).
 
 import { useEffect, useState } from 'react'
@@ -91,10 +91,10 @@ function SliceDump() {
         <SliceBlock name="TROPHIES" value={data.trophies} />
         <SliceBlock name="ACTIVITY" value={data.activity} />
         <SliceBlock name="NOVEDADES (POOL)" value={data.novedades} />
-        <SliceBlock name="PARTNER OPTIONS" value={data.partnerOptions} />
+        <SliceBlock name="FRANJA OPTIONS" value={data.franjaOptions} />
         <SliceBlock name="EVENTS" value={data.events} />
         <SliceBlock name="VIBE SELF" value={data.vibeSelf} />
-        <SliceBlock name="PARTNER" value={data.partner} />
+        <SliceBlock name="FRANJA" value={data.franja} />
         <SliceBlock name="FOLLOWS" value={data.follows} />
         <SliceBlock name="LAYOUT META" value={data.layoutMeta} />
       </div>

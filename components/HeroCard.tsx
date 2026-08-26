@@ -23,7 +23,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
   listicle: 'LISTA',
-  partner: 'PARTNER',
+  franja: 'FRANJA',
 }
 
 interface HeroCardProps {

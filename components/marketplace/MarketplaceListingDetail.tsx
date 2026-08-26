@@ -21,9 +21,9 @@ import { ListingComments } from './ListingComments'
 // ── MarketplaceListingDetail ───────────────────────────────────────────────
 //
 // Sub-overlay opened from [[MarketplaceOverlay]] when the URL has both
-// `?partner=<slug>&listing=<id>`. Stacks above the partner overlay (z-60 vs
-// z-50). ESC / [× CERRAR] strips `listing` only — `partner` stays so the
-// closer drops back into the partner card overlay, not the catalog grid.
+// `?franja=<slug>&listing=<id>`. Stacks above the franja overlay (z-60 vs
+// z-50). ESC / [× CERRAR] strips `listing` only — `franja` stays so the
+// closer drops back into the franja card overlay, not the catalog grid.
 //
 // Layout:
 //
@@ -102,8 +102,8 @@ function waHref(raw: string, text: string): string {
 
 interface Props {
   listing: MarketplaceListing
-  partner: ContentItem
-  // 1-based numbered position inside the partner's listings (matches the card
+  franja: ContentItem
+  // 1-based numbered position inside the franja's listings (matches the card
   // grid badge). Used in the chrome strip header.
   index: number
   onClose: () => void
@@ -111,7 +111,7 @@ interface Props {
 
 export function MarketplaceListingDetail({
   listing,
-  partner,
+  franja,
   index,
   onClose,
 }: Props) {
@@ -138,12 +138,12 @@ export function MarketplaceListingDetail({
     }).catch(() => {})
   }, [listing.id])
 
-  // Clamp activeImage if the partner team trimmed the gallery while open.
+  // Clamp activeImage if the franja team trimmed the gallery while open.
   const safeActive = Math.min(activeImage, Math.max(0, listing.images.length - 1))
 
   const status = listing.status
   const statusColor = STATUS_COLOR[status]
-  const currency = partner.marketplaceCurrency ?? ''
+  const currency = franja.marketplaceCurrency ?? ''
   const Tag = listing.shippingMode ? SHIPPING_ICON[listing.shippingMode] : null
 
   // First YouTube embed → inline player. Other embeds stay as link-out chips.
@@ -155,7 +155,7 @@ export function MarketplaceListingDetail({
 
   return (
     <div
-      // z-60 stacks above MarketplaceOverlay (z-50) so the partner overlay
+      // z-60 stacks above MarketplaceOverlay (z-50) so the franja overlay
       // stays visible under the backdrop — closing this returns there.
       className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-6 overlay-backdrop-in"
       onClick={onClose}
@@ -174,7 +174,7 @@ export function MarketplaceListingDetail({
         style={{ maxHeight: 'min(94vh, 920px)' }}
       >
         <Chrome
-          partner={partner}
+          franja={franja}
           listing={listing}
           index={index}
           onClose={onClose}
@@ -196,7 +196,7 @@ export function MarketplaceListingDetail({
               className="self-start border px-2 py-0.5 font-mono text-[9px] tracking-widest"
               style={{ borderColor: '#FBBF24', color: '#FBBF24' }}
             >
-              ★ MARKET · {partner.title.toUpperCase()}
+              ★ MARKET · {franja.title.toUpperCase()}
             </span>
 
             <div className="flex flex-col gap-1">
@@ -406,16 +406,16 @@ export function MarketplaceListingDetail({
                 className="inline-flex w-fit items-center gap-2 border border-border bg-elevated/30 px-3 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-sys-orange hover:text-sys-orange"
               >
                 <ArrowLeft size={11} strokeWidth={1.5} />
-                {partner.title.toUpperCase()}
+                {franja.title.toUpperCase()}
               </button>
-              {partner.partnerUrl && (
+              {franja.franjaUrl && (
                 <a
-                  href={partner.partnerUrl}
+                  href={franja.franjaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex w-fit items-center gap-1.5 font-mono text-[9px] tracking-widest text-muted transition-colors hover:text-sys-orange"
                 >
-                  {partner.partnerUrl.replace(/^https?:\/\//, '')}
+                  {franja.franjaUrl.replace(/^https?:\/\//, '')}
                   <ExternalLink size={9} />
                 </a>
               )}
@@ -438,12 +438,12 @@ export function MarketplaceListingDetail({
 // ── Chrome (top status bar) ────────────────────────────────────────────────
 
 function Chrome({
-  partner,
+  franja,
   listing,
   index,
   onClose,
 }: {
-  partner: ContentItem
+  franja: ContentItem
   listing: MarketplaceListing
   index: number
   onClose: () => void
@@ -453,7 +453,7 @@ function Chrome({
       <div className="flex min-w-0 items-center gap-3 font-mono text-[10px] tracking-widest">
         <span style={{ color: '#F97316' }}>//LIST</span>
         <span className="hidden sm:inline truncate text-muted">
-          {partner.slug.toUpperCase()}/{String(index).padStart(2, '0')}
+          {franja.slug.toUpperCase()}/{String(index).padStart(2, '0')}
         </span>
         <span className="text-muted tabular-nums">
           ID·{listing.id.slice(-8).toUpperCase()}
@@ -464,7 +464,7 @@ function Chrome({
           type="button"
           onClick={onClose}
           className="hidden items-center gap-1.5 border border-border/70 bg-black/40 px-2.5 py-1 transition-colors hover:border-sys-orange hover:text-sys-orange sm:flex"
-          aria-label={`Volver a ${partner.title}`}
+          aria-label={`Volver a ${franja.title}`}
         >
           <ArrowLeft size={11} strokeWidth={1.5} />
           VOLVER

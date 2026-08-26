@@ -1,19 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// /api/partners/[id]
-// Partner-side API (distinct from /api/admin/partners/[id] which is admin-
-// only). Gated on canManagePartner: site admin OR a team member whose
-// users.partner_id matches the requested partner. Used by the dashboard
-// MiPartnerSection so partner team members can fetch + edit their own
-// partner without needing admin role.
+// /api/franjas/[id]
+// Franja-side API (distinct from /api/admin/partners/[id] which is admin-
+// only). Gated on canManageFranja: site admin OR a team member whose
+// users.franja_id matches the requested franja. Used by the dashboard
+// MiFranjaSection so franja team members can fetch + edit their own
+// franja without needing admin role.
 //
-// PATCH whitelist is narrower than the admin route — partner team can
+// PATCH whitelist is narrower than the admin route — franja team can
 // edit marketplace fields + the public-facing image / external URL.
-// Structural fields (title, slug, partner_kind) stay admin-only.
+// Structural fields (title, slug, franja_kind) stay admin-only.
 
 interface UpdateBody {
-  partner_url?: string | null
+  franja_url?: string | null
   image_url?: string
   marketplace_enabled?: boolean
   marketplace_description?: string | null
@@ -21,9 +21,9 @@ interface UpdateBody {
   marketplace_currency?: string | null
 }
 
-async function gatePartnerAccess(
+async function gateFranjaAccess(
   supabase: ReturnType<typeof createClient>,
-  partnerId: string,
+  franjaId: string,
 ) {
   const {
     data: { user },
@@ -33,14 +33,14 @@ async function gatePartnerAccess(
   }
   const { data: profile } = await supabase
     .from('users')
-    .select('role, partner_id')
+    .select('role, franja_id')
     .eq('id', user.id)
     .maybeSingle()
   if (!profile) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
-  // canManagePartner: site admin OR any team member of this partner
-  const allowed = profile.role === 'admin' || profile.partner_id === partnerId
+  // canManageFranja: site admin OR any team member of this franja
+  const allowed = profile.role === 'admin' || profile.franja_id === franjaId
   if (!allowed) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
@@ -52,21 +52,21 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   const supabase = createClient()
-  const gate = await gatePartnerAccess(supabase, params.id)
+  const gate = await gateFranjaAccess(supabase, params.id)
   if ('error' in gate) return gate.error
 
   const { data, error } = await supabase
     .from('items')
     .select(
-      'id, slug, title, partner_kind, partner_url, image_url, vibe_min, vibe_max, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, type, marketplace_listings(*)',
+      'id, slug, title, franja_kind, franja_url, image_url, vibe_min, vibe_max, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, type, marketplace_listings(*)',
     )
     .eq('id', params.id)
-    .eq('type', 'partner')
+    .eq('type', 'franja')
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: 'Partner not found' }, { status: 404 })
-  return NextResponse.json({ partner: data })
+  if (!data) return NextResponse.json({ error: 'Franja not found' }, { status: 404 })
+  return NextResponse.json({ franja: data })
 }
 
 export async function PATCH(
@@ -74,7 +74,7 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   const supabase = createClient()
-  const gate = await gatePartnerAccess(supabase, params.id)
+  const gate = await gateFranjaAccess(supabase, params.id)
   if ('error' in gate) return gate.error
 
   let body: UpdateBody
@@ -89,8 +89,8 @@ export async function PATCH(
   // clear them.
   const patch: Record<string, unknown> = {}
 
-  if (body.partner_url !== undefined) {
-    patch.partner_url = body.partner_url?.trim() || null
+  if (body.franja_url !== undefined) {
+    patch.franja_url = body.franja_url?.trim() || null
   }
   if (body.image_url !== undefined) {
     const u = body.image_url.trim()
@@ -99,7 +99,7 @@ export async function PATCH(
   }
   if (body.marketplace_enabled !== undefined) {
     // Marketplace activation flips visibility on /marketplace + the home
-    // rail. Site admins typically own this lever; partner team can also
+    // rail. Site admins typically own this lever; franja team can also
     // toggle it for self-service activation/deactivation. If we ever want
     // to lock activation to admins only, narrow the gate here.
     patch.marketplace_enabled = !!body.marketplace_enabled
@@ -114,18 +114,18 @@ export async function PATCH(
     patch.marketplace_currency = body.marketplace_currency?.trim() || null
   }
 
-  // partner_last_updated bumps on every PATCH so the rail re-orders the
-  // edited partner toward the front (the rail orders by this field).
-  patch.partner_last_updated = new Date().toISOString()
+  // franja_last_updated bumps on every PATCH so the rail re-orders the
+  // edited franja toward the front (the rail orders by this field).
+  patch.franja_last_updated = new Date().toISOString()
 
   const { data, error } = await supabase
     .from('items')
     .update(patch)
     .eq('id', params.id)
-    .eq('type', 'partner')
+    .eq('type', 'franja')
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ partner: data })
+  return NextResponse.json({ franja: data })
 }

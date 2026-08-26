@@ -39,7 +39,7 @@ import {
 import {
   compactLayout,
   neighborItemId,
-  partnerClusters,
+  franjaClusters,
   placeItems,
   sizeTiers,
 } from '@/lib/mapa/layout'
@@ -68,12 +68,12 @@ function makeItem(overrides: Partial<ContentItem>): ContentItem {
 function makeDataset(): ContentItem[] {
   seq = 0
   const items: ContentItem[] = []
-  // A partner-attributed cluster (explicit attribution, mirrors prod).
+  // A franja-attributed cluster (explicit attribution, mirrors prod).
   for (let i = 0; i < 3; i++) {
     items.push(
       makeItem({
         type: 'evento',
-        partnerId: 'pa-club-japan',
+        franjaId: 'pa-club-japan',
         venue: 'Club Japan',
         venueCity: 'CDMX',
         genres: ['hard-techno'],
@@ -85,7 +85,7 @@ function makeDataset(): ContentItem[] {
   items.push(
     makeItem({
       type: 'mix',
-      partnerId: 'pa-club-japan',
+      franjaId: 'pa-club-japan',
       genres: ['techno-hard'],
       imageUrl: '/flyers/x.jpg',
     }),
@@ -110,13 +110,13 @@ function makeDataset(): ContentItem[] {
   return items
 }
 
-// The partner row itself (never terrain).
-const PARTNER_ROW = makeItem({
+// The franja row itself (never terrain).
+const FRANJA_ROW = makeItem({
   id: 'pa-club-japan',
   slug: 'club-japan',
-  type: 'partner',
+  type: 'franja',
   title: 'Club Japan',
-  partnerKind: 'venue',
+  franjaKind: 'venue',
 })
 
 // ── hex geometry ─────────────────────────────────────────────────────────────
@@ -246,10 +246,10 @@ describe('polyhex', () => {
 // ── affinity ─────────────────────────────────────────────────────────────────
 
 describe('affinity', () => {
-  it('same explicit partner outranks unrelated content', () => {
+  it('same explicit franja outranks unrelated content', () => {
     seq = 100
-    const a = extractFeatures(makeItem({ partnerId: 'pa-x' }))
-    const b = extractFeatures(makeItem({ partnerId: 'pa-x' }))
+    const a = extractFeatures(makeItem({ franjaId: 'pa-x' }))
+    const b = extractFeatures(makeItem({ franjaId: 'pa-x' }))
     const c = extractFeatures(makeItem({}))
     assert.ok(affinityScore(a, b) > affinityScore(a, c) + 5)
   })
@@ -569,17 +569,17 @@ describe('layout fingerprint', () => {
   })
 })
 
-// ── partner clusters + keyboard navigation ───────────────────────────────────
+// ── franja clusters + keyboard navigation ───────────────────────────────────
 
-describe('partner focus', () => {
+describe('franja focus', () => {
   it('cluster contains exactly the explicitly attributed items', () => {
     const items = makeDataset()
     const layout = placeItems(items, NOW)
-    const clusters = partnerClusters(layout, [PARTNER_ROW])
+    const clusters = franjaClusters(layout, [FRANJA_ROW])
     assert.equal(clusters.length, 1)
     const cluster = clusters[0]
     const expected = items
-      .filter((i) => i.partnerId === 'pa-club-japan')
+      .filter((i) => i.franjaId === 'pa-club-japan')
       .map((i) => i.id)
       .sort()
     assert.deepEqual([...cluster.itemIds].sort(), expected)
@@ -588,15 +588,15 @@ describe('partner focus', () => {
 
   it('attributed items form a contiguous cluster (affinity wins)', () => {
     const layout = placeItems(makeDataset(), NOW)
-    const [cluster] = partnerClusters(layout, [PARTNER_ROW])
+    const [cluster] = franjaClusters(layout, [FRANJA_ROW])
     assert.ok(isConnected(cluster.cells))
   })
 
-  it('a partner with no attributed items gets no cluster', () => {
+  it('a franja with no attributed items gets no cluster', () => {
     const layout = placeItems(makeDataset(), NOW)
     seq = 700
-    const emptyPartner = makeItem({ id: 'pa-empty', type: 'partner' })
-    assert.equal(partnerClusters(layout, [emptyPartner]).length, 0)
+    const emptyFranja = makeItem({ id: 'pa-empty', type: 'franja' })
+    assert.equal(franjaClusters(layout, [emptyFranja]).length, 0)
   })
 
   it('neighborItemId walks to another item and never returns self', () => {

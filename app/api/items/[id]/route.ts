@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 //
 // Cascades per the FK definitions in 0001_init: comments, user_saves,
 // polls, vibe_checks, hp_events tied to this item all cascade-delete.
-// Marketplace listings cascade as well when type === 'partner'.
+// Marketplace listings cascade as well when type === 'franja'.
 
 export async function DELETE(
   _request: NextRequest,

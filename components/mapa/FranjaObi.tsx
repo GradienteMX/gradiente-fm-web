@@ -1,6 +1,6 @@
 'use client'
 
-// Spatial Identity Canvas — partner identity strip (obi).
+// Spatial Identity Canvas — franja identity strip (obi).
 // Modeled on a Japanese vinyl obi (reference: the Club Japan obi mock,
 // 2026-08-20): aged-paper band, large logo up top, a dominant VERTICAL
 // wordmark flanked by ornamental katakana and a red seal, then the info
@@ -13,16 +13,16 @@
 import Link from 'next/link'
 import { Facebook, Globe, Instagram, X, Youtube } from 'lucide-react'
 import type { ContentItem } from '@/lib/types'
-import type { PartnerCluster } from '@/lib/mapa/layout'
-import { KIND_LABEL } from '@/components/overlay/PartnerOverlay'
+import type { FranjaCluster } from '@/lib/mapa/layout'
+import { KIND_LABEL } from '@/components/overlay/FranjaOverlay'
 import { fmtDateShort } from '@/lib/utils'
 
 const PAPER = '#EDE6D4'
 const INK = '#111111'
 const SEAL = '#C41E1E'
 
-// Partner-customizable ornament within the controlled Gradiente template
-// (spec allows per-partner skinning). Presentation-only strings — not
+// Franja-customizable ornament within the controlled Gradiente template
+// (spec allows per-franja skinning). Presentation-only strings — not
 // content, not data.
 const OBI_KATAKANA: Record<string, string> = {
   'club-japan': 'クラブ・ジャパン',
@@ -30,23 +30,22 @@ const OBI_KATAKANA: Record<string, string> = {
   naafi: 'ナーフィ',
 }
 
-// Kind-derived ornamental fallback so every partner wears the obi's
+// Kind-derived ornamental fallback so every franja wears the obi's
 // Japanese accent even without a bespoke transliteration.
 const KIND_KATAKANA: Record<string, string> = {
   venue: 'クラブ',
   club: 'クラブ',
   promoter: 'プロモーター',
-  promo: 'プロモ',
   label: 'レーベル',
   colectivo: 'コレクティボ',
   festival: 'フェスティバル',
   dealer: 'ディーラー',
   medios: 'メディア',
   'mix-series': 'ミックス',
-  sponsored: 'スポンサー',
+  plataforma: 'プラットフォーム',
 }
 
-// Derive a display label for the partner's contact link from real data.
+// Derive a display label for the franja's contact link from real data.
 // instagram.com/<handle> → @HANDLE; anything else → bare hostname.
 function contactLabel(url: string): string {
   try {
@@ -62,8 +61,8 @@ function contactLabel(url: string): string {
   }
 }
 
-// Social platform detection for the icon row — from the partner's real
-// links (ContentItem.links) + partnerUrl, deduped by URL.
+// Social platform detection for the icon row — from the franja's real
+// links (ContentItem.links) + franjaUrl, deduped by URL.
 type SocialPlatform =
   | 'instagram'
   | 'x'
@@ -112,32 +111,32 @@ function SocialIcon({ platform }: { platform: SocialPlatform }) {
   }
 }
 
-export interface PartnerObiProps {
-  cluster: PartnerCluster
-  /** The focused partner's member items — contextual per-kind data source. */
+export interface FranjaObiProps {
+  cluster: FranjaCluster
+  /** The focused franja's member items — contextual per-kind data source. */
   items: ContentItem[]
   /** Other clustered identities, most affine first — the carousel order. */
-  relatedPartners: { slug: string; title: string }[]
-  onFocusPartner: (slug: string) => void
+  relatedFranjas: { slug: string; title: string }[]
+  onFocusFranja: (slug: string) => void
   onZoomGlobal: () => void
 }
 
-export function PartnerObi({
+export function FranjaObi({
   cluster,
   items,
-  relatedPartners,
-  onFocusPartner,
+  relatedFranjas,
+  onFocusFranja,
   onZoomGlobal,
-}: PartnerObiProps) {
-  const p = cluster.partner
-  const kind = p.partnerKind ? KIND_LABEL[p.partnerKind] : 'PARTNER'
+}: FranjaObiProps) {
+  const p = cluster.franja
+  const kind = p.franjaKind ? KIND_LABEL[p.franjaKind] : 'FRANJA'
   const katakana =
     OBI_KATAKANA[p.slug] ??
-    (p.partnerKind ? KIND_KATAKANA[p.partnerKind] : undefined)
+    (p.franjaKind ? KIND_KATAKANA[p.franjaKind] : undefined)
   const location = p.marketplaceLocation ?? p.subtitle ?? null
   const count = cluster.itemIds.length
 
-  // ── Contextual rows per partner kind — all from real member data ─────────
+  // ── Contextual rows per franja kind — all from real member data ─────────
   const eventos = items
     .filter((i) => i.type === 'evento' && i.date)
     .sort((a, b) => (a.date! < b.date! ? -1 : 1))
@@ -148,12 +147,11 @@ export function PartnerObi({
   const latestPast = [...eventos]
     .reverse()
     .find((e) => new Date(e.date!).getTime() < nowMs)
-  const isVenue = p.partnerKind === 'venue' || p.partnerKind === 'club'
+  const isVenue = p.franjaKind === 'venue' || p.franjaKind === 'club'
   const isPromoter =
-    p.partnerKind === 'promoter' ||
-    p.partnerKind === 'colectivo' ||
-    p.partnerKind === 'festival' ||
-    p.partnerKind === 'promo'
+    p.franjaKind === 'promoter' ||
+    p.franjaKind === 'colectivo' ||
+    p.franjaKind === 'festival'
   const listingsCount = p.marketplaceEnabled
     ? p.marketplaceListings?.length ?? 0
     : 0
@@ -182,29 +180,29 @@ export function PartnerObi({
     })
   }
 
-  // Socials: real links + partnerUrl, deduped by URL.
+  // Socials: real links + franjaUrl, deduped by URL.
   const socialUrls = [
     ...(p.links ?? []).map((l) => l.url),
-    ...(p.partnerUrl ? [p.partnerUrl] : []),
+    ...(p.franjaUrl ? [p.franjaUrl] : []),
   ].filter((url, i, arr) => arr.indexOf(url) === i)
 
   return (
     <aside
       data-mapa-ui
-      aria-label={`${p.title}, partner enfocado, ${count} publicaciones en el mapa`}
+      aria-label={`${p.title}, franja enfocado, ${count} publicaciones en el mapa`}
       className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex max-h-[46dvh] flex-col overflow-y-auto shadow-[0_-8px_40px_rgba(0,0,0,0.6)] lg:inset-x-auto lg:bottom-0 lg:left-0 lg:top-0 lg:max-h-none lg:w-[300px] lg:overflow-y-auto lg:shadow-[8px_0_40px_rgba(0,0,0,0.6)]"
       style={{ backgroundColor: PAPER, color: INK }}
     >
       {/* Top band — system label + close */}
       <div className="flex shrink-0 items-center justify-between border-b border-[#11111122] px-4 py-2.5">
         <span className="font-mono text-[10px] tracking-[0.16em] text-[#111111]/60">
-          {'//PARTNER · '}
+          {'//FRANJA · '}
           {kind}
         </span>
         <button
           type="button"
           onClick={onZoomGlobal}
-          aria-label="Cerrar enfoque de partner"
+          aria-label="Cerrar enfoque de franja"
           className="font-mono text-[13px] leading-none text-[#111111]/50 transition-colors hover:text-[#111111]"
         >
           ✕
@@ -317,14 +315,14 @@ export function PartnerObi({
             </div>
           </dl>
 
-          {p.partnerUrl && (
+          {p.franjaUrl && (
             <a
-              href={p.partnerUrl}
+              href={p.franjaUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="w-fit font-mono text-[13px] font-bold tracking-[0.12em] underline decoration-[#11111133] underline-offset-4 transition-colors hover:text-[#C41E1E]"
             >
-              {contactLabel(p.partnerUrl)}
+              {contactLabel(p.franjaUrl)}
             </a>
           )}
 
@@ -348,20 +346,20 @@ export function PartnerObi({
           )}
         </div>
 
-        {/* Affine-partner carousel — ‹ › steps through the other clustered
+        {/* Affine-franja carousel — ‹ › steps through the other clustered
             identities by content affinity to this one. */}
-        {relatedPartners.length > 0 && (
+        {relatedFranjas.length > 0 && (
           <div className="flex shrink-0 flex-col gap-1.5">
             <span className="font-mono text-[9px] tracking-[0.18em] text-[#111111]/45">
-              {'//'}PARTNERS AFINES
+              {'//'}FRANJAS AFINES
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                aria-label="Partner afín anterior"
+                aria-label="Franja afín anterior"
                 onClick={() =>
-                  onFocusPartner(
-                    relatedPartners[relatedPartners.length - 1].slug,
+                  onFocusFranja(
+                    relatedFranjas[relatedFranjas.length - 1].slug,
                   )
                 }
                 className="border border-[#11111155] px-2 py-1 font-mono text-[10px] text-[#111111]/70 transition-colors hover:border-[#111111] hover:text-[#111111]"
@@ -370,15 +368,15 @@ export function PartnerObi({
               </button>
               <button
                 type="button"
-                onClick={() => onFocusPartner(relatedPartners[0].slug)}
+                onClick={() => onFocusFranja(relatedFranjas[0].slug)}
                 className="min-w-0 flex-1 truncate border border-[#11111155] px-2 py-1 text-center font-mono text-[10px] tracking-[0.12em] text-[#111111]/80 transition-colors hover:border-[#111111] hover:text-[#111111]"
               >
-                {relatedPartners[0].title.toUpperCase()}
+                {relatedFranjas[0].title.toUpperCase()}
               </button>
               <button
                 type="button"
-                aria-label="Siguiente partner afín"
-                onClick={() => onFocusPartner(relatedPartners[0].slug)}
+                aria-label="Siguiente franja afín"
+                onClick={() => onFocusFranja(relatedFranjas[0].slug)}
                 className="border border-[#11111155] px-2 py-1 font-mono text-[10px] text-[#111111]/70 transition-colors hover:border-[#111111] hover:text-[#111111]"
               >
                 ›
@@ -390,7 +388,7 @@ export function PartnerObi({
         {/* Actions */}
         <div className="flex shrink-0 flex-col justify-end gap-2 lg:mt-auto">
           <Link
-            href={`/p/${p.slug}`}
+            href={`/f/${p.slug}`}
             className="border border-[#111111] px-3 py-2 text-center font-mono text-[10px] tracking-[0.16em] text-[#111111] transition-colors hover:bg-[#111111] hover:text-[#EDE6D4]"
           >
             ENTRAR AL DOSSIER →

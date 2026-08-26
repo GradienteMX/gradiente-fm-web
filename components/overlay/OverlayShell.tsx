@@ -84,7 +84,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
   listicle: 'LISTA',
-  partner: 'PARTNER',
+  franja: 'FRANJA',
 }
 
 interface OverlayShellProps {
@@ -299,29 +299,29 @@ export function OverlayShell({
               <span className="sys-label hidden truncate uppercase text-muted sm:inline">
                 {item.slug}
               </span>
-              {/* Partner attribution byline — renders when item.partner is set
-                  (resolved server-side via the partner_id self-join). Clickable
-                  through to /marketplace when the partner is marketplace-enabled;
-                  static label otherwise. See wiki/90-Decisions/Partner Authoring. */}
-              {item.partner && (
+              {/* Franja attribution byline — renders when item.franja is set
+                  (resolved server-side via the franja_id self-join). Clickable
+                  through to /marketplace when the franja is marketplace-enabled;
+                  static label otherwise. See wiki/90-Decisions/Franja Authoring. */}
+              {item.franja && (
                 <span className="sys-label hidden shrink-0 items-center gap-1.5 sm:inline-flex">
                   <span className="text-muted">PUBLICADO POR</span>
-                  {item.partner.marketplaceEnabled ? (
+                  {item.franja.marketplaceEnabled ? (
                     <Link
-                      href={`/marketplace?partner=${encodeURIComponent(item.partner.slug)}`}
+                      href={`/marketplace?franja=${encodeURIComponent(item.franja.slug)}`}
                       onClick={(e) => e.stopPropagation()}
                       className="transition-opacity hover:opacity-80"
                       style={{ color: '#FF8800' }}
-                      title={`Ver perfil de ${item.partner.title}`}
+                      title={`Ver perfil de ${item.franja.title}`}
                     >
-                      //{item.partner.title.toUpperCase()}
+                      //{item.franja.title.toUpperCase()}
                     </Link>
                   ) : (
                     <span
                       style={{ color: '#FF8800' }}
-                      title={`Publicado por ${item.partner.title}`}
+                      title={`Publicado por ${item.franja.title}`}
                     >
-                      //{item.partner.title.toUpperCase()}
+                      //{item.franja.title.toUpperCase()}
                     </span>
                   )}
                 </span>

@@ -76,7 +76,7 @@ interface Segment {
 
 export function StatusStrip() {
   const { currentUser } = useAuth()
-  const { activity, drafts, partner, saves } = useDashboardData()
+  const { activity, drafts, franja, saves } = useDashboardData()
   const uid = currentUser?.id ?? null
 
   const [watermark, setWatermark] = useState<string | null>(null)
@@ -93,7 +93,7 @@ export function StatusStrip() {
     () => countUnreadActivity(activity, watermark),
     [activity, watermark],
   )
-  const ofertas = partner?.unansweredListingIds.length ?? 0
+  const ofertas = franja?.unansweredListingIds.length ?? 0
   const borradores = drafts.length
 
   // Next SAVED upcoming event (AGENDA's material — saves lens, date asc).

@@ -13,7 +13,7 @@
 //   ?section=      legacy explorer values → widget scroll / guardados facet
 //   /dashboard/drafts → redirects to ?section=drafts (untouched)
 // Role guards stay two-layered: `canCreateContent` bounces unauthorized
-// `?type=`, and admin/partner-only legacy sections fall back to the plain
+// `?type=`, and admin/franja-only legacy sections fall back to the plain
 // grid — never an error.
 
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -68,7 +68,7 @@ interface LegacyTarget {
 
 function resolveLegacySection(
   raw: string,
-  flags: { isAdmin: boolean; isPartnerTeam: boolean },
+  flags: { isAdmin: boolean; isFranjaTeam: boolean },
 ): LegacyTarget {
   switch (raw) {
     case 'nuevo': // the CREAR widget owns composition now
@@ -89,8 +89,8 @@ function resolveLegacySection(
       return { widget: 'agenda' }
     case 'profile':
       return { top: true }
-    case 'mi-partner':
-      return flags.isPartnerTeam ? { widget: 'mercado' } : {}
+    case 'mi-franja':
+      return flags.isFranjaTeam ? { widget: 'mercado' } : {}
     case 'aprobaciones-mkt': // the key the old explorer actually used
     case 'approvals': // spec alias
       return flags.isAdmin ? { widget: 'mercado' } : {}
@@ -123,7 +123,7 @@ function DashboardPageInner() {
   const editingId = search?.get('edit') ?? null
 
   const isAdmin = canAssignRoles(currentUser)
-  const isPartnerTeam = !!currentUser?.partnerId
+  const isFranjaTeam = !!currentUser?.franjaId
   const composeBlocked =
     composeType !== null && !canCreateContent(currentUser, composeType)
 
@@ -156,7 +156,7 @@ function DashboardPageInner() {
   useEffect(() => {
     if (!hydrated || !authResolved || !isAuthed) return
     if (!rawSection || composeType) return
-    const target = resolveLegacySection(rawSection, { isAdmin, isPartnerTeam })
+    const target = resolveLegacySection(rawSection, { isAdmin, isFranjaTeam })
     const params = new URLSearchParams(search?.toString() ?? '')
     params.delete('section')
     const qs = params.toString()
@@ -170,7 +170,7 @@ function DashboardPageInner() {
     rawSection,
     composeType,
     isAdmin,
-    isPartnerTeam,
+    isFranjaTeam,
     search,
     router,
   ])

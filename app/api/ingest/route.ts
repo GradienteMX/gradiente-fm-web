@@ -13,14 +13,14 @@ export const runtime = 'nodejs'
 // point for a scraping run (manual/agentic for now). Each event upserts via the
 // ingest_scraped_event RPC (migration 0026): idempotent on (source, external_id)
 // so re-runs never duplicate, lands published=false (pending review),
-// partner-stamped for Instagram. Authz is enforced INSIDE the RPC (admin → any
-// source; partner-team → Instagram-only for their own partner), so this route
+// franja-stamped for Instagram. Authz is enforced INSIDE the RPC (admin → any
+// source; franja-team → Instagram-only for their own franja), so this route
 // only gates on authentication.
 
 interface ScrapedEventInput {
   source: 'scraper:ra' | 'scraper:instagram'
   externalId: string
-  partnerId?: string | null
+  franjaId?: string | null
   title: string
   subtitle?: string
   excerpt?: string
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase.rpc('ingest_scraped_event', {
       p_source: raw.source,
       p_external_id: raw.externalId,
-      p_partner_id: raw.partnerId ?? null,
+      p_franja_id: raw.franjaId ?? null,
       p_id: id,
       p_slug: slug,
       p_title: raw.title,

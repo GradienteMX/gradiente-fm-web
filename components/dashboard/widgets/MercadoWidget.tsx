@@ -2,9 +2,9 @@
 
 // ── MERCADO — conditional widget (FINAL_SPEC §3.9, w6×h2 / w12×2) ───────────
 //
-// Exists only in the registries of partner-team users (currentUser.partnerId)
+// Exists only in the registries of franja-team users (currentUser.franjaId)
 // and admins (canAssignRoles) — the provider enforces that (§3.9); this
-// component additionally renders null for anyone else, so a non-partner user
+// component additionally renders null for anyone else, so a non-franja user
 // never sees a widget-shaped bookmark.
 //
 // SCALE PASS (S1/S2/S4): {6,2} is a FIXED portion — two whole 48px-thumb
@@ -14,7 +14,7 @@
 // the composer, and legal internal scroll. Every depth gesture (row click,
 // NUEVA PIEZA, VER TODO) grows the widget first via ctx.commitLayout.
 //
-// PARTNER VARIANT — reads the provider's `partner` slice (GET /api/partners/
+// FRANJA VARIANT — reads the provider's `franja` slice (GET /api/franjas/
 // [id] + /inbox on the ≥5-min floor; the widget itself never polls):
 //   · listings with portada, estado and price; OFERTA badge = acid dot on
 //     listings the inbox route reports unanswered (real buyer computation).
@@ -23,16 +23,16 @@
 //     someone offering money is answered in ≤2 clicks without leaving
 //     /dashboard. The reply targets the newest OPEN buyer thread (the inbox
 //     rule is per-thread: a seller reply inside the thread clears it).
-//   · «NUEVA PIEZA» opens a one-line composer strip (POST /api/partners/[id]/
+//   · «NUEVA PIEZA» opens a one-line composer strip (POST /api/franjas/[id]/
 //     listings) — the empty state's working action, ported from the
-//     MiPartnerSection creation flow (same hand-rolled `mkl-…` ids).
+//     MiFranjaSection creation flow (same hand-rolled `mkl-…` ids).
 //   · freshness is declared, never implied: «SONDEO CADA 5 MIN» (R8).
 //   · listing_comments stay their own system — never merged into the
 //     editorial comments model; `views` is never surfaced (no counts, no
 //     trends, no popularity chrome).
 //
-// ADMIN VARIANT — APROBACIONES: the PartnerApprovalsSection logic ported
-// (GET /api/admin/partners + PATCH marketplace_enabled per row, refetch after
+// ADMIN VARIANT — APROBACIONES: the FranjaApprovalsSection logic ported
+// (GET /api/admin/franjas + PATCH marketplace_enabled per row, refetch after
 // every toggle — every control live). Admin data is outside the provider
 // contract by design (WP2 note), so this variant owns its fetch.
 
@@ -94,10 +94,10 @@ const CONDITIONS: readonly MarketplaceListingCondition[] = [
   'F',
 ]
 
-// Mirrors the MiPartnerSection convention (`mkl-<short>-<rand>`) so listing
+// Mirrors the MiFranjaSection convention (`mkl-<short>-<rand>`) so listing
 // ids stay readable; a 409 means collision — the composer surfaces it.
-function newListingId(partnerId: string): string {
-  const slug = partnerId.replace(/^pa-/, '').slice(0, 12)
+function newListingId(franjaId: string): string {
+  const slug = franjaId.replace(/^pa-/, '').slice(0, 12)
   const rand = Math.random().toString(36).slice(2, 8)
   return `mkl-${slug}-${rand}`
 }
@@ -122,23 +122,23 @@ function formatPrice(price: number, currency: string | null): string {
 
 export function MercadoWidget({ size, compact }: DashboardWidgetProps) {
   const { currentUser } = useAuth()
-  if (currentUser?.partnerId) {
-    return <PartnerMercado size={size} compact={compact} />
+  if (currentUser?.franjaId) {
+    return <FranjaMercado size={size} compact={compact} />
   }
   if (canAssignRoles(currentUser)) {
     return <AdminAprobaciones compact={compact} />
   }
-  // Not partner-team, not admin: the registry already excludes 'mercado' —
+  // Not franja-team, not admin: the registry already excludes 'mercado' —
   // render nothing rather than a widget-shaped bookmark (§3.9).
   return null
 }
 
-// ── PARTNER VARIANT ─────────────────────────────────────────────────────────
+// ── FRANJA VARIANT ─────────────────────────────────────────────────────────
 
-function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean }) {
+function FranjaMercado({ size, compact }: { size: WidgetSize; compact: boolean }) {
   const { currentUser } = useAuth()
   const ctx = useDashboardData()
-  const { partner, loaded, errors, afterMutation } = ctx
+  const { franja, loaded, errors, afterMutation } = ctx
   const [composing, setComposing] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -179,13 +179,13 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
   }, [compact, large])
 
   const unanswered = useMemo(
-    () => new Set(partner?.unansweredListingIds ?? []),
-    [partner?.unansweredListingIds],
+    () => new Set(franja?.unansweredListingIds ?? []),
+    [franja?.unansweredListingIds],
   )
 
   // OFERTAS first (money waits for no sort), then newest listings.
   const listings = useMemo(() => {
-    const rows = [...(partner?.listings ?? [])]
+    const rows = [...(franja?.listings ?? [])]
     rows.sort((a, b) => {
       const aOpen = unanswered.has(a.id) ? 1 : 0
       const bOpen = unanswered.has(b.id) ? 1 : 0
@@ -193,22 +193,22 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
       return (b.publishedAt || '').localeCompare(a.publishedAt || '')
     })
     return rows
-  }, [partner?.listings, unanswered])
+  }, [franja?.listings, unanswered])
 
   const ofertas = unanswered.size
-  const currency = partner?.marketplaceCurrency ?? null
+  const currency = franja?.marketplaceCurrency ?? null
   const uid = currentUser?.id ?? null
 
   const onCreated = useCallback(async () => {
     setComposing(false)
-    await afterMutation('partner')
+    await afterMutation('franja')
   }, [afterMutation])
 
   // Depth-first composing (S1): the composer strip needs room the {6,2}
   // fixed portion does not have, so at default size NUEVA PIEZA grows the
   // widget to {12,2} before opening the strip. Compact keeps its own inline
   // strip (single teaching row — no grid portion to protect).
-  const composerAction = partner
+  const composerAction = franja
     ? {
         label: composing ? 'CERRAR' : compact ? 'PUBLICAR PIEZA' : 'NUEVA PIEZA',
         onClick: () => {
@@ -229,9 +229,9 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
     return (
       <div id={dashWidgetDomId('mercado')} className="h-full">
         <WidgetFrame title="MERCADO" compact action={composerAction}>
-          {composing && partner && uid ? (
+          {composing && franja && uid ? (
             <ComposerStrip
-              partnerId={partner.id}
+              franjaId={franja.id}
               uid={uid}
               currency={currency}
               inline
@@ -260,21 +260,21 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
           action={composerAction}
         >
           <div className="flex h-full min-h-0 flex-col gap-3">
-            {composing && partner && uid && (
+            {composing && franja && uid && (
               <ComposerStrip
-                partnerId={partner.id}
+                franjaId={franja.id}
                 uid={uid}
                 currency={currency}
                 onCreated={onCreated}
               />
             )}
 
-            {!partner && errors.partner ? (
+            {!franja && errors.franja ? (
               <p className="font-mono text-d13 text-ink">
                 SEÑAL INTERRUMPIDA — el mercado se reintenta con el próximo
                 sondeo.
               </p>
-            ) : !partner && !loaded.partner ? (
+            ) : !franja && !loaded.franja ? (
               <div aria-hidden className="h-0.5 w-1/2 bg-ink motion-safe:animate-blink" />
             ) : listings.length === 0 ? (
               // §3.9 empty state — the copy IS the working affordance: it opens
@@ -301,8 +301,8 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
                     onToggle={() =>
                       setExpandedId((cur) => (cur === listing.id ? null : listing.id))
                     }
-                    partnerSlug={partner?.slug ?? null}
-                    onReplied={() => void afterMutation('partner')}
+                    franjaSlug={franja?.slug ?? null}
+                    onReplied={() => void afterMutation('franja')}
                   />
                 ))}
               </ul>
@@ -351,12 +351,12 @@ function PartnerMercado({ size, compact }: { size: WidgetSize; compact: boolean 
         action={composerAction}
       >
         <div className="flex h-full min-h-0 flex-col justify-between">
-          {!partner && errors.partner ? (
+          {!franja && errors.franja ? (
             <p className="font-mono text-d13 text-ink">
               SEÑAL INTERRUMPIDA — el mercado se reintenta con el próximo
               sondeo.
             </p>
-          ) : !partner && !loaded.partner ? (
+          ) : !franja && !loaded.franja ? (
             <div aria-hidden className="h-0.5 w-1/2 bg-ink motion-safe:animate-blink" />
           ) : listings.length === 0 ? (
             // §3.9 empty state — the copy IS the working affordance; it grows
@@ -497,7 +497,7 @@ function ListingRow({
   oferta,
   expanded,
   onToggle,
-  partnerSlug,
+  franjaSlug,
   onReplied,
 }: {
   listing: MarketplaceListing
@@ -505,7 +505,7 @@ function ListingRow({
   oferta: boolean
   expanded: boolean
   onToggle: () => void
-  partnerSlug: string | null
+  franjaSlug: string | null
   onReplied: () => void
 }) {
   const portada = listing.images[0]
@@ -570,7 +570,7 @@ function ListingRow({
       {expanded && (
         <ListingThread
           listing={listing}
-          partnerSlug={partnerSlug}
+          franjaSlug={franjaSlug}
           onReplied={onReplied}
         />
       )}
@@ -603,11 +603,11 @@ function findOpenThread(
 
 function ListingThread({
   listing,
-  partnerSlug,
+  franjaSlug,
   onReplied,
 }: {
   listing: MarketplaceListing
-  partnerSlug: string | null
+  franjaSlug: string | null
   onReplied: () => void
 }) {
   const [state, setState] = useState<ThreadState>({ phase: 'loading' })
@@ -670,7 +670,7 @@ function ListingThread({
       }
       setDraft('')
       // The inbox route stays the authority on OFERTA state — revalidate the
-      // partner slice (floor bypassed: explicit action, not a poll).
+      // franja slice (floor bypassed: explicit action, not a poll).
       onReplied()
     } catch {
       setSendError('NO SE PUDO ENVIAR')
@@ -763,9 +763,9 @@ function ListingThread({
         <p className="font-mono text-d13 font-bold text-sys-red-paper">⚠ {sendError}</p>
       )}
 
-      {partnerSlug && (
+      {franjaSlug && (
         <a
-          href={`/marketplace?partner=${encodeURIComponent(partnerSlug)}&listing=${encodeURIComponent(listing.id)}`}
+          href={`/marketplace?franja=${encodeURIComponent(franjaSlug)}&listing=${encodeURIComponent(listing.id)}`}
           className={`inline-flex min-h-11 w-fit items-center font-mono text-d13 tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
         >
           VER EN MARKETPLACE ↗
@@ -775,16 +775,16 @@ function ListingThread({
   )
 }
 
-// ── One-line listing composer (POST /api/partners/[id]/listings) ────────────
+// ── One-line listing composer (POST /api/franjas/[id]/listings) ────────────
 
 function ComposerStrip({
-  partnerId,
+  franjaId,
   uid,
   currency,
   inline,
   onCreated,
 }: {
-  partnerId: string
+  franjaId: string
   uid: string
   currency: string | null
   inline?: boolean
@@ -824,12 +824,12 @@ function ComposerStrip({
     try {
       const parsed = Number.parseFloat(price)
       const res = await fetch(
-        `/api/partners/${encodeURIComponent(partnerId)}/listings`,
+        `/api/franjas/${encodeURIComponent(franjaId)}/listings`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            id: newListingId(partnerId),
+            id: newListingId(franjaId),
             title: trimmed,
             category,
             condition,
@@ -950,26 +950,26 @@ function ComposerStrip({
 
 // ── ADMIN VARIANT — APROBACIONES ────────────────────────────────────────────
 
-interface AdminPartnerRow {
+interface AdminFranjaRow {
   id: string
   slug: string
   title: string
-  partner_kind: string | null
+  franja_kind: string | null
   marketplace_enabled: boolean
   marketplace_listings: unknown[] | null
 }
 
 function AdminAprobaciones({ compact }: { compact: boolean }) {
-  const [partners, setPartners] = useState<AdminPartnerRow[]>([])
+  const [franjas, setFranjas] = useState<AdminFranjaRow[]>([])
   const [phase, setPhase] = useState<'loading' | 'error' | 'ready'>('loading')
   const [query, setQuery] = useState('')
 
   const refetch = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/partners')
+      const res = await fetch('/api/admin/franjas')
       if (!res.ok) throw new Error(String(res.status))
-      const json = (await res.json()) as { partners?: AdminPartnerRow[] }
-      setPartners(json.partners ?? [])
+      const json = (await res.json()) as { franjas?: AdminFranjaRow[] }
+      setFranjas(json.franjas ?? [])
       setPhase('ready')
     } catch {
       setPhase('error')
@@ -982,20 +982,20 @@ function AdminAprobaciones({ compact }: { compact: boolean }) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return partners
-    return partners.filter(
+    if (!q) return franjas
+    return franjas.filter(
       (p) => p.title.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
     )
-  }, [partners, query])
+  }, [franjas, query])
 
-  const enabledCount = partners.filter((p) => p.marketplace_enabled).length
+  const enabledCount = franjas.filter((p) => p.marketplace_enabled).length
 
   if (compact) {
     return (
       <div id={dashWidgetDomId('mercado')} className="h-full">
         <WidgetFrame title="MERCADO · APROBACIONES" compact>
           <p className="truncate font-grotesk text-d15 text-ink">
-            {enabledCount} de {partners.length} partners con marketplace activo.
+            {enabledCount} de {franjas.length} franjas con marketplace activo.
           </p>
         </WidgetFrame>
       </div>
@@ -1009,17 +1009,17 @@ function AdminAprobaciones({ compact }: { compact: boolean }) {
           <div className="flex items-baseline justify-between gap-3">
             {/* The label is the ≥44px hit target; the underline mark stays. */}
             <label className="flex min-h-11 min-w-0 flex-1 flex-col justify-center">
-              <span className="sr-only">Buscar partner</span>
+              <span className="sr-only">Buscar franja</span>
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar partner por nombre o slug…"
+                placeholder="Buscar franja por nombre o slug…"
                 className={`w-full border-b border-ink bg-transparent pb-0.5 font-mono text-d13 text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
               />
             </label>
             <span className="shrink-0 font-mono text-d13 tracking-widest text-ink tabular-nums">
-              {enabledCount}/{partners.length} ACTIVOS
+              {enabledCount}/{franjas.length} ACTIVOS
             </span>
           </div>
 
@@ -1043,18 +1043,18 @@ function AdminAprobaciones({ compact }: { compact: boolean }) {
             </div>
           ) : filtered.length === 0 ? (
             <p className="font-mono text-d13 text-ink-soft">
-              {'NINGÚN PARTNER COINCIDE CON LA BÚSQUEDA.'}
+              {'NINGÚN FRANJA COINCIDE CON LA BÚSQUEDA.'}
             </p>
           ) : (
             <ul className="min-h-0 flex-1 overflow-y-auto">
               {filtered.map((p) => (
-                <ApprovalRow key={p.id} partner={p} onChanged={refetch} />
+                <ApprovalRow key={p.id} franja={p} onChanged={refetch} />
               ))}
             </ul>
           )}
 
           <p className="font-mono text-d11 tracking-widest text-ink-soft">
-            {'AL ACTIVAR, EL EQUIPO DEL PARTNER EDITA SU MERCADO DESDE ESTE PANEL.'}
+            {'AL ACTIVAR, EL EQUIPO DEL FRANJA EDITA SU MERCADO DESDE ESTE PANEL.'}
           </p>
         </div>
       </WidgetFrame>
@@ -1063,20 +1063,20 @@ function AdminAprobaciones({ compact }: { compact: boolean }) {
 }
 
 function ApprovalRow({
-  partner,
+  franja,
   onChanged,
 }: {
-  partner: AdminPartnerRow
+  franja: AdminFranjaRow
   onChanged: () => Promise<void>
 }) {
   const [busy, setBusy] = useState(false)
-  const enabled = partner.marketplace_enabled
-  const listingCount = partner.marketplace_listings?.length ?? 0
+  const enabled = franja.marketplace_enabled
+  const listingCount = franja.marketplace_listings?.length ?? 0
 
   const toggle = async () => {
     setBusy(true)
     try {
-      await fetch(`/api/admin/partners/${encodeURIComponent(partner.id)}`, {
+      await fetch(`/api/admin/partners/${encodeURIComponent(franja.id)}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ marketplace_enabled: !enabled }),
@@ -1091,11 +1091,11 @@ function ApprovalRow({
     <li className="flex min-h-11 items-center gap-3 border-b border-ink py-2 last:border-b-0">
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-grotesk text-d15 font-medium text-ink">
-          {partner.title}
+          {franja.title}
         </span>
         <span className="truncate font-mono text-d11 tracking-widest text-ink-soft">
-          /{partner.slug}
-          {partner.partner_kind ? ` · ${partner.partner_kind.toUpperCase()}` : ''}
+          /{franja.slug}
+          {franja.franja_kind ? ` · ${franja.franja_kind.toUpperCase()}` : ''}
           {enabled ? ` · ${listingCount} ${listingCount === 1 ? 'PIEZA' : 'PIEZAS'}` : ''}
         </span>
       </div>

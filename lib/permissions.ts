@@ -106,44 +106,44 @@ export function canCreateMix(user: User | null): boolean {
 // `Nuevo` template grid + the URL guard for `?type=…`). Each editable type
 // maps to a creation tier:
 //   listicle               → curator+ (lists are the core curator surface)
-//                            OR partner team member (scene-voice list)
+//                            OR franja team member (scene-voice list)
 //   mix / opinion / noticia / evento
-//                          → guide+ OR partner team member (scene-voice
-//                            content — see wiki/90-Decisions/Partner Authoring)
+//                          → guide+ OR franja team member (scene-voice
+//                            content — see wiki/90-Decisions/Franja Authoring)
 //   editorial / review / articulo
-//                          → guide+ only (house-voice content; partners
+//                          → guide+ only (house-voice content; franjas
 //                            can write these only via the `insider` role
-//                            grant on their User account, not via partner
+//                            grant on their User account, not via franja
 //                            team membership)
-//   partner                → admin only (rail, not in the SUPPORTED set)
+//   franja                → admin only (rail, not in the SUPPORTED set)
 //
 // `polls` and `marketplace` aren't ContentTypes yet; their gates live above
 // (`canCreatePoll` / `canCreateMarketplaceCard`) and slot in here when those
 // types are added.
 export function canCreateContent(user: User | null, type: ContentType): boolean {
   if (!user) return false
-  const isPartnerTeam = !!user.partnerId
+  const isFranjaTeam = !!user.franjaId
   switch (type) {
     case 'listicle':
-      return hasRole(user, 'curator') || isPartnerTeam
+      return hasRole(user, 'curator') || isFranjaTeam
     case 'mix':
     case 'opinion':
     case 'noticia':
     case 'evento':
-      return hasRole(user, 'guide') || isPartnerTeam
+      return hasRole(user, 'guide') || isFranjaTeam
     case 'editorial':
     case 'review':
     case 'articulo':
       return hasRole(user, 'guide')
-    case 'partner':
+    case 'franja':
       return user.role === 'admin'
   }
 }
 
-// The 5 scene-voice types partner teams can publish via the //PUBLICAR tab.
+// The 5 scene-voice types franja teams can publish via the //PUBLICAR tab.
 // Re-derivable from `canCreateContent` by walking ContentType, but exported
 // as a constant so the tab UI can show the picker without iterating types.
-export const PARTNER_PUBLISHABLE_TYPES: ContentType[] = [
+export const FRANJA_PUBLISHABLE_TYPES: ContentType[] = [
   'evento',
   'mix',
   'noticia',
@@ -169,46 +169,46 @@ export function canDeleteContent(user: User | null, item: ContentItem): boolean 
   return canEditContent(user, item)
 }
 
-// ── Marketplace / partners ─────────────────────────────────────────────────
+// ── Marketplace / franjas ─────────────────────────────────────────────────
 //
-// Two levels of partner authority:
-//   - site admin (`role === 'admin'`) — can approve any partner for the
-//     marketplace, can assign any user to any partner's team, can edit any
-//     partner's marketplace card / listings.
-//   - in-team partner admin (`partnerId === thisPartner && partnerAdmin`)
-//     — can add/remove team members of THEIR partner only. Manages
-//     listings + marketplace card for their own partner.
-// Regular team members (`partnerId` set, no admin flag) edit listings +
+// Two levels of franja authority:
+//   - site admin (`role === 'admin'`) — can approve any franja for the
+//     marketplace, can assign any user to any franja's team, can edit any
+//     franja's marketplace card / listings.
+//   - in-team franja admin (`franjaId === thisFranja && franjaAdmin`)
+//     — can add/remove team members of THEIR franja only. Manages
+//     listings + marketplace card for their own franja.
+// Regular team members (`franjaId` set, no admin flag) edit listings +
 // marketplace card, but can't add/remove other team members.
 
-// Approve a partner for marketplace (toggles `marketplaceEnabled`).
-// Admin-only — partners don't self-promote.
-export function canApprovePartner(user: User | null): boolean {
+// Approve a franja for marketplace (toggles `marketplaceEnabled`).
+// Admin-only — franjas don't self-promote.
+export function canApproveFranja(user: User | null): boolean {
   return user?.role === 'admin'
 }
 
-// Edit a specific partner's marketplace card or listings. Admins can edit
-// any partner; team members (including the partner admin) can edit only
-// their own partner.
-export function canManagePartner(
+// Edit a specific franja's marketplace card or listings. Admins can edit
+// any franja; team members (including the franja admin) can edit only
+// their own franja.
+export function canManageFranja(
   user: User | null,
-  partnerId: string,
+  franjaId: string,
 ): boolean {
   if (!user) return false
   if (user.role === 'admin') return true
-  return user.partnerId === partnerId
+  return user.franjaId === franjaId
 }
 
-// Manage team membership for a specific partner — the gate that lets
-// someone add or kick team members of `partnerId`. Site admin can manage
-// any partner's team; in-team admin can manage their own.
-export function canManagePartnerTeam(
+// Manage team membership for a specific franja — the gate that lets
+// someone add or kick team members of `franjaId`. Site admin can manage
+// any franja's team; in-team admin can manage their own.
+export function canManageFranjaTeam(
   user: User | null,
-  partnerId: string,
+  franjaId: string,
 ): boolean {
   if (!user) return false
   if (user.role === 'admin') return true
-  return user.partnerId === partnerId && user.partnerAdmin === true
+  return user.franjaId === franjaId && user.franjaAdmin === true
 }
 
 // ── Moderation, role assignment, banning ───────────────────────────────────

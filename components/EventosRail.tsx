@@ -8,7 +8,7 @@ import type { ContentItem } from '@/lib/types'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
 import { categoryColor, isExpired } from '@/lib/utils'
-import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
+import { franjaAttributionPrefix } from '@/lib/franjaAttribution'
 import { recordItems } from '@/lib/itemsCache'
 import { SmartImage } from '@/components/SmartImage'
 
@@ -28,7 +28,7 @@ function EventoRailCard({
   const d = item.date ? parseISO(item.date) : null
   // Recently-passed events show up in the rail thanks to filterForHome's
   // grace window — visually demote them so they read as historical, not
-  // upcoming. Same vocabulary as the //PASADO ribbon in PartnerOverlay's
+  // upcoming. Same vocabulary as the //PASADO ribbon in FranjaOverlay's
   // ARCHIVO section.
   const past = isExpired(item)
 
@@ -69,13 +69,13 @@ function EventoRailCard({
               //PASADO
             </span>
           )}
-          {/* Partner attribution — same vocabulary as the mosaic chip, smaller
+          {/* Franja attribution — same vocabulary as the mosaic chip, smaller
               scale to fit the 180px rail tile. Skip rendering on partial data
               (defensive — matches the mosaic chip's guard). Stacked under
               //EVENTO rather than alongside so neither truncates at this width.
               Non-clickable here — the whole tile is a button that opens the
               overlay; the chip just provides at-a-glance attribution. */}
-          {item.partner && item.partner.title && (
+          {item.franja && item.franja.title && (
             <span
               className="bg-black/85 border px-1.5 py-0.5 font-mono text-[8px] tracking-widest backdrop-blur-sm"
               style={{
@@ -83,9 +83,9 @@ function EventoRailCard({
                 color: '#FF8800',
                 boxShadow: '0 0 4px rgba(255,136,0,0.35)',
               }}
-              title={`Publicado por ${item.partner.title}`}
+              title={`Publicado por ${item.franja.title}`}
             >
-              //{partnerAttributionPrefix(item.partner.kind)} · {item.partner.title.toUpperCase()}
+              //{franjaAttributionPrefix(item.franja.kind)} · {item.franja.title.toUpperCase()}
             </span>
           )}
         </div>

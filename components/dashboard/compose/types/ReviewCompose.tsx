@@ -13,7 +13,7 @@
 // (single-select), the conditional venue/promotora entity selects for
 // happenings, PAÍS/AÑO, and the conditional FORMATO chips for objects.
 // EDITORIAL moves to the rail, staff-gated; review is house-voice → no
-// partner attribution row (parity with the dark form).
+// franja attribution row (parity with the dark form).
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -218,9 +218,9 @@ export function ReviewCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={false}
-          partnerValue={false}
-          onPartnerChange={() => {}}
+          showFranja={false}
+          franjaValue={false}
+          onFranjaChange={() => {}}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

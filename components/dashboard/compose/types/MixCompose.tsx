@@ -144,10 +144,10 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
 
   // EDITORIAL is a staff lever (mirror of /api/items: role guide|admin —
   // insider/curator publishes get editorial forced off server-side, so the
-  // row hides rather than lying). Partner row mirrors PartnerAttributionRow's
-  // gate: partner-team member + stampable type (mix is).
+  // row hides rather than lying). Franja row mirrors FranjaAttributionRow's
+  // gate: franja-team member + stampable type (mix is).
   const isStaff = currentUser?.role === 'guide' || currentUser?.role === 'admin'
-  const showPartner = !!currentUser?.partnerId
+  const showFranja = !!currentUser?.franjaId
 
   const onAnchor = (anchorId: string) => {
     document.getElementById(anchorId)?.scrollIntoView({ block: 'start' })
@@ -172,9 +172,9 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
           showEditorial={isStaff}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={showPartner}
-          partnerValue={draft.attributePartner ?? !!draft.partnerId}
-          onPartnerChange={(v) => patch({ attributePartner: v })}
+          showFranja={showFranja}
+          franjaValue={draft.attributeFranja ?? !!draft.franjaId}
+          onFranjaChange={(v) => patch({ attributeFranja: v })}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

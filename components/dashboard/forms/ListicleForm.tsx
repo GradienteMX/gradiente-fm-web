@@ -32,7 +32,7 @@ import {
   useDraftWorkbench,
 } from './shared/Fields'
 import { EntityMultiSelect } from './shared/EntityMultiSelect'
-import { PartnerAttributionField } from './shared/PartnerAttributionField'
+import { FranjaAttributionField } from './shared/FranjaAttributionField'
 import { PollFieldset } from './shared/PollFieldset'
 import { VibePriorHint } from './shared/VibePriorHint'
 
@@ -151,9 +151,9 @@ export function ListicleForm() {
             value={!!draft.editorial}
             onChange={(v) => patch({ editorial: v })}
           />
-          <PartnerAttributionField
+          <FranjaAttributionField
             draft={draft}
-            onChange={(v) => patch({ attributePartner: v })}
+            onChange={(v) => patch({ attributeFranja: v })}
           />
         </Section>
 

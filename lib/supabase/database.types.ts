@@ -363,8 +363,8 @@ export type Database = {
           folio: number | null
           folio_denominator: number
           intended_is_mod: boolean
-          intended_partner_admin: boolean
-          intended_partner_id: string | null
+          intended_franja_admin: boolean
+          intended_franja_id: string | null
           intended_role: Database["public"]["Enums"]["user_role"]
           issued_label: string | null
           used_at: string | null
@@ -379,8 +379,8 @@ export type Database = {
           folio?: number | null
           folio_denominator?: number
           intended_is_mod?: boolean
-          intended_partner_admin?: boolean
-          intended_partner_id?: string | null
+          intended_franja_admin?: boolean
+          intended_franja_id?: string | null
           intended_role?: Database["public"]["Enums"]["user_role"]
           issued_label?: string | null
           used_at?: string | null
@@ -395,8 +395,8 @@ export type Database = {
           folio?: number | null
           folio_denominator?: number
           intended_is_mod?: boolean
-          intended_partner_admin?: boolean
-          intended_partner_id?: string | null
+          intended_franja_admin?: boolean
+          intended_franja_id?: string | null
           intended_role?: Database["public"]["Enums"]["user_role"]
           issued_label?: string | null
           used_at?: string | null
@@ -411,8 +411,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "invite_codes_intended_partner_id_fkey"
-            columns: ["intended_partner_id"]
+            foreignKeyName: "invite_codes_intended_franja_id_fkey"
+            columns: ["intended_franja_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -464,10 +464,10 @@ export type Database = {
           mix_status: Database["public"]["Enums"]["mix_status"] | null
           mix_url: string | null
           musical_key: string | null
-          partner_id: string | null
-          partner_kind: Database["public"]["Enums"]["partner_kind"] | null
-          partner_last_updated: string | null
-          partner_url: string | null
+          franja_id: string | null
+          franja_kind: Database["public"]["Enums"]["franja_kind"] | null
+          franja_last_updated: string | null
+          franja_url: string | null
           pinned: boolean
           price: string | null
           published: boolean
@@ -528,10 +528,10 @@ export type Database = {
           mix_status?: Database["public"]["Enums"]["mix_status"] | null
           mix_url?: string | null
           musical_key?: string | null
-          partner_id?: string | null
-          partner_kind?: Database["public"]["Enums"]["partner_kind"] | null
-          partner_last_updated?: string | null
-          partner_url?: string | null
+          franja_id?: string | null
+          franja_kind?: Database["public"]["Enums"]["franja_kind"] | null
+          franja_last_updated?: string | null
+          franja_url?: string | null
           pinned?: boolean
           price?: string | null
           published?: boolean
@@ -592,10 +592,10 @@ export type Database = {
           mix_status?: Database["public"]["Enums"]["mix_status"] | null
           mix_url?: string | null
           musical_key?: string | null
-          partner_id?: string | null
-          partner_kind?: Database["public"]["Enums"]["partner_kind"] | null
-          partner_last_updated?: string | null
-          partner_url?: string | null
+          franja_id?: string | null
+          franja_kind?: Database["public"]["Enums"]["franja_kind"] | null
+          franja_last_updated?: string | null
+          franja_url?: string | null
           pinned?: boolean
           price?: string | null
           published?: boolean
@@ -628,8 +628,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "items_partner_id_fkey"
-            columns: ["partner_id"]
+            foreignKeyName: "items_franja_id_fkey"
+            columns: ["franja_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -645,7 +645,7 @@ export type Database = {
           embeds: Json
           id: string
           images: string[]
-          partner_id: string
+          franja_id: string
           price: number
           published_at: string
           related_links: Json
@@ -667,7 +667,7 @@ export type Database = {
           embeds?: Json
           id: string
           images?: string[]
-          partner_id: string
+          franja_id: string
           price?: number
           published_at?: string
           related_links?: Json
@@ -688,7 +688,7 @@ export type Database = {
           embeds?: Json
           id?: string
           images?: string[]
-          partner_id?: string
+          franja_id?: string
           price?: number
           published_at?: string
           related_links?: Json
@@ -704,8 +704,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "marketplace_listings_partner_id_fkey"
-            columns: ["partner_id"]
+            foreignKeyName: "marketplace_listings_franja_id_fkey"
+            columns: ["franja_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -1009,8 +1009,8 @@ export type Database = {
           is_og: boolean
           joined_at: string
           location: string | null
-          partner_admin: boolean
-          partner_id: string | null
+          franja_admin: boolean
+          franja_id: string | null
           profile_meta: Json
           role: Database["public"]["Enums"]["user_role"]
           seed: boolean
@@ -1028,8 +1028,8 @@ export type Database = {
           is_og?: boolean
           joined_at?: string
           location?: string | null
-          partner_admin?: boolean
-          partner_id?: string | null
+          franja_admin?: boolean
+          franja_id?: string | null
           profile_meta?: Json
           role?: Database["public"]["Enums"]["user_role"]
           seed?: boolean
@@ -1047,8 +1047,8 @@ export type Database = {
           is_og?: boolean
           joined_at?: string
           location?: string | null
-          partner_admin?: boolean
-          partner_id?: string | null
+          franja_admin?: boolean
+          franja_id?: string | null
           profile_meta?: Json
           role?: Database["public"]["Enums"]["user_role"]
           seed?: boolean
@@ -1056,8 +1056,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "users_partner_id_fkey"
-            columns: ["partner_id"]
+            foreignKeyName: "users_franja_id_fkey"
+            columns: ["franja_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -1282,7 +1282,7 @@ export type Database = {
         Args: {
           p_source: string
           p_external_id: string
-          p_partner_id: string | null
+          p_franja_id: string | null
           p_id: string
           p_slug: string
           p_title: string
@@ -1309,26 +1309,26 @@ export type Database = {
           folio_denominator: number | null
           issued_label: string | null
           issued_at: string | null
-          partner_title: string | null
-          partner_logo_url: string | null
+          franja_title: string | null
+          franja_logo_url: string | null
           status: string
         }[]
       }
-      publish_partner_event: { Args: { p_item_id: string }; Returns: Json }
-      discard_partner_event: { Args: { p_item_id: string }; Returns: Json }
-      partner_team_add: {
-        Args: { p_partner_id: string; p_user_id: string }
+      publish_franja_event: { Args: { p_item_id: string }; Returns: Json }
+      discard_franja_event: { Args: { p_item_id: string }; Returns: Json }
+      franja_team_add: {
+        Args: { p_franja_id: string; p_user_id: string }
         Returns: Json
       }
-      partner_team_set_admin: {
-        Args: { p_partner_id: string; p_user_id: string; p_admin: boolean }
+      franja_team_set_admin: {
+        Args: { p_franja_id: string; p_user_id: string; p_admin: boolean }
         Returns: Json
       }
-      partner_team_remove: {
-        Args: { p_partner_id: string; p_user_id: string }
+      franja_team_remove: {
+        Args: { p_franja_id: string; p_user_id: string }
         Returns: Json
       }
-      update_partner_event: {
+      update_franja_event: {
         Args: {
           p_item_id: string
           p_title: string
@@ -1359,7 +1359,7 @@ export type Database = {
         | "scraper:ra"
         | "scraper:instagram"
         | "manual:editor"
-        | "manual:partner"
+        | "manual:franja"
       content_type:
         | "evento"
         | "mix"
@@ -1369,23 +1369,22 @@ export type Database = {
         | "opinion"
         | "articulo"
         | "listicle"
-        | "partner"
+        | "franja"
       entity_kind: "artist" | "label" | "venue" | "promoter"
       entity_relation: "subject" | "mention"
       item_format: "vinyl" | "cassette" | "cd" | "digital" | "mix" | "other"
       mix_status: "disponible" | "exclusivo" | "archivo" | "proximamente"
-      partner_kind:
-        | "promo"
+      franja_kind:
         | "label"
         | "promoter"
         | "venue"
-        | "sponsored"
         | "dealer"
         | "colectivo"
         | "festival"
         | "club"
         | "medios"
         | "mix-series"
+        | "plataforma"
       poll_kind: "from-list" | "from-tracklist" | "attendance" | "freeform"
       reaction_kind: "provocative" | "signal"
       user_role: "user" | "curator" | "guide" | "insider" | "admin"
@@ -1516,7 +1515,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      content_source: ["scraper:ra", "scraper:instagram", "manual:editor", "manual:partner"],
+      content_source: ["scraper:ra", "scraper:instagram", "manual:editor", "manual:franja"],
       content_type: [
         "evento",
         "mix",
@@ -1526,24 +1525,23 @@ export const Constants = {
         "opinion",
         "articulo",
         "listicle",
-        "partner",
+        "franja",
       ],
       entity_kind: ["artist", "label", "venue", "promoter"],
       entity_relation: ["subject", "mention"],
       item_format: ["vinyl", "cassette", "cd", "digital", "mix", "other"],
       mix_status: ["disponible", "exclusivo", "archivo", "proximamente"],
-      partner_kind: [
-        "promo",
+      franja_kind: [
         "label",
         "promoter",
         "venue",
-        "sponsored",
         "dealer",
         "colectivo",
         "festival",
         "club",
         "medios",
         "mix-series",
+        "plataforma",
       ],
       poll_kind: ["from-list", "from-tracklist", "attendance", "freeform"],
       reaction_kind: ["provocative", "signal"],

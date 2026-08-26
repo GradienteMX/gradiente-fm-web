@@ -6,26 +6,26 @@ import { SmartImage } from '@/components/SmartImage'
 // ── MarketplaceRail ────────────────────────────────────────────────────────
 //
 // Home-page entry point for the marketplace, mounted directly below the
-// [[PartnersRail]] in the right column. Two pieces:
+// [[FranjasRail]] in the right column. Two pieces:
 //
-//   - Up to 3 small partner thumbnails (linking to `?partner=<slug>`)
+//   - Up to 3 small franja thumbnails (linking to `?franja=<slug>`)
 //   - "EXPLORAR MARKETPLACE" CTA linking to `/marketplace`
 //
-// Receives partners from the home page server prefetch (real DB) so newly
-// approved partners appear on the next render. Previously read from a
+// Receives franjas from the home page server prefetch (real DB) so newly
+// approved franjas appear on the next render. Previously read from a
 // sessionStorage-backed mock layer that couldn't see admin-created rows.
 // Per the design call: "Spanish UI but `marketplace` stays as the loanword".
 
 const MAX_RAIL = 3
 
-export function MarketplaceRail({ partners }: { partners: ContentItem[] }) {
-  // Render nothing until at least one partner is approved — keeps the home
+export function MarketplaceRail({ franjas }: { franjas: ContentItem[] }) {
+  // Render nothing until at least one franja is approved — keeps the home
   // page from showing an empty rail in the bare seed state.
-  if (partners.length === 0) return null
+  if (franjas.length === 0) return null
 
-  // Pick the most-stocked partners for the rail; full catalog is one click
+  // Pick the most-stocked franjas for the rail; full catalog is one click
   // away via the CTA. Sort matches MarketplaceCatalog default.
-  const rail = [...partners]
+  const rail = [...franjas]
     .sort((a, b) => {
       const ac = a.marketplaceListings?.length ?? 0
       const bc = b.marketplaceListings?.length ?? 0
@@ -45,7 +45,7 @@ export function MarketplaceRail({ partners }: { partners: ContentItem[] }) {
           //MARKETPLACE
         </span>
         <span className="tabular-nums">
-          {String(partners.length).padStart(2, '0')} ACTIVOS
+          {String(franjas.length).padStart(2, '0')} ACTIVOS
         </span>
       </header>
 
@@ -57,7 +57,7 @@ export function MarketplaceRail({ partners }: { partners: ContentItem[] }) {
           return (
             <li key={p.id}>
               <Link
-                href={`/marketplace?partner=${encodeURIComponent(p.slug)}`}
+                href={`/marketplace?franja=${encodeURIComponent(p.slug)}`}
                 className="group flex items-center gap-2 border border-border bg-elevated/30 p-2 transition-colors hover:border-white/30"
               >
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-border/40 bg-base">

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Briefcase, Lock, Search, Shield, ShieldCheck, Star, RotateCcw, Save } from 'lucide-react'
 import type { Database } from '@/lib/supabase/database.types'
-import type { PartnerOption } from '@/app/admin/page'
+import type { FranjaOption } from '@/app/admin/page'
 
 type UserRow = Database['public']['Tables']['users']['Row']
 type Role = Database['public']['Enums']['user_role']
@@ -46,7 +46,7 @@ const FLAG_COLOR = {
 //     (last 25 by joined_at, deduped against elevated) and //ELEVADOS
 //     (anyone with a non-default role/flag)
 //   - Editor panel: IdentityBlock + RoleEditor (button row) + MOD/OG
-//     full toggles + PartnerEditor + Save/Reset/Cancel
+//     full toggles + FranjaEditor + Save/Reset/Cancel
 //
 // Save button submits all changes in one PATCH, then router.refresh()
 // so the list reflects the change.
@@ -54,7 +54,7 @@ export function AdminUsersEditor({
   elevatedUsers,
   recentUsers,
   lectorUsers,
-  partners,
+  franjas,
   selfId,
   totalUsers,
   roleCounts,
@@ -63,7 +63,7 @@ export function AdminUsersEditor({
   elevatedUsers: UserRow[]
   recentUsers: UserRow[]
   lectorUsers: UserRow[]
-  partners: PartnerOption[]
+  franjas: FranjaOption[]
   selfId: string
   totalUsers: number
   roleCounts: Partial<Record<string, number>>
@@ -78,9 +78,9 @@ export function AdminUsersEditor({
   // narrows by `is_mod = true` (mod is a flag, not a role).
   const [statFilter, setStatFilter] = useState<Role | 'mod' | null>(null)
 
-  const partnerById = useMemo(
-    () => new Map(partners.map((p) => [p.id, p])),
-    [partners],
+  const franjaById = useMemo(
+    () => new Map(franjas.map((p) => [p.id, p])),
+    [franjas],
   )
 
   // Debounce search hits — fires 250ms after the last keystroke. Empty /
@@ -248,7 +248,7 @@ export function AdminUsersEditor({
                     key={u.id}
                     user={u}
                     selected={selectedId === u.id}
-                    partnerTitle={u.partner_id ? partnerById.get(u.partner_id)?.title ?? null : null}
+                    franjaTitle={u.franja_id ? franjaById.get(u.franja_id)?.title ?? null : null}
                     onSelect={() => setSelectedId(u.id)}
                   />
                 ))}
@@ -270,7 +270,7 @@ export function AdminUsersEditor({
                 key={u.id}
                 user={u}
                 selected={selectedId === u.id}
-                partnerTitle={u.partner_id ? partnerById.get(u.partner_id)?.title ?? null : null}
+                franjaTitle={u.franja_id ? franjaById.get(u.franja_id)?.title ?? null : null}
                 onSelect={() => setSelectedId(u.id)}
               />
             ))}
@@ -283,7 +283,7 @@ export function AdminUsersEditor({
             <UserEditorPanel
               key={selectedUser.id}
               user={selectedUser}
-              partners={partners}
+              franjas={franjas}
               isSelf={selectedUser.id === selfId}
               onSaved={() => router.refresh()}
               onClose={() => setSelectedId(null)}
@@ -334,12 +334,12 @@ function StatChip({
 function UserListRow({
   user,
   selected,
-  partnerTitle,
+  franjaTitle,
   onSelect,
 }: {
   user: UserRow
   selected: boolean
-  partnerTitle: string | null
+  franjaTitle: string | null
   onSelect: () => void
 }) {
   const role = user.role as Role
@@ -378,12 +378,12 @@ function UserListRow({
               OG
             </span>
           )}
-          {partnerTitle && (
+          {franjaTitle && (
             <span
               className="hidden max-w-[140px] truncate border border-border px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-muted md:inline"
-              title={partnerTitle}
+              title={franjaTitle}
             >
-              {user.partner_admin ? '★ ' : ''}{partnerTitle}
+              {user.franja_admin ? '★ ' : ''}{franjaTitle}
             </span>
           )}
           <span aria-hidden className="font-mono text-[10px] text-muted">›</span>
@@ -413,13 +413,13 @@ function EmptyEditor({ count }: { count: number }) {
 
 function UserEditorPanel({
   user,
-  partners,
+  franjas,
   isSelf,
   onSaved,
   onClose,
 }: {
   user: UserRow
-  partners: PartnerOption[]
+  franjas: FranjaOption[]
   isSelf: boolean
   onSaved: () => void
   onClose: () => void
@@ -428,8 +428,8 @@ function UserEditorPanel({
   const [role, setRole] = useState<Role>(initialRole)
   const [isMod, setIsMod] = useState(!!user.is_mod)
   const [isOg, setIsOg] = useState(!!user.is_og)
-  const [partnerId, setPartnerId] = useState<string>(user.partner_id ?? '')
-  const [partnerAdmin, setPartnerAdmin] = useState(!!user.partner_admin)
+  const [franjaId, setFranjaId] = useState<string>(user.franja_id ?? '')
+  const [franjaAdmin, setFranjaAdmin] = useState(!!user.franja_admin)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedFlash, setSavedFlash] = useState(false)
@@ -443,15 +443,15 @@ function UserEditorPanel({
     role !== initialRole ||
     isMod !== !!user.is_mod ||
     isOg !== !!user.is_og ||
-    (partnerId || null) !== (user.partner_id ?? null) ||
-    partnerAdmin !== !!user.partner_admin
+    (franjaId || null) !== (user.franja_id ?? null) ||
+    franjaAdmin !== !!user.franja_admin
 
   const reset = () => {
     setRole(initialRole)
     setIsMod(!!user.is_mod)
     setIsOg(!!user.is_og)
-    setPartnerId(user.partner_id ?? '')
-    setPartnerAdmin(!!user.partner_admin)
+    setFranjaId(user.franja_id ?? '')
+    setFranjaAdmin(!!user.franja_admin)
     setError(null)
   }
 
@@ -466,8 +466,8 @@ function UserEditorPanel({
           role,
           is_mod: isMod,
           is_og: isOg,
-          partner_id: partnerId.trim() || null,
-          partner_admin: partnerAdmin,
+          franja_id: franjaId.trim() || null,
+          franja_admin: franjaAdmin,
         }),
       })
       if (!res.ok) {
@@ -540,16 +540,16 @@ function UserEditorPanel({
           onChange={setIsOg}
         />
 
-        <PartnerEditor
-          partners={partners}
-          partnerId={partnerId}
-          onPartnerChange={(next) => {
-            setPartnerId(next)
-            // Clear partner-admin when partner is cleared.
-            if (!next) setPartnerAdmin(false)
+        <FranjaEditor
+          franjas={franjas}
+          franjaId={franjaId}
+          onFranjaChange={(next) => {
+            setFranjaId(next)
+            // Clear franja-admin when franja is cleared.
+            if (!next) setFranjaAdmin(false)
           }}
-          partnerAdmin={partnerAdmin}
-          onPartnerAdminChange={setPartnerAdmin}
+          franjaAdmin={franjaAdmin}
+          onFranjaAdminChange={setFranjaAdmin}
         />
 
         {wouldDemoteSelf && (
@@ -730,38 +730,38 @@ function FlagToggle({
   )
 }
 
-// ── Partner team editor ───────────────────────────────────────────────────
+// ── Franja team editor ───────────────────────────────────────────────────
 
-function PartnerEditor({
-  partners,
-  partnerId,
-  onPartnerChange,
-  partnerAdmin,
-  onPartnerAdminChange,
+function FranjaEditor({
+  franjas,
+  franjaId,
+  onFranjaChange,
+  franjaAdmin,
+  onFranjaAdminChange,
 }: {
-  partners: PartnerOption[]
-  partnerId: string
-  onPartnerChange: (next: string) => void
-  partnerAdmin: boolean
-  onPartnerAdminChange: (next: boolean) => void
+  franjas: FranjaOption[]
+  franjaId: string
+  onFranjaChange: (next: string) => void
+  franjaAdmin: boolean
+  onFranjaAdminChange: (next: boolean) => void
 }) {
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-secondary">
         <Briefcase size={12} strokeWidth={1.5} className="text-sys-orange" />
-        PARTNER · TEAM
+        FRANJA · TEAM
       </legend>
       <label className="flex flex-col gap-1">
         <span className="font-mono text-[9px] tracking-widest text-muted">
           PERTENECE A
         </span>
         <select
-          value={partnerId}
-          onChange={(e) => onPartnerChange(e.target.value)}
+          value={franjaId}
+          onChange={(e) => onFranjaChange(e.target.value)}
           className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-sys-orange focus:outline-none"
         >
           <option value="">— ninguno —</option>
-          {partners.map((p) => (
+          {franjas.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
             </option>
@@ -772,23 +772,23 @@ function PartnerEditor({
       <label className="flex items-center gap-2 font-mono text-[10px] tracking-widest">
         <input
           type="checkbox"
-          disabled={!partnerId}
-          checked={partnerAdmin}
-          onChange={(e) => onPartnerAdminChange(e.target.checked)}
+          disabled={!franjaId}
+          checked={franjaAdmin}
+          onChange={(e) => onFranjaAdminChange(e.target.checked)}
           className="accent-sys-orange disabled:opacity-30"
         />
         <ShieldCheck
           size={12}
           strokeWidth={1.5}
-          className={partnerAdmin ? 'text-sys-orange' : 'text-muted'}
+          className={franjaAdmin ? 'text-sys-orange' : 'text-muted'}
         />
-        <span className={partnerId ? 'text-secondary' : 'text-muted/50'}>
-          PARTNER · ADMIN
+        <span className={franjaId ? 'text-secondary' : 'text-muted/50'}>
+          FRANJA · ADMIN
         </span>
       </label>
       <p className="font-mono text-[10px] leading-relaxed text-muted">
-        El partner-admin puede agregar y quitar miembros de su propio equipo
-        desde la sección del partner. No afecta otros partners.
+        El franja-admin puede agregar y quitar miembros de su propio equipo
+        desde la sección del franja. No afecta otros franjas.
       </p>
     </fieldset>
   )

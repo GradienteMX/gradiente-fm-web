@@ -1,10 +1,10 @@
 import type { ContentItem } from './types'
 
 export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
-  // ─── NOCHE NEGRA — partner catalogue (dev-seed demo) ─────────────────────
-  // A mature partner archive: what a promoter's focus cluster looks like
-  // months/years in. Every item carries partnerId "pa-noche-negra" (mirrors
-  // the prod partner row id) + real metadata researched 2026-08-19: events
+  // ─── NOCHE NEGRA — franja catalogue (dev-seed demo) ─────────────────────
+  // A mature franja archive: what a promoter's focus cluster looks like
+  // months/years in. Every item carries franjaId "pa-noche-negra" (mirrors
+  // the prod franja row id) + real metadata researched 2026-08-19: events
   // from RA/press, mixes verified on SC/Mixcloud, reviews of real releases,
   // listicle tracks verified on YouTube. Images live in public/flyers/nn-*.
   // The Sonidos por Venezuela noticia summarizes Revista Marvin's coverage
@@ -15,7 +15,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "ev-nn-sonidos-venezuela",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     hp: 120,
     hpLastUpdatedAt: "2026-08-18T12:00:00Z",
     slug: "sonidos-por-venezuela-salon-los-angeles",
@@ -57,7 +57,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "ev-nn-tonal-oct25",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "noche-negra-tonal-oct-2025",
     type: "evento",
     title: "NOCHE NEGRA EN TONAL",
@@ -81,7 +81,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "ev-nn-agenda-tonal",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "agenda-tonal-nochenegra-abril-2025",
     type: "evento",
     title: "AGENDA TONAL",
@@ -105,7 +105,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "ev-nn-bienvenido-2026",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "bienvenido-2026-salon-solin",
     type: "evento",
     title: "BIENVENIDO 2026",
@@ -129,7 +129,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "ev-nn-baile-del-ano",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "el-baile-del-ano-salon-los-angeles-2024",
     type: "evento",
     title: "EL BAILE DEL AÑO",
@@ -163,7 +163,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "ev-nn-club-coco",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "club-coco-cdmx-nochenegra-2024",
     type: "evento",
     title: "CLUB COCO EN CDMX",
@@ -189,7 +189,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "mx-nn-carlos-rene",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     hp: 70,
     hpLastUpdatedAt: "2026-08-18T12:00:00Z",
     slug: "carlos-rene-salsa-en-mexico-nts",
@@ -226,7 +226,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "mx-nn-coco-maria",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "coco-maria-le-mellotron",
     type: "mix",
     title: "Coco María en Le Mellotron",
@@ -253,7 +253,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "mx-nn-sonido-martines",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "sonido-martines-el-humo-mundial",
     type: "mix",
     title: "El Humo Mundial",
@@ -288,7 +288,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "mx-nn-sonido-confirmacion",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "sonido-confirmacion-introduccion-sonidera",
     type: "mix",
     title: "Introducción al sonido sonidero",
@@ -318,7 +318,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "mx-nn-tropicaza",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "tropicaza-boiler-room-cdmx",
     type: "mix",
     title: "Boiler Room CDMX: Vinyl Only",
@@ -347,7 +347,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "no-nn-sonidos-venezuela",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     hp: 90,
     hpLastUpdatedAt: "2026-08-18T12:00:00Z",
     slug: "sonidos-por-venezuela-recaudacion-salon-los-angeles",
@@ -374,7 +374,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "no-nn-sxsw",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "nochenegra-sxsw-2024-austin",
     type: "noticia",
     title: "La bandera negra ondea en Austin",
@@ -397,7 +397,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "no-nn-siete-anos",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "nochenegra-siete-anos-buenas-fiestas",
     type: "noticia",
     title: "Siete años de buenas fiestas",
@@ -422,7 +422,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "rv-nn-club-coco",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "review-club-coco-bongo-joe",
     type: "review",
     title: "VA — Club Coco",
@@ -450,7 +450,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "rv-nn-club-coco-ahora",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     hp: 60,
     hpLastUpdatedAt: "2026-08-18T12:00:00Z",
     slug: "review-club-coco-ahora",
@@ -480,7 +480,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "rv-nn-club-coco-nd",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "review-club-coco-new-dimensions",
     type: "review",
     title: "VA — Club Coco: New Dimensions in Latin Music",
@@ -508,7 +508,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "rv-nn-elia-elizabeth",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "review-la-onda-de-elia-y-elizabeth",
     type: "review",
     title: "Elia y Elizabeth — La Onda de Elia y Elizabeth",
@@ -538,7 +538,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "op-nn-mas-salsa",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "por-que-no-hay-mas-salsa-noche-chilanga",
     type: "opinion",
     title: "¿Por qué no hay más salsa en la noche chilanga?",
@@ -558,7 +558,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "op-nn-salones",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     hp: 55,
     hpLastUpdatedAt: "2026-08-18T12:00:00Z",
     slug: "elogio-del-salon-mexicano",
@@ -580,7 +580,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "op-nn-vinyl-only",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "vinyl-only-fiesta-como-memoria",
     type: "opinion",
     title: "Vinyl only: la fiesta como acto de memoria",
@@ -602,7 +602,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "li-nn-subgeneros-salsa",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     hp: 95,
     hpLastUpdatedAt: "2026-08-18T12:00:00Z",
     slug: "cinco-subgeneros-raros-salsa",
@@ -687,7 +687,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "li-nn-boogaloo",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "cinco-canonazos-boogaloo-descarga",
     type: "listicle",
     title: "5 cañonazos de boogaloo y descarga",
@@ -769,7 +769,7 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
 
   {
     id: "li-nn-cumbias-salon",
-    partnerId: "pa-noche-negra",
+    franjaId: "pa-noche-negra",
     slug: "cinco-cumbias-que-llenan-el-salon",
     type: "listicle",
     title: "5 cumbias que llenan el salón",
@@ -849,12 +849,12 @@ export const NOCHE_NEGRA_ITEMS: ContentItem[] = [
   },
 ];
 
-export const NOCHE_NEGRA_PARTNER: ContentItem = {
-    // Dev-seed mirror of the prod partner row (same id/slug/logo path), so
+export const NOCHE_NEGRA_FRANJA: ContentItem = {
+    // Dev-seed mirror of the prod franja row (same id/slug/logo path), so
     // the /mapa focus + marketplace demo work against the mock dataset.
     id: "pa-noche-negra",
     slug: "noche-negra",
-    type: "partner",
+    type: "franja",
     title: "Noche Negra",
     subtitle: "Colectivo · Vinyl Only · CDMX",
     vibeMin: 4, vibeMax: 8,
@@ -862,14 +862,14 @@ export const NOCHE_NEGRA_PARTNER: ContentItem = {
     tags: [],
     imageUrl: "/partners/noche-negra.jpg",
     publishedAt: "2026-07-25T12:00:00",
-    partnerKind: "promoter",
-    partnerUrl: "https://www.instagram.com/nochenegra.mx/",
+    franjaKind: "promoter",
+    franjaUrl: "https://www.instagram.com/nochenegra.mx/",
     // Real socials (obi icon row) — IG + FB confirmed; nothing invented.
     links: [
       { label: "Instagram", url: "https://www.instagram.com/nochenegra.mx/" },
       { label: "Facebook", url: "https://www.facebook.com/nochenegramx" },
     ],
-    partnerLastUpdated: "2026-07-25T12:00:00",
+    franjaLastUpdated: "2026-07-25T12:00:00",
     marketplaceEnabled: true,
     marketplaceDescription:
       "La mesa de discos del colectivo, ahora en línea: tornamesas Technics revisadas por nuestro técnico de confianza, cápsulas y agujas Shure de la era dorada (descontinuadas desde 2018 — lo que hay es lo que hay) y adaptadores de 45 para que tus sietes giren como deben. Recogida en nuestras fiestas o envío a todo México.",
@@ -997,8 +997,8 @@ export const NOCHE_NEGRA_PARTNER: ContentItem = {
 };
 
 // Content first, identity row last — spread order mirrors the
-// items-then-partners layout of lib/mockData.ts.
+// items-then-franjas layout of lib/mockData.ts.
 export const NOCHE_NEGRA_SEED: ContentItem[] = [
   ...NOCHE_NEGRA_ITEMS,
-  NOCHE_NEGRA_PARTNER,
+  NOCHE_NEGRA_FRANJA,
 ];

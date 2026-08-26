@@ -14,7 +14,7 @@ import { ReaderOverlay } from './ReaderOverlay'
 import { ArticuloOverlay } from './ArticuloOverlay'
 import { MixOverlay } from './MixOverlay'
 import { ListicleOverlay } from './ListicleOverlay'
-import { PartnerOverlay } from './PartnerOverlay'
+import { FranjaOverlay } from './FranjaOverlay'
 
 export function OverlayRouter() {
   const { openSlug } = useOverlay()
@@ -92,12 +92,12 @@ export function OverlayRouter() {
     }
   }
 
-  // Partners render as a standalone full-screen dossier (own chrome + wide
+  // Franjas render as a standalone full-screen dossier (own chrome + wide
   // layout), NOT wrapped in OverlayShell's 1024px single panel. See the
-  // project_partner_page_revamp design note.
-  if (mounted.type === 'partner') {
+  // project_franja_page_revamp design note.
+  if (mounted.type === 'franja') {
     return (
-      <PartnerOverlay
+      <FranjaOverlay
         key={mounted.slug}
         item={mounted}
         exiting={exiting}

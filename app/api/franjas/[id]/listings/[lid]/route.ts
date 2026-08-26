@@ -1,15 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// /api/partners/[id]/listings/[lid] — single-listing endpoint.
+// /api/franjas/[id]/listings/[lid] — single-listing endpoint.
 // PATCH  → partial update of an existing listing.
 // DELETE → remove the listing row (cascades any future listing-scoped
 //          tables, but today nothing FKs to marketplace_listings).
 //
-// Gated on canManagePartner: site admin OR a team member of this partner.
+// Gated on canManageFranja: site admin OR a team member of this franja.
 // RLS on marketplace_listings_team_write enforces the same DB-side.
-// The .eq('partner_id', params.id) on every query keeps mutations scoped
-// so a forged lid from another partner can't slip through the gate.
+// The .eq('franja_id', params.id) on every query keeps mutations scoped
+// so a forged lid from another franja can't slip through the gate.
 
 const VALID_CATEGORIES = [
   'vinyl', 'cassette', 'cd', 'synth', 'drum-machine',
@@ -44,9 +44,9 @@ interface UpdateBody {
   related_links?: unknown
 }
 
-async function gatePartnerWrite(
+async function gateFranjaWrite(
   supabase: ReturnType<typeof createClient>,
-  partnerId: string,
+  franjaId: string,
 ) {
   const {
     data: { user },
@@ -56,13 +56,13 @@ async function gatePartnerWrite(
   }
   const { data: profile } = await supabase
     .from('users')
-    .select('role, partner_id')
+    .select('role, franja_id')
     .eq('id', user.id)
     .maybeSingle()
   if (!profile) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
-  const allowed = profile.role === 'admin' || profile.partner_id === partnerId
+  const allowed = profile.role === 'admin' || profile.franja_id === franjaId
   if (!allowed) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
@@ -74,7 +74,7 @@ export async function PATCH(
   { params }: { params: { id: string; lid: string } },
 ) {
   const supabase = createClient()
-  const gate = await gatePartnerWrite(supabase, params.id)
+  const gate = await gateFranjaWrite(supabase, params.id)
   if ('error' in gate) return gate.error
 
   let body: UpdateBody
@@ -166,7 +166,7 @@ export async function PATCH(
     .from('marketplace_listings')
     .update(patch as never)
     .eq('id', params.lid)
-    .eq('partner_id', params.id)
+    .eq('franja_id', params.id)
     .select()
     .maybeSingle()
 
@@ -182,14 +182,14 @@ export async function DELETE(
   { params }: { params: { id: string; lid: string } },
 ) {
   const supabase = createClient()
-  const gate = await gatePartnerWrite(supabase, params.id)
+  const gate = await gateFranjaWrite(supabase, params.id)
   if ('error' in gate) return gate.error
 
   const { data, error } = await supabase
     .from('marketplace_listings')
     .delete()
     .eq('id', params.lid)
-    .eq('partner_id', params.id)
+    .eq('franja_id', params.id)
     .select('id')
     .maybeSingle()
 

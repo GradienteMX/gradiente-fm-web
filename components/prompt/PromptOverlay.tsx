@@ -12,7 +12,7 @@ import { usePromptInternal } from './usePrompt'
 //   - input:   same chrome plus a single text field
 //   - type-to-confirm: high-friction gate where the confirm button is
 //     disabled until the user types a literal required string (e.g.
-//     "BORRAR <partner name>") for destructive flows
+//     "BORRAR <franja name>") for destructive flows
 //
 // ESC + backdrop click resolve as cancel. Enter in input/type-to-confirm
 // mode confirms when valid. The destructive flag styles confirm in sys-red.

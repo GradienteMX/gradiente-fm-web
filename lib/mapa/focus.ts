@@ -1,5 +1,5 @@
-// Spatial Identity Canvas — partner focus reflow.
-// Entering a partner focus rearranges the honeycomb: the partner's items
+// Spatial Identity Canvas — franja focus reflow.
+// Entering a franja focus rearranges the honeycomb: the franja's items
 // gather into ONE compact self-contained cluster around a central identity
 // hex (mockup: the CLUB JAPAN nucleus), placed in type-ordered arcs so the
 // archive reads neatly by content type. Neighboring non-member terrain that
@@ -22,7 +22,7 @@ import {
   type Axial,
 } from './hex'
 import { outlinePath } from './polyhex'
-import { HEX_GAP, HEX_R, type MapaLayout, type PartnerCluster } from './layout'
+import { HEX_GAP, HEX_R, type MapaLayout, type FranjaCluster } from './layout'
 import {
   affinityScore,
   extractFeatures,
@@ -49,7 +49,7 @@ export const FOCUS_TYPE_ORDER: readonly ContentType[] = [
   'articulo',
   'listicle',
   'noticia',
-  'partner',
+  'franja',
 ]
 
 export interface ListingPlacement {
@@ -67,8 +67,8 @@ export interface FocusArrangement {
   identityCell: Axial
   /**
    * Every cell the identity chrome claims — a full 7-cell ROSETTE during
-   * partner focus (2026-08-20, Iker's call: a single-hex nucleus was too
-   * small to read or hit; the identity now carries the partner image at
+   * franja focus (2026-08-20, Iker's call: a single-hex nucleus was too
+   * small to read or hit; the identity now carries the franja image at
    * dominant-slab scale). Empty for topic lenses (no identity chrome).
    */
   identityCells: Axial[]
@@ -108,7 +108,7 @@ function centroidOf(cells: readonly Axial[]): { x: number; y: number } {
 
 export function computeFocusArrangement(
   layout: MapaLayout,
-  cluster: PartnerCluster,
+  cluster: FranjaCluster,
   listings: readonly MarketplaceListing[] = [],
 ): FocusArrangement {
   // Identity nucleus at the cell nearest the global cluster's centroid — the
@@ -122,7 +122,7 @@ export function computeFocusArrangement(
 }
 
 // Topic lens (REAGRUPAR filters): the same gather/belt/displacement machinery
-// as partner focus but WITHOUT an identity nucleus — a filter has no identity
+// as franja focus but WITHOUT an identity nucleus — a filter has no identity
 // row, so the first matching item seeds the arrangement at the set's own
 // centroid. Filters never rebuild the global map; they borrow the focus
 // contract (translation-only, reversible, deterministic).
@@ -154,8 +154,8 @@ function gatherArrangement(
   const members = layout.placed.filter((p) => memberIds.has(p.item.id))
   const nonMembers = layout.placed.filter((p) => !memberIds.has(p.item.id))
   const identityCell = anchorCell
-  // Partner focus: the identity claims a full rosette (center + six
-  // neighbors) so the partner reads at dominant-slab scale.
+  // Franja focus: the identity claims a full rosette (center + six
+  // neighbors) so the franja reads at dominant-slab scale.
   const identityCells = opts.nucleus
     ? [identityCell, ...HEX_DIRS.map((d) => axialAdd(identityCell, d))]
     : []
@@ -562,8 +562,8 @@ function gatherArrangement(
 //
 // Listings on the GLOBAL terrain, not just in focus (2026-08-20, Iker's
 // review: filtering the map down to MERCADO showed nothing, because listing
-// nodes only materialized during partner focus). Each marketplace-enabled
-// clustered partner gets its listings placed as single-hex satellites on the
+// nodes only materialized during franja focus). Each marketplace-enabled
+// clustered franja gets its listings placed as single-hex satellites on the
 // FREE cells nearest its cluster — a BFS through the occupied terrain finds
 // the closest coast, so the stable global layout is never displaced (rule 9
 // holds; the interspersed center often has zero free neighbors). Nodes
@@ -571,14 +571,14 @@ function gatherArrangement(
 // slug order, listings in the canonical publishedAt-desc order, candidates
 // tie-break by (q, r). Each node records the nearest member as its ANCHOR so
 // view arrangements (continent drift, focus displacement) can carry it with
-// its partner's mass.
+// its franja's mass.
 
 const GLOBAL_LISTING_BFS_MAX = 40 // hex rings; safety bound, never hit in practice
 
 export interface GlobalListingPlacement {
   placement: ListingPlacement
-  partnerId: string
-  partnerSlug: string
+  franjaId: string
+  franjaSlug: string
   currency: string
   /** Member item whose view-arrangement delta this node follows. */
   anchorItemId: string
@@ -586,14 +586,14 @@ export interface GlobalListingPlacement {
 
 export function placeGlobalListings(
   layout: MapaLayout,
-  clusters: readonly PartnerCluster[],
+  clusters: readonly FranjaCluster[],
 ): GlobalListingPlacement[] {
   const out: GlobalListingPlacement[] = []
   const occupied = new Set<string>(Object.keys(layout.cellOwner))
 
   for (const cluster of clusters) {
-    // clusters arrive slug-sorted (partnerClusters contract)
-    const p = cluster.partner
+    // clusters arrive slug-sorted (franjaClusters contract)
+    const p = cluster.franja
     if (!p.marketplaceEnabled) continue
     const listings = [...(p.marketplaceListings ?? [])].sort((a, b) =>
       a.publishedAt !== b.publishedAt
@@ -691,8 +691,8 @@ export function placeGlobalListings(
           box,
           outline: outlinePath([cell], HEX_R, { x: box.x, y: box.y }, HEX_GAP),
         },
-        partnerId: p.id,
-        partnerSlug: p.slug,
+        franjaId: p.id,
+        franjaSlug: p.slug,
         currency: p.marketplaceCurrency ?? 'MXN',
         anchorItemId,
       })
@@ -701,25 +701,25 @@ export function placeGlobalListings(
   return out
 }
 
-// ── Affine partner ranking (focus carousel) ─────────────────────────────────
+// ── Affine franja ranking (focus carousel) ─────────────────────────────────
 //
-// From a focused partner, the other clustered identities ranked by how much
+// From a focused franja, the other clustered identities ranked by how much
 // their content resonates with the focused members — mean of the top-3
-// cross-cluster pairwise affinities. Drives the obi's partner carousel:
+// cross-cluster pairwise affinities. Drives the obi's franja carousel:
 // stepping ‹ › moves the focus to the next most-affine identity. Pure and
 // deterministic; viewer behavior plays no part.
-export interface RankedPartner {
-  cluster: PartnerCluster
+export interface RankedFranja {
+  cluster: FranjaCluster
   score: number
 }
 
-export function rankRelatedPartners(
+export function rankRelatedFranjas(
   layout: MapaLayout,
-  clusters: readonly PartnerCluster[],
-  focused: PartnerCluster,
-): RankedPartner[] {
+  clusters: readonly FranjaCluster[],
+  focused: FranjaCluster,
+): RankedFranja[] {
   const byId = new Map(layout.placed.map((p) => [p.item.id, p.item]))
-  const featuresOf = (c: PartnerCluster) =>
+  const featuresOf = (c: FranjaCluster) =>
     c.itemIds
       .map((id) => byId.get(id))
       .filter((i) => i !== undefined)
@@ -727,7 +727,7 @@ export function rankRelatedPartners(
   const focusedFeatures = featuresOf(focused)
 
   return clusters
-    .filter((c) => c.partner.id !== focused.partner.id)
+    .filter((c) => c.franja.id !== focused.franja.id)
     .map((cluster) => {
       const pair: number[] = []
       for (const of of featuresOf(cluster)) {
@@ -743,7 +743,7 @@ export function rankRelatedPartners(
     .sort((a, b) =>
       a.score !== b.score
         ? b.score - a.score
-        : a.cluster.partner.slug < b.cluster.partner.slug
+        : a.cluster.franja.slug < b.cluster.franja.slug
           ? -1
           : 1,
     )

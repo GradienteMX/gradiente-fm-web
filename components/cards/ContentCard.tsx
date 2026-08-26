@@ -6,7 +6,7 @@ import type { ContentItem } from '@/lib/types'
 import { vibeToColor, vibeMid, categoryColor, fmtDateShort, fmtDayNumber, fmtMonthShort, fmtDayName, fmtTime, isExpired } from '@/lib/utils'
 import { VibeMeter } from '@/components/VibeMeter'
 import { getGenreById, getTagNames } from '@/lib/genres'
-import { partnerAttributionPrefix } from '@/lib/partnerAttribution'
+import { franjaAttributionPrefix } from '@/lib/franjaAttribution'
 import { Play, Clock, MapPin, Ticket } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
@@ -57,7 +57,7 @@ const TYPE_LABEL: Record<ContentItem['type'], string> = {
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
   listicle: 'LISTA',
-  partner: 'PARTNER',
+  franja: 'FRANJA',
 }
 
 interface ContentCardProps {
@@ -137,25 +137,25 @@ function CreatorChip({ item, dim = false }: { item: ContentItem; dim?: boolean }
   )
 }
 
-// ── Partner attribution chip ──────────────────────────────────────────────────
+// ── Franja attribution chip ──────────────────────────────────────────────────
 //
 // Renders //PRESENTA · CLUB JAPAN (or //SELLO · X, //PROMOTORA · X, etc.) on
-// cards whose `partner` field is populated by the server-side self-join. The
-// chip is clickable through to the partner's MarketplaceOverlay when the
-// partner is marketplace-enabled; non-clickable otherwise (the attribution
+// cards whose `franja` field is populated by the server-side self-join. The
+// chip is clickable through to the franja's MarketplaceOverlay when the
+// franja is marketplace-enabled; non-clickable otherwise (the attribution
 // itself does the trust work — the click is a discovery affordance).
 //
 // stopPropagation on click so the chip's navigation doesn't also trigger the
 // card's overlay-open handler.
 //
-// See wiki/90-Decisions/Partner Authoring.md.
-function PartnerAttributionChip({ item }: { item: ContentItem }) {
-  // Defensive on partner.title — server mapper occasionally hands back a
+// See wiki/90-Decisions/Franja Authoring.md.
+function FranjaAttributionChip({ item }: { item: ContentItem }) {
+  // Defensive on franja.title — server mapper occasionally hands back a
   // partial shape (e.g. when the embed returned as an array we couldn't
   // normalize). Skip rendering rather than crash.
-  if (!item.partner || !item.partner.title) return null
-  const { partner } = item
-  const label = `${partnerAttributionPrefix(partner.kind)} · ${partner.title.toUpperCase()}`
+  if (!item.franja || !item.franja.title) return null
+  const { franja } = item
+  const label = `${franjaAttributionPrefix(franja.kind)} · ${franja.title.toUpperCase()}`
   const chipStyle: CSSProperties = {
     borderColor: '#FF8800',
     color: '#FF8800',
@@ -164,14 +164,14 @@ function PartnerAttributionChip({ item }: { item: ContentItem }) {
   const baseClass =
     'border bg-black/85 px-1.5 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm'
 
-  if (partner.marketplaceEnabled) {
+  if (franja.marketplaceEnabled) {
     return (
       <Link
-        href={`/marketplace?partner=${encodeURIComponent(partner.slug)}`}
+        href={`/marketplace?franja=${encodeURIComponent(franja.slug)}`}
         onClick={(e) => e.stopPropagation()}
         className={`${baseClass} transition-opacity hover:opacity-80`}
         style={chipStyle}
-        title={`Ver perfil de ${partner.title} en marketplace`}
+        title={`Ver perfil de ${franja.title} en marketplace`}
       >
         {label}
       </Link>
@@ -182,7 +182,7 @@ function PartnerAttributionChip({ item }: { item: ContentItem }) {
     <span
       className={baseClass}
       style={chipStyle}
-      title={`Publicado por ${partner.title}`}
+      title={`Publicado por ${franja.title}`}
     >
       {label}
     </span>
@@ -281,7 +281,7 @@ function CardImage({
             BORRADOR
           </span>
         )}
-        <PartnerAttributionChip item={item} />
+        <FranjaAttributionChip item={item} />
         <PublisherHlChip item={item} />
       </div>
 

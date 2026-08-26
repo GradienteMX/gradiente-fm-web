@@ -183,7 +183,7 @@ export function LoginOverlay() {
         <div className="flex flex-col gap-4 p-5">
           <p className="font-grotesk text-d13 leading-snug text-ink-soft">
             {mode === 'login'
-              ? 'Acceso a redacción, partners y lectores del subsistema.'
+              ? 'Acceso a redacción, franjas y lectores del subsistema.'
               : 'Necesitas un código de invitación para crear una cuenta.'}
           </p>
 

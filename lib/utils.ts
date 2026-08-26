@@ -19,7 +19,7 @@ export function categoryColor(type: ContentType): string {
     // Magenta is the system's only vacant hue family (nearest neighbor:
     // opinión violet at ΔE 25.8; 5.5:1 on the dark ground).
     case 'listicle':  return '#EC4899'
-    case 'partner':   return '#6B7280'
+    case 'franja':   return '#6B7280'
   }
 }
 
@@ -173,7 +173,7 @@ export function getItemDate(item: ContentItem): Date {
 // Grace window for recently-past eventos. Past events that ended within this
 // many days show up on home + EventosRail with a //PASADO marker. Older
 // events are still in the DB but stay filtered from the live feed — the
-// PartnerOverlay archive surfaces them without a date cap.
+// FranjaOverlay archive surfaces them without a date cap.
 export const HOME_PAST_GRACE_DAYS = 30
 
 export function filterForHome(

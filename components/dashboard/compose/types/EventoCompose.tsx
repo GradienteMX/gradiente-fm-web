@@ -4,14 +4,14 @@
 //
 // State preamble + ISO↔datetime-local helpers copied VERBATIM from the dark
 // EventoForm (components/dashboard/forms/EventoForm.tsx:30-74 — untouched,
-// /admin depends): same emptyDraft (INCLUDING `attributePartner: true` — the
-// unique opt-out default for partner-team event publishing), same DRAFT_KEY,
+// /admin depends): same emptyDraft (INCLUDING `attributeFranja: true` — the
+// unique opt-out default for franja-team event publishing), same DRAFT_KEY,
 // same slug effect, same workbench wiring, same publish recipe. Only the JSX
 // is pliego.
 //
 // EDITORIAL and VINCULAR A MI PROMOTORA move to the rail's PUBLICACIÓN panel:
 // editorial lever is staff-only (guide/admin — app/api/items isStaff), the
-// partner stamp is partner-team only (evento is a stamped scene-voice type).
+// franja stamp is franja-team only (evento is a stamped scene-voice type).
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -74,7 +74,7 @@ function emptyDraft(): ContentItem {
     ticketUrl: '',
     price: '',
     editorial: false,
-    attributePartner: true,
+    attributeFranja: true,
   }
 }
 
@@ -143,8 +143,8 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
 
   const showEditorial =
     currentUser?.role === 'guide' || currentUser?.role === 'admin'
-  const showPartner = !!currentUser?.partnerId
-  const partnerValue = draft.attributePartner ?? !!draft.partnerId
+  const showFranja = !!currentUser?.franjaId
+  const franjaValue = draft.attributeFranja ?? !!draft.franjaId
 
   const onAnchor = (anchorId: string) => {
     document.getElementById(anchorId)?.scrollIntoView({ block: 'start' })
@@ -169,9 +169,9 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={showPartner}
-          partnerValue={partnerValue}
-          onPartnerChange={(v) => patch({ attributePartner: v })}
+          showFranja={showFranja}
+          franjaValue={franjaValue}
+          onFranjaChange={(v) => patch({ attributeFranja: v })}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

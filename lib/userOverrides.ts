@@ -54,16 +54,16 @@ export function getRealUserById(id: string): User | undefined {
 
 // What an admin is allowed to edit. Identity fields are intentionally absent.
 //
-// partnerId convention:
+// franjaId convention:
 //   undefined → no change (leave seed value alone)
-//   string    → set to this partner id
-//   null      → explicit clear (drop user from any partner)
+//   string    → set to this franja id
+//   null      → explicit clear (drop user from any franja)
 export interface UserOverride {
   role?: Role
   isMod?: boolean
   isOG?: boolean
-  partnerId?: string | null
-  partnerAdmin?: boolean
+  franjaId?: string | null
+  franjaAdmin?: boolean
 }
 
 type OverrideMap = Record<string, UserOverride>
@@ -133,20 +133,20 @@ function applyOverride(seed: User, ov: UserOverride): User {
   // when the seed is also false).
   if (ov.isMod !== undefined) next.isMod = ov.isMod
   if (ov.isOG !== undefined) next.isOG = ov.isOG
-  // partnerId — null means explicit clear; string means set; undefined leaves seed.
-  if (ov.partnerId === null) {
-    delete next.partnerId
-  } else if (ov.partnerId !== undefined) {
-    next.partnerId = ov.partnerId
+  // franjaId — null means explicit clear; string means set; undefined leaves seed.
+  if (ov.franjaId === null) {
+    delete next.franjaId
+  } else if (ov.franjaId !== undefined) {
+    next.franjaId = ov.franjaId
   }
-  if (ov.partnerAdmin !== undefined) next.partnerAdmin = ov.partnerAdmin
+  if (ov.franjaAdmin !== undefined) next.franjaAdmin = ov.franjaAdmin
   return next
 }
 
 // ── Write API ──────────────────────────────────────────────────────────────
 
 // Patch-merge: pass only the fields you want to change. Pass `undefined` to
-// leave a field alone; for `partnerId` pass `null` to explicitly clear.
+// leave a field alone; for `franjaId` pass `null` to explicitly clear.
 export function setUserOverride(id: string, patch: UserOverride) {
   if (!getUserById(id)) return // guard against typos in caller
   const m = readMap()
@@ -155,20 +155,20 @@ export function setUserOverride(id: string, patch: UserOverride) {
   if (patch.role !== undefined) next.role = patch.role
   if (patch.isMod !== undefined) next.isMod = patch.isMod
   if (patch.isOG !== undefined) next.isOG = patch.isOG
-  if (patch.partnerId !== undefined) next.partnerId = patch.partnerId
-  if (patch.partnerAdmin !== undefined) next.partnerAdmin = patch.partnerAdmin
+  if (patch.franjaId !== undefined) next.franjaId = patch.franjaId
+  if (patch.franjaAdmin !== undefined) next.franjaAdmin = patch.franjaAdmin
   // Drop the entry entirely if it now matches the seed — keeps storage tidy.
   const seed = getUserById(id)!
   const isNoop =
     (next.role === undefined || next.role === seed.role) &&
     (next.isMod === undefined || (next.isMod ?? false) === (seed.isMod ?? false)) &&
     (next.isOG === undefined || (next.isOG ?? false) === (seed.isOG ?? false)) &&
-    (next.partnerId === undefined ||
-      (next.partnerId === null
-        ? seed.partnerId === undefined
-        : next.partnerId === seed.partnerId)) &&
-    (next.partnerAdmin === undefined ||
-      (next.partnerAdmin ?? false) === (seed.partnerAdmin ?? false))
+    (next.franjaId === undefined ||
+      (next.franjaId === null
+        ? seed.franjaId === undefined
+        : next.franjaId === seed.franjaId)) &&
+    (next.franjaAdmin === undefined ||
+      (next.franjaAdmin ?? false) === (seed.franjaAdmin ?? false))
   if (isNoop) {
     delete m[id]
   } else {

@@ -3,35 +3,34 @@ import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/partners/[id]
-// GET    → fetch one partner row (full detail, for edit form prefill)
-// PATCH  → update editable fields on a partner row
-// DELETE → hard-delete the partner row (cascades comments/saves/polls/
-//          hp_events; users.partner_id + invite_codes.intended_partner_id
+// GET    → fetch one franja row (full detail, for edit form prefill)
+// PATCH  → update editable fields on a franja row
+// DELETE → hard-delete the franja row (cascades comments/saves/polls/
+//          hp_events; users.franja_id + invite_codes.intended_franja_id
 //          set null per existing FK constraints)
 //
-// Admin-only on all three. Validates partner_kind + vibe range bounds
-// the same way POST /api/admin/partners does.
+// Admin-only on all three. Validates franja_kind + vibe range bounds
+// the same way POST /api/admin/franjas does.
 
-type PartnerKind = Database['public']['Enums']['partner_kind']
+type FranjaKind = Database['public']['Enums']['franja_kind']
 
-const VALID_KINDS: readonly PartnerKind[] = [
-  'promo',
+const VALID_KINDS: readonly FranjaKind[] = [
   'label',
   'promoter',
   'venue',
-  'sponsored',
   'dealer',
   'colectivo',
   'festival',
   'club',
   'medios',
   'mix-series',
+  'plataforma',
 ]
 
 interface UpdateBody {
   title?: string
-  partner_kind?: PartnerKind
-  partner_url?: string | null
+  franja_kind?: FranjaKind
+  franja_url?: string | null
   image_url?: string
   vibe_min?: number
   vibe_max?: number
@@ -70,15 +69,15 @@ export async function GET(
   const { data, error } = await supabase
     .from('items')
     .select(
-      'id, slug, title, partner_kind, partner_url, image_url, vibe_min, vibe_max, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, type',
+      'id, slug, title, franja_kind, franja_url, image_url, vibe_min, vibe_max, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, type',
     )
     .eq('id', params.id)
-    .eq('type', 'partner')
+    .eq('type', 'franja')
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: 'Partner not found' }, { status: 404 })
-  return NextResponse.json({ partner: data })
+  if (!data) return NextResponse.json({ error: 'Franja not found' }, { status: 404 })
+  return NextResponse.json({ franja: data })
 }
 
 export async function PATCH(
@@ -106,17 +105,17 @@ export async function PATCH(
     if (!t) return NextResponse.json({ error: 'title required' }, { status: 400 })
     patch.title = t
   }
-  if (body.partner_kind !== undefined) {
-    if (!VALID_KINDS.includes(body.partner_kind)) {
+  if (body.franja_kind !== undefined) {
+    if (!VALID_KINDS.includes(body.franja_kind)) {
       return NextResponse.json(
-        { error: `partner_kind invalid (${VALID_KINDS.join('|')})` },
+        { error: `franja_kind invalid (${VALID_KINDS.join('|')})` },
         { status: 400 },
       )
     }
-    patch.partner_kind = body.partner_kind
+    patch.franja_kind = body.franja_kind
   }
-  if (body.partner_url !== undefined) {
-    patch.partner_url = body.partner_url?.trim() || null
+  if (body.franja_url !== undefined) {
+    patch.franja_url = body.franja_url?.trim() || null
   }
   if (body.image_url !== undefined) {
     const u = body.image_url.trim()
@@ -150,20 +149,20 @@ export async function PATCH(
     patch.marketplace_currency = body.marketplace_currency?.trim() || null
   }
 
-  // partner_last_updated bumps on every PATCH so the rail reorders the
-  // edited partner toward the front (the rail orders by this field).
-  patch.partner_last_updated = new Date().toISOString()
+  // franja_last_updated bumps on every PATCH so the rail reorders the
+  // edited franja toward the front (the rail orders by this field).
+  patch.franja_last_updated = new Date().toISOString()
 
   const { data, error } = await supabase
     .from('items')
     .update(patch)
     .eq('id', params.id)
-    .eq('type', 'partner')
+    .eq('type', 'franja')
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ partner: data })
+  return NextResponse.json({ franja: data })
 }
 
 export async function DELETE(
@@ -175,16 +174,16 @@ export async function DELETE(
   if ('error' in gate) return gate.error
 
   // Cascades (per migration 0001):
-  //   - comments / user_saves / polls / hp_events on this partner-item
+  //   - comments / user_saves / polls / hp_events on this franja-item
   //     CASCADE delete
-  //   - users.partner_id + invite_codes.intended_partner_id pointing here
-  //     SET NULL (team members + pending invites lose the partner link
+  //   - users.franja_id + invite_codes.intended_franja_id pointing here
+  //     SET NULL (team members + pending invites lose the franja link
   //     but their accounts / codes survive)
   const { error } = await supabase
     .from('items')
     .delete()
     .eq('id', params.id)
-    .eq('type', 'partner')
+    .eq('type', 'franja')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

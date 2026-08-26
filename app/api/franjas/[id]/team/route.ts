@@ -1,22 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// /api/partners/[id]/team
-// GET    → list team members (users with partner_id = [id])
+// /api/franjas/[id]/team
+// GET    → list team members (users with franja_id = [id])
 // POST   → add a user to the team
-// PATCH  → toggle partner_admin flag on a team member
+// PATCH  → toggle franja_admin flag on a team member
 // DELETE → kick a team member
 //
 // Reads are gated by gateTeamAccess (site admin OR any team member). WRITES go
-// through SECURITY DEFINER RPCs (partner_team_add / _set_admin / _remove —
+// through SECURITY DEFINER RPCs (franja_team_add / _set_admin / _remove —
 // migration 0033) which re-authorize server-side from auth.uid() and scope
-// every mutation to THIS partner, never touching role/is_mod/is_og.
+// every mutation to THIS franja, never touching role/is_mod/is_og.
 //
 // Why RPCs and not a direct users UPDATE: the caller's RLS-bound client can't
-// write another user's row (users_self_update pins partner_id/partner_admin;
+// write another user's row (users_self_update pins franja_id/franja_admin;
 // users_admin_all needs a site admin), so the old direct UPDATE was a silent
-// no-op for partner-admins. "Fixing" that with a broad users policy or the
-// service-role client would let a partner-admin rewrite ANY user's role —
+// no-op for franja-admins. "Fixing" that with a broad users policy or the
+// service-role client would let a franja-admin rewrite ANY user's role —
 // privilege escalation. The definer RPCs are the safe middle path.
 
 interface AddBody {
@@ -25,7 +25,7 @@ interface AddBody {
 
 interface PatchBody {
   user_id: string
-  partner_admin: boolean
+  franja_admin: boolean
 }
 
 interface DeleteBody {
@@ -33,11 +33,11 @@ interface DeleteBody {
 }
 
 const TEAM_FIELDS =
-  'id, username, display_name, role, is_mod, is_og, partner_admin, joined_at'
+  'id, username, display_name, role, is_mod, is_og, franja_admin, joined_at'
 
 async function gateTeamAccess(
   supabase: ReturnType<typeof createClient>,
-  partnerId: string,
+  franjaId: string,
   requireWrite: boolean,
 ) {
   const {
@@ -48,18 +48,18 @@ async function gateTeamAccess(
   }
   const { data: profile } = await supabase
     .from('users')
-    .select('role, partner_id, partner_admin')
+    .select('role, franja_id, franja_admin')
     .eq('id', user.id)
     .maybeSingle()
   if (!profile) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
   // Read access: site admin OR any team member.
-  const isReader = profile.role === 'admin' || profile.partner_id === partnerId
-  // Write access: site admin OR partner-admin of this partner.
+  const isReader = profile.role === 'admin' || profile.franja_id === franjaId
+  // Write access: site admin OR franja-admin of this franja.
   const isWriter =
     profile.role === 'admin' ||
-    (profile.partner_id === partnerId && profile.partner_admin === true)
+    (profile.franja_id === franjaId && profile.franja_admin === true)
   if (!isReader || (requireWrite && !isWriter)) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
@@ -68,7 +68,7 @@ async function gateTeamAccess(
 
 // Map a SECURITY DEFINER RPC exception to an HTTP status. The functions raise
 // 'not authenticated' / 'forbidden' / '… not found' / 'user not on this
-// partner team'.
+// franja team'.
 function mapRpcError(error: { message?: string | null }) {
   const m = error?.message ?? ''
   if (m.includes('not authenticated')) {
@@ -77,7 +77,7 @@ function mapRpcError(error: { message?: string | null }) {
   if (m.includes('forbidden')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  if (m.includes('not found') || m.includes('not on this partner team')) {
+  if (m.includes('not found') || m.includes('not on this franja team')) {
     return NextResponse.json({ error: m }, { status: 404 })
   }
   return NextResponse.json({ error: m || 'Server error' }, { status: 500 })
@@ -94,7 +94,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('users')
     .select(TEAM_FIELDS)
-    .eq('partner_id', params.id)
+    .eq('franja_id', params.id)
     .order('joined_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -119,8 +119,8 @@ export async function POST(
     return NextResponse.json({ error: 'user_id required' }, { status: 400 })
   }
 
-  const { error } = await supabase.rpc('partner_team_add', {
-    p_partner_id: params.id,
+  const { error } = await supabase.rpc('franja_team_add', {
+    p_franja_id: params.id,
     p_user_id: body.user_id,
   })
   if (error) return mapRpcError(error)
@@ -153,14 +153,14 @@ export async function PATCH(
   if (!body.user_id) {
     return NextResponse.json({ error: 'user_id required' }, { status: 400 })
   }
-  if (typeof body.partner_admin !== 'boolean') {
-    return NextResponse.json({ error: 'partner_admin must be boolean' }, { status: 400 })
+  if (typeof body.franja_admin !== 'boolean') {
+    return NextResponse.json({ error: 'franja_admin must be boolean' }, { status: 400 })
   }
 
-  const { error } = await supabase.rpc('partner_team_set_admin', {
-    p_partner_id: params.id,
+  const { error } = await supabase.rpc('franja_team_set_admin', {
+    p_franja_id: params.id,
     p_user_id: body.user_id,
-    p_admin: body.partner_admin,
+    p_admin: body.franja_admin,
   })
   if (error) return mapRpcError(error)
 
@@ -190,8 +190,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'user_id required' }, { status: 400 })
   }
 
-  const { error } = await supabase.rpc('partner_team_remove', {
-    p_partner_id: params.id,
+  const { error } = await supabase.rpc('franja_team_remove', {
+    p_franja_id: params.id,
     p_user_id: body.user_id,
   })
   if (error) return mapRpcError(error)

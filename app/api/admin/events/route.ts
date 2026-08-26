@@ -13,7 +13,7 @@ import type { ContentItem } from '@/lib/types'
 // that against the cookie-aware client (the user's own session), THEN do the
 // actual writes with the service-role client so the admin can edit events
 // authored by anyone — the items_staff_write RLS policy would also allow it,
-// but service-role keeps us off the partner-stamping path in /api/items and
+// but service-role keeps us off the franja-stamping path in /api/items and
 // lets us preserve the original author.
 //
 // Body: { event: ContentItem, venueAddress?: string | null }

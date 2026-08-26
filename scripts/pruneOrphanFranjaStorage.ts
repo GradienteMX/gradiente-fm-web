@@ -1,19 +1,19 @@
 // ============================================================================
-// scripts/pruneOrphanPartnerStorage.ts — delete orphaned partner pfp uploads
+// scripts/pruneOrphanFranjaStorage.ts — delete orphaned franja pfp uploads
 // ============================================================================
-// The 2026-06-23 logo work briefly uploaded partner pfps to the `uploads`
-// bucket as `447750a2-…/partner-<slug>-<rand>.<ext>` before we standardized on
+// The 2026-06-23 logo work briefly uploaded franja pfps to the `uploads`
+// bucket as `447750a2-…/franja-<slug>-<rand>.<ext>` before we standardized on
 // version-controlled static files in public/partners/. Those storage objects
-// are now unreferenced (every partner.image_url points at /partners/…). This
+// are now unreferenced (every franja.image_url points at /partners/…). This
 // removes them.
 //
-// Scoped to the `partner-` prefix this session created — it does NOT touch the
+// Scoped to the `franja-` prefix this session created — it does NOT touch the
 // team's older uploads or any object still referenced by an item. Defensive:
 // re-reads all item.image_url values and refuses to delete anything still in
 // use.
 //
-// Usage:  npx tsx scripts/pruneOrphanPartnerStorage.ts          # dry run
-//         npx tsx scripts/pruneOrphanPartnerStorage.ts --delete # actually remove
+// Usage:  npx tsx scripts/pruneOrphanFranjaStorage.ts          # dry run
+//         npx tsx scripts/pruneOrphanFranjaStorage.ts --delete # actually remove
 // ============================================================================
 
 import { config } from 'dotenv'
@@ -41,7 +41,7 @@ async function main() {
   if (error) throw error
 
   const candidates = (list ?? [])
-    .filter((o) => o.name.startsWith('partner-'))
+    .filter((o) => o.name.startsWith('franja-'))
     .map((o) => `${FOLDER}/${o.name}`)
 
   // Defensive: don't delete anything still referenced by an item.
@@ -54,7 +54,7 @@ async function main() {
     (path) => ![...referenced].some((u) => typeof u === 'string' && u.includes(path)),
   )
 
-  console.log(`partner-* objects: ${candidates.length}, still referenced: ${candidates.length - toDelete.length}, orphaned: ${toDelete.length}`)
+  console.log(`franja-* objects: ${candidates.length}, still referenced: ${candidates.length - toDelete.length}, orphaned: ${toDelete.length}`)
 
   if (!process.argv.includes('--delete')) {
     console.log('Dry run. Re-run with --delete to remove.')

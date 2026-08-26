@@ -1,15 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// /api/partners/[id]/listings — collection endpoint.
-// POST → create a marketplace listing under this partner.
-// Gated on canManagePartner: site admin OR a team member of this partner.
+// /api/franjas/[id]/listings — collection endpoint.
+// POST → create a marketplace listing under this franja.
+// Gated on canManageFranja: site admin OR a team member of this franja.
 // (RLS on marketplace_listings_team_write enforces the same gate from the
 // DB side.)
 //
 // GET on this collection is intentionally absent — listings come back
-// embedded on GET /api/partners/[id]. If a consumer ever needs an
-// independent listings query (e.g. cross-partner filtering by category),
+// embedded on GET /api/franjas/[id]. If a consumer ever needs an
+// independent listings query (e.g. cross-franja filtering by category),
 // add a GET here.
 
 const VALID_CATEGORIES = [
@@ -47,9 +47,9 @@ interface CreateBody {
   published_at?: string
 }
 
-async function gatePartnerWrite(
+async function gateFranjaWrite(
   supabase: ReturnType<typeof createClient>,
-  partnerId: string,
+  franjaId: string,
 ) {
   const {
     data: { user },
@@ -59,13 +59,13 @@ async function gatePartnerWrite(
   }
   const { data: profile } = await supabase
     .from('users')
-    .select('role, partner_id')
+    .select('role, franja_id')
     .eq('id', user.id)
     .maybeSingle()
   if (!profile) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
-  const allowed = profile.role === 'admin' || profile.partner_id === partnerId
+  const allowed = profile.role === 'admin' || profile.franja_id === franjaId
   if (!allowed) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
@@ -77,7 +77,7 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   const supabase = createClient()
-  const gate = await gatePartnerWrite(supabase, params.id)
+  const gate = await gateFranjaWrite(supabase, params.id)
   if ('error' in gate) return gate.error
 
   let body: CreateBody
@@ -121,23 +121,23 @@ export async function POST(
     return NextResponse.json({ error: 'price must be >= 0' }, { status: 400 })
   }
 
-  // Verify the partner exists (defensive — partner could have been
-  // deleted mid-flow; the FK on partner_id would 23503 otherwise).
-  const { data: partner } = await supabase
+  // Verify the franja exists (defensive — franja could have been
+  // deleted mid-flow; the FK on franja_id would 23503 otherwise).
+  const { data: franja } = await supabase
     .from('items')
     .select('id')
     .eq('id', params.id)
-    .eq('type', 'partner')
+    .eq('type', 'franja')
     .maybeSingle()
-  if (!partner) {
-    return NextResponse.json({ error: 'Partner not found' }, { status: 404 })
+  if (!franja) {
+    return NextResponse.json({ error: 'Franja not found' }, { status: 404 })
   }
 
   const { data, error } = await supabase
     .from('marketplace_listings')
     .insert({
       id: body.id.trim(),
-      partner_id: params.id,
+      franja_id: params.id,
       title: body.title.trim(),
       category: body.category,
       subcategory: body.subcategory?.trim() || null,

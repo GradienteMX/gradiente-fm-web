@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/users/[id]
-// PATCH → update role / is_mod / is_og / partner_id / partner_admin for one
+// PATCH → update role / is_mod / is_og / franja_id / franja_admin for one
 //         user. Admin only — RLS gates via users_admin_all (caller's session).
 //
 // We deliberately don't expose username / display_name / id mutations here.
@@ -16,8 +16,8 @@ interface PatchBody {
   role?: Role
   is_mod?: boolean
   is_og?: boolean
-  partner_id?: string | null
-  partner_admin?: boolean
+  franja_id?: string | null
+  franja_admin?: boolean
 }
 
 const VALID_ROLES: readonly Role[] = ['user', 'curator', 'guide', 'insider', 'admin']
@@ -50,13 +50,13 @@ export async function PATCH(
   }
 
   // Build the patch — only include fields the caller actually sent so we
-  // don't accidentally null out partner_id when the form omitted it.
+  // don't accidentally null out franja_id when the form omitted it.
   const patch: Partial<{
     role: Role
     is_mod: boolean
     is_og: boolean
-    partner_id: string | null
-    partner_admin: boolean
+    franja_id: string | null
+    franja_admin: boolean
   }> = {}
 
   if (body.role !== undefined) {
@@ -67,15 +67,15 @@ export async function PATCH(
   }
   if (body.is_mod !== undefined) patch.is_mod = !!body.is_mod
   if (body.is_og !== undefined) patch.is_og = !!body.is_og
-  if (body.partner_id !== undefined) {
-    patch.partner_id = body.partner_id?.trim() || null
+  if (body.franja_id !== undefined) {
+    patch.franja_id = body.franja_id?.trim() || null
   }
-  if (body.partner_admin !== undefined) {
-    patch.partner_admin = !!body.partner_admin
+  if (body.franja_admin !== undefined) {
+    patch.franja_admin = !!body.franja_admin
   }
-  // partner_admin only meaningful when partner_id is set — clear it if the
-  // patch removes the partner link.
-  if (patch.partner_id === null) patch.partner_admin = false
+  // franja_admin only meaningful when franja_id is set — clear it if the
+  // patch removes the franja link.
+  if (patch.franja_id === null) patch.franja_admin = false
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'Empty patch' }, { status: 400 })

@@ -4,7 +4,7 @@ import { inviteCodeCandidates } from '@/lib/identity'
 // Invitación-3D integration · the data contract the holo card consumes.
 // `peekInviteCard` resolves a ?codigo= into this shape via the anon-safe
 // `peek_invite_card` RPC (migration 0028). The card reads `name/code/folio/
-// issued/role/partner`; `qrTarget` is derived by the card per state
+// issued/role/franja`; `qrTarget` is derived by the card per state
 // (pre-signup → /welcome?codigo=, post-signup → /u/<username>).
 
 export type InviteCardStatus = 'active' | 'used' | 'expired' | 'invalid'
@@ -17,7 +17,7 @@ export interface InviteCard {
   folio: string // "007/150" — empty when the code carries no folio
   issued: string // "JUN 2026" — issued_label, else derived from created_at
   role: InviteRole
-  partner: { title: string; logoUrl: string | null } | null
+  franja: { title: string; logoUrl: string | null } | null
   status: InviteCardStatus
 }
 
@@ -48,7 +48,7 @@ export async function peekInviteCard(code: string): Promise<InviteCard> {
     folio: '',
     issued: '',
     role: 'user',
-    partner: null,
+    franja: null,
     status: 'invalid',
   }
   if (!trimmed) return base
@@ -81,8 +81,8 @@ export async function peekInviteCard(code: string): Promise<InviteCard> {
     folio,
     issued: issuedFrom(row.issued_label, row.issued_at),
     role: row.role,
-    partner: row.partner_title
-      ? { title: row.partner_title, logoUrl: row.partner_logo_url }
+    franja: row.franja_title
+      ? { title: row.franja_title, logoUrl: row.franja_logo_url }
       : null,
     status: (row.status as InviteCardStatus) ?? 'active',
   }

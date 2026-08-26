@@ -3,16 +3,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { ContentItem } from '@/lib/types'
-import { PartnersRail } from './PartnersRail'
+import { FranjasRail } from './FranjasRail'
 
-// Mobile/tablet partner access. Below `lg` the partners right column is hidden
-// (the feed takes the full width), so partners live here: a slim always-visible
+// Mobile/tablet franja access. Below `lg` the franjas right column is hidden
+// (the feed takes the full width), so franjas live here: a slim always-visible
 // right-edge tab (discoverable affordance — not a hidden-only gesture) that
 // opens a panel sliding in from the right. A left-swipe from the screen edge
 // also opens it, and a right-swipe / backdrop tap / ✕ / ESC closes it.
 //
-// Desktop (`lg+`) renders nothing — the inline PartnersRail handles it there.
-export function PartnersDrawer({ partners }: { partners: ContentItem[] }) {
+// Desktop (`lg+`) renders nothing — the inline FranjasRail handles it there.
+export function FranjasDrawer({ franjas }: { franjas: ContentItem[] }) {
   const [open, setOpen] = useState(false)
 
   // Body-scroll lock while open.
@@ -94,7 +94,7 @@ export function PartnersDrawer({ partners }: { partners: ContentItem[] }) {
     }
   }
 
-  if (partners.length === 0) return null
+  if (franjas.length === 0) return null
 
   return (
     <div className="lg:hidden">
@@ -103,11 +103,11 @@ export function PartnersDrawer({ partners }: { partners: ContentItem[] }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Ver partners"
+          aria-label="Ver franjas"
           className="fixed right-0 top-1/2 z-40 flex -translate-y-1/2 items-center border border-r-0 border-sys-orange/50 bg-base/90 py-3.5 pl-1.5 pr-1 backdrop-blur-sm transition-colors hover:bg-sys-orange/10"
         >
           <span className="font-mono text-[10px] tracking-[0.3em] text-sys-orange [writing-mode:vertical-rl]">
-            PARTNERS
+            FRANJAS
           </span>
         </button>
       )}
@@ -117,7 +117,7 @@ export function PartnersDrawer({ partners }: { partners: ContentItem[] }) {
           className="fixed inset-0 z-[70]"
           role="dialog"
           aria-modal="true"
-          aria-label="Partners y venues"
+          aria-label="Franjas y venues"
         >
           <div
             className="overlay-backdrop-in absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -132,7 +132,7 @@ export function PartnersDrawer({ partners }: { partners: ContentItem[] }) {
           >
             <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
               <span className="font-mono text-[11px] tracking-widest text-sys-orange">
-                //PARTNERS
+                //FRANJAS
               </span>
               <button
                 type="button"
@@ -143,17 +143,17 @@ export function PartnersDrawer({ partners }: { partners: ContentItem[] }) {
                 <X size={16} strokeWidth={1.5} />
               </button>
             </header>
-            {/* Tapping a partner opens its overlay AND closes the drawer (the
-                click bubbles up from the PartnerCard button). */}
+            {/* Tapping a franja opens its overlay AND closes the drawer (the
+                click bubbles up from the FranjaCard button). */}
             <div
               className="min-h-0 flex-1 overflow-y-auto p-4"
               style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
               onClick={() => setOpen(false)}
             >
               <p className="sys-label mb-3">
-                {partners.length} · SELLOS · VENUES · PROMO
+                {franjas.length} · SELLOS · VENUES · PROMO
               </p>
-              <PartnersRail items={partners} variant="drawer" />
+              <FranjasRail items={franjas} variant="drawer" />
             </div>
           </aside>
         </div>

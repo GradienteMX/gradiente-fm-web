@@ -2,18 +2,17 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { parseISO } from 'date-fns'
-import type { ContentItem, PartnerKind } from '@/lib/types'
+import type { ContentItem, FranjaKind } from '@/lib/types'
 import { categoryColor } from '@/lib/utils'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { recordItems } from '@/lib/itemsCache'
 import { SmartImage } from '@/components/SmartImage'
 
-const PARTNER_LABEL: Record<PartnerKind, string> = {
-  promo: 'PROMO',
+const FRANJA_LABEL: Record<FranjaKind, string> = {
   label: 'SELLO',
   promoter: 'PROMOTORA',
   venue: 'VENUE',
-  sponsored: 'PATROCINIO',
+  plataforma: 'PLATAFORMA',
   dealer: 'DEALER',
   colectivo: 'COLECTIVO',
   festival: 'FESTIVAL',
@@ -22,12 +21,12 @@ const PARTNER_LABEL: Record<PartnerKind, string> = {
   'mix-series': 'MIX SERIES',
 }
 
-function partnerTime(item: ContentItem): number {
-  return parseISO(item.partnerLastUpdated ?? item.publishedAt).getTime()
+function franjaTime(item: ContentItem): number {
+  return parseISO(item.franjaLastUpdated ?? item.publishedAt).getTime()
 }
 
-function PartnerCard({ item }: { item: ContentItem }) {
-  const kind = item.partnerKind ?? 'promo'
+function FranjaCard({ item }: { item: ContentItem }) {
+  const kind = item.franjaKind ?? 'colectivo'
   const { open } = useOverlay()
   const ref = useRef<HTMLButtonElement>(null)
 
@@ -64,9 +63,9 @@ function PartnerCard({ item }: { item: ContentItem }) {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
           <span
             className="absolute left-2 top-2 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-            style={{ color: categoryColor('partner') }}
+            style={{ color: categoryColor('franja') }}
           >
-            //{PARTNER_LABEL[kind]}
+            //{FRANJA_LABEL[kind]}
           </span>
         </div>
         <div className="p-2.5">
@@ -84,38 +83,38 @@ function PartnerCard({ item }: { item: ContentItem }) {
   )
 }
 
-interface PartnersRailProps {
+interface FranjasRailProps {
   items: ContentItem[]
   // 'rail' = the desktop right-column aside (default). 'drawer' = a bare 2-col
-  // grid of cards for the mobile PartnersDrawer (no aside chrome / fixed width /
+  // grid of cards for the mobile FranjasDrawer (no aside chrome / fixed width /
   // md gate — the drawer provides its own frame).
   variant?: 'rail' | 'drawer'
 }
 
-export function PartnersRail({ items, variant = 'rail' }: PartnersRailProps) {
-  const partners = useMemo(
+export function FranjasRail({ items, variant = 'rail' }: FranjasRailProps) {
+  const franjas = useMemo(
     () =>
       items
-        .filter((i) => i.type === 'partner')
-        .sort((a, b) => partnerTime(b) - partnerTime(a)),
+        .filter((i) => i.type === 'franja')
+        .sort((a, b) => franjaTime(b) - franjaTime(a)),
     [items],
   )
 
-  // Partners must be in the slug-keyed cache so OverlayRouter can resolve
-  // `?item=<slug>` against them. ContentGrid handles non-partner items; this
-  // rail is the only surface that streams partners, so it owns the push.
+  // Franjas must be in the slug-keyed cache so OverlayRouter can resolve
+  // `?item=<slug>` against them. ContentGrid handles non-franja items; this
+  // rail is the only surface that streams franjas, so it owns the push.
   useEffect(() => {
-    if (partners.length > 0) recordItems(partners)
-  }, [partners])
+    if (franjas.length > 0) recordItems(franjas)
+  }, [franjas])
 
-  if (partners.length === 0) return null
+  if (franjas.length === 0) return null
 
-  // Drawer variant — bare responsive grid; the PartnersDrawer owns the chrome.
+  // Drawer variant — bare responsive grid; the FranjasDrawer owns the chrome.
   if (variant === 'drawer') {
     return (
       <div className="grid grid-cols-2 gap-3">
-        {partners.map((item) => (
-          <PartnerCard key={item.id} item={item} />
+        {franjas.map((item) => (
+          <FranjaCard key={item.id} item={item} />
         ))}
       </div>
     )
@@ -124,19 +123,19 @@ export function PartnersRail({ items, variant = 'rail' }: PartnersRailProps) {
   return (
     <aside
       className="hidden w-[260px] shrink-0 md:block"
-      aria-label="Partners y venues"
+      aria-label="Franjas y venues"
     >
       <div>
         <div className="nge-divider mb-1">
-          <span className="font-mono text-xs tracking-widest text-primary">PARTNERS</span>
+          <span className="font-mono text-xs tracking-widest text-primary">FRANJAS</span>
         </div>
         <p className="sys-label mb-3">
-          {partners.length} · SELLOS · VENUES · PROMO
+          {franjas.length} · SELLOS · VENUES · PROMO
         </p>
 
         <div className="flex flex-col gap-3">
-          {partners.map((item) => (
-            <PartnerCard key={item.id} item={item} />
+          {franjas.map((item) => (
+            <FranjaCard key={item.id} item={item} />
           ))}
         </div>
       </div>

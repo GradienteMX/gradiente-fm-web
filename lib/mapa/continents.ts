@@ -34,7 +34,7 @@ import { affinityScore, extractFeatures } from './affinity'
 // Affinity floor for an ADJACENT pair to count as one landmass. 2 is the
 // established "real shared metadata" line (focus belt) — the time-proximity
 // term alone tops out at 1, so two items must actually share venue / artists /
-// genres / partner / entities to fuse. The floor alone percolates, though:
+// genres / franja / entities to fuse. The floor alone percolates, though:
 // the dense center chains into one Pangaea (dev seed: a 150-item mass at
 // t=2). The working threshold therefore ESCALATES from the floor until the
 // largest mass holds at most CONTINENT_MAX_SHARE of the terrain — "great

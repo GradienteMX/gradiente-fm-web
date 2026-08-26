@@ -3,17 +3,17 @@ import { getItems } from '@/lib/data/items'
 import { MOCK_ITEMS } from '@/lib/mockData'
 import archiveSeedJson from '@/lib/data/archiveSeed.json'
 import {
-  partnerClusters,
+  franjaClusters,
   placeItems,
   type MapaLayout,
-  type PartnerCluster,
+  type FranjaCluster,
 } from '@/lib/mapa/layout'
 import type { ContentItem } from '@/lib/types'
 import { MapaCanvas } from '@/components/mapa/MapaCanvas'
 
 // EXPERIMENTAL — Spatial Identity Canvas vertical slice.
 // See wiki/70-Roadmap/Spatial Identity Canvas.md. This route is a prototype
-// of the global honeycomb terrain; the production home/partner surfaces are
+// of the global honeycomb terrain; the production home/franja surfaces are
 // untouched. Layout is computed ONCE server-side (deterministic pure
 // functions in lib/mapa/) and hydrated as props, so server and client agree
 // by construction.
@@ -39,7 +39,7 @@ interface PageProps {
 // feed placement. Best-effort only (serverless instances are ephemeral).
 const layoutCache = new Map<
   string,
-  { layout: MapaLayout; clusters: PartnerCluster[] }
+  { layout: MapaLayout; clusters: FranjaCluster[] }
 >()
 const LAYOUT_CACHE_MAX = 3
 
@@ -59,7 +59,7 @@ function datasetKey(items: readonly ContentItem[], nowMs: number): string {
     mix(i.id)
     mix(i.hpLastUpdatedAt ?? '')
     mix(String(i.hp ?? ''))
-    mix(i.partnerId ?? '')
+    mix(i.franjaId ?? '')
   }
   return `${nowMs}:${items.length}:${h >>> 0}`
 }
@@ -87,21 +87,21 @@ export default async function MapaPage({ searchParams }: PageProps) {
   // Mapa Placement Rules.md).
   const nowMs = Math.floor(Date.now() / 600_000) * 600_000
   const now = new Date(nowMs)
-  // Terrain rules (wiki/70-Roadmap/Mapa Placement Rules.md): partner identity
+  // Terrain rules (wiki/70-Roadmap/Mapa Placement Rules.md): franja identity
   // rows are never terrain, and — per the image-only rule — neither is any
   // item without imagery. The map is a visual surface; imageless content
   // stays reachable through its section pages and search.
   const terrainItems = [
-    ...all.filter((i) => i.type !== 'partner' && i.imageUrl),
+    ...all.filter((i) => i.type !== 'franja' && i.imageUrl),
     ...archiveItems.filter((i) => i.imageUrl),
   ]
-  const partners = all.filter((i) => i.type === 'partner')
+  const franjas = all.filter((i) => i.type === 'franja')
 
   const key = datasetKey(terrainItems, nowMs)
   let cached = layoutCache.get(key)
   if (!cached) {
     const layout = placeItems(terrainItems, now, { syntheticHl: SYNTHETIC_HL })
-    cached = { layout, clusters: partnerClusters(layout, partners) }
+    cached = { layout, clusters: franjaClusters(layout, franjas) }
     layoutCache.set(key, cached)
     while (layoutCache.size > LAYOUT_CACHE_MAX) {
       const oldest = layoutCache.keys().next().value
@@ -114,7 +114,7 @@ export default async function MapaPage({ searchParams }: PageProps) {
     <MapaCanvas
       layout={cached.layout}
       clusters={cached.clusters}
-      partners={partners}
+      franjas={franjas}
       initialFocusSlug={searchParams.focus ?? null}
     />
   )

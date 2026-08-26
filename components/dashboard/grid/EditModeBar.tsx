@@ -30,7 +30,7 @@ function widgetCount(id: WidgetId, data: DashboardData): number | null {
     case 'actividad':
       return data.activity.length
     case 'guardados':
-      return data.saves.filter((item) => item.type !== 'mix' && item.type !== 'partner')
+      return data.saves.filter((item) => item.type !== 'mix' && item.type !== 'franja')
         .length
     case 'reproductor':
       return data.saves.filter((item) => item.type === 'mix').length
@@ -41,7 +41,7 @@ function widgetCount(id: WidgetId, data: DashboardData): number | null {
     case 'mapa':
       return null
     case 'mercado':
-      return data.partner?.listings.length ?? null
+      return data.franja?.listings.length ?? null
   }
 }
 

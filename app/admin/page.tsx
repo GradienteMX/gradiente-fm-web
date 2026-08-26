@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AdminInviteCodes } from '@/components/admin/AdminInviteCodes'
 import { AdminUsersEditor } from '@/components/admin/AdminUsersEditor'
-import { AdminPartnersComposer } from '@/components/admin/AdminPartnersComposer'
+import { AdminFranjasComposer } from '@/components/admin/AdminFranjasComposer'
 import { AdminTabNav, type AdminTab } from '@/components/admin/AdminTabNav'
 import { AdminEventsEditor } from '@/components/admin/AdminEventsEditor'
 import { AdminWaitlist, type WaitlistAdminRow } from '@/components/admin/AdminWaitlist'
@@ -17,18 +17,18 @@ export const dynamic = 'force-dynamic'
 type InviteCodeRow = Database['public']['Tables']['invite_codes']['Row']
 type UserRow = Database['public']['Tables']['users']['Row']
 
-// Shape passed to the partner dropdown — keeps the prop surface narrow so
-// we don't ship the whole partner ContentItem (with marketplace listings,
+// Shape passed to the franja dropdown — keeps the prop surface narrow so
+// we don't ship the whole franja ContentItem (with marketplace listings,
 // images, etc.) into the client bundle.
-export interface PartnerOption {
+export interface FranjaOption {
   id: string
   title: string
-  partner_kind: string | null
+  franja_kind: string | null
 }
 
 // /admin — admin-only insider surface. Tabbed layout (invitaciones /
 // usuarios) so each section gets full attention without scroll fatigue.
-// Future tabs: review queue (Scraper Pipeline Phase 3), partner-marketplace
+// Future tabs: review queue (Scraper Pipeline Phase 3), franja-marketplace
 // composer.
 export default async function AdminPage({
   searchParams,
@@ -54,21 +54,21 @@ export default async function AdminPage({
   const tab: AdminTab =
     searchParams.tab === 'users'
       ? 'users'
-      : searchParams.tab === 'partners'
-      ? 'partners'
+      : searchParams.tab === 'franjas'
+      ? 'franjas'
       : searchParams.tab === 'events'
       ? 'events'
       : searchParams.tab === 'espera'
       ? 'espera'
       : 'invites'
 
-  // Partners are needed by BOTH tabs (invite-code partner dropdown +
-  // user editor partner dropdown), so always fetch them. Cheap query —
-  // partner count stays tiny (<20 even at scale).
-  const { data: partners } = await supabase
+  // Franjas are needed by BOTH tabs (invite-code franja dropdown +
+  // user editor franja dropdown), so always fetch them. Cheap query —
+  // franja count stays tiny (<20 even at scale).
+  const { data: franjas } = await supabase
     .from('items')
-    .select('id, title, partner_kind')
-    .eq('type', 'partner')
+    .select('id, title, franja_kind')
+    .eq('type', 'franja')
     .order('title', { ascending: true })
 
   // Tab-specific prefetches — only pull what the active tab actually
@@ -109,8 +109,8 @@ export default async function AdminPage({
       .order('created_at', { ascending: false })
       .limit(1000)
     codes = (data as InviteCodeRow[] | null) ?? []
-  } else if (tab === 'partners') {
-    // Partners tab fetches the existing-partners list from `partners`
+  } else if (tab === 'franjas') {
+    // Franjas tab fetches the existing-franjas list from `franjas`
     // (already prefetched above for the dropdowns) — no extra query.
   } else {
     // Three prefetches feed the users tab:
@@ -126,7 +126,7 @@ export default async function AdminPage({
     const { data: elevated } = await supabase
       .from('users')
       .select('*')
-      .or('role.neq.user,is_mod.eq.true,is_og.eq.true,partner_id.not.is.null')
+      .or('role.neq.user,is_mod.eq.true,is_og.eq.true,franja_id.not.is.null')
       .order('username', { ascending: true })
     elevatedUsers = (elevated as UserRow[] | null) ?? []
 
@@ -188,7 +188,7 @@ export default async function AdminPage({
       {tab === 'invites' && (
         <AdminInviteCodes
           initialCodes={codes}
-          partners={(partners as PartnerOption[] | null) ?? []}
+          franjas={(franjas as FranjaOption[] | null) ?? []}
         />
       )}
       {tab === 'espera' && <AdminWaitlist initialRows={waitlistRows} />}
@@ -197,16 +197,16 @@ export default async function AdminPage({
           elevatedUsers={elevatedUsers}
           recentUsers={recentUsers}
           lectorUsers={lectorUsers}
-          partners={(partners as PartnerOption[] | null) ?? []}
+          franjas={(franjas as FranjaOption[] | null) ?? []}
           selfId={user.id}
           totalUsers={totalUsers}
           roleCounts={roleCounts}
           modCount={modCount}
         />
       )}
-      {tab === 'partners' && (
-        <AdminPartnersComposer
-          existing={(partners as PartnerOption[] | null) ?? []}
+      {tab === 'franjas' && (
+        <AdminFranjasComposer
+          existing={(franjas as FranjaOption[] | null) ?? []}
         />
       )}
       {tab === 'events' && <AdminEventsEditor initialEvents={events} />}

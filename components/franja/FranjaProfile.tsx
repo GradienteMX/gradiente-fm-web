@@ -13,21 +13,21 @@ import { es } from 'date-fns/locale'
 import type { ContentItem } from '@/lib/types'
 import { categoryColor, fmtDateFull } from '@/lib/utils'
 import { useOverlay } from '@/components/overlay/useOverlay'
-import { KIND_LABEL, TYPE_LABEL } from '@/components/overlay/PartnerOverlay'
+import { KIND_LABEL, TYPE_LABEL } from '@/components/overlay/FranjaOverlay'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
 import { SmartImage } from '@/components/SmartImage'
 
-// ── PartnerProfile ──────────────────────────────────────────────────────────
+// ── FranjaProfile ──────────────────────────────────────────────────────────
 //
-// The full /p/[slug] partner page (Concept-1 editorial dossier). Recreates the
+// The full /p/[slug] franja page (Concept-1 editorial dossier). Recreates the
 // reference mockup: header dossier + résumé (catalog facts only — NO vanity
 // metrics per [[Size and Position as Only Signals]]) + última actividad,
 // //PRÓXIMOS rail, //ARCHIVO with type tabs, //MERCADO (real listings), a
 // //SEÑALES mockup (digital cosmetics — no product class exists yet; rides the
 // unbuilt payments spine), and a //COMUNIDAD strip.
 //
-// `attributedItems` is fetched SERVER-SIDE (getItemsByPartner) so a direct
+// `attributedItems` is fetched SERVER-SIDE (getItemsByFranja) so a direct
 // visit works — the client itemsCache is only warm on grid pages. Opening a
 // linked item uses useOverlay().open() so it stacks over the page (OverlayRouter
 // lives in the layout).
@@ -83,15 +83,15 @@ const ARCHIVE_TABS: {
   },
 ]
 
-export function PartnerProfile({
-  partner,
+export function FranjaProfile({
+  franja,
   attributedItems,
 }: {
-  partner: ContentItem
+  franja: ContentItem
   attributedItems: ContentItem[]
 }) {
-  const item = partner
-  const kind = item.partnerKind ?? 'promo'
+  const item = franja
+  const kind = item.franjaKind ?? 'colectivo'
   const { open } = useOverlay()
   const [activeListingId, setActiveListingId] = useState<string | null>(null)
 
@@ -199,7 +199,7 @@ export function PartnerProfile({
               className="border px-2 py-0.5 font-mono text-[10px] tracking-widest"
               style={{ borderColor: '#F97316', color: '#F97316' }}
             >
-              PARTNER
+              FRANJA
             </span>
             {item.verified && (
               <span
@@ -242,19 +242,19 @@ export function PartnerProfile({
             </p>
           )}
 
-          {item.partnerUrl && (
+          {item.franjaUrl && (
             <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] text-muted">
               <a
-                href={item.partnerUrl}
+                href={item.franjaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 transition-colors hover:text-sys-orange"
               >
                 <ExternalLink size={12} />
-                {item.partnerUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                {item.franjaUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
               </a>
               <a
-                href={item.partnerUrl}
+                href={item.franjaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 transition-colors hover:text-sys-orange"
@@ -381,7 +381,7 @@ export function PartnerProfile({
           {listings.length > 0 && (
             <section id="mercado" className="flex scroll-mt-24 flex-col gap-3">
               <SectionHeader
-                action={item.partnerUrl ? 'VER TIENDA' : undefined}
+                action={item.franjaUrl ? 'VER TIENDA' : undefined}
               >
                 // MERCADO
               </SectionHeader>
@@ -390,7 +390,7 @@ export function PartnerProfile({
                   <MarketplaceListingCard
                     key={l.id}
                     listing={l}
-                    partner={item}
+                    franja={item}
                     index={i + 1}
                     onClick={() => setActiveListingId(l.id)}
                   />
@@ -446,7 +446,7 @@ export function PartnerProfile({
       {activeListing && (
         <MarketplaceListingDetail
           listing={activeListing.listing}
-          partner={item}
+          franja={item}
           index={activeListing.index}
           onClose={() => setActiveListingId(null)}
         />
@@ -478,7 +478,7 @@ function ArchivoSection({
     return (
       <section className="flex flex-col gap-3">
         <SectionHeader>// ARCHIVO</SectionHeader>
-        <EmptyZone hint="Sin contenido vinculado a este partner por ahora." />
+        <EmptyZone hint="Sin contenido vinculado a este franja por ahora." />
       </section>
     )
   }
@@ -563,7 +563,7 @@ function SenalesSection() {
         ))}
       </div>
       <span className="font-mono text-[9px] leading-relaxed text-muted">
-        Los ingresos apoyan al partner. Cosméticos pagados nunca reemplazan
+        Los ingresos apoyan al franja. Cosméticos pagados nunca reemplazan
         logros ganados.
       </span>
     </section>

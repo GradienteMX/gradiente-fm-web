@@ -1,23 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// GET /api/partners/[id]/inbox — which of this partner's listings have an
+// GET /api/franjas/[id]/inbox — which of this franja's listings have an
 // UNANSWERED buyer comment/offer (the INBOX/OFERTA indicator in the seller's
 // listings table).
 //
 // "Unanswered" = in any comment thread of the listing, the latest comment is
-// from a non-seller (a user NOT on this partner's team). A new top-level
+// from a non-seller (a user NOT on this franja's team). A new top-level
 // buyer comment counts; a buyer reply after a seller reply re-arms it; a
 // seller reply clears that thread. Listing is flagged if ANY thread is open.
 //
-// Gated to the partner team / site admin (same as the listings write gate).
+// Gated to the franja team / site admin (same as the listings write gate).
 
 type Row = {
   listing_id: string
   parent_id: string | null
   id: string
   created_at: string
-  author: { partner_id: string | null } | null
+  author: { franja_id: string | null } | null
 }
 
 export async function GET(
@@ -32,31 +32,31 @@ export async function GET(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, partner_id')
+    .select('role, franja_id')
     .eq('id', user.id)
     .maybeSingle()
-  const prof = profile as { role?: string; partner_id?: string | null } | null
-  if (!prof || (prof.role !== 'admin' && prof.partner_id !== params.id)) {
+  const prof = profile as { role?: string; franja_id?: string | null } | null
+  if (!prof || (prof.role !== 'admin' && prof.franja_id !== params.id)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Listing ids for this partner.
+  // Listing ids for this franja.
   const { data: listings } = await supabase
     .from('marketplace_listings')
     .select('id')
-    .eq('partner_id', params.id)
+    .eq('franja_id', params.id)
   const listingIds = ((listings ?? []) as { id: string }[]).map((l) => l.id)
   if (listingIds.length === 0) return NextResponse.json({ unanswered: [] })
 
   const { data, error } = await supabase
     .from('listing_comments')
     .select(
-      'id, listing_id, parent_id, created_at, author:users(partner_id)',
+      'id, listing_id, parent_id, created_at, author:users(franja_id)',
     )
     .in('listing_id', listingIds)
     .order('created_at', { ascending: true })
   if (error) {
-    console.error('[GET partner inbox]', error)
+    console.error('[GET franja inbox]', error)
     return NextResponse.json({ error: 'Failed to load inbox' }, { status: 500 })
   }
   const rows = (data ?? []) as unknown as Row[]
@@ -71,7 +71,7 @@ export async function GET(
   }
   const unanswered = new Set<string>()
   for (const r of threadLatest.values()) {
-    const isSeller = r.author?.partner_id === params.id
+    const isSeller = r.author?.franja_id === params.id
     if (!isSeller) unanswered.add(r.listing_id)
   }
   return NextResponse.json({ unanswered: Array.from(unanswered) })

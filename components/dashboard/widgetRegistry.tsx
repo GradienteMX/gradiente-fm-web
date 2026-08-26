@@ -4,7 +4,7 @@
 //
 // Shared by app/dashboard/page.tsx and app/lab/dashboard/page.tsx so the lab
 // renders exactly the composition production ships. Presence rules stay where
-// they belong: MERCADO renders null for non-partner users (its own gate), and
+// they belong: MERCADO renders null for non-franja users (its own gate), and
 // the layout vocabulary in lib/dashboard/layout.ts governs which ids exist.
 
 import type { WidgetRegistry } from '@/components/dashboard/grid/WidgetGrid'

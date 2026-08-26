@@ -9,14 +9,13 @@ import { compressAndUploadImage } from '@/lib/imageUpload'
 import { slugify, VibeField } from '@/components/dashboard/forms/shared/Fields'
 import type { Database } from '@/lib/supabase/database.types'
 
-type PartnerKind = Database['public']['Enums']['partner_kind']
+type FranjaKind = Database['public']['Enums']['franja_kind']
 
-const PARTNER_KIND_LABEL: Record<PartnerKind, string> = {
-  promo: 'PROMO · promoción general',
+const FRANJA_KIND_LABEL: Record<FranjaKind, string> = {
   label: 'LABEL · sello discográfico',
   promoter: 'PROMOTER · evento / promotora',
   venue: 'VENUE · espacio físico',
-  sponsored: 'SPONSORED · patrocinador pagado',
+  plataforma: 'PLATAFORMA · servicio / boletera',
   dealer: 'DEALER · vinilos / equipo / merch',
   colectivo: 'COLECTIVO · crew / colectivo',
   festival: 'FESTIVAL · festival',
@@ -25,12 +24,11 @@ const PARTNER_KIND_LABEL: Record<PartnerKind, string> = {
   'mix-series': 'MIX-SERIES · serie de mixes',
 }
 
-const PARTNER_KIND_COLOR: Record<PartnerKind, string> = {
-  promo: '#22D3EE',
+const FRANJA_KIND_COLOR: Record<FranjaKind, string> = {
   label: '#A78BFA',
   promoter: '#F97316',
   venue: '#FB923C',
-  sponsored: '#EAB308',
+  plataforma: '#EAB308',
   dealer: '#10B981',
   colectivo: '#F472B6',
   festival: '#34D399',
@@ -39,24 +37,24 @@ const PARTNER_KIND_COLOR: Record<PartnerKind, string> = {
   'mix-series': '#C084FC',
 }
 
-interface ExistingPartner {
+interface ExistingFranja {
   id: string
   title: string
-  // string | null because the upstream PartnerOption uses the wider type
+  // string | null because the upstream FranjaOption uses the wider type
   // (it's pulled from a SELECT that doesn't narrow to the enum). Render
   // logic guards against unknown kinds via the lookup map.
-  partner_kind: string | null
+  franja_kind: string | null
 }
 
 // Detail shape returned by GET /api/admin/partners/[id] — drives the edit
-// form prefill. Wider than ExistingPartner (which only carries enough for
+// form prefill. Wider than ExistingFranja (which only carries enough for
 // the catalog overview).
-interface PartnerDetail {
+interface FranjaDetail {
   id: string
   slug: string
   title: string
-  partner_kind: PartnerKind
-  partner_url: string | null
+  franja_kind: FranjaKind
+  franja_url: string | null
   image_url: string
   vibe_min: number
   vibe_max: number
@@ -66,28 +64,28 @@ interface PartnerDetail {
   marketplace_currency: string | null
 }
 
-function isPartnerKind(v: string | null): v is PartnerKind {
-  return v != null && v in PARTNER_KIND_COLOR
+function isFranjaKind(v: string | null): v is FranjaKind {
+  return v != null && v in FRANJA_KIND_COLOR
 }
 
-type Mode = { kind: 'create' } | { kind: 'edit'; partnerId: string }
+type Mode = { kind: 'create' } | { kind: 'edit'; franjaId: string }
 
-// AdminPartnersComposer — admin-only form for onboarding a new partner OR
+// AdminFranjasComposer — admin-only form for onboarding a new franja OR
 // editing / deleting an existing one. Tabbed by mode:
-//   - create: blank form, CREAR PARTNER button
+//   - create: blank form, CREAR FRANJA button
 //   - edit:   prefilled from GET /api/admin/partners/[id], GUARDAR + BORRAR
 //             buttons. Borrar opens a typeToConfirm overlay requiring the
-//             admin to type "BORRAR <partner name>" verbatim.
+//             admin to type "BORRAR <franja name>" verbatim.
 //
 // Cascades on hard delete (per migration 0001 schema):
-//   comments / user_saves / polls / hp_events on this partner item are
-//   CASCADE deleted; users.partner_id + invite_codes.intended_partner_id
+//   comments / user_saves / polls / hp_events on this franja item are
+//   CASCADE deleted; users.franja_id + invite_codes.intended_franja_id
 //   pointing here go to NULL (team members + pending invites lose the
 //   link but their accounts / codes survive).
-export function AdminPartnersComposer({
+export function AdminFranjasComposer({
   existing,
 }: {
-  existing: ExistingPartner[]
+  existing: ExistingFranja[]
 }) {
   const router = useRouter()
   const { currentUser } = useAuth()
@@ -99,12 +97,12 @@ export function AdminPartnersComposer({
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
-  const [partnerKind, setPartnerKind] = useState<PartnerKind>('promo')
-  const [partnerUrl, setPartnerUrl] = useState('')
+  const [franjaKind, setFranjaKind] = useState<FranjaKind>('colectivo')
+  const [franjaUrl, setFranjaUrl] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
-  // Partners are typically wide-band (a label spans multiple vibes); admin
+  // Franjas are typically wide-band (a label spans multiple vibes); admin
   // slides the thumbs apart in the composer rather than getting a forced
   // wide default. Both at 5 keeps the initial state explicit.
   const [vibeMin, setVibeMin] = useState(5)
@@ -133,8 +131,8 @@ export function AdminPartnersComposer({
     setTitle('')
     setSlug('')
     setSlugManuallyEdited(false)
-    setPartnerKind('promo')
-    setPartnerUrl('')
+    setFranjaKind('colectivo')
+    setFranjaUrl('')
     setImageUrl('')
     setVibeMin(5)
     setVibeMax(5)
@@ -150,12 +148,12 @@ export function AdminPartnersComposer({
     resetForm()
   }
 
-  const enterEditMode = async (partnerId: string) => {
+  const enterEditMode = async (franjaId: string) => {
     setLoadingDetail(true)
     setError(null)
     try {
       const res = await fetch(
-        `/api/admin/partners/${encodeURIComponent(partnerId)}`,
+        `/api/admin/partners/${encodeURIComponent(franjaId)}`,
       )
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: 'FAILED' }))
@@ -163,15 +161,15 @@ export function AdminPartnersComposer({
         return
       }
       const json = await res.json()
-      const p = json.partner as PartnerDetail
+      const p = json.franja as FranjaDetail
       // Hydrate form state from the detail.
       setTitle(p.title)
       setSlug(p.slug)
       // Slug is read-only in edit mode (changing it would break links).
       // Set the manual-edit gate so the create-mode auto-derive doesn't fire.
       setSlugManuallyEdited(true)
-      setPartnerKind(p.partner_kind)
-      setPartnerUrl(p.partner_url ?? '')
+      setFranjaKind(p.franja_kind)
+      setFranjaUrl(p.franja_url ?? '')
       setImageUrl(p.image_url)
       setVibeMin(p.vibe_min)
       setVibeMax(p.vibe_max)
@@ -179,7 +177,7 @@ export function AdminPartnersComposer({
       setMarketplaceLocation(p.marketplace_location ?? '')
       setMarketplaceCurrency(p.marketplace_currency ?? 'MXN')
       setMarketplaceDescription(p.marketplace_description ?? '')
-      setMode({ kind: 'edit', partnerId: p.id })
+      setMode({ kind: 'edit', franjaId: p.id })
       setFlash(null)
     } finally {
       setLoadingDetail(false)
@@ -215,14 +213,14 @@ export function AdminPartnersComposer({
     setSubmitting(true)
     try {
       if (mode.kind === 'create') {
-        const res = await fetch('/api/admin/partners', {
+        const res = await fetch('/api/admin/franjas', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             title: title.trim(),
             slug: slug.trim(),
-            partner_kind: partnerKind,
-            partner_url: partnerUrl.trim() || undefined,
+            franja_kind: franjaKind,
+            franja_url: franjaUrl.trim() || undefined,
             image_url: imageUrl,
             vibe_min: vibeMin,
             vibe_max: vibeMax,
@@ -238,19 +236,19 @@ export function AdminPartnersComposer({
           return
         }
         const json = await res.json()
-        setFlash({ kind: 'created', title: json.partner.title })
+        setFlash({ kind: 'created', title: json.franja.title })
         resetForm()
         router.refresh()
       } else {
         const res = await fetch(
-          `/api/admin/partners/${encodeURIComponent(mode.partnerId)}`,
+          `/api/admin/partners/${encodeURIComponent(mode.franjaId)}`,
           {
             method: 'PATCH',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
               title: title.trim(),
-              partner_kind: partnerKind,
-              partner_url: partnerUrl.trim(),
+              franja_kind: franjaKind,
+              franja_url: franjaUrl.trim(),
               image_url: imageUrl,
               vibe_min: vibeMin,
               vibe_max: vibeMax,
@@ -267,7 +265,7 @@ export function AdminPartnersComposer({
           return
         }
         const json = await res.json()
-        setFlash({ kind: 'updated', title: json.partner.title })
+        setFlash({ kind: 'updated', title: json.franja.title })
         router.refresh()
       }
     } finally {
@@ -277,13 +275,13 @@ export function AdminPartnersComposer({
 
   const onDelete = async () => {
     if (mode.kind !== 'edit') return
-    const partnerTitle = title.trim()
-    const required = `BORRAR ${partnerTitle}`
+    const franjaTitle = title.trim()
+    const required = `BORRAR ${franjaTitle}`
     const confirmed = await typeToConfirm({
-      title: `Borrar ${partnerTitle}`,
+      title: `Borrar ${franjaTitle}`,
       body:
-        `Esta acción es permanente. Se eliminará el registro del partner y por cascada de FK también sus comentarios, guardados, polls y eventos HP. ` +
-        `Los miembros del equipo (users.partner_id) y códigos de invitación pendientes asociados quedarán desvinculados pero conservados.`,
+        `Esta acción es permanente. Se eliminará el registro del franja y por cascada de FK también sus comentarios, guardados, polls y eventos HP. ` +
+        `Los miembros del equipo (users.franja_id) y códigos de invitación pendientes asociados quedarán desvinculados pero conservados.`,
       requiredText: required,
       placeholder: required,
       confirmLabel: 'BORRAR PERMANENTE',
@@ -296,7 +294,7 @@ export function AdminPartnersComposer({
     setError(null)
     try {
       const res = await fetch(
-        `/api/admin/partners/${encodeURIComponent(mode.partnerId)}`,
+        `/api/admin/partners/${encodeURIComponent(mode.franjaId)}`,
         { method: 'DELETE' },
       )
       if (!res.ok) {
@@ -304,7 +302,7 @@ export function AdminPartnersComposer({
         setError((body.error ?? 'FAILED').toString().toUpperCase())
         return
       }
-      setFlash({ kind: 'deleted', title: partnerTitle })
+      setFlash({ kind: 'deleted', title: franjaTitle })
       enterCreateMode()
       router.refresh()
     } finally {
@@ -314,7 +312,7 @@ export function AdminPartnersComposer({
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Existing partners — clickable cards. Click loads the partner into
+      {/* Existing franjas — clickable cards. Click loads the franja into
           edit mode below. */}
       <div className="flex flex-col gap-3 border border-border p-4">
         <header className="flex items-center justify-between gap-3">
@@ -322,7 +320,7 @@ export function AdminPartnersComposer({
             className="font-mono text-[10px] tracking-widest"
             style={{ color: '#FB923C' }}
           >
-            //PARTNERS EXISTENTES · {existing.length}
+            //FRANJAS EXISTENTES · {existing.length}
           </span>
           {mode.kind === 'edit' && (
             <button
@@ -337,14 +335,14 @@ export function AdminPartnersComposer({
         </header>
         {existing.length === 0 ? (
           <p className="font-mono text-[11px] text-muted">
-            // ningún partner aún — el primero abajo
+            // ningún franja aún — el primero abajo
           </p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {existing.map((p) => {
-              const kind = isPartnerKind(p.partner_kind) ? p.partner_kind : null
-              const color = kind ? PARTNER_KIND_COLOR[kind] : '#888888'
-              const isSelected = mode.kind === 'edit' && mode.partnerId === p.id
+              const kind = isFranjaKind(p.franja_kind) ? p.franja_kind : null
+              const color = kind ? FRANJA_KIND_COLOR[kind] : '#888888'
+              const isSelected = mode.kind === 'edit' && mode.franjaId === p.id
               return (
                 <li key={p.id}>
                   <button
@@ -387,17 +385,17 @@ export function AdminPartnersComposer({
             className="font-mono text-[10px] tracking-widest"
             style={{ color: '#FB923C' }}
           >
-            //{mode.kind === 'create' ? 'NUEVO PARTNER' : `EDITANDO · ${title || '(sin título)'}`}
+            //{mode.kind === 'create' ? 'NUEVO FRANJA' : `EDITANDO · ${title || '(sin título)'}`}
           </span>
           <h2 className="font-syne text-xl font-bold leading-tight text-primary">
-            {mode.kind === 'create' ? 'Onboarding' : 'Editar partner'}
+            {mode.kind === 'create' ? 'Onboarding' : 'Editar franja'}
           </h2>
           <p className="font-mono text-[10px] leading-relaxed text-muted">
             {mode.kind === 'create' ? (
               <>
                 Crea la entrada base. Después podés enlazar usuarios a este
-                partner desde //USUARIOS y publicar listados de marketplace
-                desde el dashboard del propio partner-admin.
+                franja desde //USUARIOS y publicar listados de marketplace
+                desde el dashboard del propio franja-admin.
               </>
             ) : (
               <>
@@ -467,31 +465,31 @@ export function AdminPartnersComposer({
             />
           </Field>
 
-          <Field label="PARTNER KIND" required>
+          <Field label="FRANJA KIND" required>
             <select
-              value={partnerKind}
-              onChange={(e) => setPartnerKind(e.target.value as PartnerKind)}
+              value={franjaKind}
+              onChange={(e) => setFranjaKind(e.target.value as FranjaKind)}
               className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
             >
-              {(Object.keys(PARTNER_KIND_LABEL) as PartnerKind[]).map((k) => (
+              {(Object.keys(FRANJA_KIND_LABEL) as FranjaKind[]).map((k) => (
                 <option key={k} value={k}>
-                  {PARTNER_KIND_LABEL[k]}
+                  {FRANJA_KIND_LABEL[k]}
                 </option>
               ))}
             </select>
           </Field>
 
-          <Field label="PARTNER URL" hint="opcional — sitio externo">
+          <Field label="FRANJA URL" hint="opcional — sitio externo">
             <input
               type="url"
-              value={partnerUrl}
-              onChange={(e) => setPartnerUrl(e.target.value)}
+              value={franjaUrl}
+              onChange={(e) => setFranjaUrl(e.target.value)}
               placeholder="https://naafi.bandcamp.com"
               className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
             />
           </Field>
 
-          <Field label="" hint="0 glacial → 10 volcán · partners suelen ocupar un rango ancho">
+          <Field label="" hint="0 glacial → 10 volcán · franjas suelen ocupar un rango ancho">
             <VibeField
               valueMin={vibeMin}
               valueMax={vibeMax}
@@ -546,7 +544,7 @@ export function AdminPartnersComposer({
               onChange={(e) => setMarketplaceEnabled(e.target.checked)}
               className="accent-cyan-400"
             />
-            Habilitar MARKETPLACE para este partner
+            Habilitar MARKETPLACE para este franja
           </label>
 
           {marketplaceEnabled && (
@@ -596,7 +594,7 @@ export function AdminPartnersComposer({
             >
               {submitting
                 ? mode.kind === 'create' ? 'CREANDO...' : 'GUARDANDO...'
-                : mode.kind === 'create' ? 'CREAR PARTNER' : 'GUARDAR CAMBIOS'}
+                : mode.kind === 'create' ? 'CREAR FRANJA' : 'GUARDAR CAMBIOS'}
             </button>
             {mode.kind === 'create' ? (
               <button
@@ -632,7 +630,7 @@ export function AdminPartnersComposer({
               }}
             >
               <Trash2 size={11} strokeWidth={1.5} />
-              {deleting ? 'BORRANDO...' : 'BORRAR PARTNER'}
+              {deleting ? 'BORRANDO...' : 'BORRAR FRANJA'}
             </button>
           )}
         </div>

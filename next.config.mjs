@@ -56,6 +56,11 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
+  // The franja profile route moved /p/[slug] → /f/[slug] in the partner→franja
+  // rename. Permanent so shared links and any indexed URLs keep resolving.
+  async redirects() {
+    return [{ source: '/p/:slug', destination: '/f/:slug', permanent: true }]
+  },
 }
 
 export default nextConfig

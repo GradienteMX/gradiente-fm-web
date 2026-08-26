@@ -34,15 +34,15 @@ export function SearchOverlay() {
   const [selectedIdx, setSelectedIdx] = useState(0)
 
   // Drafts override mocked items by slug (an editor's working copy beats the
-  // seeded version). Partners are sponsor-rail content — never surfaced.
+  // seeded version). Franjas are sponsor-rail content — never surfaced.
   const corpus = useMemo<ContentItem[]>(() => {
     const bySlug = new Map<string, ContentItem>()
     for (const item of MOCK_ITEMS) {
-      if (item.type === 'partner') continue
+      if (item.type === 'franja') continue
       bySlug.set(item.slug, item)
     }
     for (const d of drafts) {
-      if (d.type === 'partner') continue
+      if (d.type === 'franja') continue
       bySlug.set(d.slug, d)
     }
     return Array.from(bySlug.values())

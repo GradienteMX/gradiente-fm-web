@@ -2,37 +2,36 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/database.types'
 
-// /api/admin/partners
-// GET  → list every partner row with the fields needed by admin surfaces
-//        (id, slug, title, partner_kind, marketplace_enabled, image_url,
+// /api/admin/franjas
+// GET  → list every franja row with the fields needed by admin surfaces
+//        (id, slug, title, franja_kind, marketplace_enabled, image_url,
 //         marketplace_listings count). Used by the dashboard's
-//         PartnerApprovalsSection so it can render the marketplace toggle
+//         FranjaApprovalsSection so it can render the marketplace toggle
 //         list without the sessionStorage layer.
-// POST → create a new partner (items row with type='partner').
+// POST → create a new franja (items row with type='franja').
 // Admin only on both — RLS gates via items_staff_write but we additionally
 // require 'admin' role here so insiders/guides/curators can't reach this.
 //
-// Partners are organizational/business entities (labels, venues, promoters,
+// Franjas are organizational/business entities (labels, venues, promoters,
 // sponsors). Mistyped data is harder to clean up than a regular content item,
 // so the create path is more guarded.
 //
 // id format: `pa-{slug}-{rand}` keeps it human-readable + globally unique
 // without requiring uuid lookups in admin tooling.
 
-type PartnerKind = Database['public']['Enums']['partner_kind']
+type FranjaKind = Database['public']['Enums']['franja_kind']
 
-const VALID_KINDS: readonly PartnerKind[] = [
-  'promo',
+const VALID_KINDS: readonly FranjaKind[] = [
   'label',
   'promoter',
   'venue',
-  'sponsored',
   'dealer',
   'colectivo',
   'festival',
   'club',
   'medios',
   'mix-series',
+  'plataforma',
 ]
 
 async function gateAdmin(supabase: ReturnType<typeof createClient>) {
@@ -61,20 +60,20 @@ export async function GET() {
   const { data, error } = await supabase
     .from('items')
     .select(
-      'id, slug, title, partner_kind, image_url, marketplace_enabled, marketplace_listings(*)',
+      'id, slug, title, franja_kind, image_url, marketplace_enabled, marketplace_listings(*)',
     )
-    .eq('type', 'partner')
+    .eq('type', 'franja')
     .order('title', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ partners: data ?? [] })
+  return NextResponse.json({ franjas: data ?? [] })
 }
 
 interface CreateBody {
   title: string
   slug: string
-  partner_kind: PartnerKind
-  partner_url?: string
+  franja_kind: FranjaKind
+  franja_url?: string
   image_url: string
   vibe_min: number
   vibe_max: number
@@ -111,7 +110,7 @@ export async function POST(request: NextRequest) {
   // Validation — required fields + bounds.
   const title = body.title?.trim()
   const slug = body.slug?.trim()
-  const partnerKind = body.partner_kind
+  const franjaKind = body.franja_kind
   const imageUrl = body.image_url?.trim()
   const vibeMin = body.vibe_min
   const vibeMax = body.vibe_max
@@ -120,8 +119,8 @@ export async function POST(request: NextRequest) {
   if (!slug || !/^[a-z0-9-]{2,80}$/.test(slug)) {
     return NextResponse.json({ error: 'slug invalid (a-z0-9- only, 2-80 chars)' }, { status: 400 })
   }
-  if (!partnerKind || !VALID_KINDS.includes(partnerKind)) {
-    return NextResponse.json({ error: `partner_kind invalid (${VALID_KINDS.join('|')})` }, { status: 400 })
+  if (!franjaKind || !VALID_KINDS.includes(franjaKind)) {
+    return NextResponse.json({ error: `franja_kind invalid (${VALID_KINDS.join('|')})` }, { status: 400 })
   }
   if (!imageUrl) return NextResponse.json({ error: 'image_url required' }, { status: 400 })
   const vibeValid = (v: unknown): v is number =>
@@ -141,7 +140,7 @@ export async function POST(request: NextRequest) {
     .insert({
       id,
       slug,
-      type: 'partner',
+      type: 'franja',
       title,
       vibe_min: Math.round(vibeMin),
       vibe_max: Math.round(vibeMax),
@@ -149,9 +148,9 @@ export async function POST(request: NextRequest) {
       tags: [],
       image_url: imageUrl,
       published_at: new Date().toISOString(),
-      partner_kind: partnerKind,
-      partner_url: body.partner_url?.trim() || null,
-      partner_last_updated: new Date().toISOString(),
+      franja_kind: franjaKind,
+      franja_url: body.franja_url?.trim() || null,
+      franja_last_updated: new Date().toISOString(),
       marketplace_enabled: marketplaceEnabled,
       marketplace_description: marketplaceEnabled
         ? body.marketplace_description?.trim() || null
@@ -170,11 +169,11 @@ export async function POST(request: NextRequest) {
   if (error) {
     if (error.code === '23505') {
       return NextResponse.json(
-        { error: 'A partner with that slug already exists' },
+        { error: 'A franja with that slug already exists' },
         { status: 409 },
       )
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json({ partner: data })
+  return NextResponse.json({ franja: data })
 }

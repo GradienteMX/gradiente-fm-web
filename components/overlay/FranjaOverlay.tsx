@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { ContentItem, ContentType, PartnerKind } from '@/lib/types'
+import type { ContentItem, ContentType, FranjaKind } from '@/lib/types'
 import { categoryColor, fmtDateFull } from '@/lib/utils'
 import { getAllItemsSync, subscribeItems } from '@/lib/itemsCache'
 import { useOverlay } from './useOverlay'
@@ -22,19 +22,19 @@ import { ShareButton } from './ShareButton'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
 
-// ── PartnerOverlay ─────────────────────────────────────────────────────────
+// ── FranjaOverlay ─────────────────────────────────────────────────────────
 //
-// Partner profile shown when a card in [[PartnersRail]] is clicked. Same
+// Franja profile shown when a card in [[FranjasRail]] is clicked. Same
 // overlay grammar as every other ContentItem — opens via useOverlay().open()
 // on `?item=<slug>`. Three sections stack vertically:
 //
-//   1. Dossier — cover (object-contain so logo partners aren't cropped),
+//   1. Dossier — cover (object-contain so logo franjas aren't cropped),
 //      kind badge, title, subtitle, excerpt (bio).
-//   2. Body slot — kind-specific. Surfaces items where `partnerId === item.id`
-//      (the //PRESENTA self-FK) as PartnerLinkedPeek cards that expand in
+//   2. Body slot — kind-specific. Surfaces items where `franjaId === item.id`
+//      (the //PRESENTA self-FK) as FranjaLinkedPeek cards that expand in
 //      place to show a preview. Only the CTA inside the preview opens the
-//      full item overlay — clicks on the card chrome stay on the partner.
-//   3. CTA row — VISITAR SITIO (partnerUrl) + VER MARKETPLACE (only when
+//      full item overlay — clicks on the card chrome stay on the franja.
+//   3. CTA row — VISITAR SITIO (franjaUrl) + VER MARKETPLACE (only when
 //      marketplaceEnabled).
 
 interface Props {
@@ -45,12 +45,11 @@ interface Props {
   onExited: () => void
 }
 
-export const KIND_LABEL: Record<PartnerKind, string> = {
-  promo: 'PROMO',
+export const KIND_LABEL: Record<FranjaKind, string> = {
   label: 'SELLO',
   promoter: 'PROMOTORA',
   venue: 'VENUE',
-  sponsored: 'PATROCINIO',
+  plataforma: 'PLATAFORMA',
   dealer: 'DEALER',
   colectivo: 'COLECTIVO',
   festival: 'FESTIVAL',
@@ -68,7 +67,7 @@ export const TYPE_LABEL: Record<ContentType, string> = {
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
   listicle: 'LISTA',
-  partner: 'PARTNER',
+  franja: 'FRANJA',
 }
 
 export interface KindSlot {
@@ -78,7 +77,7 @@ export interface KindSlot {
   emptyHint: string
 }
 
-export const KIND_SLOT: Record<PartnerKind, KindSlot | null> = {
+export const KIND_SLOT: Record<FranjaKind, KindSlot | null> = {
   venue: {
     header: 'PRÓXIMOS EVENTOS EN ESTE VENUE',
     types: ['evento'],
@@ -96,12 +95,6 @@ export const KIND_SLOT: Record<PartnerKind, KindSlot | null> = {
     types: ['mix', 'review', 'articulo'],
     upcomingOnly: false,
     emptyHint: 'Sin releases ni mixes vinculados por ahora.',
-  },
-  promo: {
-    header: 'CAMPAÑAS ACTIVAS',
-    types: ['evento', 'mix', 'noticia', 'listicle'],
-    upcomingOnly: false,
-    emptyHint: 'Sin contenido vinculado por ahora.',
   },
   dealer: {
     header: 'INVENTARIO',
@@ -134,30 +127,31 @@ export const KIND_SLOT: Record<PartnerKind, KindSlot | null> = {
     emptyHint: 'Sin episodios vinculados por ahora.',
   },
   medios: null,
-  sponsored: null,
+  // A plataforma (ticketing / service) has no catalogue of its own here.
+  plataforma: null,
 }
 
-// Split a partner's attributed items into live (upcoming / current) and
+// Split a franja's attributed items into live (upcoming / current) and
 // archive (past). The archive bucket only fills for slots that have a
 // chronological notion of "past" — eventos for venue/promoter kinds. Other
 // slots (label releases, promo campaigns) put everything in `live`.
-interface PartnerSplit {
+interface FranjaSplit {
   live: ContentItem[]
   archive: ContentItem[]
 }
 
-export function usePartnerItems(
-  partnerId: string,
+export function useFranjaItems(
+  franjaId: string,
   slot: KindSlot | null,
-): PartnerSplit {
+): FranjaSplit {
   const [tick, setTick] = useState(0)
   useEffect(() => subscribeItems(() => setTick((n) => n + 1)), [])
 
-  return useMemo<PartnerSplit>(() => {
+  return useMemo<FranjaSplit>(() => {
     if (!slot || slot.types.length === 0) return { live: [], archive: [] }
     const now = Date.now()
     const all = getAllItemsSync().filter(
-      (i) => i.partnerId === partnerId && slot.types.includes(i.type),
+      (i) => i.franjaId === franjaId && slot.types.includes(i.type),
     )
 
     // For slots without a chronological "past" (label/promo), everything is
@@ -195,18 +189,18 @@ export function usePartnerItems(
     )
     return { live: live.slice(0, 8), archive: archive.slice(0, 12) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partnerId, slot, tick])
+  }, [franjaId, slot, tick])
 }
 
-// Catalog facts — real counts of a partner's //PRESENTA-attributed work,
+// Catalog facts — real counts of a franja's //PRESENTA-attributed work,
 // recomputed on cache updates. These REPLACE vanity metrics (followers /
 // sales / ratings): they describe the body of work, not popularity. See
 // wiki/90-Decisions/Size and Position as Only Signals.
-export function usePartnerCounts(partnerId: string) {
+export function useFranjaCounts(franjaId: string) {
   const [tick, setTick] = useState(0)
   useEffect(() => subscribeItems(() => setTick((n) => n + 1)), [])
   return useMemo(() => {
-    const all = getAllItemsSync().filter((i) => i.partnerId === partnerId)
+    const all = getAllItemsSync().filter((i) => i.franjaId === franjaId)
     return {
       eventos: all.filter((i) => i.type === 'evento').length,
       lanzamientos: all.filter((i) => i.type === 'mix' || i.type === 'review')
@@ -217,7 +211,7 @@ export function usePartnerCounts(partnerId: string) {
       total: all.length,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partnerId, tick])
+  }, [franjaId, tick])
 }
 
 export function Fact({ label, value }: { label: string; value: string }) {
@@ -229,7 +223,7 @@ export function Fact({ label, value }: { label: string; value: string }) {
   )
 }
 
-// Resolve the partner-chosen //HISTORIA DESTACADA item from its id against the
+// Resolve the franja-chosen //HISTORIA DESTACADA item from its id against the
 // live item cache. Null when unset or not (yet) in the cache.
 export function useFeaturedItem(
   featuredItemId: string | undefined,
@@ -243,17 +237,17 @@ export function useFeaturedItem(
   }, [featuredItemId, tick])
 }
 
-export function PartnerOverlay({ item, exiting, onExited }: Props) {
-  const kind = item.partnerKind ?? 'promo'
+export function FranjaOverlay({ item, exiting, onExited }: Props) {
+  const kind = item.franjaKind ?? 'colectivo'
   const slot = KIND_SLOT[kind]
-  const partnerItems = usePartnerItems(item.id, slot)
-  const counts = usePartnerCounts(item.id)
+  const franjaItems = useFranjaItems(item.id, slot)
+  const counts = useFranjaCounts(item.id)
   const featured = useFeaturedItem(item.featuredItemId)
-  const lastUpdated = item.partnerLastUpdated ?? item.publishedAt
+  const lastUpdated = item.franjaLastUpdated ?? item.publishedAt
   const { open, close } = useOverlay()
 
   // Only one peek expanded at a time — the rest of the list stays compact
-  // so the user always has a clear scan of what else this partner has.
+  // so the user always has a clear scan of what else this franja has.
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // Marketplace listing sub-overlay — LOCAL state (not a URL param) so it
@@ -263,7 +257,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
   const [activeListingId, setActiveListingId] = useState<string | null>(null)
 
   // Marketplace listings the //MERCADO zone surfaces, newest first. Empty
-  // unless the partner is marketplace-enabled.
+  // unless the franja is marketplace-enabled.
   const listings = useMemo(
     () =>
       item.marketplaceEnabled
@@ -335,7 +329,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
         {/* Chrome */}
         <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
           <div className="flex min-w-0 items-center gap-3 font-mono text-[10px] tracking-widest">
-            <span style={{ color: categoryColor('partner') }}>//PARTNER</span>
+            <span style={{ color: categoryColor('franja') }}>//FRANJA</span>
             <span className="hidden truncate text-muted sm:inline">
               {item.slug}
             </span>
@@ -363,7 +357,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row">
           {/* IDENTITY PANEL — left */}
           <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-border bg-elevated/20 p-4 md:w-[340px] md:border-b-0 md:border-r md:p-5">
-            {/* Logo — object-contain so logo partners (Club Japan, labels)
+            {/* Logo — object-contain so logo franjas (Club Japan, labels)
                 aren't cropped. */}
             <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-black">
               {item.imageUrl ? (
@@ -430,17 +424,17 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                   </span>
                 </div>
               )}
-              {item.partnerUrl && (
+              {item.franjaUrl && (
                 <div className="flex items-center gap-2">
                   <span className="sys-label">WEB</span>
                   <span className="text-secondary">
-                    {item.partnerUrl.replace(/^https?:\/\//, '')}
+                    {item.franjaUrl.replace(/^https?:\/\//, '')}
                   </span>
                 </div>
               )}
             </dl>
 
-            {/* Catalog facts — real counts of the partner's //PRESENTA-attributed
+            {/* Catalog facts — real counts of the franja's //PRESENTA-attributed
             work. These REPLACE vanity metrics (followers / sales / ratings):
             they describe the body of work, not popularity. */}
             {(counts.total > 0 || item.year) && (
@@ -470,9 +464,9 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
             )}
 
             {/* CTA — ENTRAR is the primary action: the full /p/[slug] profile
-                page. VISITAR SITIO (the partner's external site) is secondary. */}
+                page. VISITAR SITIO (the franja's external site) is secondary. */}
             <Link
-              href={`/p/${item.slug}`}
+              href={`/f/${item.slug}`}
               onClick={close}
               className="inline-flex items-center justify-center gap-2 border px-4 py-3 font-mono text-xs font-bold tracking-widest transition-colors"
               style={{
@@ -481,12 +475,12 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                 backgroundColor: 'rgba(249,115,22,0.14)',
               }}
             >
-              ENTRAR AL PERFIL DE PARTNER
+              ENTRAR AL PERFIL DE FRANJA
               <ArrowUpRight size={14} />
             </Link>
-            {item.partnerUrl && (
+            {item.franjaUrl && (
               <a
-                href={item.partnerUrl}
+                href={item.franjaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 border border-border bg-elevated/40 px-4 py-3 font-mono text-xs tracking-widest text-primary transition-colors hover:border-white/60 hover:bg-elevated"
@@ -499,7 +493,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
 
           {/* CONTENT — right */}
           <section className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-            {/* //HISTORIA DESTACADA — the partner-chosen flagship item; the
+            {/* //HISTORIA DESTACADA — the franja-chosen flagship item; the
                 front page of the dossier. Opens the full item overlay on click.
                 Hidden when no pick is set (no auto-selection — editorial intent
                 only, keeps it No-Algorithm-safe). */}
@@ -571,7 +565,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                     <p className="font-mono text-[11px] leading-relaxed text-muted">
                       {slot.emptyHint}
                     </p>
-                  ) : partnerItems.live.length === 0 ? (
+                  ) : franjaItems.live.length === 0 ? (
                     <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 p-4 font-mono text-[11px] text-muted">
                       <span
                         className="tracking-widest"
@@ -589,8 +583,8 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                           'repeat(auto-fill, minmax(160px, 1fr))',
                       }}
                     >
-                      {partnerItems.live.map((linked) => (
-                        <PartnerLinkedPeek
+                      {franjaItems.live.map((linked) => (
+                        <FranjaLinkedPeek
                           key={linked.id}
                           item={linked}
                           isExpanded={expandedId === linked.id}
@@ -608,7 +602,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                 {/* Archive — past events for venue/promoter slots. Renders only
                 when there's anything to show; shares the peek-card layout
                 with a //PASADO ribbon to mark them as historical. */}
-                {partnerItems.archive.length > 0 && (
+                {franjaItems.archive.length > 0 && (
                   <section className="flex flex-col gap-3">
                     <h2 className="sys-label flex items-center gap-2 text-muted">
                       <span
@@ -617,7 +611,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                       />
                       ARCHIVO · EVENTOS PASADOS
                       <span className="font-mono text-[10px] text-muted/70">
-                        ({partnerItems.archive.length})
+                        ({franjaItems.archive.length})
                       </span>
                     </h2>
                     <ul
@@ -627,8 +621,8 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                           'repeat(auto-fill, minmax(160px, 1fr))',
                       }}
                     >
-                      {partnerItems.archive.map((linked) => (
-                        <PartnerLinkedPeek
+                      {franjaItems.archive.map((linked) => (
+                        <FranjaLinkedPeek
                           key={linked.id}
                           item={linked}
                           isExpanded={expandedId === linked.id}
@@ -667,7 +661,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
                     <MarketplaceListingCard
                       key={l.id}
                       listing={l}
-                      partner={item}
+                      franja={item}
                       index={i + 1}
                       onClick={() => setActiveListingId(l.id)}
                     />
@@ -678,7 +672,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
 
             {!slot && listings.length === 0 && (
               <p className="font-mono text-[11px] leading-relaxed text-muted">
-                Este partner aún no tiene contenido vinculado ni listados.
+                Este franja aún no tiene contenido vinculado ni listados.
               </p>
             )}
           </section>
@@ -701,7 +695,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
       {activeListing && (
         <MarketplaceListingDetail
           listing={activeListing.listing}
-          partner={item}
+          franja={item}
           index={activeListing.index}
           onClose={() => setActiveListingId(null)}
         />
@@ -710,7 +704,7 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
   )
 }
 
-// ── PartnerLinkedPeek ──────────────────────────────────────────────────────
+// ── FranjaLinkedPeek ──────────────────────────────────────────────────────
 //
 // Vertical flyer-forward card (same vocabulary as EventoRailCard). Two
 // modes:
@@ -723,9 +717,9 @@ export function PartnerOverlay({ item, exiting, onExited }: Props) {
 // Click on the flyer or the compact title toggles. Inside expanded, the X
 // button at the top-right of the right column also collapses. The only
 // path to the full overlay is the explicit `VER FICHA COMPLETA →` CTA,
-// keeping users in the partner context until they commit.
+// keeping users in the franja context until they commit.
 
-export function PartnerLinkedPeek({
+export function FranjaLinkedPeek({
   item,
   isExpanded,
   onToggle,
