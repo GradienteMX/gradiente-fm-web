@@ -102,7 +102,6 @@ export function VibeSlider() {
 
 function VibeSliderImpl() {
   const { vibeRange, setVibeRange, genreFilter, toggleGenre, visibleGenres } = useVibe()
-  const pathname = usePathname()
   const trackRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef<'min' | 'max' | null>(null)
   // Drag-end on the track also fires a click — suppress it so releasing a
@@ -313,16 +312,15 @@ function VibeSliderImpl() {
   // chips are hidden (pin reveals them) or when pinned (pin unpins).
   const pinButtonVisible = !chipsVisible || pinned
 
-  // The GlobalPlayerBar (h-40px) sits between the nav and this strip on every
-  // page EXCEPT home, where it's hidden. Match the sticky offset so there's no
-  // gap: nav(56) on home, nav(56)+bar(40)=96 elsewhere.
-  const isHome = pathname === '/'
+  // Sticky offset = the nav height, centralized as --gr-nav-h in globals.css.
+  // The player lives in a fixed bottom bar now, so no top-strip arithmetic:
+  // one offset on every page. CategoryRail keeps measuring [data-vibe-strip]
+  // for its own placement below.
   return (
     <div
       data-vibe-strip
-      className={`sticky z-40 border-y border-border-subtle bg-base ${
-        isHome ? 'top-[56px]' : 'top-[96px]'
-      }`}
+      className="sticky z-40 border-y border-border-subtle bg-base"
+      style={{ top: 'var(--gr-nav-h)' }}
     >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
 

@@ -1070,21 +1070,47 @@ function ApprovalRow({
   onChanged: () => Promise<void>
 }) {
   const [busy, setBusy] = useState(false)
-  const enabled = franja.marketplace_enabled
+  // Optimistic chip state: non-null while a PATCH is in flight (or just
+  // failed). Falls back to the server truth from the last refetch.
+  const [optimistic, setOptimistic] = useState<boolean | null>(null)
+  const [failed, setFailed] = useState(false)
+  const enabled = optimistic ?? franja.marketplace_enabled
   const listingCount = franja.marketplace_listings?.length ?? 0
 
+  // The failure notice self-clears after a few seconds; effect cleanup
+  // also clears the timer on unmount / re-toggle.
+  useEffect(() => {
+    if (!failed) return
+    const t = setTimeout(() => setFailed(false), 4000)
+    return () => clearTimeout(t)
+  }, [failed])
+
   const toggle = async () => {
+    const next = !enabled
     setBusy(true)
+    setFailed(false)
+    setOptimistic(next)
+    let ok = false
     try {
-      await fetch(`/api/admin/partners/${encodeURIComponent(franja.id)}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ marketplace_enabled: !enabled }),
-      })
-      await onChanged()
+      const res = await fetch(
+        `/api/admin/franjas/${encodeURIComponent(franja.id)}`,
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ marketplace_enabled: next }),
+        },
+      )
+      ok = res.ok
+    } catch {
+      ok = false
     } finally {
       setBusy(false)
     }
+    if (ok) await onChanged()
+    // Back to server truth either way: on success the refetched row now
+    // carries the new value; on failure the chip snaps back.
+    setOptimistic(null)
+    if (!ok) setFailed(true)
   }
 
   return (
@@ -1099,6 +1125,14 @@ function ApprovalRow({
           {enabled ? ` · ${listingCount} ${listingCount === 1 ? 'PIEZA' : 'PIEZAS'}` : ''}
         </span>
       </div>
+      {failed && (
+        <span
+          role="status"
+          className="shrink-0 font-mono text-d11 tracking-widest text-ink"
+        >
+          SEÑAL INTERRUMPIDA
+        </span>
+      )}
       {/* CUE/LATCH — the state chip IS the toggle: ink fill when active.
           ::before pads the hit area to ≥44px without inflating the chip. */}
       <button

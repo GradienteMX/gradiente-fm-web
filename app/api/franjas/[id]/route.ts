@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 // /api/franjas/[id]
-// Franja-side API (distinct from /api/admin/partners/[id] which is admin-
+// Franja-side API (distinct from /api/admin/franjas/[id] which is admin-
 // only). Gated on canManageFranja: site admin OR a team member whose
 // users.franja_id matches the requested franja. Used by the dashboard
 // MiFranjaSection so franja team members can fetch + edit their own

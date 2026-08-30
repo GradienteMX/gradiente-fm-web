@@ -46,7 +46,7 @@ interface ExistingFranja {
   franja_kind: string | null
 }
 
-// Detail shape returned by GET /api/admin/partners/[id] — drives the edit
+// Detail shape returned by GET /api/admin/franjas/[id] — drives the edit
 // form prefill. Wider than ExistingFranja (which only carries enough for
 // the catalog overview).
 interface FranjaDetail {
@@ -73,7 +73,7 @@ type Mode = { kind: 'create' } | { kind: 'edit'; franjaId: string }
 // AdminFranjasComposer — admin-only form for onboarding a new franja OR
 // editing / deleting an existing one. Tabbed by mode:
 //   - create: blank form, CREAR FRANJA button
-//   - edit:   prefilled from GET /api/admin/partners/[id], GUARDAR + BORRAR
+//   - edit:   prefilled from GET /api/admin/franjas/[id], GUARDAR + BORRAR
 //             buttons. Borrar opens a typeToConfirm overlay requiring the
 //             admin to type "BORRAR <franja name>" verbatim.
 //
@@ -153,7 +153,7 @@ export function AdminFranjasComposer({
     setError(null)
     try {
       const res = await fetch(
-        `/api/admin/partners/${encodeURIComponent(franjaId)}`,
+        `/api/admin/franjas/${encodeURIComponent(franjaId)}`,
       )
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: 'FAILED' }))
@@ -179,6 +179,10 @@ export function AdminFranjasComposer({
       setMarketplaceDescription(p.marketplace_description ?? '')
       setMode({ kind: 'edit', franjaId: p.id })
       setFlash(null)
+    } catch {
+      // Network-level failure (fetch rejected) — surface it instead of
+      // letting the rejection escape silently.
+      setError('SEÑAL INTERRUMPIDA — SIN RESPUESTA')
     } finally {
       setLoadingDetail(false)
     }
@@ -241,7 +245,7 @@ export function AdminFranjasComposer({
         router.refresh()
       } else {
         const res = await fetch(
-          `/api/admin/partners/${encodeURIComponent(mode.franjaId)}`,
+          `/api/admin/franjas/${encodeURIComponent(mode.franjaId)}`,
           {
             method: 'PATCH',
             headers: { 'content-type': 'application/json' },
@@ -268,6 +272,8 @@ export function AdminFranjasComposer({
         setFlash({ kind: 'updated', title: json.franja.title })
         router.refresh()
       }
+    } catch {
+      setError('SEÑAL INTERRUMPIDA — SIN RESPUESTA')
     } finally {
       setSubmitting(false)
     }
@@ -294,7 +300,7 @@ export function AdminFranjasComposer({
     setError(null)
     try {
       const res = await fetch(
-        `/api/admin/partners/${encodeURIComponent(mode.franjaId)}`,
+        `/api/admin/franjas/${encodeURIComponent(mode.franjaId)}`,
         { method: 'DELETE' },
       )
       if (!res.ok) {
@@ -305,6 +311,8 @@ export function AdminFranjasComposer({
       setFlash({ kind: 'deleted', title: franjaTitle })
       enterCreateMode()
       router.refresh()
+    } catch {
+      setError('SEÑAL INTERRUMPIDA — SIN RESPUESTA')
     } finally {
       setDeleting(false)
     }

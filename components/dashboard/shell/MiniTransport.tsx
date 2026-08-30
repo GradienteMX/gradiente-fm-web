@@ -16,7 +16,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Pause, Play, SkipForward } from 'lucide-react'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
-import { MarqueeText } from '@/components/audio/NowPlayingHud'
+import { MarqueeText } from '@/components/audio/MarqueeText'
 
 // Focus ring for controls ON THE INK STRIP — WidgetFrame's FOCUS_RING outlines
 // in ink, invisible on the panel ground; this is the panel-text counterpart.

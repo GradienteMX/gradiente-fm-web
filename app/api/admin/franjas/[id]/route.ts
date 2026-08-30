@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/database.types'
 
-// /api/admin/partners/[id]
+// /api/admin/franjas/[id]
 // GET    → fetch one franja row (full detail, for edit form prefill)
 // PATCH  → update editable fields on a franja row
 // DELETE → hard-delete the franja row (cascades comments/saves/polls/

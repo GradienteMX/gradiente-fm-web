@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ContentItem, ContentType } from '@/lib/types'
 import { categoryColor } from '@/lib/utils'
 import { useVibe } from '@/context/VibeContext'
-import { NowPlayingHud } from './audio/NowPlayingHud'
+import { QueueSeeder } from './audio/QueueSeeder'
 
 const CATEGORIES: { type: ContentType; label: string }[] = [
   { type: 'evento',    label: 'EVENTO' },
@@ -80,8 +80,7 @@ export function CategoryRail({ items }: CategoryRailProps) {
       {/* `top` + `maxHeight` are dynamic (see useEffect above) so the
           rail always sits cleanly below the VibeSlider's variable-height
           chips strip. `overflow-y-auto` handles the (rare) case where
-          SECCION + audio visualizer combined exceed the remaining
-          viewport space. No bg-base / no high z — the rail and chips
+          SECCIÓN exceeds the remaining viewport space. No bg-base / no high z — the rail and chips
           strip live in disjoint vertical bands. */}
       <div
         className="sticky flex flex-col gap-5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -180,9 +179,10 @@ export function CategoryRail({ items }: CategoryRailProps) {
           </nav>
         </div>
 
-        {/* ── NOW PLAYING — persistent track + transport + matrix viz.
-             Only transport surface visible when no overlay is open. ── */}
-        <NowPlayingHud items={items} />
+        {/* ── Queue seeding — invisible (renders null): registers the feed's
+             playable mixes as the ambient skip-queue and cues one on load.
+             The visible transport lives in the bottom GlobalPlayerBar now. ── */}
+        <QueueSeeder items={items} />
       </div>
     </aside>
   )

@@ -27,6 +27,14 @@
   --font-syne: 'Syne', sans-serif;
   --font-space-grotesk: 'Space Grotesk', sans-serif;
   --font-space-mono: 'Space Mono', monospace;
+
+  /* ── Chrome heights (fase A) — the ONE place sticky arithmetic lives.
+     Consumers: Navigation (h), VibeSlider (sticky top), GlobalPlayerBar
+     (bar + spacer height). CategoryRail keeps measuring [data-vibe-strip]
+     at runtime, so it needs no constant here. Change these two values,
+     never a hardcoded px offset in a component. */
+  --gr-nav-h: 64px;
+  --gr-player-h: 56px;
 }
 
 /* ── Base reset ───────────────────────────────────────────── */
@@ -412,7 +420,7 @@ body {
    performance — feed cards now render full-color and static (no per-card
    filter/blend, no hover develop, no 3D tilt). */
 
-/* HUD marquee — NowPlayingHud track/artist lines scroll horizontally when the
+/* HUD marquee — MarqueeText (GlobalPlayerBar / MiniTransport / ReproductorWidget) track/artist lines scroll horizontally when the
    text overflows the narrow rail. Two copies of the text each translate -100%
    for a seamless loop (the second enters as the first exits). Neutralized
    under prefers-reduced-motion below (falls back to a static truncated line). */
