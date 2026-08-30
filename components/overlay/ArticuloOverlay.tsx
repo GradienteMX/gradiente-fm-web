@@ -3,14 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
 import { getRelatedByVibe } from '@/lib/itemsCache'
-import {
-  categoryColor,
-  fmtDateFull,
-  vibeToColor,
-  vibeMid,
-} from '@/lib/utils'
+import { fmtDateFull } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
-import { Calendar, Clock, Quote, User, ExternalLink, Pause, Play } from 'lucide-react'
+import { ExternalLink, Pause, Play } from 'lucide-react'
 import { ContentCard } from '@/components/cards/ContentCard'
 import {
   PLATFORM_LABELS,
@@ -30,17 +25,43 @@ import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
 import { OverlayLinks } from './OverlayLinks'
 import { OverlayEntities } from './OverlayEntities'
+import {
+  categoryColorOnLight,
+  typeCode,
+  typeDisplayLabel,
+} from '@/lib/dashboard/palette'
 
 interface ArticuloOverlayProps {
   item: ContentItem
 }
 
-// Long-form feature layout — hero image up top, two-column reading area
-// (sticky TOC + author/share rail flanking a generous article column),
-// footnotes, and curated "SIGUIENTES LECTURAS" that stay in-overlay.
+// ── «EL PLIEGO» fase C — shared print chrome ────────────────────────────────
+// Focus grammar: 2px ink outline offset 2 on paper grounds; panel-text ring
+// on ink (faceplate) grounds. Exported so ListicleOverlay reuses the same
+// strings instead of drifting.
+export const PAPER_FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+export const PANEL_FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
+
+// Smooth scrolling is an effect — honor the reduced-motion setting at the
+// moment of the gesture.
+function scrollBehavior(): ScrollBehavior {
+  if (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    return 'auto'
+  }
+  return 'smooth'
+}
+
+// Long-form printed feature — the fase-C paper sheet. Hero plate up top,
+// two-column reading area (sticky §-numbered TOC + FIRMA/CONTEXTO rail
+// flanking a generous article column), footnotes on hairlines, and curated
+// "SIGUIENTES LECTURAS" that stay in-overlay.
 export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
-  const color = categoryColor('articulo')
-  const vibeColor = vibeToColor(vibeMid(item))
+  const color = categoryColorOnLight(item.type)
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -106,84 +127,95 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
     if (el && scroller) {
       scroller.scrollTo({
         top: el.offsetTop - 80,
-        behavior: 'smooth',
+        behavior: scrollBehavior(),
       })
     }
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative bg-paper text-ink">
       {/* ── Eyebrow + title block ──────────────────────────────────────── */}
       <header className="px-5 pt-10 md:px-12 md:pt-14">
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <span
-            className="inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] tracking-widest"
-            style={{
-              borderColor: `${color}66`,
-              color,
-              backgroundColor: `${color}10`,
-            }}
-          >
-            {item.editorial && <span>★</span>}
-            ARTÍCULO
+          {/* Type register — swatch + 2-letter code + label. The code rides
+              beside the swatch so hue is never the only signal. */}
+          <span className="inline-flex items-center gap-1.5 border border-ink bg-paper-raised px-2 py-1 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+            <span
+              aria-hidden
+              className="h-[9px] w-[9px] shrink-0"
+              style={{ backgroundColor: color }}
+            />
+            {typeCode(item.type)} · {typeDisplayLabel(item.type)}
           </span>
+          {item.editorial && (
+            <span
+              className="bg-sys-red-paper px-1.5 py-1 font-mono text-[10px] leading-none text-paper-raised"
+              title="Selección editorial"
+            >
+              ★
+            </span>
+          )}
         </div>
 
-        <h1
-          className="mb-6 max-w-[22ch] break-words font-syne text-3xl font-black leading-[1.02] text-primary sm:text-4xl md:text-6xl"
-          style={{ letterSpacing: '-0.01em' }}
-        >
+        <h1 className="mb-6 max-w-[22ch] font-syne text-d28 font-black tracking-[-0.01em] text-ink [text-wrap:balance] md:text-display">
           {item.title}
         </h1>
 
         {(item.subtitle || item.excerpt) && (
-          <p
-            className="mb-8 max-w-[62ch] font-grotesk text-lg leading-relaxed md:text-xl"
-            style={{ color: vibeColor }}
-          >
+          <p className="mb-8 max-w-[62ch] font-grotesk text-d18 leading-relaxed text-ink-soft md:text-xl">
             {item.subtitle || item.excerpt}
           </p>
         )}
 
-        {/* Byline strip — horizontal rules top & bottom */}
-        <dl className="flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-border py-4">
+        {/* Byline strip — hairline rules top & bottom */}
+        <dl className="flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-ink py-4">
           {item.author && (
-            <div className="flex items-center gap-3">
-              <User size={11} className="text-muted" />
-              <dt className="sys-label">POR</dt>
-              <dd className="font-grotesk text-sm text-primary">{item.author}</dd>
+            <div className="flex items-baseline gap-3">
+              <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                POR
+              </dt>
+              <dd className="font-grotesk text-d15 font-bold text-ink">
+                {item.author}
+              </dd>
             </div>
           )}
           {item.publishedAt && (
-            <div className="flex items-center gap-3">
-              <Calendar size={11} className="text-muted" />
-              <dt className="sys-label">FECHA</dt>
-              <dd className="font-grotesk text-sm text-secondary">
+            <div className="flex items-baseline gap-3">
+              <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                FECHA
+              </dt>
+              <dd className="font-grotesk text-d13 text-ink-soft">
                 {fmtDateFull(item.publishedAt)}
               </dd>
             </div>
           )}
           {item.readTime && (
-            <div className="flex items-center gap-3">
-              <Clock size={11} className="text-muted" />
-              <dt className="sys-label">LECTURA</dt>
-              <dd className="font-mono text-sm text-secondary">
+            <div className="flex items-baseline gap-3">
+              <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                LECTURA
+              </dt>
+              <dd className="font-mono text-d13 text-ink-soft">
                 {item.readTime} min
               </dd>
             </div>
           )}
-          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-            <span className="sys-label">VIBE</span>
+          {/* Vibe fader on its faceplate seat — the fader's meter/grips are
+              dark-ground instruments (instrument doctrine), so it sits on a
+              bg-panel band like the dashboard ReproductorWidget's. */}
+          <div className="flex w-full min-w-0 items-center gap-3 border border-ink bg-panel px-3 py-2 sm:ml-auto sm:w-auto">
+            <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-panel-text">
+              VIBE
+            </span>
             <VibeFader item={item} />
           </div>
         </dl>
       </header>
 
-      {/* ── Hero image — full-width, primary (not archival) ──────────────── */}
+      {/* ── Hero image — ink-framed plate, category underline ───────────── */}
       {item.imageUrl && (
         <figure className="mt-8 px-5 md:mt-10 md:px-12">
           <div
-            className="relative overflow-hidden border border-border bg-elevated"
+            className="relative overflow-hidden border border-ink bg-panel"
             style={{ aspectRatio: '16 / 9' }}
           >
             <SmartImage
@@ -192,13 +224,14 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
               sizes="(max-width: 768px) 100vw, 720px"
               className="object-cover object-top"
             />
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5"
-              style={{ backgroundColor: color }}
-            />
           </div>
+          <div
+            aria-hidden
+            className="h-[3px] w-full"
+            style={{ backgroundColor: color }}
+          />
           {item.heroCaption && (
-            <figcaption className="mt-2 font-mono text-[10px] tracking-widest text-secondary">
+            <figcaption className="mt-2 font-mono text-d11 tracking-widest text-ink-faint">
               {item.heroCaption}
             </figcaption>
           )}
@@ -210,51 +243,48 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
         {/* Left rail — sticky TOC + section progress */}
         <aside className="hidden md:col-span-2 md:block">
           <div className="sticky top-4 flex flex-col gap-3">
-            <span className="sys-label text-muted">ÍNDICE</span>
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+              ÍNDICE
+            </span>
             {sections.length > 0 ? (
-              <ol className="flex flex-col gap-1.5">
+              <ol className="flex flex-col gap-1">
                 {sections.map((s, i) => {
                   const active = s.id === activeSection
                   return (
                     <li key={s.id}>
                       <button
                         onClick={() => scrollToSection(s.id)}
-                        className="group flex w-full items-baseline gap-2 text-left font-mono text-[10px] leading-snug transition-colors"
+                        className={`flex min-h-6 w-full items-baseline gap-2 px-1 py-0.5 text-left font-mono text-d11 leading-snug transition-colors ${
+                          active
+                            ? 'bg-ink text-paper-raised'
+                            : 'text-ink-faint hover:text-ink'
+                        } ${PAPER_FOCUS_RING}`}
                       >
-                        <span
-                          className="shrink-0 tabular-nums"
-                          style={{ color: active ? color : 'var(--color-muted)' }}
-                        >
+                        <span className="shrink-0 tabular-nums">
                           §{String(i + 1).padStart(2, '0')}
                         </span>
-                        <span
-                          className={
-                            active
-                              ? 'text-primary'
-                              : 'text-muted group-hover:text-secondary'
-                          }
-                        >
-                          {s.label}
-                        </span>
+                        <span>{s.label}</span>
                       </button>
                     </li>
                   )
                 })}
               </ol>
             ) : (
-              <p className="font-mono text-[10px] text-muted">
-                [SIN SECCIONES]
+              <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                SIN SECCIONES
               </p>
             )}
 
-            <div className="mt-4 border-t border-border pt-3">
-              <span className="sys-label text-muted">PROGRESO</span>
-              <div className="mt-1 font-mono text-[10px] tabular-nums text-primary">
+            <div className="mt-4 border-t border-ink pt-3">
+              <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                PROGRESO
+              </span>
+              <div className="mt-1 font-mono text-d11 tabular-nums text-ink">
                 {String(scrollPct).padStart(2, '0')}%
               </div>
               <div className="mt-1 font-mono text-[10px] tracking-[0.2em]" aria-hidden>
-                <span style={{ color }}>{'█'.repeat(filled)}</span>
-                <span className="text-muted">
+                <span className="text-ink">{'█'.repeat(filled)}</span>
+                <span className="text-ink-faint">
                   {'·'.repeat(scrollBlocks - filled)}
                 </span>
               </div>
@@ -267,18 +297,17 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
           ref={articleRef}
           className="min-w-0 md:col-span-7"
         >
-          <BodyBlocks blocks={blocks} color={color} vibeColor={vibeColor} item={item} />
+          <BodyBlocks blocks={blocks} color={color} item={item} />
 
-          {/* Footnotes */}
+          {/* Footnotes — endnotes on hairlines */}
           {footnotes.length > 0 && (
-            <section className="mt-14 border-t border-border pt-6">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="sys-label text-muted">NOTAS</span>
-                <span
-                  className="font-mono text-[10px]"
-                  style={{ color }}
-                >
-                  // {footnotes.length}
+            <section className="mt-14 border-t border-ink pt-6">
+              <div className="mb-4 flex items-baseline gap-2">
+                <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                  NOTAS
+                </span>
+                <span className="font-mono text-d11 tabular-nums text-ink">
+                  · {footnotes.length}
                 </span>
               </div>
               <ol className="flex flex-col gap-3">
@@ -286,13 +315,10 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
                   <li
                     key={fn.id}
                     id={`fn-${fn.id}`}
-                    className="flex gap-3 font-grotesk text-[13px] leading-relaxed text-secondary"
+                    className="flex gap-3 border-b border-ink/20 pb-3 font-grotesk text-[13px] leading-relaxed text-ink-soft last:border-b-0"
                   >
-                    <span
-                      className="shrink-0 font-mono text-[11px] tabular-nums"
-                      style={{ color }}
-                    >
-                      [{i + 1}]
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-sys-red-paper">
+                      {i + 1}
                     </span>
                     <p>{fn.text}</p>
                   </li>
@@ -301,37 +327,29 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             </section>
           )}
 
-          {/* End-of-article marker */}
-          <div className="mt-14 flex flex-col items-start gap-3 border-t border-border pt-6">
-            <div
-              className="h-1 w-16"
-              style={{
-                backgroundImage:
-                  'repeating-linear-gradient(-45deg, var(--color-muted) 0 6px, transparent 6px 12px)',
-                opacity: 0.6,
-              }}
-              aria-hidden
-            />
-            <p className="font-mono text-[11px] tracking-widest text-muted">
-              FIN DEL ARTÍCULO
+          {/* End-of-article marker — double ink rule + FIN */}
+          <div className="mt-14">
+            <div aria-hidden>
+              <div className="h-px w-full bg-ink" />
+              <div className="mt-[3px] h-px w-full bg-ink" />
+            </div>
+            <p className="mt-3 text-center font-mono text-d11 font-bold tracking-[0.35em] text-ink">
+              FIN
             </p>
           </div>
         </article>
 
-        {/* Right rail — author / vibe / tags */}
+        {/* Right rail — firma / contexto / etiquetas */}
         <aside className="md:col-span-3 md:sticky md:top-4 md:self-start">
           <div className="flex flex-col gap-4">
             {item.author && (
               <RailBlock label="FIRMA">
                 <div className="flex items-start gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center border border-border bg-elevated font-syne text-sm font-black"
-                    style={{ color }}
-                  >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-ink font-syne text-sm font-black text-paper-raised">
                     {initials(item.author)}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-grotesk text-sm text-primary">
+                    <p className="font-grotesk text-d13 font-bold text-ink">
                       {item.author}
                     </p>
                   </div>
@@ -340,47 +358,53 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
             )}
 
             <RailBlock label="CONTEXTO">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
-                <dt className="text-muted">TIPO</dt>
-                <dd style={{ color }}>: //ARTÍCULO</dd>
-                {item.readTime && (
-                  <>
-                    <dt className="text-muted">LECTURA</dt>
-                    <dd className="text-secondary">: {item.readTime} min</dd>
-                  </>
-                )}
-                <dt className="text-muted">ESTADO</dt>
-                <dd className="text-sys-green">: PUBLICADO</dd>
-                <dt className="text-muted">SEÑAL</dt>
-                <dd className="flex items-center gap-1.5">
-                  <span>:</span>
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-                  <span className="text-sys-green">ACTIVA</span>
-                </dd>
-              </dl>
-              <OverlayEntities entities={item.entities} color={vibeColor} />
-              <OverlayLinks links={item.links} color={vibeColor} />
+              <div className="flex flex-col gap-3">
+                <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1.5 font-mono text-d11">
+                  <dt className="uppercase tracking-widest text-ink-faint">
+                    TIPO
+                  </dt>
+                  <dd className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-ink">
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    {typeCode(item.type)} · {typeDisplayLabel(item.type)}
+                  </dd>
+                  {item.readTime && (
+                    <>
+                      <dt className="uppercase tracking-widest text-ink-faint">
+                        LECTURA
+                      </dt>
+                      <dd className="text-ink-soft">{item.readTime} min</dd>
+                    </>
+                  )}
+                </dl>
+                <OverlayEntities entities={item.entities} color={color} />
+                <OverlayLinks links={item.links} color={color} />
+              </div>
             </RailBlock>
 
             {(genres.length > 0 || tags.length > 0) && (
               <RailBlock label="ETIQUETAS">
-                <ul className="flex flex-col gap-1.5 font-mono text-xs">
+                <ul className="flex flex-wrap items-center gap-1.5">
                   {genres.map(({ id, name }) => (
-                    <li key={id} className="flex items-center gap-2">
-                      <span className="text-muted">#</span>
+                    <li key={id}>
                       <GenreChipButton
                         genreId={id}
-                        className=""
-                        style={{ color: vibeColor }}
+                        ground="paper"
+                        className="inline-flex px-1.5 py-0.5 font-mono text-d11"
                       >
                         {name}
                       </GenreChipButton>
                     </li>
                   ))}
                   {tags.map((t) => (
-                    <li key={t} className="flex items-center gap-2">
-                      <span className="text-muted">#</span>
-                      <span className="text-secondary">{t}</span>
+                    <li
+                      key={t}
+                      className="px-1.5 py-0.5 font-mono text-d11 text-ink-soft"
+                    >
+                      #{t}
                     </li>
                   ))}
                 </ul>
@@ -393,23 +417,20 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
       {/* Poll — freeform on articulo. Lives between body+footnotes and the
           related-reading section. */}
       {item.poll && (
-        <section className="border-t border-border bg-surface/40 px-5 py-8 md:px-12">
+        <section className="border-t border-ink px-5 py-8 md:px-12">
           <PollSection item={item} className="max-w-2xl" />
         </section>
       )}
 
       {/* ── Related reading — stays in overlay via OverlayRouter swap ───── */}
       {related.length > 0 && (
-        <section className="border-t border-border bg-surface/40 px-5 py-10 md:px-12">
+        <section className="border-t border-ink px-5 py-10 md:px-12">
           <div className="mb-5 flex items-center gap-3">
-            <span
-              className="font-mono text-[11px] tracking-widest"
-              style={{ color }}
-            >
-              //SIGUIENTES·LECTURAS
+            <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              SIGUIENTES LECTURAS
             </span>
-            <div className="h-px flex-1 bg-border" />
-            <span className="sys-label text-muted">
+            <div className="h-px flex-1 bg-ink" />
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
               {related.length} · CURADO
             </span>
           </div>
@@ -423,27 +444,23 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
         </section>
       )}
 
-      {/* Sticky reader footer — SCROLL status strip */}
-      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t border-border bg-base/95 px-4 py-2 backdrop-blur-sm md:px-6">
-        <div className="flex items-center gap-3">
-          <span className="sys-label text-muted">SCROLL</span>
-          <span className="font-mono text-[11px] tabular-nums text-primary">
-            {String(scrollPct).padStart(2, '0')}%
+      {/* Sticky reader footer — SCROLL progress strip on paper */}
+      <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-ink bg-paper px-4 py-2 md:px-6">
+        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          SCROLL
+        </span>
+        <span className="font-mono text-d11 tabular-nums text-ink">
+          {String(scrollPct).padStart(2, '0')}%
+        </span>
+        <span
+          className="ml-1 font-mono text-[10px] tracking-[0.3em] text-ink"
+          aria-hidden
+        >
+          {'█'.repeat(filled)}
+          <span className="text-ink-faint">
+            {'·'.repeat(scrollBlocks - filled)}
           </span>
-          <span
-            className="ml-1 font-mono tracking-[0.3em]"
-            aria-hidden
-            style={{ color, fontSize: 10 }}
-          >
-            {'█'.repeat(filled)}
-            <span className="text-muted">
-              {'·'.repeat(scrollBlocks - filled)}
-            </span>
-          </span>
-        </div>
-        <div className="hidden items-center gap-4 font-mono text-[10px] tracking-widest sm:flex">
-          <span className="text-sys-green">· MODO LECTURA · LONGFORM</span>
-        </div>
+        </span>
       </div>
     </div>
   )
@@ -456,12 +473,10 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
 export function BodyBlocks({
   blocks,
   color,
-  vibeColor,
   item,
 }: {
   blocks: ArticleBlock[]
   color: string
-  vibeColor: string
   item?: ContentItem
 }) {
   // Playable ref per track-block index (unplayable blocks are absent), plus
@@ -481,6 +496,17 @@ export function BodyBlocks({
     [playableByIndex],
   )
 
+  // §-numbering per h2 index — mirrors the TOC's §NN register so the printed
+  // section heads and the rail agree.
+  const sectionNumbers = useMemo(() => {
+    const m = new Map<number, number>()
+    let n = 0
+    blocks.forEach((b, i) => {
+      if (b.kind === 'h2') m.set(i, ++n)
+    })
+    return m
+  }, [blocks])
+
   // Prime every platform the collection uses as soon as the reader lands on
   // the piece — so the first play click autoplays within the user's gesture
   // instead of waiting for a third-party script to boot.
@@ -497,7 +523,7 @@ export function BodyBlocks({
   }, [collection, primePlatform])
 
   return (
-    <div className="flex flex-col gap-5 font-grotesk text-[16px] leading-[1.78] text-primary md:text-[17px] md:leading-[1.82]">
+    <div className="flex flex-col gap-5 font-grotesk text-[16px] leading-[1.78] text-ink md:text-[17px] md:leading-[1.82]">
       {blocks.map((b, i) => {
         switch (b.kind) {
           case 'lede': {
@@ -509,14 +535,12 @@ export function BodyBlocks({
             const paras = splitParagraphs(b.text)
             if (paras.length === 0) return null
             const ledeClass =
-              'font-grotesk text-[19px] leading-[1.6] text-primary first-letter:float-left first-letter:mr-2 first-letter:mt-[0.15em] first-letter:font-syne first-letter:text-[64px] first-letter:font-black first-letter:leading-[0.85]'
+              'font-grotesk text-[19px] leading-[1.6] text-ink first-letter:float-left first-letter:mr-2 first-letter:mt-[0.15em] first-letter:font-syne first-letter:text-[64px] first-letter:font-black first-letter:leading-[0.85]'
             return (
               <Fragment key={i}>
                 <p className={ledeClass}>{renderInline(paras[0])}</p>
                 {paras.slice(1).map((p, j) => (
-                  <p key={j} className="text-primary">
-                    {renderInline(p)}
-                  </p>
+                  <p key={j}>{renderInline(p)}</p>
                 ))}
               </Fragment>
             )
@@ -527,24 +551,26 @@ export function BodyBlocks({
             return (
               <Fragment key={i}>
                 {paras.map((p, j) => (
-                  <p key={j} className="text-primary">
-                    {renderInline(p)}
-                  </p>
+                  <p key={j}>{renderInline(p)}</p>
                 ))}
               </Fragment>
             )
           }
           case 'h2': {
             const id = b.id ?? `sec-${i}`
+            const n = sectionNumbers.get(i) ?? 0
             return (
               <h2
                 key={i}
                 id={id}
                 data-section-id={id}
-                className="mt-6 font-syne text-2xl font-black leading-tight text-primary md:text-3xl"
+                className="mt-6 font-syne text-2xl font-black leading-tight text-ink md:text-3xl"
               >
-                <span className="mr-2 font-mono text-sm" style={{ color }}>
-                  //
+                <span
+                  className="mr-2 font-mono text-sm tabular-nums"
+                  style={{ color }}
+                >
+                  §{String(n).padStart(2, '0')}
                 </span>
                 {b.text}
               </h2>
@@ -554,31 +580,23 @@ export function BodyBlocks({
             return (
               <h3
                 key={i}
-                className="mt-4 font-syne text-xl font-bold leading-tight text-primary"
+                className="mt-4 font-syne text-xl font-bold leading-tight text-ink"
               >
                 {b.text}
               </h3>
             )
           case 'quote':
+            // Pull-quote — bordered ink slab on raised paper.
             return (
               <blockquote
                 key={i}
-                className="my-4 border-l-2 py-2 pl-5"
-                style={{ borderColor: vibeColor }}
+                className="my-4 border border-ink border-l-4 bg-paper-raised p-5"
               >
-                <Quote
-                  size={16}
-                  style={{ color: vibeColor }}
-                  className="mb-2 opacity-60"
-                />
-                <p
-                  className="font-syne text-xl font-bold italic leading-snug md:text-2xl"
-                  style={{ color: vibeColor }}
-                >
+                <p className="font-syne text-xl font-bold leading-snug text-ink md:text-2xl">
                   &ldquo;{b.text}&rdquo;
                 </p>
                 {b.cite && (
-                  <footer className="mt-2 font-mono text-[11px] tracking-widest text-muted">
+                  <footer className="mt-2 font-mono text-d11 tracking-widest text-ink-faint">
                     — {b.cite}
                   </footer>
                 )}
@@ -588,11 +606,11 @@ export function BodyBlocks({
             return (
               <blockquote
                 key={i}
-                className="border-l border-border py-1 pl-4 font-grotesk text-[15px] italic text-secondary"
+                className="border-l border-ink py-1 pl-4 font-grotesk text-[15px] italic text-ink-soft"
               >
                 {b.text}
                 {b.cite && (
-                  <footer className="mt-1 font-mono text-[10px] tracking-widest text-muted">
+                  <footer className="mt-1 font-mono text-[10px] tracking-widest text-ink-faint">
                     — {b.cite}
                   </footer>
                 )}
@@ -601,7 +619,7 @@ export function BodyBlocks({
           case 'image':
             return (
               <figure key={i} className="my-2">
-                <div className="overflow-hidden border border-border bg-elevated">
+                <div className="overflow-hidden border border-ink bg-panel">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={b.src}
@@ -610,8 +628,8 @@ export function BodyBlocks({
                   />
                 </div>
                 {b.caption && (
-                  <figcaption className="mt-1.5 font-mono text-[10px] tracking-widest text-muted">
-                    IMG // <span className="text-secondary">{b.caption}</span>
+                  <figcaption className="mt-1.5 font-mono text-d11 tracking-widest text-ink-faint">
+                    {b.caption}
                   </figcaption>
                 )}
               </figure>
@@ -623,13 +641,11 @@ export function BodyBlocks({
                 className="my-4 flex items-center gap-3"
                 aria-hidden
               >
-                <span className="font-mono text-xs" style={{ color }}>
-                  ⋯
+                <div className="h-px flex-1 bg-ink" />
+                <span className="font-mono text-xs leading-none tracking-[0.4em] text-ink-soft">
+                  ···
                 </span>
-                <div className="h-px flex-1 bg-border" />
-                <span className="font-mono text-xs" style={{ color }}>
-                  ⋯
-                </span>
+                <div className="h-px flex-1 bg-ink" />
               </div>
             )
           case 'qa':
@@ -638,23 +654,21 @@ export function BodyBlocks({
                 key={i}
                 className={
                   b.isQuestion
-                    ? 'mt-3 border-l-2 border-border pl-4'
+                    ? 'mt-3 border-l-2 border-ink pl-4'
                     : 'pl-4'
                 }
               >
                 <p className="mb-1">
                   <span
                     className="font-syne text-[15px] font-black tracking-wide"
-                    style={{ color: b.isQuestion ? color : 'var(--color-primary)' }}
+                    style={{ color: b.isQuestion ? color : undefined }}
                   >
                     {b.speaker}:
                   </span>
                 </p>
                 <p
                   className={
-                    b.isQuestion
-                      ? 'font-grotesk italic text-secondary'
-                      : 'text-primary'
+                    b.isQuestion ? 'font-grotesk italic text-ink-soft' : ''
                   }
                 >
                   {renderInline(b.text)}
@@ -673,8 +687,7 @@ export function BodyBlocks({
                 {b.items.map((it, j) => (
                   <li key={j} className="flex gap-3">
                     <span
-                      className="mt-[0.45em] inline-block h-1 w-1 shrink-0"
-                      style={{ backgroundColor: color }}
+                      className="mt-[0.45em] inline-block h-1 w-1 shrink-0 bg-ink"
                       aria-hidden
                     />
                     <span>{renderInline(it)}</span>
@@ -687,7 +700,6 @@ export function BodyBlocks({
               <TrackBlock
                 key={i}
                 block={b}
-                color={color}
                 playable={playableByIndex.get(i) ?? null}
                 collection={collection}
               />
@@ -699,14 +711,15 @@ export function BodyBlocks({
 }
 
 // ── Track block ─────────────────────────────────────────────────────────────
+// Instrument doctrine: anything that plays sits on an ink faceplate. The
+// rank/cover/title/transport band is a bg-panel instrument row; the printed
+// commentary reads below it on raised paper.
 function TrackBlock({
   block,
-  color,
   playable,
   collection,
 }: {
   block: Extract<ArticleBlock, { kind: 'track' }>
-  color: string
   playable?: PlayableRef | null
   collection?: PlayableRef[]
 }) {
@@ -740,27 +753,23 @@ function TrackBlock({
   )
 
   return (
-    <section
-      className="my-3 grid grid-cols-[auto_1fr] gap-4 border p-4 md:p-5"
-      style={{ borderColor: '#F97316' }}
-    >
-      {/* Rank column */}
-      <div className="flex w-16 flex-col items-start gap-1 md:w-24">
-        <span className="sys-label text-muted">RANK</span>
-        <span
-          className="font-syne text-4xl font-black leading-none tabular-nums md:text-5xl"
-          style={{ color: '#F97316' }}
-        >
-          {rank !== undefined ? String(rank).padStart(2, '0') : '—'}
-        </span>
-      </div>
+    <section className="my-3 border border-ink">
+      {/* Faceplate band — rank, cover, identity, transport */}
+      <div className="bg-panel p-4 text-panel-text md:p-5">
+        <div className="flex gap-4">
+          {/* Rank column — Syne numerals, acid on the panel (legal use) */}
+          <div className="flex w-14 shrink-0 flex-col items-start gap-1 md:w-20">
+            <span className="font-mono text-d11 uppercase tracking-widest text-panel-text/60">
+              RANK
+            </span>
+            <span className="font-syne text-4xl font-black leading-none tabular-nums text-acid md:text-5xl">
+              {rank !== undefined ? String(rank).padStart(2, '0') : '—'}
+            </span>
+          </div>
 
-      {/* Main column */}
-      <div className="min-w-0 flex flex-col gap-3">
-        <div className="flex gap-3 md:gap-4">
           {/* Cover */}
           {block.imageUrl ? (
-            <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden border border-border bg-elevated md:h-[104px] md:w-[104px]">
+            <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden border border-panel-text/25 md:h-[104px] md:w-[104px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={block.imageUrl}
@@ -769,44 +778,31 @@ function TrackBlock({
               />
             </div>
           ) : (
-            <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center border border-border bg-elevated font-mono text-[10px] text-muted md:h-[104px] md:w-[104px]">
+            <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center border border-panel-text/25 font-mono text-[10px] text-panel-text/60 md:h-[104px] md:w-[104px]">
               SIN ARTE
             </div>
           )}
 
           {/* Title / meta */}
           <div className="min-w-0 flex flex-col gap-1">
-            <p
-              className="font-mono text-[11px] tracking-widest"
-              style={{ color: '#F97316' }}
-            >
+            <p className="font-mono text-d11 tracking-widest text-panel-text/70">
               {block.artist}
             </p>
-            <h3 className="font-syne text-lg font-black leading-[1.05] text-primary [overflow-wrap:anywhere] md:text-xl">
+            <h3 className="font-syne text-lg font-black leading-[1.05] text-panel-text [overflow-wrap:anywhere] md:text-xl">
               {block.title}
             </h3>
             {meta.length > 0 && (
-              <p className="font-mono text-[11px] text-muted">
+              <p className="font-mono text-d11 text-panel-text/60">
                 {meta.join(' · ')}
               </p>
             )}
           </div>
         </div>
 
-        {/* Commentary — split on newlines so multi-paragraph commentaries
-            render as separate paragraphs instead of one collapsed block. */}
-        {block.commentary && (
-          <div className="flex flex-col gap-3 font-grotesk text-[14px] leading-[1.6] text-secondary md:text-[15px]">
-            {splitParagraphs(block.commentary).map((p, j) => (
-              <p key={j}>{p}</p>
-            ))}
-          </div>
-        )}
-
         {/* Transport + source link-outs. Playable sources get the in-player
             button (never a link-out); only uncontrollable sources link out. */}
         {(source || externalEmbeds.length > 0) && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+          <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-panel-text/25 pt-3">
             {source && (
               <button
                 type="button"
@@ -814,12 +810,11 @@ function TrackBlock({
                 aria-label={
                   isPlaying ? `Pausar ${block.title}` : `Reproducir ${block.title}`
                 }
-                className="inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] tracking-widest transition-colors hover:bg-elevated"
-                style={{
-                  borderColor: '#F97316',
-                  color: '#F97316',
-                  backgroundColor: isActive ? '#F9731610' : undefined,
-                }}
+                className={`inline-flex min-h-11 items-center gap-1.5 border px-3 font-mono text-[10px] tracking-widest transition-colors ${
+                  isPlaying
+                    ? 'border-acid bg-acid text-ink'
+                    : 'border-panel-text/50 text-panel-text hover:border-panel-text hover:bg-panel-text hover:text-panel'
+                } ${PANEL_FOCUS_RING}`}
               >
                 {isPlaying ? (
                   <Pause size={10} fill="currentColor" />
@@ -831,7 +826,7 @@ function TrackBlock({
                   : isActive
                     ? 'REANUDAR'
                     : 'REPRODUCIR'}
-                <span className="opacity-60">
+                <span className="opacity-70">
                   · {PLATFORM_LABELS[source.platform]}
                 </span>
               </button>
@@ -845,8 +840,7 @@ function TrackBlock({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Abrir ${block.title} en ${PLATFORM_LABELS[source.platform]}`}
-                className="inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] tracking-widest transition-colors hover:bg-elevated"
-                style={{ borderColor: '#242424', color: '#888888' }}
+                className={`inline-flex min-h-11 items-center gap-1.5 border border-panel-text/30 px-3 font-mono text-[10px] tracking-widest text-panel-text/70 transition-colors hover:border-panel-text hover:text-panel-text ${PANEL_FOCUS_RING}`}
               >
                 ABRIR EN {PLATFORM_LABELS[source.platform]}
                 <ExternalLink size={10} />
@@ -858,8 +852,7 @@ function TrackBlock({
                 href={e.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] tracking-widest transition-colors hover:bg-elevated"
-                style={{ borderColor: '#242424', color: '#888888' }}
+                className={`inline-flex min-h-11 items-center gap-1.5 border border-panel-text/30 px-3 font-mono text-[10px] tracking-widest text-panel-text/70 transition-colors hover:border-panel-text hover:text-panel-text ${PANEL_FOCUS_RING}`}
               >
                 {PLATFORM_LABELS[e.platform]}
                 <ExternalLink size={10} />
@@ -868,6 +861,17 @@ function TrackBlock({
           </div>
         )}
       </div>
+
+      {/* Commentary — printed liner note under the faceplate. Split on
+          newlines so multi-paragraph commentaries render as separate
+          paragraphs instead of one collapsed block. */}
+      {block.commentary && (
+        <div className="flex flex-col gap-3 bg-paper-raised p-4 font-grotesk text-[14px] leading-[1.6] text-ink-soft md:p-5 md:text-[15px]">
+          {splitParagraphs(block.commentary).map((p, j) => (
+            <p key={j}>{p}</p>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
@@ -894,16 +898,16 @@ function renderInline(text: string): React.ReactNode {
     const before = text.slice(lastIndex, match.index)
     if (before) parts.push(renderBold(before, `${parts.length}-t`))
     if (match[1]) {
-      // Footnote ref
+      // Footnote ref — superscript number, no brackets, editorial red.
       refCount += 1
       const id = match[1]
       parts.push(
         <sup key={`${parts.length}-fn`}>
           <a
             href={`#fn-${id}`}
-            className="px-0.5 font-mono text-[10px] text-sys-red hover:underline"
+            className="px-0.5 font-mono text-[10px] text-sys-red-paper hover:underline"
           >
-            [{refCount}]
+            {refCount}
           </a>
         </sup>,
       )
@@ -940,7 +944,7 @@ function ProseLink({ url, label }: { url: string; label: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-sys-red underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
+        className="text-sys-red-paper underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
       >
         {label}
       </a>
@@ -964,8 +968,7 @@ function ProseLink({ url, label }: { url: string; label: string }) {
           else void audio.loadAndPlay(ref)
         }}
         title={`${isPlaying ? 'Pausar' : 'Reproducir'} en Gradiente · ${PLATFORM_LABELS[platform]}`}
-        className="inline-flex items-baseline gap-1 align-baseline underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
-        style={{ color: '#F97316' }}
+        className="inline-flex items-baseline gap-1 align-baseline text-sys-red-paper underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
       >
         {isPlaying ? (
           <Pause size={10} fill="currentColor" className="self-center" />
@@ -982,7 +985,7 @@ function ProseLink({ url, label }: { url: string; label: string }) {
         rel="noopener noreferrer"
         aria-label={`Abrir en ${PLATFORM_LABELS[platform]}`}
         title={`Abrir en ${PLATFORM_LABELS[platform]}`}
-        className="self-center text-muted transition-colors hover:text-sys-orange"
+        className="self-center text-ink-faint transition-colors hover:text-ink"
       >
         <ExternalLink size={10} />
       </a>
@@ -1007,7 +1010,7 @@ function renderBold(text: string, keyPrefix: string): React.ReactNode {
   return nodes
 }
 
-// ── Rail block (mirrors ReaderOverlay's ArchivalBlock idiom) ────────────────
+// ── Rail block — raised-paper plate with a hairline header ──────────────────
 function RailBlock({
   label,
   children,
@@ -1016,9 +1019,11 @@ function RailBlock({
   children: React.ReactNode
 }) {
   return (
-    <section className="border border-border bg-surface">
-      <header className="border-b border-border px-3 py-1.5">
-        <span className="sys-label text-primary">{label}</span>
+    <section className="border border-ink bg-paper-raised">
+      <header className="border-b border-ink px-3 py-1.5">
+        <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+          {label}
+        </span>
       </header>
       <div className="p-3">{children}</div>
     </section>
@@ -1045,7 +1050,7 @@ function buildBlocks(item: ContentItem): ArticleBlock[] {
     return [
       {
         kind: 'p',
-        text: '[CUERPO DE ARTÍCULO NO DISPONIBLE · CONTENIDO PENDIENTE DE INGESTA]',
+        text: 'CUERPO DEL ARTÍCULO NO DISPONIBLE · CONTENIDO PENDIENTE DE INGESTA',
       },
     ]
   }

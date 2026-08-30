@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { usePromptInternal } from './usePrompt'
+import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── PromptOverlay ──────────────────────────────────────────────────────────
 //
@@ -15,10 +16,13 @@ import { usePromptInternal } from './usePrompt'
 //     "BORRAR <franja name>") for destructive flows
 //
 // ESC + backdrop click resolve as cancel. Enter in input/type-to-confirm
-// mode confirms when valid. The destructive flag styles confirm in sys-red.
+// mode confirms when valid. The destructive flag flips the confirm fill
+// (and the kicker) to sys-red-paper.
 //
-// Visual idiom matches [[PublishConfirmOverlay]] — eva-box + scanlines,
-// black backdrop with blur, NGE title chrome.
+// Fase C sheet — DashPopup anatomy: ink/60 scrim, paper sheet with an ink
+// hairline and the lift shadow, Syne title, grotesk body, mono controls.
+// CONFIRMAR is an ink fill-block (sys-red-paper fill when destructive);
+// hover is a straight fill inversion.
 
 export function PromptOverlay() {
   const { state, resolveConfirm, resolveInput } = usePromptInternal()
@@ -106,58 +110,56 @@ export function PromptOverlay() {
     }
   }
 
-  // Confirm-button colors — destructive flips orange → red.
-  const confirmColor = destructive ? '#E63329' : '#F97316'
-
   return (
     <div
       className="overlay-backdrop-in fixed inset-0 z-[80] flex items-center justify-center p-4"
       onClick={cancel}
     >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" aria-hidden />
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines overlay-panel-in relative z-10 flex w-full max-w-md flex-col overflow-hidden bg-base"
+        className="overlay-panel-in relative z-10 flex w-full max-w-md flex-col border border-ink bg-paper text-ink shadow-lift"
+        style={{ transformOrigin: 'center center' }}
         role="alertdialog"
         aria-labelledby="prompt-title"
         aria-describedby={state.body ? 'prompt-body' : undefined}
       >
-        {/* Title strip */}
-        <header className="flex items-center justify-between border-b border-border bg-elevated/60 px-3 py-2 font-mono text-[10px] tracking-widest text-secondary">
-          <span className="flex items-center gap-2">
-            <AlertTriangle
-              size={12}
-              strokeWidth={1.5}
-              style={{ color: confirmColor }}
-            />
-            <span id="prompt-title">
-              //{state.kind === 'input'
-                ? 'ENTRADA·REQUERIDA'
-                : state.kind === 'type-to-confirm'
-                  ? 'CONFIRMACIÓN·DESTRUCTIVA'
-                  : 'CONFIRMACIÓN·REQUERIDA'}
-            </span>
+        {/* Kicker strip */}
+        <header className="flex items-center justify-between gap-3 border-b border-ink px-4 py-1.5 font-mono text-d11 tracking-widest">
+          <span
+            className={`font-bold ${
+              destructive ? 'text-sys-red-paper' : 'text-ink'
+            }`}
+          >
+            {state.kind === 'input'
+              ? 'ENTRADA REQUERIDA'
+              : state.kind === 'type-to-confirm'
+                ? 'CONFIRMACIÓN DESTRUCTIVA'
+                : 'CONFIRMACIÓN REQUERIDA'}
           </span>
           <button
             type="button"
             onClick={cancel}
             aria-label="Cerrar"
-            className="text-muted transition-colors hover:text-primary"
+            className={`-my-1.5 -mr-2 flex h-11 w-11 shrink-0 items-center justify-center text-ink-faint transition-colors hover:text-ink ${FOCUS_RING}`}
           >
-            <X size={12} strokeWidth={1.5} />
+            <X size={14} strokeWidth={1.5} />
           </button>
         </header>
 
         {/* Body */}
-        <div className="flex flex-col gap-3 p-4">
-          <h2 className="font-syne text-base font-bold leading-tight text-primary">
+        <div className="flex flex-col gap-3 p-5">
+          <h2
+            id="prompt-title"
+            className="font-syne text-d18 font-bold uppercase leading-tight text-ink"
+          >
             {state.title}
           </h2>
           {state.body && (
             <p
               id="prompt-body"
-              className="font-mono text-[11px] leading-relaxed text-secondary"
+              className="font-grotesk text-d13 leading-snug text-ink-soft"
             >
               {state.body}
             </p>
@@ -171,20 +173,16 @@ export function PromptOverlay() {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={onInputKey}
               placeholder={state.placeholder}
-              className="w-full border bg-black/40 px-2 py-1.5 font-mono text-[12px] text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none"
-              style={{ borderColor: '#3a3a3a' }}
+              className={`w-full border border-ink bg-paper-raised px-2.5 py-2 font-mono text-d13 text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
               aria-label={state.title}
             />
           )}
 
           {state.kind === 'type-to-confirm' && (
             <div className="flex flex-col gap-2">
-              <p className="font-mono text-[10px] tracking-widest text-muted">
+              <p className="font-mono text-d11 tracking-widest text-ink-faint">
                 Para confirmar, escribí:{' '}
-                <span
-                  className="border px-1.5 py-0.5 text-primary"
-                  style={{ borderColor: '#E63329', backgroundColor: 'rgba(230,51,41,0.08)' }}
-                >
+                <span className="border border-sys-red-paper bg-sys-red-paper/10 px-1.5 py-0.5 font-bold text-sys-red-paper">
                   {state.requiredText}
                 </span>
               </p>
@@ -197,8 +195,9 @@ export function PromptOverlay() {
                 placeholder={state.placeholder ?? state.requiredText}
                 autoComplete="off"
                 spellCheck={false}
-                className="w-full border bg-black/40 px-2 py-1.5 font-mono text-[12px] text-primary placeholder:text-muted/40 focus:border-sys-red focus:outline-none"
-                style={{ borderColor: matchOk ? '#22c55e' : '#3a3a3a' }}
+                className={`w-full border bg-paper-raised px-2.5 py-2 font-mono text-d13 text-ink placeholder:text-ink-faint ${
+                  matchOk ? 'border-ink' : 'border-sys-red-paper/50'
+                } ${FOCUS_RING}`}
                 aria-label={state.title}
               />
             </div>
@@ -206,12 +205,12 @@ export function PromptOverlay() {
         </div>
 
         {/* Action row */}
-        <div className="flex items-center justify-end gap-2 border-t border-border/60 bg-elevated/30 px-3 py-2">
+        <div className="flex items-center justify-end gap-2 border-t border-ink px-4 py-3">
           <button
             ref={cancelRef}
             type="button"
             onClick={cancel}
-            className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary"
+            className={`min-h-11 border border-ink px-4 font-mono text-d13 tracking-widest text-ink transition-colors hover:bg-ink hover:text-panel-text ${FOCUS_RING}`}
           >
             {state.cancelLabel ?? 'CANCELAR'}
           </button>
@@ -219,12 +218,11 @@ export function PromptOverlay() {
             type="button"
             onClick={confirm}
             disabled={!matchOk}
-            className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-30"
-            style={{
-              borderColor: confirmColor,
-              color: confirmColor,
-              backgroundColor: `${confirmColor}1a`,
-            }}
+            className={`min-h-11 border px-4 font-mono text-d13 font-bold tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+              destructive
+                ? 'border-sys-red-paper bg-sys-red-paper text-panel-text hover:bg-paper hover:text-sys-red-paper'
+                : 'border-ink bg-ink text-panel-text hover:bg-paper hover:text-ink'
+            } ${FOCUS_RING}`}
           >
             {state.confirmLabel ?? 'CONFIRMAR'}
           </button>

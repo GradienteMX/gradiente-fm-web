@@ -312,27 +312,21 @@ body {
   }
 }
 
-/* ── Overlay: phosphor warm-up flash ─────────────────────── */
-@keyframes overlay-phosphor-in {
-  0%   { opacity: 0.95; }
-  60%  { opacity: 0.3; }
-  100% { opacity: 0; }
-}
-
+/* overlay-phosphor-in retired in fase C (the paper sheet has no warm-up flash). */
 .overlay-backdrop-in  { animation: overlay-backdrop-in 0.18s ease-out both; }
 .overlay-backdrop-out { animation: overlay-backdrop-out 0.2s ease-in both; }
 .overlay-panel-in     { animation: overlay-panel-in 0.5s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
 .overlay-panel-out    { animation: overlay-panel-out 0.24s ease-in both; }
-.overlay-phosphor-in  { animation: overlay-phosphor-in 0.6s ease-out both; }
 
 /* ── Comment focus pulse — fired when arriving from a saved-comment
-   deep-link. Cyan outline pulse (non-permanent — outline reverts after
-   the animation since fill-mode is omitted). Outline is used instead of
-   background so the user-own-comment background stays intact. */
+   deep-link. Red outline pulse on the paper column (fase C — was cyan on
+   the dark terminal; non-permanent — outline reverts after the animation
+   since fill-mode is omitted). Outline is used instead of background so
+   the user-own-comment background stays intact. */
 @keyframes comment-focus-flash {
-  0%   { outline-color: rgba(34, 211, 238, 0.95); outline-width: 2px; }
-  60%  { outline-color: rgba(34, 211, 238, 0.45); outline-width: 2px; }
-  100% { outline-color: rgba(34, 211, 238, 0);    outline-width: 2px; }
+  0%   { outline-color: rgba(196, 43, 32, 0.95); outline-width: 2px; }
+  60%  { outline-color: rgba(196, 43, 32, 0.45); outline-width: 2px; }
+  100% { outline-color: rgba(196, 43, 32, 0);    outline-width: 2px; }
 }
 .comment-focus-flash {
   outline-style: solid;
@@ -560,30 +554,10 @@ html.dash-route body {
   scrollbar-color: #111111 #EDEBE3; /* Firefox */
 }
 
-/* ── COSECHAR modal reskin (byte-untouched HarvestConfirmModal) — FIX-A ─────
-   Scoped to dashboard surfaces via html.dash-route (app/dashboard/layout.tsx
-   + the /lab toggle) AND the modal's unique root signature
-   (.z-[100].backdrop-blur-sm — the only such element; CRTShader's z-[100]
-   overlay has no backdrop-blur and is suppressed on /dashboard anyway).
-   Globally-mounted chrome (PublishConfirmOverlay, player) sits outside this
-   root and is untouched. Warm-ink panel register (formerly shared with the
-   retired .dash-press compose reskin — this block is its sole holder now):
-   acid replaces the legacy orange, the harvest ceremony itself is intact. */
-html.dash-route .z-\[100\].backdrop-blur-sm .bg-surface { background-color: #161513; }
-html.dash-route .z-\[100\].backdrop-blur-sm .bg-base\/40 { background-color: rgba(14, 13, 11, 0.5); }
-html.dash-route .z-\[100\].backdrop-blur-sm .border-sys-orange { border-color: #D8FF00; }
-html.dash-route .z-\[100\].backdrop-blur-sm .text-sys-orange { color: #D8FF00; }
-html.dash-route .z-\[100\].backdrop-blur-sm .bg-sys-orange\/10 { background-color: rgba(216, 255, 0, 0.1); }
-html.dash-route .z-\[100\].backdrop-blur-sm .border-border { border-color: #3A362E; }
-html.dash-route .z-\[100\].backdrop-blur-sm .border-border\/60 { border-color: rgba(58, 54, 46, 0.75); }
-html.dash-route .z-\[100\].backdrop-blur-sm .text-secondary { color: #C2BCAE; }
-html.dash-route .z-\[100\].backdrop-blur-sm .text-muted { color: #9A9384; }
-/* State compensators (ties with the remaps above resolve to the state). */
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:text-primary:hover { color: #EDEBE3; }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:text-secondary:hover { color: #EDEBE3; }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:border-secondary:hover { border-color: #C2BCAE; }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/10:hover { background-color: rgba(216, 255, 0, 0.1); }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/20:hover { background-color: rgba(216, 255, 0, 0.18); }
+/* The COSECHAR CSS-attack (utility-class remap of the byte-untouched dark
+   HarvestConfirmModal, keyed on .z-[100].backdrop-blur-sm) was deleted in
+   fase C — the modal is now a native pliego sheet carrying every style
+   locally, and it no longer renders backdrop-blur-sm at all. */
 
 /* ── Pressed states — «EL PLIEGO» deliberate :active (fix 10, ADDITIVE) ─────
    Diagnosis: NO :active rule exists anywhere in this sheet — the red-on-black
@@ -647,13 +621,9 @@ html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/20:hover { ba
   color: #EDEBE3;
 }
 
-/* The harvest modal mounts OUTSIDE .dash-shell (portal): its selection joins
-   the pliego register here so no press on a dash surface can flash the
-   legacy red-on-black selection. Same root signature as the reskin above. */
-html.dash-route .z-\[100\].backdrop-blur-sm ::selection {
-  background-color: #D8FF00;
-  color: #111111;
-}
+/* The harvest modal's portal ::selection patch left with the CSS-attack
+   above (fase C) — the native pliego modal styles its own selection scope
+   via html.dash-route / html.paper-route. */
 
 /* ── ACTIVIDAD ledger — the directed void (fix 9a, ADDITIVE) ────────────────
    Sparse days leave room between the last activity row and the pinned

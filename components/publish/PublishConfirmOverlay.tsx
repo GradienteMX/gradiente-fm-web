@@ -7,7 +7,12 @@ import { usePublishConfirm } from './usePublishConfirm'
 import { getItemById, publishItem, type PublishResult } from '@/lib/drafts'
 import { removeDraftLocal } from '@/lib/draftsCache'
 import { setPublishedItemLocal } from '@/lib/publishedItemsCache'
-import { categoryColor } from '@/lib/utils'
+import {
+  categoryColorOnLight,
+  TYPE_CODES,
+  TYPE_DISPLAY_LABELS,
+} from '@/lib/dashboard/palette'
+import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // User-facing copy for a failed publish. Keeps the draft intact (nothing is
 // dropped optimistically) and tells the editor what to do next.
@@ -31,6 +36,11 @@ function publishErrorMessage(res: PublishResult): string {
 // fresh-published chrome — see ContentCard `isFresh`).
 // On cancel: just clears the modal state — the draft stays in storage so
 // the editor can come back to it from the dashboard.
+//
+// Fase C sheet — DashPopup anatomy: ink/60 scrim, paper sheet with ink
+// hairline + lift shadow. PUBLICAR is the acid fill-block (own-action
+// accent, ink text); the item preview pairs the category hue with its
+// 2-letter type code so hue is never the sole signal.
 export function PublishConfirmOverlay() {
   const { confirmingId, confirmingMode, closeConfirm } = usePublishConfirm()
   const router = useRouter()
@@ -76,7 +86,7 @@ export function PublishConfirmOverlay() {
   const item = getItemById(confirmingId)
   if (!item) return null
 
-  const color = categoryColor(item.type)
+  const color = categoryColorOnLight(item.type)
 
   const handleConfirm = async () => {
     if (submitting) return
@@ -132,31 +142,26 @@ export function PublishConfirmOverlay() {
       className="overlay-backdrop-in fixed inset-0 z-[70] flex items-center justify-center p-4"
       onClick={closeConfirm}
     >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" aria-hidden />
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines overlay-panel-in relative z-10 flex w-full max-w-md flex-col overflow-hidden bg-base"
+        className="overlay-panel-in relative z-10 flex w-full max-w-md flex-col border border-ink bg-paper text-ink shadow-lift"
         style={{ transformOrigin: 'center center' }}
         role="alertdialog"
         aria-labelledby="publish-confirm-title"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <span
-              className="shrink-0 font-mono text-[10px] tracking-widest"
-              style={{ color: '#F97316' }}
-            >
-              //CONFIRMAR·PUBLICACIÓN
-            </span>
-          </div>
+        {/* Kicker strip */}
+        <div className="flex items-center justify-between gap-4 border-b border-ink px-4 py-1.5">
+          <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-ink">
+            CONFIRMAR PUBLICACIÓN
+          </span>
           <button
             onClick={closeConfirm}
             aria-label="Cerrar"
-            className="flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+            className={`-my-1.5 -mr-2 flex min-h-11 items-center gap-2 px-2 font-mono text-d11 tracking-widest text-ink-faint transition-colors hover:text-ink ${FOCUS_RING}`}
           >
-            <span className="hidden sm:inline">[ESC]</span>
+            <span className="hidden sm:inline">ESC</span>
             <X size={14} className="sm:hidden" />
             <span>CERRAR</span>
           </button>
@@ -165,38 +170,37 @@ export function PublishConfirmOverlay() {
         {/* Body */}
         <div className="flex flex-col gap-5 p-6">
           <header className="flex flex-col gap-2">
-            <span
-              className="inline-flex w-fit items-center gap-2 border px-2 py-0.5 font-mono text-[10px] tracking-widest"
-              style={{ borderColor: '#E63329', color: '#E63329' }}
-            >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-red" />
+            <span className="inline-flex w-fit items-center gap-2 border border-sys-red-paper px-2 py-0.5 font-mono text-d11 tracking-widest text-sys-red-paper">
               ÚLTIMA VERIFICACIÓN
             </span>
             <h1
               id="publish-confirm-title"
-              className="font-syne text-2xl font-black leading-tight text-primary"
+              className="font-syne text-d28 font-black uppercase leading-tight text-ink"
             >
-              ¿PUBLICAR EN EL FEED?
+              ¿Publicar en el feed?
             </h1>
           </header>
 
-          <div className="border border-dashed border-border bg-black/40 p-3">
-            <div className="mb-1 flex items-center gap-2 font-mono text-[10px] tracking-widest">
-              <span style={{ color }}>//{item.type.toUpperCase()}</span>
-              <span className="text-muted">·</span>
-              <span className="truncate text-muted">{item.slug}</span>
+          <div className="border border-ink bg-paper-raised p-3">
+            <div className="mb-1 flex items-center gap-2 font-mono text-d11 tracking-widest">
+              <span className="font-bold" style={{ color }}>
+                {TYPE_CODES[item.type]}
+              </span>
+              <span className="text-ink">{TYPE_DISPLAY_LABELS[item.type]}</span>
+              <span className="text-ink-faint">·</span>
+              <span className="truncate text-ink-faint">{item.slug}</span>
             </div>
-            <p className="font-syne text-base font-black leading-tight text-primary">
-              {item.title || '[sin título]'}
+            <p className="font-syne text-d18 font-black leading-tight text-ink">
+              {item.title || 'Sin título'}
             </p>
             {item.subtitle && (
-              <p className="mt-1 font-grotesk text-sm text-secondary">
+              <p className="mt-1 font-grotesk text-d13 text-ink-soft">
                 {item.subtitle}
               </p>
             )}
           </div>
 
-          <p className="font-mono text-[11px] leading-relaxed text-secondary">
+          <p className="font-grotesk text-d13 leading-snug text-ink-soft">
             Una vez publicado, este ítem entra al feed con prominencia normal.
             Puedes editarlo más tarde desde el dashboard, pero no podrás
             «deshacer» la publicación silenciosamente.
@@ -205,20 +209,19 @@ export function PublishConfirmOverlay() {
           {errorMsg && (
             <p
               role="alert"
-              className="border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
-              style={{ borderColor: '#E63329', color: '#E63329' }}
+              className="border border-sys-red-paper bg-sys-red-paper/10 px-3 py-2 font-mono text-d11 leading-relaxed text-sys-red-paper"
             >
               {errorMsg}
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
+          <div className="flex items-center justify-end gap-2 border-t border-ink pt-3">
             <button
               ref={cancelRef}
               type="button"
               onClick={closeConfirm}
               disabled={submitting}
-              className="border border-border px-3 py-2 font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary disabled:opacity-50"
+              className={`min-h-11 border border-ink px-4 font-mono text-d13 tracking-widest text-ink transition-colors hover:bg-ink hover:text-panel-text disabled:opacity-50 ${FOCUS_RING}`}
             >
               CANCELAR
             </button>
@@ -226,12 +229,7 @@ export function PublishConfirmOverlay() {
               type="button"
               onClick={handleConfirm}
               disabled={submitting}
-              className="flex items-center gap-2 border px-4 py-2 font-mono text-[11px] tracking-widest transition-colors disabled:opacity-60"
-              style={{
-                borderColor: '#F97316',
-                color: '#F97316',
-                backgroundColor: 'rgba(249,115,22,0.12)',
-              }}
+              className={`flex min-h-11 items-center gap-2 border border-ink bg-acid px-4 font-mono text-d13 font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-acid disabled:opacity-60 ${FOCUS_RING}`}
             >
               <Send size={11} />
               {submitting ? 'PUBLICANDO…' : errorMsg ? '▶ REINTENTAR' : '▶ PUBLICAR DEFINITIVAMENTE'}

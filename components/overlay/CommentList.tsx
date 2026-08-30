@@ -31,11 +31,20 @@ import { CommentComposer } from './CommentComposer'
 // "ver N respuestas más" link to keep the column readable on narrow widths.
 const MAX_VISUAL_DEPTH = 4
 
+// House focus grammar — 2px ink outline, offset 2.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
 // Reaction palette — ! and ? only. Mutually exclusive per (user, comment);
-// see lib/types.ts ReactionKind for the design rationale.
+// see lib/types.ts ReactionKind for the design rationale. On paper the chip
+// carries the bare glyph — no bracket chrome.
 const REACTION_GLYPH: Record<ReactionKind, string> = {
-  provocative: '[?]',
-  signal: '[!]',
+  provocative: '?',
+  signal: '!',
+}
+const REACTION_ARIA: Record<ReactionKind, string> = {
+  provocative: 'duda',
+  signal: 'señal',
 }
 const REACTION_ORDER: ReactionKind[] = ['provocative', 'signal']
 
@@ -100,12 +109,9 @@ export function CommentList({
 }: CommentListProps) {
   if (comments.length === 0) {
     return (
-      <div
-        className="border border-dashed px-4 py-8 text-center font-mono text-[11px] leading-relaxed"
-        style={{ borderColor: '#242424', color: '#9CA3AF' }}
-      >
-        <p className="mb-1 tracking-widest" style={{ color: '#3a3a3a' }}>
-          //SIN·DISCUSIÓN
+      <div className="border border-dashed border-ink px-4 py-8 text-center font-mono text-[11px] leading-relaxed text-ink-faint">
+        <p className="mb-1 font-bold tracking-widest text-ink-soft">
+          SIN DISCUSIÓN
         </p>
         <p>Aún nadie ha comentado este contenido.</p>
       </div>
@@ -213,49 +219,36 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
     <article
       ref={articleRef}
       className={
-        'flex flex-col gap-1.5' + (isFocused ? ' comment-focus-flash' : '')
+        'flex flex-col gap-1.5' +
+        // Quiet "this is yours" marker: 2px ink rail + a step down to the
+        // base paper tone (the column ground is paper-raised).
+        (isOwn ? ' -ml-2 border-l-2 border-ink bg-paper pl-2' : '') +
+        (isFocused ? ' comment-focus-flash' : '')
       }
       data-comment-id={node.id}
       data-own={isOwn ? 'true' : undefined}
       data-focused={isFocused ? 'true' : undefined}
-      style={
-        // Subtle orange-tinted left rail on the user's own comments. Reads as
-        // "this is yours" without screaming at the reader.
-        isOwn
-          ? {
-              borderLeft: '2px solid #F97316',
-              paddingLeft: '0.5rem',
-              marginLeft: '-0.5rem',
-              backgroundColor: 'rgba(249,115,22,0.04)',
-            }
-          : undefined
-      }
     >
       {/* Author + meta strip */}
       <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[10px] tracking-widest">
         {author ? (
           <>
-            <span className="text-primary">@{author.username}</span>
+            {/* Plain span on purpose — profile links open in fase E. */}
+            <span className="font-bold text-ink">@{author.username}</span>
             <AuthorBadges author={author} />
             {isOwn && (
-              <span
-                className="border px-1.5 py-px text-[9px]"
-                style={{
-                  borderColor: '#F97316',
-                  color: '#F97316',
-                  backgroundColor: 'rgba(249,115,22,0.08)',
-                }}
-              >
+              <span className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] font-bold text-ink">
+                <span aria-hidden className="h-2 w-2 shrink-0 border border-ink bg-acid" />
                 TÚ
               </span>
             )}
           </>
         ) : (
-          <span className="text-muted">@desconocido</span>
+          <span className="text-ink-faint">@desconocido</span>
         )}
-        <span className="text-muted">· {created}</span>
+        <span className="text-ink-faint">· {created}</span>
         {node.editedAt && (
-          <span className="text-muted">· EDITADO</span>
+          <span className="text-ink-faint">· EDITADO</span>
         )}
         {canDelete && (
           <button
@@ -263,8 +256,7 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
             onClick={onDelete}
             aria-label={isOwn ? 'Borrar mi comentario' : 'Borrar comentario'}
             title={isOwn ? 'Borrar (autor)' : 'Borrar (moderación)'}
-            className="ml-auto flex shrink-0 items-center gap-1 border px-1.5 py-px text-[9px] transition-colors hover:bg-white/[0.02]"
-            style={{ borderColor: '#E63329', color: '#E63329' }}
+            className={`ml-auto flex shrink-0 items-center gap-1 border border-sys-red-paper px-1.5 py-px text-[9px] text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper ${FOCUS_RING}`}
           >
             <Trash2 size={10} strokeWidth={1.5} />
             <span>BORRAR</span>
@@ -276,7 +268,7 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
           when the author has set one (Bundle A profile field). Treat as
           decoration; doesn't ship if the user opted out by leaving it blank. */}
       {author?.firma && (
-        <p className="font-mono text-[10px] italic leading-tight text-muted/70">
+        <p className="font-mono text-[10px] italic leading-tight text-ink-faint">
           — {author.firma}
         </p>
       )}
@@ -301,7 +293,7 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
 
       {/* Reactions strip + reply count + reply trigger */}
       {!isTombstone && (
-        <footer className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 font-mono text-[10px] tracking-widest text-muted">
+        <footer className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 font-mono text-[10px] tracking-widest text-ink-faint">
           {REACTION_ORDER.map((kind) => (
             <ReactionButton
               key={kind}
@@ -343,10 +335,10 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
       )}
 
       {/* Children — indented up to MAX_VISUAL_DEPTH, then linearized.
-          Indent rail uses a left border so the visual hierarchy reads
-          terminal-style without busy backgrounds. */}
+          Indent rail is an ink hairline so the thread hierarchy reads like
+          a printed margin rule, no busy backgrounds. */}
       {hasChildren && !overDepthCap && (
-        <ol className="ml-3 mt-2 flex flex-col gap-3 border-l border-border pl-3">
+        <ol className="ml-3 mt-2 flex flex-col gap-3 border-l border-ink pl-3">
           {node.children.map((child) => (
             <li key={child.id}>
               <CommentNodeView
@@ -369,13 +361,13 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
             <button
               type="button"
               onClick={() => setCollapsedDeep(false)}
-              className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+              className={`font-mono text-[10px] tracking-widest text-ink-faint transition-colors hover:text-ink ${FOCUS_RING}`}
             >
               ↳ VER {totalDeep}{' '}
               {totalDeep === 1 ? 'RESPUESTA MÁS' : 'RESPUESTAS MÁS'} EN ESTE HILO
             </button>
           ) : (
-            <ol className="flex flex-col gap-3 border-l border-border pl-3">
+            <ol className="flex flex-col gap-3 border-l border-ink pl-3">
               {node.children.map((child) => (
                 <li key={child.id}>
                   <CommentNodeView
@@ -395,6 +387,10 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
 }
 
 // ── Author badges (primary role/rank chip + mod/og flag chips) ─────────────
+//
+// Paper spine pattern: every chip is ink-bordered with the label in ink; the
+// role/rank/flag hue lives in a small ink-outlined swatch square so color is
+// never the sole signal (the label always carries the meaning).
 
 function AuthorBadges({ author }: { author: User }) {
   // For user-tier accounts the primary chip is the derived rank
@@ -406,18 +402,24 @@ function AuthorBadges({ author }: { author: User }) {
   const flags = flagsFor(author)
   return (
     <>
-      <span
-        className="border px-1.5 py-px text-[9px]"
-        style={{ borderColor: primary.color, color: primary.color }}
-      >
+      <span className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] text-ink">
+        <span
+          aria-hidden
+          className="h-2 w-2 shrink-0 border border-ink"
+          style={{ backgroundColor: primary.color }}
+        />
         {primary.label}
       </span>
       {flags.map((flag) => (
         <span
           key={flag}
-          className="border px-1.5 py-px text-[9px]"
-          style={{ borderColor: FLAG_COLOR[flag], color: FLAG_COLOR[flag] }}
+          className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] text-ink"
         >
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 border border-ink"
+            style={{ backgroundColor: FLAG_COLOR[flag] }}
+          />
           {FLAG_LABEL[flag]}
         </span>
       ))}
@@ -446,21 +448,23 @@ function ReactionButton({
     }
     toggleReaction(commentId, currentUser.id, kind)
   }
-  // Active state: orange chrome (matches NGE primary). Inactive: muted.
-  const color = userReacted ? '#F97316' : '#9CA3AF'
-  const border = userReacted ? '#F97316' : '#242424'
-  const bg = userReacted ? 'rgba(249,115,22,0.08)' : 'transparent'
+  // Active state: ink fill (house inversion). Inactive: ink-bordered chip.
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={userReacted}
-      aria-label={`Reaccionar ${REACTION_GLYPH[kind]}`}
-      className="flex items-center gap-1 border px-1.5 py-0.5 transition-colors hover:border-white/40"
-      style={{ borderColor: border, color, backgroundColor: bg }}
+      aria-label={`Reaccionar con ${REACTION_ARIA[kind]}`}
+      className={
+        'flex items-center gap-1 border border-ink px-1.5 py-0.5 transition-colors ' +
+        (userReacted
+          ? 'bg-ink text-paper'
+          : 'text-ink hover:bg-ink hover:text-paper') +
+        ` ${FOCUS_RING}`
+      }
     >
       <span>{REACTION_GLYPH[kind]}</span>
-      <span>{count}</span>
+      {count > 0 && <span>{count}</span>}
     </button>
   )
 }
@@ -477,9 +481,6 @@ function SaveButton({ commentId }: { commentId: string }) {
     }
     toggleSavedComment(commentId)
   }
-  const color = saved ? '#F97316' : '#9CA3AF'
-  const border = saved ? '#F97316' : '#242424'
-  const bg = saved ? 'rgba(249,115,22,0.08)' : 'transparent'
   return (
     <button
       type="button"
@@ -487,9 +488,16 @@ function SaveButton({ commentId }: { commentId: string }) {
       aria-pressed={saved}
       aria-label={saved ? 'Quitar de guardados' : 'Guardar comentario'}
       title={saved ? 'GUARDADO' : 'GUARDAR'}
-      className="flex items-center gap-1 border px-1.5 py-0.5 transition-colors hover:border-white/40"
-      style={{ borderColor: border, color, backgroundColor: bg }}
+      className={
+        'flex items-center gap-1 border border-ink px-1.5 py-0.5 transition-colors ' +
+        (saved
+          ? 'bg-ink text-paper'
+          : 'text-ink hover:bg-ink hover:text-paper') +
+        ` ${FOCUS_RING}`
+      }
     >
+      {/* Saved state marker: acid dot on the ink fill (black-panel legality). */}
+      {saved && <span aria-hidden className="h-2 w-2 shrink-0 bg-acid" />}
       <span aria-hidden>{saved ? '★' : '☆'}</span>
       <span>{saved ? 'GUARDADO' : 'GUARDAR'}</span>
     </button>
@@ -517,20 +525,16 @@ function Tombstone({
   const actor = useResolvedUser(deletion.moderatorId)
   const isSelfDelete = deletion.moderatorId === authorId
   return (
-    <div
-      className="flex flex-col gap-0.5 border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
-      style={{ borderColor: '#3a3a3a', color: '#9CA3AF' }}
-    >
+    <div className="flex flex-col gap-0.5 border border-dashed border-ink px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-faint">
       <div className="flex items-center justify-between gap-2">
-        <span className="tracking-widest" style={{ color: '#E63329' }}>
-          {isSelfDelete ? '//ELIMINADO·POR·AUTOR' : '//ELIMINADO·POR·MODERACIÓN'}
+        <span className="font-bold tracking-widest text-sys-red-paper">
+          {isSelfDelete ? 'ELIMINADO POR AUTOR' : 'ELIMINADO POR MODERACIÓN'}
         </span>
         {canRevert && (
           <button
             type="button"
             onClick={onRevert}
-            className="flex shrink-0 items-center gap-1 border px-1.5 py-px text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
-            style={{ borderColor: '#F97316', color: '#F97316' }}
+            className={`flex shrink-0 items-center gap-1 border border-ink px-1.5 py-px text-[9px] tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
             aria-label="Restaurar"
             title="Restaurar"
           >
@@ -542,7 +546,7 @@ function Tombstone({
       {!isSelfDelete && (
         <span>
           {actor ? `@${actor.username}` : 'moderador'} ·{' '}
-          <span className="text-secondary">RAZÓN:</span> {deletion.reason}
+          <span className="text-ink-soft">RAZÓN:</span> {deletion.reason}
         </span>
       )}
     </div>

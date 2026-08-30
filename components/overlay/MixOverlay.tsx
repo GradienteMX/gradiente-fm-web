@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { ContentItem } from '@/lib/types'
 import { getRelatedByVibe } from '@/lib/itemsCache'
 import { fmtDateFull, isEditableTarget } from '@/lib/utils'
@@ -15,10 +15,32 @@ import { AudioPlayer3D } from '@/components/audio/AudioPlayer3D'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 import { pickPlayableSource, pickOpenSourceUrl } from '@/components/audio/sources'
 import { PLATFORM_LABELS, MIXCLOUD_UNSUPPORTED_NOTE } from '@/components/embed/platforms'
+import {
+  categoryColorOnLight,
+  typeCode,
+  typeDisplayLabel,
+} from '@/lib/dashboard/palette'
+
+// ── MixOverlay — the record sleeve (fase C, «EL PLIEGO») ────────────────────
+//
+// Left: the editorial column on paper — MIX eyebrow in the swatch+code
+// register, Syne title, spec-sheet meta dl on hairlines, the VibeFader on its
+// black faceplate seat (instrument doctrine — the fader's grips/meter are
+// dark-ground calibrated, same seat as the dashboard ReproductorWidget),
+// body, paper genre chips.
+//
+// Right: the SYSTEM column — the instrument stack. AudioPlayer3D mounts
+// UNTOUCHED inside an ink bezel (it is already a dark instrument); the status
+// machine below re-voices the SAME real states onto paper (acid dot = live,
+// sys-red-paper = error, ink otherwise). CONTEXTO and TRACKLIST are printed
+// panels; the tracklist is a mono table on hairline rows.
 
 interface Props {
   item: ContentItem
 }
+
+const FOCUS =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2'
 
 function fmtDurationHm(duration?: string): string {
   if (!duration) return '—'
@@ -34,6 +56,10 @@ function fmtDurationHm(duration?: string): string {
   return duration
 }
 
+// mixStatus is REAL composer-authored catalog data (disponible / exclusivo /
+// archivo / proximamente — see MixForm), not decorative status copy, so the
+// CONTEXTO row stays. Only the old green accent died: on paper the value is
+// plain ink like every other row.
 const STATUS_LABEL: Record<NonNullable<ContentItem['mixStatus']>, string> = {
   disponible: 'Disponible',
   exclusivo: 'Exclusivo',
@@ -96,7 +122,7 @@ export function MixOverlay({ item }: Props) {
   }
 
   // Status strip — leans on the global matrix state plus this overlay's
-  // local active/idle distinction.
+  // local active/idle distinction. Every label is a REAL state.
   const statusLabel = (() => {
     if (audio.matrixActive) return 'CAPTURA EN VIVO'
     if (audio.matrixStatus === 'requesting') return 'SOLICITANDO PERMISO'
@@ -144,67 +170,81 @@ export function MixOverlay({ item }: Props) {
   }, [openUrl, item.id])
 
   return (
-    <article className="grid grid-cols-1 gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <article className="grid grid-cols-1 gap-0 bg-paper text-ink md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       {/* ── LEFT: editorial column ──────────────────────────── */}
       <div className="flex flex-col gap-5 p-5 md:p-7">
-        {/* Type tag */}
-        <span
-          className="inline-flex w-fit items-center gap-2 border px-2.5 py-1 font-mono text-[11px] tracking-widest"
-          style={{ borderColor: '#F97316', color: '#F97316' }}
-        >
-          <span aria-hidden>★</span>
-          MIX
+        {/* Type eyebrow — swatch + 2-letter code (hue never the sole signal) */}
+        <span className="inline-flex w-fit items-center gap-1.5 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+          <span
+            aria-hidden
+            className="h-[9px] w-[9px] shrink-0"
+            style={{ backgroundColor: categoryColorOnLight(item.type) }}
+          />
+          {typeCode(item.type)} · {typeDisplayLabel(item.type)}
         </span>
 
         {/* Title */}
         <header className="flex flex-col gap-2">
-          <h1 className="font-syne text-3xl font-black leading-[1.02] text-white md:text-[44px]">
+          <h1 className="font-syne text-3xl font-black leading-[1.02] text-ink md:text-[44px]">
             {item.title}
           </h1>
           {item.subtitle && (
-            <p className="font-syne text-2xl font-black leading-[1.05] text-white md:text-[34px]">
+            <p className="font-syne text-2xl font-black leading-[1.05] text-ink md:text-[34px]">
               {item.subtitle}
             </p>
           )}
         </header>
 
         {item.excerpt && (
-          <p className="font-grotesk text-sm leading-relaxed text-secondary md:text-[15px]">
+          <p className="font-grotesk text-sm leading-relaxed text-ink-soft md:text-[15px]">
             {item.excerpt}
           </p>
         )}
 
-        {/* Meta row */}
-        <dl className="grid grid-cols-1 gap-x-8 gap-y-2 border-y border-border py-4 font-mono text-xs sm:grid-cols-3">
+        {/* Meta dl — spec-sheet rows on hairlines */}
+        <dl className="flex flex-col divide-y divide-ink-faint border-y border-ink">
           {item.author && (
-            <div className="flex items-center gap-2">
-              <span className="sys-label">ARTISTA</span>
-              <span className="text-primary">{item.author}</span>
+            <div className="grid grid-cols-[110px_1fr] items-baseline gap-x-4 py-2.5">
+              <dt className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                ARTISTA
+              </dt>
+              <dd className="font-mono text-d13 text-ink">{item.author}</dd>
             </div>
           )}
           {item.publishedAt && (
-            <div className="flex items-center gap-2">
-              <span className="sys-label">PUBLICADO</span>
-              <span className="text-secondary">
+            <div className="grid grid-cols-[110px_1fr] items-baseline gap-x-4 py-2.5">
+              <dt className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                PUBLICADO
+              </dt>
+              <dd className="font-mono text-d13 text-ink-soft">
                 {fmtDateFull(item.publishedAt)}
-              </span>
+              </dd>
             </div>
           )}
           {item.duration && (
-            <div className="flex items-center gap-2">
-              <span className="sys-label">DURACIÓN</span>
-              <span className="text-primary">{fmtDurationHm(item.duration)}</span>
+            <div className="grid grid-cols-[110px_1fr] items-baseline gap-x-4 py-2.5">
+              <dt className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                DURACIÓN
+              </dt>
+              <dd className="font-mono text-d13 text-ink">
+                {fmtDurationHm(item.duration)}
+              </dd>
             </div>
           )}
-          <div className="col-span-full flex items-center gap-3">
-            <span className="sys-label">VIBE</span>
-            <VibeFader item={item} />
-          </div>
         </dl>
+
+        {/* Vibe fader — the REAL fader, byte-untouched, on its black
+            faceplate seat (grips/meter are dark-ground calibrated). */}
+        <div className="flex items-center gap-3 border border-ink bg-panel px-3 py-2">
+          <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-panel-text">
+            VIBE
+          </span>
+          <VibeFader item={item} />
+        </div>
 
         {/* Body */}
         {item.bodyPreview && (
-          <div className="flex flex-col gap-4 font-grotesk text-sm leading-relaxed text-primary md:text-[15px]">
+          <div className="flex flex-col gap-4 font-grotesk text-sm leading-relaxed text-ink md:text-[15px]">
             {item.bodyPreview.split('\n').map((p, i) =>
               p.trim() ? (
                 <p key={i}>{p}</p>
@@ -220,8 +260,8 @@ export function MixOverlay({ item }: Props) {
               <GenreChipButton
                 key={id}
                 genreId={id}
-                className="border px-2.5 py-1 font-mono text-[10px] tracking-widest uppercase"
-                style={{ borderColor: '#F97316', color: '#F97316' }}
+                ground="paper"
+                className="px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest"
               >
                 {name}
               </GenreChipButton>
@@ -230,40 +270,67 @@ export function MixOverlay({ item }: Props) {
         )}
       </div>
 
-      {/* ── RIGHT: system column (3 panels) ─────────────────── */}
-      <div className="flex flex-col gap-4 border-t border-border p-4 md:border-l md:border-t-0 md:p-5">
-        {/* 01 AUDIO EMBED // REPRODUCTOR — view-only. Transport drives the
-            global AudioPlayerProvider (hidden iframe lives at layout root),
-            so closing this overlay does NOT stop playback. The matrix
+      {/* ── RIGHT: system column — the instrument stack ──────── */}
+      <div className="flex flex-col gap-4 border-t border-ink p-4 md:border-l md:border-t-0 md:p-5">
+        {/* 01 REPRODUCTOR — view-only. Transport drives the global
+            AudioPlayerProvider (hidden iframe lives at layout root), so
+            closing this overlay does NOT stop playback. The matrix
             visualizer reads the same tab-capture stream as the persistent
-            HUD in the sidebar. */}
+            HUD in the sidebar. AudioPlayer3D is a dark instrument and mounts
+            UNTOUCHED — the ink bezel frames it; the printed caption below
+            re-voices its real state onto paper. */}
         {playable ? (
-          <AudioPlayer3D
-            dataRef={audio.dataRef}
-            sampleRate={audio.sampleRate}
-            title={item.title}
-            subtitle={item.subtitle}
-            source={item.author}
-            coverUrl={item.imageUrl}
-            coverLabel={item.mixSeries}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onPlayPause={handleTransportToggle}
-            onSeek={handleSeek}
-            liveMatrixActive={audio.matrixActive}
-            onOpenSource={openSource}
-            sourceUrl={openUrl ?? undefined}
-            statusLabel={statusLabel}
-            statusTone={statusTone}
-            statusDetail={statusDetail}
-          />
+          <div className="flex flex-col gap-1.5">
+            <div className="border border-ink bg-panel p-1.5">
+              <AudioPlayer3D
+                dataRef={audio.dataRef}
+                sampleRate={audio.sampleRate}
+                title={item.title}
+                subtitle={item.subtitle}
+                source={item.author}
+                coverUrl={item.imageUrl}
+                coverLabel={item.mixSeries}
+                isPlaying={isPlaying}
+                currentTime={currentTime}
+                duration={duration}
+                onPlayPause={handleTransportToggle}
+                onSeek={handleSeek}
+                liveMatrixActive={audio.matrixActive}
+                onOpenSource={openSource}
+                sourceUrl={openUrl ?? undefined}
+                statusLabel={statusLabel}
+                statusTone={statusTone}
+                statusDetail={statusDetail}
+              />
+            </div>
+            {/* Printed status caption — same machine, paper voice. Tones:
+                acid dot (ink-outlined, ≥8px) = live signal, sys-red-paper =
+                error, ink otherwise. All states are real provider states. */}
+            <div className="flex min-w-0 items-center gap-2 font-mono text-d11">
+              {statusTone === 'live' && (
+                <span
+                  aria-hidden
+                  className="h-2 w-2 shrink-0 rounded-full border border-ink bg-acid"
+                />
+              )}
+              <span
+                className={`shrink-0 font-bold tracking-widest ${
+                  statusTone === 'error' ? 'text-sys-red-paper' : 'text-ink'
+                }`}
+              >
+                {statusLabel}
+              </span>
+              <span className="min-w-0 truncate text-ink-faint">
+                {statusDetail}
+              </span>
+            </div>
+          </div>
         ) : openUrl ? (
           // A source exists but isn't controllable in-app (Bandcamp, or an
           // unrecognised host). Offer the working link-out instead of a dead
           // panel — never trap the user with an empty REPRODUCTOR.
           <Panel title="REPRODUCTOR">
-            <p className="font-mono text-[11px] leading-relaxed text-muted">
+            <p className="font-mono text-d11 leading-relaxed text-ink-soft">
               {openIsMixcloud
                 ? MIXCLOUD_UNSUPPORTED_NOTE
                 : 'Esta fuente no se puede reproducir dentro de Gradiente. Ábrela en su plataforma original.'}
@@ -271,24 +338,23 @@ export function MixOverlay({ item }: Props) {
             <button
               type="button"
               onClick={openSource}
-              className="mt-3 inline-flex items-center gap-2 border px-3 py-1.5 font-mono text-[11px] tracking-widest transition-colors hover:bg-elevated"
-              style={{ borderColor: '#F97316', color: '#F97316' }}
+              className={`mt-3 inline-flex min-h-11 items-center gap-2 border border-ink px-3 font-mono text-d11 tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper-raised ${FOCUS}`}
             >
-              {openIsMixcloud ? '[ABRIR EN MIXCLOUD]' : '[ABRIR FUENTE]'}
+              {openIsMixcloud ? 'ABRIR EN MIXCLOUD' : 'ABRIR FUENTE'}
+              <span aria-hidden>↗</span>
             </button>
           </Panel>
         ) : (
           <Panel title="REPRODUCTOR">
-            <p className="font-mono text-[11px] text-muted">
+            <p className="font-mono text-d11 text-ink-soft">
               Sin fuente configurada para este mix.
             </p>
           </Panel>
         )}
 
-        {/* 02 CONTEXTO. (The single analyzer is now the GPU particle field in
-            panel 01 — the old canvas-2D ESPECTRO panel was removed.) */}
+        {/* 02 CONTEXTO — the paper dl. */}
         <Panel title="CONTEXTO">
-          <dl className="grid grid-cols-[max-content_auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
+          <dl className="grid grid-cols-[max-content_auto_1fr] gap-x-3 gap-y-1.5 font-mono text-d11">
             {item.mixSeries && (
               <ContextRow label="SERIE" value={item.mixSeries} />
             )}
@@ -308,7 +374,6 @@ export function MixOverlay({ item }: Props) {
               <ContextRow
                 label="ESTATUS"
                 value={STATUS_LABEL[item.mixStatus]}
-                valueColor="#4ADE80"
               />
             )}
             {!item.mixSeries &&
@@ -317,55 +382,65 @@ export function MixOverlay({ item }: Props) {
               !item.bpmRange &&
               !item.musicalKey &&
               !item.mixStatus && (
-                <div className="col-span-3 font-mono text-[11px] text-muted">
+                <div className="col-span-3 font-mono text-d11 text-ink-faint">
                   Sin metadata de contexto.
                 </div>
               )}
           </dl>
-          <OverlayEntities entities={item.entities} color="#F97316" />
-          <OverlayLinks links={item.links} color="#F97316" />
+          <div className="mt-3 flex flex-col gap-3">
+            <OverlayEntities entities={item.entities} />
+            <OverlayLinks links={item.links} />
+          </div>
         </Panel>
 
-        {/* 03 TRACKLIST / ETIQUETAS */}
+        {/* 03 TRACKLIST / ETIQUETAS — printed table on hairline rows */}
         <Panel title="TRACKLIST / ETIQUETAS">
           {item.tracklist && item.tracklist.length > 0 ? (
-            <div className="flex flex-col gap-1.5 font-mono text-[11px]">
-              <div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2 border-b border-border pb-1 text-[10px] tracking-widest text-muted">
+            <div className="flex flex-col font-mono text-d11">
+              <div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2 border-b border-ink pb-1 text-[10px] font-bold tracking-widest text-ink-soft">
                 <span>#</span>
                 <span>ARTISTA</span>
                 <span>TEMA</span>
                 <span className="text-right">BPM</span>
               </div>
-              {item.tracklist.map((t, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2 text-secondary"
-                >
-                  <span className="text-muted">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className="truncate text-primary">{t.artist}</span>
-                  <span className="truncate">{t.title}</span>
-                  <span className="text-right text-muted">
-                    {t.bpm ?? '—'}
-                  </span>
-                </div>
-              ))}
+              <div className="flex flex-col divide-y divide-ink-faint">
+                {item.tracklist.map((t, i) => (
+                  <div
+                    key={i}
+                    className="group grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2 py-1 transition-colors hover:bg-ink"
+                  >
+                    <span className="text-ink-faint group-hover:text-paper-raised">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="truncate text-ink group-hover:text-paper-raised">
+                      {t.artist}
+                    </span>
+                    <span className="truncate text-ink-soft group-hover:text-paper-raised">
+                      {t.title}
+                    </span>
+                    <span className="text-right text-ink-faint group-hover:text-paper-raised">
+                      {t.bpm ?? '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <p className="font-mono text-[11px] text-muted">
+            <p className="font-mono text-d11 text-ink-faint">
               Tracklist no publicado.
             </p>
           )}
 
           {tags.length > 0 && (
-            <div className="mt-4 border-t border-border pt-3">
-              <span className="sys-label mb-2 block">ETIQUETAS</span>
+            <div className="mt-4 border-t border-ink-faint pt-3">
+              <span className="mb-2 block font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                ETIQUETAS
+              </span>
               <div className="flex flex-wrap gap-1.5">
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-secondary"
+                    className="border border-ink-faint px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-faint"
                   >
                     {t}
                   </span>
@@ -381,12 +456,12 @@ export function MixOverlay({ item }: Props) {
         {item.poll && <PollSection item={item} />}
 
         {/* Hotkeys hint footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-border pt-2 font-mono text-[10px] tracking-widest text-muted">
+        <div className="flex items-center justify-end gap-3 border-t border-ink pt-2 font-mono text-[10px] tracking-widest text-ink-faint">
           <span>
-            <span style={{ color: '#F97316' }}>O</span> ABRIR FUENTE
+            <span className="font-bold text-ink">O</span> ABRIR FUENTE
           </span>
           <span>
-            <span style={{ color: '#F97316' }}>ESC</span> CERRAR
+            <span className="font-bold text-ink">ESC</span> CERRAR
           </span>
         </div>
 
@@ -401,7 +476,8 @@ export function MixOverlay({ item }: Props) {
 // Up to 3 other REAL mixes from whatever the feed already streamed into the
 // client items cache — ranked by vibe closeness exclusively, tie-broken by
 // grid neighborhood (the mix most directly below this one in the mosaic).
-// Replaced the old MOCK_ITEMS source.
+// The cards are the fase-B paper ContentCards — card→overlay→card stays
+// paper→paper.
 function RelatedMixes({ item }: Props) {
   const related = useMemo(
     () => getRelatedByVibe(item, { types: ['mix'], limit: 3 }),
@@ -411,9 +487,9 @@ function RelatedMixes({ item }: Props) {
   if (related.length === 0) return null
 
   return (
-    <section className="mt-2 border border-border bg-base/40 p-3">
-      <header className="mb-3 border-b border-dashed border-border pb-2">
-        <span className="font-mono text-[11px] tracking-widest text-primary">
+    <section className="mt-2 border-t border-ink pt-3">
+      <header className="mb-3">
+        <span className="font-mono text-d11 font-bold tracking-widest text-ink">
           SIGUIENTES MIXES
         </span>
       </header>
@@ -428,6 +504,7 @@ function RelatedMixes({ item }: Props) {
   )
 }
 
+// Printed panel — paper-raised plate with an ink hairline header.
 function Panel({
   title,
   children,
@@ -436,12 +513,9 @@ function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section
-      className="relative border bg-base/40 p-3"
-      style={{ borderColor: '#F97316' }}
-    >
-      <header className="mb-3 border-b border-dashed border-border pb-2">
-        <span className="font-mono text-[11px] tracking-widest text-primary">
+    <section className="relative border border-ink bg-paper-raised p-3">
+      <header className="mb-3 border-b border-ink pb-2">
+        <span className="font-mono text-d11 font-bold tracking-widest text-ink">
           {title}
         </span>
       </header>
@@ -450,26 +524,14 @@ function Panel({
   )
 }
 
-function ContextRow({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string
-  value: string
-  valueColor?: string
-}) {
+function ContextRow({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <dt className="sys-label">{label}</dt>
-      <dd className="text-muted">:</dd>
-      <dd
-        className="text-primary"
-        style={valueColor ? { color: valueColor } : undefined}
-      >
-        {value}
-      </dd>
+      <dt className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+        {label}
+      </dt>
+      <dd className="text-ink-faint">:</dd>
+      <dd className="text-ink">{value}</dd>
     </>
   )
 }
-

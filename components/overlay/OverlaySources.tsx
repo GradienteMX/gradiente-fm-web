@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { ExternalLink, Pause, Play } from 'lucide-react'
+import { Pause, Play } from 'lucide-react'
 import type { ContentItem, MixEmbed } from '@/lib/types'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 import { pickPlayableSource } from '@/components/audio/sources'
@@ -27,13 +27,21 @@ import {
 // Sources that can't be driven in-app (Bandcamp: no control API; Mixcloud:
 // link-out only, see PLAYABLE_PLATFORMS) render as link-out rows instead of a
 // dead player.
+//
+// Fase C («EL PLIEGO»): paper rows — the play control is a bordered ink
+// button (fill-inversion hover, live status line stays real), platform
+// link-outs read «ABRIR EN X ↗». loadAndPlay stays SYNCHRONOUS inside the
+// click gesture (platform-iframe law) and primePlatform still runs on mount.
 
 interface Props {
   item: ContentItem
-  // Vibe color of the host item — used for the play control's accent so the
-  // panel matches the rest of the overlay chrome.
-  accent: string
+  // Legacy vibe accent from pre-paper callers — intentionally ignored on
+  // paper (hue is never the signal; the row chrome is ink).
+  accent?: string
 }
+
+const FOCUS =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2'
 
 function fmtTime(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return '0:00'
@@ -42,7 +50,7 @@ function fmtTime(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export function OverlaySources({ item, accent }: Props) {
+export function OverlaySources({ item }: Props) {
   const audio = useAudioPlayer()
 
   // Every source the item carries, structured embeds first, with the legacy
@@ -67,6 +75,8 @@ export function OverlaySources({ item, accent }: Props) {
 
   if (sources.length === 0) return null
 
+  // Live status line — every string here reflects a REAL provider state
+  // (transport time, widget boot, idle prompt). Nothing decorative.
   const status = (() => {
     if (!playable) return 'solo enlace externo'
     if (isPlaying) return `${fmtTime(audio.currentTime)} · reproduciendo`
@@ -81,42 +91,52 @@ export function OverlaySources({ item, accent }: Props) {
         <button
           type="button"
           onClick={() => void audio.loadAndPlay(item)}
-          className="flex items-center gap-3 border px-3 py-2.5 text-left transition-colors hover:bg-elevated"
-          style={{ borderColor: accent }}
+          className={`flex min-h-11 items-center gap-3 border border-ink px-3 py-2 text-left text-ink transition-colors hover:bg-ink hover:text-paper-raised ${FOCUS}`}
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center border"
-            style={{ borderColor: accent, color: accent }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center border border-current"
+            aria-hidden
           >
-            {isPlaying ? <Pause size={13} fill={accent} /> : <Play size={13} fill={accent} />}
+            {isPlaying ? (
+              <Pause size={13} fill="currentColor" />
+            ) : (
+              <Play size={13} fill="currentColor" />
+            )}
           </span>
           <span className="flex min-w-0 flex-col">
-            <span className="truncate font-mono text-[11px] tracking-widest text-primary">
+            <span className="truncate font-mono text-d11 font-bold tracking-widest">
               {isPlaying ? 'PAUSAR' : 'REPRODUCIR'}
             </span>
-            <span className="truncate font-mono text-[10px] text-muted">{status}</span>
+            {/* Opacity, not a fixed color, so the fill inversion flips it too. */}
+            <span className="truncate font-mono text-[10px] opacity-70">
+              {status}
+            </span>
           </span>
         </button>
       )}
 
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-1.5">
         {sources.map((e) => (
           <li key={`${e.platform}-${e.url}`}>
             <a
               href={e.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-between gap-2 border border-border px-2.5 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/40 hover:text-primary"
+              className={`flex min-h-11 items-center justify-between gap-2 border border-ink px-3 font-mono text-d11 tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper-raised ${FOCUS}`}
             >
-              <span className="truncate">{PLATFORM_LABELS[e.platform]}</span>
-              <ExternalLink size={10} className="shrink-0" />
+              <span className="truncate">
+                ABRIR EN {PLATFORM_LABELS[e.platform]}
+              </span>
+              <span aria-hidden className="shrink-0">
+                ↗
+              </span>
             </a>
           </li>
         ))}
       </ul>
 
       {!playable && sources.some((e) => e.platform === 'mixcloud') && (
-        <p className="font-mono text-[10px] leading-relaxed text-muted">
+        <p className="font-mono text-[10px] leading-relaxed text-ink-faint">
           {MIXCLOUD_UNSUPPORTED_NOTE}
         </p>
       )}

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { fmtDateFull, vibeToColor, vibeMid } from '@/lib/utils'
+import { fmtDateFull } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { VibeFader } from '@/components/VibeFader'
@@ -12,10 +12,11 @@ interface Props {
   item: ContentItem
 }
 
-// Placeholder for types without a dedicated overlay yet (mix, review, editorial, opinion, noticia).
-// Each of these will get its own polished component — this is the fallback during MVP build-out.
+// Safety-net fallback for types without a dedicated overlay. Fase C paper
+// translation in miniature: dark-in-frame 16:9 image plate (the dark VibeMeter
+// stays ON the artwork), ink title/meta/body on paper, printed genre chips.
+// Deliberately boring — each type eventually gets its own polished component.
 export function GenericOverlay({ item }: Props) {
-  const vibeColor = vibeToColor(vibeMid(item))
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -23,9 +24,9 @@ export function GenericOverlay({ item }: Props) {
   const tags = getTagNames(item.tags)
 
   return (
-    <article className="flex flex-col">
+    <article className="flex flex-col bg-paper text-ink">
       {item.imageUrl && (
-        <div className="relative aspect-[16/9] w-full overflow-hidden bg-elevated">
+        <div className="relative aspect-[16/9] w-full overflow-hidden border-b border-ink bg-panel">
           <SmartImage
             src={item.imageUrl}
             alt={item.title}
@@ -43,59 +44,76 @@ export function GenericOverlay({ item }: Props) {
       <div className="flex flex-col gap-4 p-5 md:p-7">
         <header className="flex flex-col gap-2">
           {item.editorial && (
-            <span className="inline-flex w-fit items-center gap-1.5 border border-sys-red/40 bg-sys-red/10 px-2 py-0.5 font-mono text-[10px] tracking-widest text-sys-red">
+            <span
+              className="inline-flex w-fit items-center gap-1.5 bg-sys-red-paper px-1.5 py-0.5 font-mono text-[10px] tracking-widest text-paper-raised"
+              title="Selección editorial"
+            >
               ★ EDITORIAL
             </span>
           )}
-          <h1 className="font-syne text-3xl font-black leading-[1.05] text-white md:text-4xl">
+          <h1 className="font-syne text-3xl font-black leading-[1.05] text-ink md:text-4xl">
             {item.title}
           </h1>
           {item.subtitle && (
-            <p className="font-grotesk text-sm text-secondary md:text-base">
+            <p className="font-grotesk text-d15 text-ink-soft md:text-d18">
               {item.subtitle}
             </p>
           )}
         </header>
 
-        <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-3 font-mono text-xs">
+        <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-ink py-3 font-mono text-d13">
           {item.author && (
             <div className="flex items-center gap-2">
-              <span className="sys-label">AUTOR</span>
-              <span className="text-primary">{item.author}</span>
+              <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                AUTOR
+              </span>
+              <span className="text-ink">{item.author}</span>
             </div>
           )}
           {item.publishedAt && (
             <div className="flex items-center gap-2">
-              <span className="sys-label">PUBLICADO</span>
-              <span className="text-secondary">{fmtDateFull(item.publishedAt)}</span>
+              <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                PUBLICADO
+              </span>
+              <span className="text-ink-soft">{fmtDateFull(item.publishedAt)}</span>
             </div>
           )}
           {item.readTime && (
             <div className="flex items-center gap-2">
-              <span className="sys-label">LECTURA</span>
-              <span className="text-secondary">{item.readTime} min</span>
+              <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                LECTURA
+              </span>
+              <span className="text-ink-soft">{item.readTime} min</span>
             </div>
           )}
           {item.duration && (
             <div className="flex items-center gap-2">
-              <span className="sys-label">DURACIÓN</span>
-              <span className="text-secondary">{item.duration}</span>
+              <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+                DURACIÓN
+              </span>
+              <span className="text-ink-soft">{item.duration}</span>
             </div>
           )}
+          {/* VIBE — the fader is a dark-calibrated instrument: it keeps a
+              bg-panel faceplate band on the paper sheet (component untouched). */}
           <div className="flex items-center gap-2">
-            <span className="sys-label">VIBE</span>
-            <VibeFader item={item} />
+            <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+              VIBE
+            </span>
+            <span className="flex items-center border border-ink bg-panel px-3 py-2">
+              <VibeFader item={item} />
+            </span>
           </div>
         </dl>
 
         {item.excerpt && (
-          <p className="font-grotesk text-base leading-relaxed text-secondary">
+          <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
             {item.excerpt}
           </p>
         )}
 
         {item.bodyPreview && (
-          <div className="font-grotesk text-base leading-relaxed text-primary">
+          <div className="max-w-[65ch] font-grotesk text-d15 leading-relaxed text-ink">
             {item.bodyPreview.split('\n').map((p, i) => (
               <p key={i} className="mb-4">
                 {p}
@@ -110,8 +128,8 @@ export function GenericOverlay({ item }: Props) {
               <GenreChipButton
                 key={id}
                 genreId={id}
+                ground="paper"
                 className="px-2 py-0.5 font-mono text-[10px] tracking-wide"
-                style={{ backgroundColor: `${vibeColor}22`, color: vibeColor }}
               >
                 {name}
               </GenreChipButton>
@@ -119,7 +137,7 @@ export function GenericOverlay({ item }: Props) {
             {tags.map((t) => (
               <span
                 key={t}
-                className="border border-white/10 px-2 py-0.5 font-mono text-[10px] text-muted"
+                className="border border-ink-faint px-2 py-0.5 font-mono text-[10px] text-ink-faint"
               >
                 {t}
               </span>
