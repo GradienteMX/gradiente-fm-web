@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Smartphone, Monitor, X } from 'lucide-react'
+import { isPaperRoute } from '@/lib/chrome/paperRoutes'
 
 // ── MobileNotice ───────────────────────────────────────────────────────────
 //
@@ -64,10 +65,11 @@ export function MobileNotice() {
 
   if (!open || pathname?.startsWith('/welcome')) return null
 
-  // «EL PLIEGO» variant — /dashboard and /lab/dashboard are a light print
-  // surface (paper/ink/acid tokens); the dark/orange EVA chrome reads as a
-  // foreign object there. Same copy, same dismiss logic, pliego skin.
-  // Route predicate mirrors CRTOverlay's shader suppression.
+  // «EL PLIEGO» variant — the dashboard AND every fase-B paper route are a
+  // light print surface (paper/ink/acid tokens); the dark/orange EVA chrome
+  // reads as a foreign object there. Same copy, same dismiss logic, pliego
+  // skin. The dark skin survives only on still-dark routes (foro,
+  // marketplace, franja, mapa, perfil…) until their phases flip them.
   //
   // z-[110]: the dash shell is `fixed inset-0 z-40` and its own overlay stack
   // reaches z-[100] (HarvestConfirmModal) — the notice must sit above ALL of
@@ -79,7 +81,9 @@ export function MobileNotice() {
   // collapsed mid-animation — instant paint fixes both. Reduced-motion is
   // trivially complete (zero animation).
   const onPliego =
-    (pathname?.startsWith('/dashboard') || pathname === '/lab/dashboard') ?? false
+    ((pathname?.startsWith('/dashboard') || pathname === '/lab/dashboard') ??
+      false) ||
+    (pathname != null && isPaperRoute(pathname))
 
   if (onPliego) {
     return (

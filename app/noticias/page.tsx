@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { ContentGrid } from '@/components/ContentGrid'
+import { PaperGround } from '@/components/chrome/PaperGround'
 import { getItems } from '@/lib/data/items'
 import { filterForCategory } from '@/lib/utils'
 
@@ -10,13 +11,14 @@ export default async function NoticiasPage() {
   const items = filterForCategory(await getItems(), 'noticia')
   return (
     <>
-      <div className="mb-4">
-        <div className="nge-divider mb-1">
-          <span className="font-mono text-xs tracking-widest text-primary">NOTICIAS</span>
-        </div>
-        <p className="sys-label">NOTICIAS · {items.length} ENTRADAS</p>
-      </div>
-      <ContentGrid items={items} mode="category" emptyLabel="// SIN NOTICIAS EN ESTE RANGO" />
+      <PaperGround />
+      <header className="mb-6 border-b border-ink pb-3">
+        <h1 className="font-syne text-d28 font-extrabold text-ink">NOTICIAS</h1>
+        <p className="mt-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          {items.length > 0 ? `NOTICIAS · ${items.length} ENTRADAS` : 'NOTICIAS'}
+        </p>
+      </header>
+      <ContentGrid items={items} mode="category" emptyLabel="SIN NOTICIAS EN ESTE RANGO" />
     </>
   )
 }

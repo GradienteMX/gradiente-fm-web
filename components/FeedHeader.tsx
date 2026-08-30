@@ -1,29 +1,25 @@
 'use client'
 
 import { useVibe } from '@/context/VibeContext'
-import { categoryColor } from '@/lib/utils'
 import { getGenreById } from '@/lib/genres'
-import type { ContentType } from '@/lib/types'
+import {
+  categoryColorOnLight,
+  typeCode,
+  typeDisplayLabel,
+} from '@/lib/dashboard/palette'
 
-const TYPE_LABEL: Partial<Record<ContentType, string>> = {
-  evento: 'EVENTO',
-  mix: 'MIX',
-  noticia: 'NOTICIA',
-  review: 'REVIEW',
-  editorial: 'EDITORIAL',
-  opinion: 'OPINIÓN',
-  articulo: 'ARTÍCULO',
-  listicle: 'LISTA',
-}
+const CLEAR_CHIP_CLASS =
+  'flex min-h-11 items-center border border-ink px-3 font-mono text-d11 uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface FeedHeaderProps {
   totalCount: number
 }
 
 // Adapts the home feed header strip to reflect the in-page filters. When
-// neither categoryFilter nor genreFilter is set, shows the default editorial
-// intro. When either is set, swaps to a terminal-flavored "subsystem focused
-// on X" status with each active filter as its own clearable chip.
+// neither categoryFilter nor genreFilter is set, shows the idle «SEÑAL AHORA»
+// line. When either is set, swaps to the FILTRADO line — category swatch
+// paired with its 2-letter code (color is never the only signal) — with each
+// active filter as its own clearable bordered ink chip.
 export function FeedHeader({ totalCount }: FeedHeaderProps) {
   const {
     categoryFilter,
@@ -38,105 +34,76 @@ export function FeedHeader({ totalCount }: FeedHeaderProps) {
 
   if (!anyFilterActive) {
     return (
-      <div>
-        <div className="nge-divider mb-1">
-          <span className="font-mono text-xs tracking-widest text-primary">
-            TODO LO QUE VIENE
+      <div className="w-full border-b border-ink pb-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="font-mono text-d13 font-bold uppercase tracking-widest">
+            <span className="text-sys-red-paper">SEÑAL</span>
+            <span className="text-ink"> AHORA</span>
           </span>
+          {totalCount > 0 && (
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+              {totalCount} ENTRADAS
+            </span>
+          )}
         </div>
-        <p className="sys-label">
-          {totalCount} ENTRADAS
-        </p>
       </div>
     )
   }
 
-  // The status line takes its color from whichever filter is most "anchoring".
-  // Category wins when both are set — it's the primary axis of the rail.
-  const headlineColor = categoryFilter
-    ? categoryColor(categoryFilter)
-    : '#F97316'
-  const categoryLabel = categoryFilter
-    ? TYPE_LABEL[categoryFilter] ?? categoryFilter.toUpperCase()
-    : null
   const genreLabels = genreFilter.map((id) => ({
     id,
     name: getGenreById(id)?.name?.toUpperCase() ?? id.toUpperCase(),
   }))
 
   return (
-    <div>
-      <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span
-          className="h-1.5 w-1.5 animate-pulse rounded-full"
-          style={{
-            backgroundColor: headlineColor,
-            boxShadow: `0 0 6px ${headlineColor}, 0 0 12px ${headlineColor}66`,
-          }}
-          aria-hidden
-        />
-        <span
-          className="font-mono text-xs tracking-widest"
-          style={{ color: headlineColor }}
-        >
-          //SUBSISTEMA · FILTRADO
-        </span>
-        {categoryLabel && (
+    <div className="w-full border-b border-ink pb-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2 font-mono text-d13 uppercase tracking-widest text-ink">
+        {categoryFilter && (
           <span
-            className="font-mono text-xs tracking-widest"
-            style={{ color: headlineColor }}
-          >
-            · {categoryLabel}
+            aria-hidden
+            className="h-2 w-2 shrink-0 border border-ink"
+            style={{ backgroundColor: categoryColorOnLight(categoryFilter) }}
+          />
+        )}
+        <span className="font-bold">FILTRADO</span>
+        {categoryFilter && (
+          <span>
+            · {typeCode(categoryFilter)} {typeDisplayLabel(categoryFilter)}
           </span>
         )}
         {genreLabels.length > 0 && (
-          <span
-            className="font-mono text-xs tracking-widest"
-            style={{ color: headlineColor }}
-          >
-            · GÉNERO·{genreLabels.map((g) => g.name).join('+')}
-          </span>
+          <span>· GÉNERO·{genreLabels.map((g) => g.name).join('+')}</span>
         )}
       </div>
-      <p className="sys-label flex flex-wrap items-center gap-2">
-        <span>FOCO ACTIVO</span>
+      <div className="flex flex-wrap items-center gap-2">
         {categoryFilter && (
-          <>
-            <span className="text-muted">·</span>
-            <button
-              type="button"
-              onClick={() => setCategoryFilter(null)}
-              className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
-            >
-              [×] LIMPIAR SECCIÓN
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter(null)}
+            className={CLEAR_CHIP_CLASS}
+          >
+            × LIMPIAR SECCIÓN
+          </button>
         )}
         {genreLabels.length === 1 && (
-          <>
-            <span className="text-muted">·</span>
-            <button
-              type="button"
-              onClick={() => toggleGenre(genreLabels[0].id)}
-              className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
-            >
-              [×] LIMPIAR GÉNERO
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => toggleGenre(genreLabels[0].id)}
+            className={CLEAR_CHIP_CLASS}
+          >
+            × LIMPIAR GÉNERO
+          </button>
         )}
         {genreLabels.length > 1 && (
-          <>
-            <span className="text-muted">·</span>
-            <button
-              type="button"
-              onClick={clearGenres}
-              className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
-            >
-              [×] LIMPIAR {genreLabels.length} GÉNEROS
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={clearGenres}
+            className={CLEAR_CHIP_CLASS}
+          >
+            × LIMPIAR {genreLabels.length} GÉNEROS
+          </button>
         )}
-      </p>
+      </div>
     </div>
   )
 }

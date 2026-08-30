@@ -1,19 +1,24 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { SmartImage } from '@/components/SmartImage'
+import { isPaperRoute } from '@/lib/chrome/paperRoutes'
 
 // ── AuthBadge — the masthead's identity slot (desktop) ──────────────────────
 //
 // Anon: a bordered INICIAR SESIÓN chip → LoginOverlay. Authed: avatar +
-// @username trigger that drops a paper panel (the one paper object on the
-// ink strip — bg-paper, ink border, shadow-lift) with the three identity
-// rows: PANEL, VER PERFIL PÚBLICO, SALIR. Hover is fill inversion, rows
-// clear the 44px floor, and the menu closes on outside click, Esc, and any
-// row activation. Phones never see this — the Navigation mobile menu owns
-// the auth controls there.
+// @username trigger that drops a paper panel (bg-paper, ink border,
+// shadow-lift) with the three identity rows: PANEL, VER PERFIL PÚBLICO,
+// SALIR. Hover is fill inversion, rows clear the 44px floor, and the menu
+// closes on outside click, Esc, and any row activation. Phones never see
+// this — the Navigation mobile menu owns the auth controls there.
+//
+// Dual-stamped like the masthead (via isPaperRoute — no prop drilling): the
+// TRIGGER prints panel-text on the ink strip and ink on the paper strip; the
+// DROPDOWN was already a paper object, so it is identical on both grounds.
 
 const FOCUS_ON_PANEL =
   'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
@@ -24,6 +29,9 @@ export function AuthBadge() {
   const { isAuthed, username, currentUser, openLogin, logout } = useAuth()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  // Which ground is the trigger printed on? (The dropdown is paper either way.)
+  const paper = isPaperRoute(usePathname())
+  const focusRing = paper ? FOCUS_ON_PAPER : FOCUS_ON_PANEL
 
   // Outside click + Esc close the dropdown; listeners exist only while open.
   useEffect(() => {
@@ -51,7 +59,11 @@ export function AuthBadge() {
         <button
           type="button"
           onClick={() => openLogin()}
-          className={`flex min-h-11 items-center border border-panel-text/60 px-3 font-mono text-d13 uppercase tracking-widest text-panel-text hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
+          className={`flex min-h-11 items-center border px-3 font-mono text-d13 uppercase tracking-widest ${
+            paper
+              ? 'border-ink text-ink hover:bg-ink hover:text-paper'
+              : 'border-panel-text/60 text-panel-text hover:bg-panel-text hover:text-panel'
+          } ${focusRing}`}
         >
           INICIAR SESIÓN
         </button>
@@ -69,11 +81,17 @@ export function AuthBadge() {
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={`Cuenta de @${handle}`}
-        className={`flex min-h-11 items-center gap-2 px-1 text-panel-text ${FOCUS_ON_PANEL}`}
+        className={`flex min-h-11 items-center gap-2 px-1 ${
+          paper ? 'text-ink' : 'text-panel-text'
+        } ${focusRing}`}
       >
         {/* 28px avatar — image when the profile has one, Syne initial block
             otherwise. SmartImage is a fill image, so the span is positioned. */}
-        <span className="relative block h-7 w-7 shrink-0 overflow-hidden border border-panel-text">
+        <span
+          className={`relative block h-7 w-7 shrink-0 overflow-hidden border ${
+            paper ? 'border-ink' : 'border-panel-text'
+          }`}
+        >
           {currentUser?.avatarUrl ? (
             <SmartImage
               src={currentUser.avatarUrl}
@@ -82,7 +100,11 @@ export function AuthBadge() {
               sizes="28px"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center bg-panel-text font-syne text-d13 font-bold uppercase text-panel">
+            <span
+              className={`flex h-full w-full items-center justify-center font-syne text-d13 font-bold uppercase ${
+                paper ? 'bg-ink text-paper' : 'bg-panel-text text-panel'
+              }`}
+            >
               {handle.slice(0, 1)}
             </span>
           )}

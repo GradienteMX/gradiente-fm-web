@@ -19,7 +19,7 @@
 // `/` shortcut + BUSCAR button live in useSearch), window-level Esc/↑/↓/↵,
 // body scroll lock, query reset on close, hover sets selection, Enter/click
 // closes then openContent(slug, originRect from the row element), 30-result
-// cap note, [×] LIMPIAR.
+// cap note, × LIMPIAR.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDraftItems } from '@/lib/drafts'
@@ -319,7 +319,7 @@ export function SearchOverlay() {
                 }}
                 className={`min-h-11 shrink-0 border border-ink px-3 font-mono text-d11 tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
               >
-                [×] LIMPIAR
+                × LIMPIAR
               </button>
             )}
           </div>

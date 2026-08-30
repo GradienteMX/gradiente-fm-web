@@ -1,22 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar } from 'lucide-react'
+import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ContentItem } from '@/lib/types'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
-import { categoryColor, isExpired } from '@/lib/utils'
+import { isExpired } from '@/lib/utils'
 import { franjaAttributionPrefix } from '@/lib/franjaAttribution'
 import { recordItems } from '@/lib/itemsCache'
 import { SmartImage } from '@/components/SmartImage'
 
-const EVENT_RED = categoryColor('evento')
-
-// Compact rail card — denser than the mosaic ContentCard so 5-7 fit on-screen
+// Compact rail tile — denser than the mosaic ContentCard so 5-7 fit on-screen
 // at desktop width. Click → same EventoOverlay path as mosaic cards (matches
-// the contained-single-surface UX).
+// the contained-single-surface UX). Paper frame; the flyer stays dark inside
+// it — that's the ink-bleed the print ground allows.
 function EventoRailCard({
   item,
   onOpen,
@@ -28,7 +27,7 @@ function EventoRailCard({
   const d = item.date ? parseISO(item.date) : null
   // Recently-passed events show up in the rail thanks to filterForHome's
   // grace window — visually demote them so they read as historical, not
-  // upcoming. Same vocabulary as the //PASADO ribbon in FranjaOverlay's
+  // upcoming. Same vocabulary as the PASADO ribbon in FranjaOverlay's
   // ARCHIVO section.
   const past = isExpired(item)
 
@@ -36,81 +35,65 @@ function EventoRailCard({
     <button
       ref={ref}
       onClick={() => onOpen(item.slug, ref.current?.getBoundingClientRect())}
-      className="group relative w-[180px] shrink-0 overflow-hidden border border-border bg-elevated text-left transition-colors hover:border-white/30 focus:outline-none focus:border-white/50"
+      className="group relative w-[180px] shrink-0 overflow-hidden border border-ink bg-paper-raised text-left focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       aria-label={`Abrir evento ${item.title}`}
     >
-      <div className="relative aspect-[4/5] overflow-hidden">
+      <div className="relative aspect-[4/5] overflow-hidden border-b border-ink">
         {item.imageUrl ? (
           <SmartImage
             src={item.imageUrl}
             alt=""
             sizes="(max-width: 768px) 45vw, 220px"
-            className={`object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+            className={`object-cover object-top ${
               past ? 'opacity-60 grayscale-[40%]' : ''
             }`}
           />
         ) : (
-          <div className="h-full w-full bg-base" />
+          <div className="h-full w-full bg-ink" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
 
-        <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
-          <span
-            className="bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-            style={{ color: past ? '#6B7280' : EVENT_RED }}
-          >
-            //EVENTO
+        {past && (
+          <span className="absolute left-2 top-2 border border-ink-faint bg-paper-raised px-1.5 py-0.5 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            PASADO
           </span>
-          {past && (
-            <span
-              className="border bg-black/85 px-1.5 py-0.5 font-mono text-[8px] tracking-widest backdrop-blur-sm"
-              style={{ color: '#9CA3AF', borderColor: '#6B7280' }}
-            >
-              //PASADO
-            </span>
-          )}
-          {/* Franja attribution — same vocabulary as the mosaic chip, smaller
-              scale to fit the 180px rail tile. Skip rendering on partial data
-              (defensive — matches the mosaic chip's guard). Stacked under
-              //EVENTO rather than alongside so neither truncates at this width.
-              Non-clickable here — the whole tile is a button that opens the
-              overlay; the chip just provides at-a-glance attribution. */}
-          {item.franja && item.franja.title && (
-            <span
-              className="bg-black/85 border px-1.5 py-0.5 font-mono text-[8px] tracking-widest backdrop-blur-sm"
-              style={{
-                borderColor: '#FF8800',
-                color: '#FF8800',
-                boxShadow: '0 0 4px rgba(255,136,0,0.35)',
-              }}
-              title={`Publicado por ${item.franja.title}`}
-            >
-              //{franjaAttributionPrefix(item.franja.kind)} · {item.franja.title.toUpperCase()}
-            </span>
-          )}
-        </div>
+        )}
 
+        {/* Printed date chip — mono month, Syne day, mono weekday */}
         {d && (
-          <div className="absolute right-2 top-2 border border-white/20 bg-black/70 px-1.5 py-1 text-center font-mono backdrop-blur-sm">
-            <div className="text-[8px] font-bold tracking-widest text-white">
+          <div className="absolute right-2 top-2 border border-ink bg-paper-raised px-1.5 py-1 text-center font-mono text-ink">
+            <div className="text-d11 font-bold uppercase tracking-widest">
               {format(d, 'MMM', { locale: es }).toUpperCase()}
             </div>
-            <div className="text-base font-bold leading-none tabular-nums text-white">
+            <div className="font-syne text-d18 font-black leading-none tabular-nums">
               {format(d, 'd')}
             </div>
-            <div className="text-[7px] font-bold tracking-widest text-white">
+            <div className="text-d11 font-bold uppercase tracking-widest">
               {format(d, 'EEE', { locale: es }).toUpperCase()}
             </div>
           </div>
         )}
       </div>
+
       <div className="p-2.5">
-        <h3 className="line-clamp-2 font-syne text-xs font-bold leading-tight text-white">
+        <h3 className="line-clamp-2 font-mono text-d11 font-bold leading-tight text-ink transition-colors group-hover:bg-ink group-hover:text-paper">
           {item.title}
         </h3>
         {item.venue && (
-          <p className="mt-1 line-clamp-1 font-mono text-[9px] tracking-wide text-muted">
+          <p className="mt-1 line-clamp-1 font-mono text-d11 tracking-wide text-ink-faint">
             {item.venue}
+          </p>
+        )}
+        {/* Franja attribution — same vocabulary as the mosaic chip. Skip
+            rendering on partial data (defensive — matches the mosaic chip's
+            guard). Non-clickable here — the whole tile is a button that opens
+            the overlay; the line just provides at-a-glance attribution. */}
+        {item.franja && item.franja.title && (
+          <p
+            className="mt-1 line-clamp-1 font-mono text-d11 uppercase tracking-widest text-sys-red-paper"
+            title={`Publicado por ${item.franja.title}`}
+          >
+            {franjaAttributionPrefix(item.franja.kind)} ·{' '}
+            {item.franja.title.toUpperCase()}
           </p>
         )}
       </div>
@@ -122,11 +105,12 @@ interface EventosRailProps {
   items: ContentItem[]
 }
 
-// EventosRail — auto-scrolling marquee of scraped events, mounted between the
-// HeroCard and the main mosaic. Solves the "128 events flooding the grid"
-// problem (see wiki/log.md 2026-05-01) by giving high-volume scraped agenda
-// content its own surface, leaving the mosaic for editorial + editor-elevated
-// events. Pauses on hover/focus so users can target a card.
+// EventosRail — the AGENDA rail: auto-scrolling marquee of scraped events,
+// mounted between the HeroCard and the main mosaic. Solves the "128 events
+// flooding the grid" problem (see wiki/log.md 2026-05-01) by giving
+// high-volume scraped agenda content its own surface, leaving the mosaic for
+// editorial + editor-elevated events. Pauses on hover/focus so users can
+// target a card.
 export function EventosRail({ items }: EventosRailProps) {
   const { open } = useOverlay()
   const { categoryFilter } = useVibe()
@@ -183,6 +167,20 @@ export function EventosRail({ items }: EventosRailProps) {
   const SCROLL_SPEED_PX_PER_SEC = 35  // tuned for "background motion" feel — readable at a glance
   const PAUSE_AFTER_INTERACTION_MS = 1500  // wheel / touch — user is likely reading a card
   const PAUSE_AFTER_DRAG_MS = 500          // user just repositioned the rail; resume quickly
+
+  // ‹ › page buttons — scroll the track by one viewport width. Smooth unless
+  // the user prefers reduced motion; either way the auto-scroll pauses so the
+  // page the user asked for stays put long enough to read.
+  const pageBy = (dir: -1 | 1) => {
+    const track = trackRef.current
+    if (!track) return
+    stateRef.current.pausedUntil = performance.now() + PAUSE_AFTER_INTERACTION_MS
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    track.scrollBy({
+      left: dir * track.clientWidth,
+      behavior: reducedMotion ? 'auto' : 'smooth',
+    })
+  }
 
   useEffect(() => {
     const track = trackRef.current
@@ -349,37 +347,54 @@ export function EventosRail({ items }: EventosRailProps) {
 
   return (
     <section className="my-4" aria-label="Agenda de eventos">
-      <div className="nge-divider mb-1 flex items-center gap-2">
-        <Calendar size={12} strokeWidth={1.5} style={{ color: EVENT_RED }} />
-        <span
-          className="font-mono text-xs tracking-widest"
-          style={{ color: EVENT_RED }}
-        >
-          //AGENDA
+      {/* Header row on a hairline — red AGENDA kicker, honest count, and the
+          ‹ › page buttons (only when the set actually overflows). */}
+      <div className="mb-2 flex items-center gap-x-3 border-b border-ink pb-1 font-mono text-d11 uppercase tracking-widest">
+        <span>
+          <span className="font-bold text-sys-red-paper">AGENDA</span>
+          <span className="text-ink"> · PRÓXIMOS EVENTOS</span>
         </span>
-        <span className="ml-auto flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${empty ? '' : 'animate-pulse bg-sys-green'}`}
-            style={empty ? { backgroundColor: '#6B7280' } : undefined}
-          />
-          {empty ? 'SIN PRÓXIMOS EVENTOS' : `${sorted.length} EVENTOS · RED`}
+        <span className="ml-auto flex items-center gap-2">
+          {sorted.length > 0 && (
+            <span className="text-ink-faint">{sorted.length} EVENTOS</span>
+          )}
+          {loop && (
+            <>
+              <button
+                type="button"
+                onClick={() => pageBy(-1)}
+                aria-label="Página anterior"
+                className="flex h-11 w-11 items-center justify-center border border-ink font-mono text-d15 text-ink transition-colors hover:bg-ink hover:text-paper focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={() => pageBy(1)}
+                aria-label="Página siguiente"
+                className="flex h-11 w-11 items-center justify-center border border-ink font-mono text-d15 text-ink transition-colors hover:bg-ink hover:text-paper focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              >
+                ›
+              </button>
+            </>
+          )}
         </span>
       </div>
-      <p className="sys-label mb-2">
-        {empty
-          ? 'AGENDA EN ESPERA'
-          : 'PRÓXIMOS · ORDEN CRONOLÓGICO · ARRASTRA O ESPERA · CLICK PARA DETALLE'}
-      </p>
 
       {empty ? (
-        <div className="flex items-center gap-3 border border-dashed border-border bg-elevated/40 px-4 py-5">
-          <Calendar size={16} strokeWidth={1.5} className="shrink-0" style={{ color: '#6B7280' }} />
-          <p className="font-mono text-[11px] leading-relaxed text-muted">
-            <span className="block tracking-widest" style={{ color: '#9CA3AF' }}>
-              ◇ AGENDA VACÍA
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-dashed border-ink px-4 py-5">
+          <p className="font-mono text-d11 leading-relaxed text-ink-soft">
+            <span className="block font-bold uppercase tracking-widest text-ink">
+              AGENDA VACÍA
             </span>
-            No hay eventos próximos por ahora. Vuelve pronto.
+            No hay eventos próximos por ahora.
           </p>
+          <Link
+            href="/agenda"
+            className="flex min-h-11 items-center border border-ink px-3 font-mono text-d11 uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
+            VER AGENDA →
+          </Link>
         </div>
       ) : (
         <div className="relative">
@@ -399,8 +414,8 @@ export function EventosRail({ items }: EventosRailProps) {
             ))}
           </div>
           {/* Edge fades — signal off-screen content + soften the wrap seam */}
-          <div className="pointer-events-none absolute left-0 top-0 h-full w-12 bg-gradient-to-r from-base to-transparent" />
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-base to-transparent" />
+          <div className="pointer-events-none absolute left-0 top-0 h-full w-12 bg-gradient-to-r from-paper to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-paper to-transparent" />
         </div>
       )}
     </section>

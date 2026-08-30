@@ -15,14 +15,25 @@
 
 import { VIBE_SLOT_COLORS, vibeRangeLabel, clsx } from '@/lib/utils'
 
+export type VibeMeterLightSize = 'sm' | 'md'
+
+// Thickness per variant. 'md' is the original dashboard plate (h-3) and stays
+// the default so every pre-existing call site renders pixel-identically;
+// 'sm' is the feed-card strip (fase B) — same 11 outlined slots, tighter gap.
+const SIZE_CLASS: Record<VibeMeterLightSize, string> = {
+  sm: 'h-1.5 gap-px',
+  md: 'h-3 gap-0.5',
+}
+
 export interface VibeMeterLightProps {
   // Inclusive integer band [lo, hi] in slot space 0–10 (pass the output of
   // effectiveVibeBand or a self-median). null = calibrated plate, nothing lit.
   band: [number, number] | null
+  size?: VibeMeterLightSize
   className?: string
 }
 
-export function VibeMeterLight({ band, className }: VibeMeterLightProps) {
+export function VibeMeterLight({ band, size = 'md', className }: VibeMeterLightProps) {
   const lo =
     band === null ? null : Math.max(0, Math.min(10, Math.round(Math.min(band[0], band[1]))))
   const hi =
@@ -37,7 +48,7 @@ export function VibeMeterLight({ band, className }: VibeMeterLightProps) {
       role="img"
       aria-label={label}
       title={label}
-      className={clsx('flex h-3 w-full gap-0.5', className)}
+      className={clsx('flex w-full', SIZE_CLASS[size], className)}
     >
       {VIBE_SLOT_COLORS.map((color, slot) => {
         const lit = lo !== null && hi !== null && slot >= lo && slot <= hi

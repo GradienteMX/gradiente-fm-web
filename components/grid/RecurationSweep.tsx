@@ -30,6 +30,12 @@ import { useEffect, useRef } from 'react'
 // full mask-and-resolve, because the cards beneath must stay visible and usable
 // the entire time — only a thin moving band is ever opaque.
 //
+// GROUNDS («EL PLIEGO» fase B): on `ground="paper"` the same band paints INK
+// blocks (rgba(17,17,17,…)) instead of grey estática — a printed retune — and
+// the vibe tint is darkened so it holds on the light stock (the thermal-ramp
+// hexes are tuned for the dark ground). Geometry, timing, hash, teardown and
+// the reduced-motion skip are identical in both modes.
+//
 // Photosensitivity: a SINGLE moving band, never a full-frame luminance flash.
 // Luminance change at any pixel is one slow pass of the band, well under 3Hz.
 // reduced-motion: the sweep is skipped entirely (instant, designed static path).
@@ -45,6 +51,9 @@ export interface RecurationSweepProps {
   /** Sweep travel direction. 'down' = top→bottom (default). 'up' lets a caller
    *  bias the origin (e.g. a filter that narrows). Reduced-motion ignores it. */
   direction?: 'down' | 'up'
+  /** Ground the sweep paints over. 'dark' (default) = grey estática blocks;
+   *  'paper' = ink blocks with the vibe tint darkened for the light stock. */
+  ground?: 'dark' | 'paper'
 }
 
 // ── Tunables ────────────────────────────────────────────────────────────────
@@ -86,6 +95,7 @@ export function RecurationSweep({
   signature,
   vibeColor,
   direction = 'down',
+  ground = 'dark',
 }: RecurationSweepProps) {
   // Host element: the sweep mounts its transient canvas as a child of this, so
   // the canvas is positioned/clipped to the grid container the host sits in.
@@ -99,6 +109,8 @@ export function RecurationSweep({
   vibeColorRef.current = vibeColor
   const directionRef = useRef(direction)
   directionRef.current = direction
+  const groundRef = useRef(ground)
+  groundRef.current = ground
 
   useEffect(() => {
     // First signature seen → record it, play nothing. Subsequent distinct
@@ -146,9 +158,19 @@ export function RecurationSweep({
     const cw = (cssW / cols) * dpr
     const ch = (cssH / rows) * dpr
 
-    const [vr, vg, vb] = hexToRgb(vibeColorRef.current)
-    // Grey "estática" base — dim signal grid, matches SignalTransition's GREY.
-    const GREY: [number, number, number] = [0x4a, 0x47, 0x44]
+    const paper = groundRef.current === 'paper'
+    const [vr0, vg0, vb0] = hexToRgb(vibeColorRef.current)
+    // Paper: the thermal-ramp hexes are tuned for the dark ground — darken the
+    // tint so the band core reads as a printed ink accent, not neon on cream.
+    const TINT = paper ? 0.55 : 1
+    const vr = Math.round(vr0 * TINT)
+    const vg = Math.round(vg0 * TINT)
+    const vb = Math.round(vb0 * TINT)
+    // Block base: grey "estática" on the dark ground (matches SignalTransition's
+    // GREY); solid ink (17,17,17) blocks on the paper ground.
+    const BASE: [number, number, number] = paper
+      ? [17, 17, 17]
+      : [0x4a, 0x47, 0x44]
     const dir = directionRef.current
 
     const start = performance.now()
@@ -196,12 +218,13 @@ export function RecurationSweep({
           const alpha = rowAlpha * twinkle
           if (alpha <= 0.01) continue
 
-          // Color: grey estática base, warmed toward the active vibe at the
-          // band core (signal "tuning into" the live vibe). Mix peaks at center.
+          // Color: base blocks (grey estática on dark, ink on paper) warmed
+          // toward the active vibe at the band core (signal "tuning into" the
+          // live vibe). Mix peaks at center.
           const mix = profile * 0.5
-          const r = Math.round(GREY[0] * (1 - mix) + vr * mix)
-          const g = Math.round(GREY[1] * (1 - mix) + vg * mix)
-          const b = Math.round(GREY[2] * (1 - mix) + vb * mix)
+          const r = Math.round(BASE[0] * (1 - mix) + vr * mix)
+          const g = Math.round(BASE[1] * (1 - mix) + vg * mix)
+          const b = Math.round(BASE[2] * (1 - mix) + vb * mix)
 
           ctx.globalAlpha = alpha
           ctx.fillStyle = `rgb(${r},${g},${b})`

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
 import { VIBE_SLOT_COLORS, VIBE_SLOT_NAMES } from '@/lib/utils'
+import { DASH_INK, DASH_PAPER_RAISED } from '@/lib/dashboard/palette'
 import { GENRE_VIBE, getGenreById, getRollup, getRootGenres } from '@/lib/genres'
 
 function clamp(val: number, min: number, max: number) {
@@ -14,28 +15,21 @@ function clamp(val: number, min: number, max: number) {
 // GENRE_VIBE moved to lib/genres.ts so the foro catalog can share it for
 // vibe-filtering threads via their tagged genres.
 
-// Station dial (redesign 2026). Three layers, strict roles:
-//   PLATE — printed scale: numerals + slot names at fixed band centers.
-//           Never moves; in-range labels brighten ("lit plate"), nothing else.
-//   TAPE  — phosphor dash field colored in 11 HARD slot bands (no per-dash
-//           lerp). In-range dashes lit; out-of-range dim to a low-alpha
-//           version of their OWN hue (unlit LEDs on a calibrated scale).
-//   NEEDLES — the two range handles. Only the needles move.
-const MID_COUNT = 120
-const EDGE_COUNT = 40
+// Printed spectrogram strip («EL PLIEGO» fase B). The station dial's phosphor
+// tape is retired; the same range machine now drives a measuring instrument
+// printed on the sheet. Three layers, strict roles:
+//   BAND    — 11 hard slot cells, 1px ink outlines (the VibeMeterLight
+//             convention: outline carries the calibration, paper shows
+//             through unlit cells — never low-alpha washes). In-range cells
+//             fill with their slot hue.
+//   NAMES   — printed slot names under the band. Static plate: in-range
+//             names ink, out-of-range ink-faint.
+//   NEEDLES — the two range handles, 3px ink, taller than the band. Only
+//             the needles move.
 const SLOT_COUNT = 11
 
-// Integer-based hash (Math.imul) — bit-exact across JS engines, avoiding SSR/client drift.
-function hash01(seed: number, salt: number): number {
-  let x = Math.imul(seed | 0, 2654435761) ^ Math.imul(salt | 0, 1597334677)
-  x = Math.imul(x ^ (x >>> 16), 2246822519) | 0
-  x = Math.imul(x ^ (x >>> 13), 3266489917) | 0
-  x = x ^ (x >>> 16)
-  return (x >>> 0) / 4294967296
-}
-
 // Value→position: integer slot v sits at the CENTER of its band, so a
-// detented needle points exactly at its printed numeral. The inverse mapping
+// detented needle points exactly at its printed cell. The inverse mapping
 // lives in getValueFromX.
 function slotCenterPct(v: number): number {
   return ((v + 0.5) / SLOT_COUNT) * 100
@@ -49,31 +43,39 @@ function snapToSlot(v: number): number {
   return Math.round(v)
 }
 
-type Dash = { leftPct: number; bottomPct: number; heightPx: number; slot: number }
+// Focus grammar on paper: 2px ink outline, offset 2.
+const FOCUS_ON_PAPER =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
-const DASHES: Dash[] = (() => {
-  const arr: Dash[] = []
-  const makeRow = (count: number, bottomPct: number, halfStep: boolean, hLo: number, hHi: number, salt: number) => {
-    for (let i = 0; i < count; i++) {
-      const t = (i + (halfStep ? 0.5 : 0)) / count
-      if (t > 0.995) continue
-      arr.push({
-        // Full-scale x — dash bands must line up with the plate's printed
-        // centers (slotCenterPct shares this 0–100 mapping). The 0.995 cutoff
-        // keeps the last dash from overflowing the track's right edge.
-        leftPct: Math.round(t * 10000) / 100,
-        bottomPct,
-        heightPx: hLo + Math.floor(hash01(i, salt) * (hHi - hLo + 1)),
-        // Hard band assignment — every dash belongs to exactly one slot.
-        slot: Math.min(10, Math.floor(t * SLOT_COUNT)),
-      })
-    }
-  }
-  makeRow(MID_COUNT, 50, false, 4, 6, 10)  // middle: dense, thicker dashes → continuous baseline
-  makeRow(EDGE_COUNT, 68, false, 3, 5, 20) // top: sparser
-  makeRow(EDGE_COUNT, 32, true,  3, 5, 30) // bottom: half-step offset from top → saw alternation
-  return arr
-})()
+// ── Readout contrast audit (module scope — deterministic, SSR-safe) ────────
+// The words-only readout may print in the slot hue ONLY when that hue clears
+// 4.5:1 (AA small text) on the strip's paper-raised ground; otherwise ink.
+// As calibrated today only GLACIAL clears — the check stays live so a future
+// slot recalibration upgrades the readout automatically.
+function channelLum(c: number): number {
+  const s = c / 255
+  return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+}
+function relativeLuminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16)
+  return (
+    0.2126 * channelLum((n >> 16) & 0xff) +
+    0.7152 * channelLum((n >> 8) & 0xff) +
+    0.0722 * channelLum(n & 0xff)
+  )
+}
+function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a)
+  const lb = relativeLuminance(b)
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+const READOUT_COLORS: string[] = VIBE_SLOT_COLORS.map((c) =>
+  contrastRatio(c, DASH_PAPER_RAISED) >= 4.5 ? c : DASH_INK,
+)
+
+// Below xl the printed names row shows only the three ruler anchors —
+// eleven names collide once the band shares its row with label + readout.
+const NAME_ANCHORS = [0, 5, 10] as const
 
 // Ballistics + detent transitions collapse to instant under reduced motion.
 function usePrefersReducedMotion(): boolean {
@@ -121,18 +123,13 @@ function VibeSliderImpl() {
   //     replaced an older "always visible when narrowed" rule that left
   //     the chip strip cluttering the surface long after the user had
   //     committed to a range and moved on to scrolling the feed.
-  // Active (orange) filter chips always stay visible — the user needs a
+  // Active (ink-filled) filter chips always stay visible — the user needs a
   // way to see what they've filtered on and clear it. NON-active chips
   // are gated by the same interaction window, so once the user has
-  // committed a filter, the surface settles to just the orange chips and
+  // committed a filter, the surface settles to just the filled chips and
   // hides the rest of the candidates.
   const [pinned, setPinned] = useState(false)
   const [recentInteraction, setRecentInteraction] = useState(false)
-  // The whole fader starts COLLAPSED — just a "//VIBE" toggle row. One click
-  // reveals the tape/needles/plate/chips; a narrowed range keeps its compact
-  // readout + RESET visible even while collapsed so an active filter is never
-  // silently hidden.
-  const [open, setOpen] = useState(false)
   const interactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstInteractionRender = useRef(true)
 
@@ -214,9 +211,9 @@ function VibeSliderImpl() {
   }, [setVibeRange])
 
   // min/max are continuous floats only DURING a drag (release snaps them).
-  // Slot-quantized values drive the lit bands, the plate and the readout, so
-  // whole bands flip as the needle crosses detent boundaries — stepped, not
-  // smeared.
+  // Slot-quantized values drive the lit cells, the names row and the readout,
+  // so whole cells flip as the needle crosses detent boundaries — stepped,
+  // not smeared.
   const minSlot = Math.round(min)
   const maxSlot = Math.round(max)
   const minPercent = slotCenterPct(min)
@@ -258,7 +255,7 @@ function VibeSliderImpl() {
     }
   }
 
-  // PPM ballistics: fast attack when a band lights, slow decay when it dims.
+  // PPM ballistics: fast attack when a cell lights, slow decay when it dims.
   // Per-element duration is chosen by the lit-state it is transitioning INTO.
   const litDuration = (lit: boolean): string =>
     reducedMotion ? '0ms' : lit ? '100ms' : '600ms'
@@ -313,211 +310,207 @@ function VibeSliderImpl() {
   const pinButtonVisible = !chipsVisible || pinned
 
   // Sticky offset = the nav height, centralized as --gr-nav-h in globals.css.
-  // The player lives in a fixed bottom bar now, so no top-strip arithmetic:
-  // one offset on every page. CategoryRail keeps measuring [data-vibe-strip]
+  // The player lives in a fixed bottom bar, so no top-strip arithmetic: one
+  // offset on every page. CategoryRail keeps measuring [data-vibe-strip]
   // for its own placement below.
   return (
     <div
       data-vibe-strip
-      className="sticky z-40 border-y border-border-subtle bg-base"
+      className="sticky z-40 border-y border-ink bg-paper-raised"
       style={{ top: 'var(--gr-nav-h)' }}
     >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
 
-        {/* Header: //VIBE + range readout + RESET. The readout lives in a
-            fixed-width slot (zero-padded slots, longest name pair fits in
-            24ch) so changing the range never reflows the row. RESET is
-            always rendered (toggling `invisible` instead of conditional
-            mount) so the row's height stays stable when the user narrows
-            or resets the range — otherwise the whole strip jumps ~6px. */}
-        <div className="flex items-center justify-between pb-0.5 pt-1 md:pb-1 md:pt-2">
-          <div className="flex min-w-0 items-center gap-2 md:gap-3">
-            {/* The //VIBE label IS the collapse toggle. */}
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-              aria-controls="vibe-fader-body"
-              className="flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-widest text-primary transition-colors hover:text-sys-orange"
+        {/* ── Instrument row: VIBE · band+needles+names · readout · RESET ──
+            One printed line on md+. On phones the band takes its own
+            full-width line (order-last) and the label/readout/RESET share
+            the line above — same DOM, CSS order only. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0 py-1 md:flex-nowrap md:gap-x-4">
+          <span className="order-1 shrink-0 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+            VIBE
+          </span>
+
+          {/* Track column — the band IS the slider; the names row below
+              shares its exact width so printed names register with cells. */}
+          <div className="order-4 w-full md:order-2 md:min-w-0 md:w-auto md:flex-1">
+            <div
+              ref={trackRef}
+              onClick={handleTrackClick}
+              className="relative h-11 cursor-crosshair"
             >
-              <ChevronDown
-                size={11}
-                className={`transition-transform ${open ? 'rotate-180' : ''}`}
+              {/* Band — 11 hard slot cells, shared 1px ink hairlines so cell
+                  centers stay exactly at slotCenterPct. In-range cells fill
+                  with their hue via an opacity layer carrying the PPM
+                  ballistics (fast attack lighting, slow decay dimming);
+                  out-of-range cells are plain paper — the outline carries
+                  the calibration (VibeMeterLight convention). Visual layer
+                  only — pointer-events-none; the track + needles are the
+                  interactive DOM. */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-1/2 flex h-6 -translate-y-1/2"
                 aria-hidden
-              />
-              //VIBE
-            </button>
-            {/* Range readout — while collapsed it only appears when a filter
-                is actually narrowed, so the idle strip is just "//VIBE". */}
-            {(open || !isFullRange) && (
-              <span className="inline-block min-w-[24ch] whitespace-nowrap font-mono text-[10px] tracking-wider">
-                <span style={{ color: VIBE_SLOT_COLORS[minSlot] }}>
-                  {VIBE_SLOT_NAMES[minSlot]}
-                </span>
-                {minSlot !== maxSlot && (
-                  <>
-                    <span className="text-muted"> → </span>
-                    <span style={{ color: VIBE_SLOT_COLORS[maxSlot] }}>
-                      {VIBE_SLOT_NAMES[maxSlot]}
+              >
+                {VIBE_SLOT_COLORS.map((color, slot) => {
+                  const lit = slot >= minSlot && slot <= maxSlot
+                  return (
+                    <div
+                      key={slot}
+                      className="relative min-w-0 flex-1 border-y border-l border-ink last:border-r"
+                    >
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundColor: color,
+                          opacity: lit ? 1 : 0,
+                          transitionProperty: 'opacity',
+                          transitionTimingFunction: 'linear',
+                          transitionDuration: litDuration(lit),
+                        }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Min needle — 3px ink line taller than the band, wide
+                  invisible drag target (≥44px both axes). */}
+              <div
+                role="slider"
+                tabIndex={0}
+                aria-label="Vibe mínimo"
+                aria-orientation="horizontal"
+                aria-valuemin={0}
+                aria-valuemax={10}
+                aria-valuenow={minSlot}
+                aria-valuetext={VIBE_SLOT_NAMES[minSlot]}
+                className={`absolute inset-y-0 w-11 -translate-x-1/2 cursor-col-resize touch-none ${FOCUS_ON_PAPER}`}
+                style={{ left: `${minPercent}%`, transition: needleTransition(dragHandle === 'min') }}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  draggingRef.current = 'min'
+                  setDragHandle('min')
+                }}
+                onKeyDown={handleKeyDown('min')}
+              >
+                <div className="mx-auto h-full w-[3px] bg-ink" />
+              </div>
+
+              {/* Max needle */}
+              <div
+                role="slider"
+                tabIndex={0}
+                aria-label="Vibe máximo"
+                aria-orientation="horizontal"
+                aria-valuemin={0}
+                aria-valuemax={10}
+                aria-valuenow={maxSlot}
+                aria-valuetext={VIBE_SLOT_NAMES[maxSlot]}
+                className={`absolute inset-y-0 w-11 -translate-x-1/2 cursor-col-resize touch-none ${FOCUS_ON_PAPER}`}
+                style={{ left: `${maxPercent}%`, transition: needleTransition(dragHandle === 'max') }}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  draggingRef.current = 'max'
+                  setDragHandle('max')
+                }}
+                onKeyDown={handleKeyDown('max')}
+              >
+                <div className="mx-auto h-full w-[3px] bg-ink" />
+              </div>
+            </div>
+
+            {/* Printed slot names — static plate under the band. In-range
+                names ink, out-of-range ink-faint, on the same attack/decay
+                ballistics as the cells. Eleven names only fit on xl; below
+                that the three ruler anchors print flush left / center /
+                right. */}
+            <div className="relative h-4 xl:hidden" aria-hidden>
+              <div className="flex h-full items-start justify-between font-mono text-d11 tracking-wider">
+                {NAME_ANCHORS.map((slot) => {
+                  const lit = slot >= minSlot && slot <= maxSlot
+                  return (
+                    <span
+                      key={slot}
+                      className={`transition-colors ${lit ? 'text-ink' : 'text-ink-faint'}`}
+                      style={{ transitionDuration: litDuration(lit) }}
+                    >
+                      {VIBE_SLOT_NAMES[slot]}
                     </span>
-                  </>
-                )}
-              </span>
-            )}
+                  )
+                })}
+              </div>
+            </div>
+            <div className="relative hidden h-4 xl:block" aria-hidden>
+              {VIBE_SLOT_NAMES.map((name, i) => {
+                const lit = i >= minSlot && i <= maxSlot
+                return (
+                  <span
+                    key={name}
+                    className={`absolute top-0 -translate-x-1/2 whitespace-nowrap font-mono text-d11 tracking-wider transition-colors ${
+                      lit ? 'text-ink' : 'text-ink-faint'
+                    }`}
+                    style={{ left: `${slotCenterPct(i)}%`, transitionDuration: litDuration(lit) }}
+                  >
+                    {name}
+                  </span>
+                )
+              })}
+            </div>
           </div>
+
+          {/* Words-only readout — reserved width so a changing range never
+              reflows the row. Word color = slot hue only where it clears
+              AA on paper (READOUT_COLORS audit above), ink otherwise.
+              Never numbers. */}
+          <span className="order-2 ml-auto inline-block min-w-[17ch] whitespace-nowrap text-right font-mono text-d11 tracking-wider md:order-3 md:ml-0">
+            <span style={{ color: READOUT_COLORS[minSlot] }}>
+              {VIBE_SLOT_NAMES[minSlot]}
+            </span>
+            {minSlot !== maxSlot && (
+              <>
+                <span className="text-ink-faint"> → </span>
+                <span style={{ color: READOUT_COLORS[maxSlot] }}>
+                  {VIBE_SLOT_NAMES[maxSlot]}
+                </span>
+              </>
+            )}
+          </span>
+
+          {/* RESET — always rendered (toggling `invisible`, not conditional
+              mount) so the row never reflows when the user narrows or
+              resets the range. */}
           <button
             onClick={() => setVibeRange([0, 10])}
             aria-hidden={isFullRange}
             tabIndex={isFullRange ? -1 : 0}
-            className={`border border-sys-orange/50 bg-base px-2 py-0.5 font-mono text-[10px] tracking-widest text-sys-orange transition-colors hover:bg-sys-orange hover:text-black ${
+            className={`group order-3 flex min-h-11 shrink-0 items-center md:order-4 ${FOCUS_ON_PAPER} ${
               isFullRange ? 'pointer-events-none invisible' : ''
             }`}
           >
-            RESET
+            <span className="border border-ink px-2 py-0.5 font-mono text-d11 tracking-widest text-ink transition-colors group-hover:bg-ink group-hover:text-paper">
+              RESET
+            </span>
           </button>
         </div>
-
-        {/* ── Collapsible fader body: tape + needles + printed plate ── */}
-        {open && (
-        <div id="vibe-fader-body">
-        {/* ── The tape band IS the slider ── */}
-        <div
-          className="relative h-7 cursor-crosshair md:h-10"
-          ref={trackRef}
-          onClick={handleTrackClick}
-        >
-          {/* Tape — the phosphor "station-dial" detail: 200 deterministic dashes
-              colored by their hard thermal slot, lit inside the selected range
-              and dimmed (low-alpha same hue) outside it, with PPM ballistics
-              (fast attack lighting, slow decay leaving) via the per-dash
-              transition. Visual layer only — the needles/plate/readout/chips are
-              the interactive DOM on top; this is pointer-events-none. */}
-          <div className="pointer-events-none absolute inset-0">
-            {DASHES.map((d, i) => {
-              const lit = d.slot >= minSlot && d.slot <= maxSlot
-              const color = VIBE_SLOT_COLORS[d.slot]
-              return (
-                <div
-                  key={i}
-                  style={{
-                    position: 'absolute',
-                    left: `${d.leftPct}%`,
-                    bottom: `${d.bottomPct}%`,
-                    width: '2.5px',
-                    height: `${d.heightPx}px`,
-                    backgroundColor: color,
-                    opacity: lit ? 1 : 0.16,
-                    boxShadow: lit ? `0 0 3px ${color}` : 'none',
-                    transitionProperty: 'opacity, box-shadow',
-                    transitionTimingFunction: 'linear',
-                    transitionDuration: litDuration(lit),
-                  }}
-                />
-              )
-            })}
-          </div>
-
-          {/* Min needle — thin line + grip cap, wide drag target */}
-          <div
-            role="slider"
-            tabIndex={0}
-            aria-label="Vibe mínimo"
-            aria-orientation="horizontal"
-            aria-valuemin={0}
-            aria-valuemax={10}
-            aria-valuenow={minSlot}
-            aria-valuetext={`${minSlot} · ${VIBE_SLOT_NAMES[minSlot]}`}
-            className="absolute inset-y-0 w-7 -translate-x-1/2 cursor-col-resize touch-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/70"
-            style={{ left: `${minPercent}%`, transition: needleTransition(dragHandle === 'min') }}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              draggingRef.current = 'min'
-              setDragHandle('min')
-            }}
-            onKeyDown={handleKeyDown('min')}
-          >
-            <div className="mx-auto h-full w-[1.5px] bg-white shadow-[0_0_4px_rgba(255,255,255,0.7)]" />
-            <div className="absolute left-1/2 top-0 h-[5px] w-[7px] -translate-x-1/2 bg-white" />
-          </div>
-
-          {/* Max needle */}
-          <div
-            role="slider"
-            tabIndex={0}
-            aria-label="Vibe máximo"
-            aria-orientation="horizontal"
-            aria-valuemin={0}
-            aria-valuemax={10}
-            aria-valuenow={maxSlot}
-            aria-valuetext={`${maxSlot} · ${VIBE_SLOT_NAMES[maxSlot]}`}
-            className="absolute inset-y-0 w-7 -translate-x-1/2 cursor-col-resize touch-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/70"
-            style={{ left: `${maxPercent}%`, transition: needleTransition(dragHandle === 'max') }}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              draggingRef.current = 'max'
-              setDragHandle('max')
-            }}
-            onKeyDown={handleKeyDown('max')}
-          >
-            <div className="mx-auto h-full w-[1.5px] bg-white shadow-[0_0_4px_rgba(255,255,255,0.7)]" />
-            <div className="absolute left-1/2 top-0 h-[5px] w-[7px] -translate-x-1/2 bg-white" />
-          </div>
-        </div>
-
-        {/* Scale plate — printed and STATIC. Tick + numeral (+ name on md+)
-            at each band center; the needles cross it, the plate never moves.
-            In-range labels brighten (muted → secondary) on the same
-            attack/decay ballistics as the tape. */}
-        <div className="relative mb-1 h-[15px] md:h-[26px]" aria-hidden>
-          {VIBE_SLOT_NAMES.map((name, i) => {
-            const lit = i >= minSlot && i <= maxSlot
-            const duration = { transitionDuration: litDuration(lit) }
-            return (
-              <div
-                key={name}
-                className="absolute top-0 -translate-x-1/2 text-center"
-                style={{ left: `${slotCenterPct(i)}%` }}
-              >
-                <div
-                  className={`mx-auto mb-px h-[3px] w-px transition-colors ${lit ? 'bg-secondary' : 'bg-muted'}`}
-                  style={duration}
-                />
-                <div
-                  className={`hidden font-mono text-[8px] leading-tight tracking-wider transition-colors md:block ${lit ? 'text-secondary' : 'text-muted'}`}
-                  style={duration}
-                >
-                  {name}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        </div>
-        )}
-
       </div>
 
       {/* ── Lower band: pin + genre chips ──
           Visibility is tied to interaction, not range:
           - Slider moves → chips fade in, stay open while dragging, fade
             back out 2s after the last range change (see the
-            recentSliderInteraction effect above).
+            recentInteraction effect above).
           - Active filters → always visible (the user needs to see / clear
             them).
           - Pin button → forces them visible indefinitely. Auto-hides when
             chips are already up for another reason.
           - Otherwise (full range idle, or narrowed range gone idle) →
             hidden. */}
-      {open && (
-      <div className="bg-base px-4 pb-1 pt-1 md:px-8 md:pb-3 md:pt-2">
+      <div className="px-4 md:px-8">
         <div className="mx-auto max-w-screen-2xl">
-          {/* The row's height is content-driven now — when chips are
-              hidden, the row collapses to just the pin button's height
-              (~22px) instead of holding ~56px of dead space. The trade-
-              off: each slider interaction causes a small vertical
-              shift below as chips fade in/out. The chips container
-              animates `max-height` in lockstep with `opacity` (both
-              200ms) so the collapse reads smooth, not janky. */}
+          {/* The row's height is content-driven — when chips are hidden,
+              the row collapses to just the pin button's height instead of
+              holding dead space. The chips container animates `max-height`
+              in lockstep with `opacity` (both 200ms) so the collapse reads
+              smooth, not janky. */}
           <div className="flex items-start gap-2">
             {/* Pin pill — only rendered when it would actually do
                 something useful (chips hidden by default OR user has
@@ -528,14 +521,16 @@ function VibeSliderImpl() {
                 onClick={() => setPinned((v) => !v)}
                 aria-expanded={pinned}
                 aria-controls="vibe-genres-panel"
-                className="flex shrink-0 items-center gap-1.5 border border-border/70 bg-base px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-white"
+                className={`group flex min-h-11 shrink-0 items-center ${FOCUS_ON_PAPER}`}
               >
-                <ChevronDown
-                  size={11}
-                  className={`transition-transform ${pinned ? 'rotate-180' : ''}`}
-                  aria-hidden
-                />
-                {pinned ? 'OCULTAR' : `+ ${allGenreIds.length} GÉNEROS`}
+                <span className="flex items-center gap-1.5 border border-ink px-2 py-0.5 font-mono text-d11 font-bold tracking-widest text-ink transition-colors group-hover:bg-ink group-hover:text-paper">
+                  <ChevronDown
+                    size={11}
+                    className={`transition-transform ${pinned ? 'rotate-180' : ''}`}
+                    aria-hidden
+                  />
+                  {pinned ? 'OCULTAR' : `+ ${allGenreIds.length} GÉNEROS`}
+                </span>
               </button>
             )}
 
@@ -550,7 +545,7 @@ function VibeSliderImpl() {
               id="vibe-genres-panel"
               className={`flex min-w-0 flex-1 flex-wrap items-start content-start overflow-y-auto transition-[opacity,max-height] duration-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
                 chipsVisible
-                  ? 'max-h-[7rem] opacity-100'
+                  ? 'max-h-[9rem] opacity-100'
                   : 'pointer-events-none max-h-0 opacity-0'
               }`}
               aria-hidden={!chipsVisible}
@@ -572,12 +567,13 @@ function VibeSliderImpl() {
                     })()
                 // Per-chip visibility:
                 //   - pinned (browse-all override) → always visible
-                //   - active (orange) filter → always visible (user can clear it)
+                //   - active (ink-filled) filter → always visible (user can
+                //     clear it)
                 //   - narrowed range AND in feed AND recent interaction →
                 //     transiently visible. Non-active chips follow the same
                 //     2s window as the container, so once the user has
                 //     committed a filter, the strip settles to just the
-                //     orange chips and hides the rest of the candidates.
+                //     filled chips and hides the rest of the candidates.
                 // At full range without pin, every genre tends to be
                 // "in feed" — so we suppress the in-feed path there to
                 // keep active filters visually focused.
@@ -598,17 +594,21 @@ function VibeSliderImpl() {
                         ? `Quitar filtro: ${name}`
                         : `Filtrar por ${name}`
                     }
-                    className={`overflow-hidden whitespace-nowrap border font-mono text-[10px] font-bold tracking-wider transition-all duration-200 md:text-[11px] ${
+                    className={`group flex min-h-11 items-center overflow-hidden whitespace-nowrap transition-[max-width,margin,opacity] duration-200 ${FOCUS_ON_PAPER} ${
                       chipVisible
-                        ? 'mb-1.5 mr-1.5 max-w-[18rem] px-1.5 py-px opacity-100'
-                        : 'pointer-events-none mb-0 mr-0 max-w-0 border-transparent px-0 py-px opacity-0'
-                    } ${
-                      active
-                        ? 'border-sys-orange bg-sys-orange text-black shadow-[0_0_6px_rgba(249,115,22,0.55)]'
-                        : 'border-border/40 bg-base text-secondary hover:border-white/60 hover:text-white'
+                        ? 'mr-1.5 max-w-[18rem] opacity-100'
+                        : 'pointer-events-none mr-0 max-w-0 opacity-0'
                     }`}
                   >
-                    {name}
+                    <span
+                      className={`border border-ink px-1.5 py-px font-mono text-d11 font-bold tracking-wider transition-colors ${
+                        active
+                          ? 'bg-ink text-paper'
+                          : 'bg-transparent text-ink group-hover:bg-ink group-hover:text-paper'
+                      }`}
+                    >
+                      {name}
+                    </span>
                   </button>
                 )
               })}
@@ -616,7 +616,6 @@ function VibeSliderImpl() {
           </div>
         </div>
       </div>
-      )}
     </div>
   )
 }
