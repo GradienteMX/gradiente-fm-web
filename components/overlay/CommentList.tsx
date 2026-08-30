@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -233,8 +234,20 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
       <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[10px] tracking-widest">
         {author ? (
           <>
-            {/* Plain span on purpose — profile links open in fase E. */}
-            <span className="font-bold text-ink">@{author.username}</span>
+            {/* Fase E door: @username links to the public expediente.
+                stopPropagation so row interactions don't also fire. Guarded —
+                authors without a username keep the plain span. */}
+            {author.username ? (
+              <Link
+                href={`/u/${author.username}`}
+                onClick={(e) => e.stopPropagation()}
+                className={`font-bold text-ink underline-offset-2 transition-colors hover:text-sys-red-paper hover:underline ${FOCUS_RING}`}
+              >
+                @{author.username}
+              </Link>
+            ) : (
+              <span className="font-bold text-ink">@{author.username}</span>
+            )}
             <AuthorBadges author={author} />
             {isOwn && (
               <span className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] font-bold text-ink">

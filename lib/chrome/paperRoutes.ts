@@ -20,6 +20,8 @@ export const PAPER_ROUTES = [
   '/reviews',
   '/opinion',
   '/articulos',
+  // fase E — the expediente
+  '/u',
 ] as const
 
 export function isPaperRoute(pathname: string): boolean {

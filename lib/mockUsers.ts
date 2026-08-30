@@ -171,9 +171,10 @@ export const RANK_COLOR: Record<UserRank, string> = {
 // staff carry their role chip as their identity marker and don't need
 // the additional frame. NORMIE has no frame (no progression yet).
 //
-// Returns inline-style props (border + boxShadow) — callers spread them
-// onto the avatar container element. Tailwind can't generate dynamic
-// colors per render, so inline is the cleanest path.
+// Returns inline-style props (border only — no glow: the frame renders on
+// paper surfaces now) — callers spread them onto the avatar container
+// element. Tailwind can't generate dynamic colors per render, so inline is
+// the cleanest path.
 export interface AvatarFrameStyle {
   borderColor?: string
   borderWidth?: string
@@ -189,7 +190,6 @@ export function avatarFrameStyle(user: User, rank: UserRank): AvatarFrameStyle {
   return {
     borderColor: color,
     borderWidth: '2px',
-    boxShadow: `0 0 10px color-mix(in srgb, ${color} 30%, transparent)`,
   }
 }
 

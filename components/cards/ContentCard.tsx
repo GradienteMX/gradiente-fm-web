@@ -468,6 +468,7 @@ function MdCard({ item, isFresh }: CardVariantProps) {
               {item.readTime} min
             </span>
           )}
+          <CreatorChip item={item} dim />
           {genres.slice(0, 2).map(({ id, name }) => (
             <GenreChipButton
               key={id}
