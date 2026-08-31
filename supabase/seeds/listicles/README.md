@@ -47,3 +47,5 @@ de verificación de datos.
 |---|---|---|---|---|
 | 01 | `01-touch-cinco-discos.sql` | 6 discos clásicos de Touch (y un pilón) | `lalo_timestretch` | `touch.gif` |
 | 02 | `02-nivel-acuatico.sql` | 7 rolas bien acuáticas | `Nena Tempest` | pendiente |
+| 03 | `03-hipnagogico-2007-2012.sql` | 8 discos esenciales del hypnagogic pop, 2007-2012 | `Naty Geocities` | `2008.gif` |
+| 04 | `04-rave-gigantes-esotericos.sql` | 8 gigantes esotéricos del rave, 1990-1994 | `Chava Rufige` | `rave.gif` |
