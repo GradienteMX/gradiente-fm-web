@@ -389,6 +389,12 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
           item.type === 'evento' &&
           !!item.date &&
           parseISO(item.date).getTime() < Date.now()
+        // The cell's real aspect, from the same clamp MosaicItem applies —
+        // MdCard picks side-vs-top art plate from THIS, never from the
+        // content type (SHAPE_CYCLE reassigns shapes across types, and the
+        // phone clamp reshapes cells; see CardOrientation in ContentCard).
+        const effColSpan = Math.min(layout.colSpan, cols)
+        const orientation = effColSpan >= layout.rowSpan ? 'wide' : 'tall'
         return (
           <MosaicItem
             key={item.id}
@@ -399,7 +405,11 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
             isPast={isPast}
             animateLayout={animateLayout}
           >
-            <ContentCard item={item} size={layout.tier === 'xl' ? 'lg' : layout.tier} />
+            <ContentCard
+              item={item}
+              size={layout.tier === 'xl' ? 'lg' : layout.tier}
+              orientation={orientation}
+            />
           </MosaicItem>
         )
       })}

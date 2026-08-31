@@ -700,3 +700,43 @@ html.paper-route ::-webkit-scrollbar-thumb:hover {
     box-shadow: 1.5px 0 0 0 rgba(196, 43, 32, 0.55);
   }
 }
+
+/* ── The «ficha» wipe (ContentCard dense face) ─────────────────────────────
+   The dense caption card slides up over the resting poster like a spec
+   sheet fed through a platen: a bottom-to-top clip-path wipe plus a 10px
+   rise of the sheet itself. Directional and mechanical — a roller pass,
+   not a dissolve — so the poster underneath never visibly changes crop.
+
+   Timing is asymmetric on purpose: entry is a 220ms ease-out pass gated by
+   a 60ms hover-intent delay (skimming the cursor across the mosaic must
+   not strobe the cards it crosses); exit is a fast 130ms release with NO
+   delay. The delay lives on the hovered state's transition so it applies
+   entering only.
+
+   `.content-card` is the wrapper hook (also carries Tailwind's `group` for
+   the pointer-events flip in ContentCard). :focus-within mirrors :hover so
+   keyboard reveal takes the same pass. Reduced motion falls back to the
+   instant cut — the pre-wipe behavior, kept deliberately. */
+.card-face-dense {
+  clip-path: inset(100% 0 0 0);
+  transform: translateY(10px);
+  transition:
+    clip-path 130ms cubic-bezier(0.3, 0, 0.7, 1),
+    transform 130ms cubic-bezier(0.3, 0, 0.7, 1);
+}
+.content-card:hover .card-face-dense,
+.content-card:focus-within .card-face-dense {
+  clip-path: inset(0 0 0 0);
+  transform: translateY(0);
+  transition:
+    clip-path 220ms cubic-bezier(0.16, 1, 0.3, 1) 60ms,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1) 60ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-face-dense,
+  .content-card:hover .card-face-dense,
+  .content-card:focus-within .card-face-dense {
+    transition: none;
+    transform: none;
+  }
+}

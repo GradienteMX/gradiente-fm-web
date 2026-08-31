@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { SmartImage } from '@/components/SmartImage'
 import type { ContentItem } from '@/lib/types'
 import {
+  categoryColor,
   effectiveVibeBand,
   vibeMid,
   fmtDateShort,
@@ -18,7 +19,6 @@ import { getGenreById, getTagNames } from '@/lib/genres'
 import { franjaAttributionPrefix } from '@/lib/franjaAttribution'
 import {
   categoryColorOnLight,
-  typeCode,
   typeDisplayLabel,
   PANEL_SCRIM_GRADIENT,
 } from '@/lib/dashboard/palette'
@@ -59,15 +59,51 @@ function genreEntries(ids: string[], limit: number) {
 
 export type CardSize = 'sm' | 'md' | 'lg'
 
+// The rendered cell's aspect, computed by ContentGrid from the ACTUAL
+// (clamped) grid spans. MD_GEOMETRY's type mapping is NOT a reliable proxy:
+// rankItems' SHAPE_CYCLE variety pass hands any type a wide 2×1 (or tall
+// 1×2) to break up runs of squares, and the phone clamp reshapes cells too.
+// A text-type card in a 150px-tall wide bar with the tall top-plate layout
+// starves the caption until the line-clamped title collapses to 0px.
+export type CardOrientation = 'wide' | 'tall'
+
 // Shared props for the three size variants.
 interface CardVariantProps {
   item: ContentItem
   isFresh: boolean
+  artSizes: string
+  orientation?: CardOrientation
+}
+
+// One `sizes` string per card, shared by BOTH faces (poster + dense) so the
+// browser resolves the same srcset entry and downloads the artwork exactly
+// once per card. The dense face's side/top plate is narrower than the poster,
+// but re-using the already-fetched larger file costs zero extra egress —
+// diverging `sizes` attrs would trigger a second download per card.
+// Width follows the actual cell: lg spans 2-3 cols, md spans 2 cols when the
+// cell is wide and 1 col when tall (type heuristic only as a fallback for
+// wirers that pass no orientation), sm is 1 col.
+function cardArtSizes(
+  item: ContentItem,
+  size: CardSize,
+  orientation?: CardOrientation,
+): string {
+  if (size === 'lg') return '(max-width: 1024px) 100vw, 66vw'
+  if (size === 'md') {
+    const wide = orientation
+      ? orientation === 'wide'
+      : item.type === 'mix' || item.type === 'franja'
+    return wide
+      ? '(max-width: 640px) 100vw, 66vw'
+      : '(max-width: 640px) 50vw, 33vw'
+  }
+  return '(max-width: 640px) 50vw, 25vw'
 }
 
 interface ContentCardProps {
   item: ContentItem
   size?: CardSize
+  orientation?: CardOrientation
 }
 
 // ── Publisher-only HL chip ────────────────────────────────────────────────
@@ -106,19 +142,21 @@ function PublisherHlChip({ item }: { item: ContentItem }) {
 
 // ── Creator chip ──────────────────────────────────────────────────────────
 //
-// Renders @username linked to /u/[username]. stopPropagation so the link
-// doesn't also trigger the card's overlay-open. Kept distinct from the
-// `item.author` byline string — the chip is the actual platform identity,
-// while `author` is editorial free-text ("Redacción Espectro", etc.).
-function CreatorChip({ item, dim = false }: { item: ContentItem; dim?: boolean }) {
+// Renders @username linked to /u/[username] as a STAMPED BYLINE: 1px ink
+// hairline + hover fill-inversion, which is the clickable-chip grammar on
+// paper (GenreChipButton ground='paper', poll chip, TICKETS → all speak it).
+// Bare grey text is precisely what does NOT read as clickable in this
+// system — that's why the free-text `item.author` byline ("Redacción
+// Gradiente", etc.) stays plain: platform identity you can visit vs printed
+// editorial credit become visually distinct registers.
+// stopPropagation so the link doesn't also trigger the card's overlay-open.
+function CreatorChip({ item }: { item: ContentItem }) {
   if (!item.creator) return null
   return (
     <Link
       href={`/u/${item.creator.username}`}
       onClick={(e) => e.stopPropagation()}
-      className={`font-mono text-[9px] tracking-wide transition-colors hover:text-sys-red-paper ${
-        dim ? 'text-ink-faint' : 'text-ink-soft'
-      }`}
+      className="border border-ink px-1.5 py-0.5 font-mono text-[10px] tracking-wide text-ink transition-colors hover:bg-ink hover:text-panel-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
       title={`Perfil de ${item.creator.displayName}`}
     >
       @{item.creator.username}
@@ -172,9 +210,10 @@ function FranjaAttributionChip({ item }: { item: ContentItem }) {
 
 // ── Type chip ─────────────────────────────────────────────────────────────
 //
-// The caption's identity mark: 9px category swatch + 2-letter code + display
-// label. Category color is never the only signal — the code rides beside the
-// swatch (review/articulo ambers alias by design).
+// The caption's identity mark: 9px category swatch + display label. The
+// 2-letter code was dropped (Iker, 2026-08-30): beside the full word it was
+// pure redundancy («LI · LISTA»). Color is still never the only signal — the
+// WORD carries it; the swatch pairs the label with the kicker dash's hue.
 function TypeChip({ item }: { item: ContentItem }) {
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
@@ -183,7 +222,7 @@ function TypeChip({ item }: { item: ContentItem }) {
         className="h-[9px] w-[9px] shrink-0"
         style={{ backgroundColor: categoryColorOnLight(item.type) }}
       />
-      {typeCode(item.type)} · {typeDisplayLabel(item.type)}
+      {typeDisplayLabel(item.type)}
     </span>
   )
 }
@@ -194,7 +233,7 @@ function TypeChip({ item }: { item: ContentItem }) {
 // BORRADOR, PASADO) + franja stamp + publisher-only HL. Living in the
 // caption zone — not over the artwork — is the fase-B move: no scrims, no
 // backdrop-blur.
-function ChipRow({ item, isFresh }: CardVariantProps) {
+function ChipRow({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
   const isDraftOnly = item._draftState === 'draft'
   const past = item.type === 'evento' && isExpired(item)
   return (
@@ -328,15 +367,81 @@ function CardMeter({ item, padForPoll = false }: { item: ContentItem; padForPoll
   )
 }
 
+// ── Poster face — the resting state of every tier ─────────────────────────────
+//
+// The card as a gig poster: full-bleed artwork with the title (+ subtitle on
+// md/lg) seated on the ink scrim slab, plus the event date sticker. Nothing
+// else — the meter, chips, meta and genres live on the dense face, which
+// replaces this one on hover/keyboard focus (see ContentCardImpl). The
+// image-forward law made structural: at rest the artwork IS the card.
+function PosterFace({
+  item,
+  size,
+  artSizes,
+}: {
+  item: ContentItem
+  size: CardSize
+  artSizes: string
+}) {
+  const titleClass =
+    size === 'lg'
+      ? 'text-2xl md:text-3xl'
+      : size === 'md'
+        ? 'text-lg'
+        : 'text-sm'
+  const slabPad = size === 'lg' ? 'px-5 pb-4' : size === 'md' ? 'px-3 pb-3' : 'px-2.5 pb-2.5'
+
+  return (
+    <article className="relative flex h-full flex-col overflow-hidden border border-ink bg-paper-raised">
+      <ArtPlate item={item} sizes={artSizes} className="min-h-0 flex-1">
+        <div
+          className={`absolute inset-x-0 bottom-0 flex items-end gap-3 pt-7 ${slabPad}`}
+          style={{ background: PANEL_SCRIM_GRADIENT }}
+        >
+          <div className="min-w-0 flex-1">
+            {/* Kicker dash — the type signal at rest: a short category-
+                colored rule where a magazine kicker would sit. Color-only ON
+                PURPOSE (a sanctioned bend of the never-color-alone law): the
+                poster face is aria-hidden, so AT reads the dense face's full
+                swatch+code+word pairing, and the complete signal is one
+                hover away — this is the pre-attentive scan layer, not the
+                system of record. categoryColor (lib/utils) is the DARK-ground
+                palette: the dash sits on the ink scrim, not on cream. */}
+            <span
+              aria-hidden
+              className={`mb-1.5 block h-1 ${size === 'lg' ? 'w-9' : 'w-7'}`}
+              style={{ backgroundColor: categoryColor(item.type) }}
+            />
+            <h2
+              className={`font-syne ${titleClass} font-black leading-tight text-panel-text ${
+                size === 'lg' ? '' : 'line-clamp-3'
+              }`}
+            >
+              {item.title}
+            </h2>
+            {item.subtitle && size !== 'sm' && (
+              <p className="mt-1 font-mono text-xs text-panel-text/80 line-clamp-1">
+                {item.subtitle}
+              </p>
+            )}
+          </div>
+
+          <DateChip item={item} size={size} />
+        </div>
+      </ArtPlate>
+    </article>
+  )
+}
+
 // ── SM card — 1×1: side art plate + caption column ───────────────────────────
-function SmCard({ item, isFresh }: CardVariantProps) {
+function SmCard({ item, isFresh, artSizes }: CardVariantProps) {
   const genres = genreEntries(item.genres, 2)
 
   return (
-    <article className="group relative flex h-full cursor-pointer overflow-hidden border border-ink bg-paper-raised">
+    <article className="relative flex h-full cursor-pointer overflow-hidden border border-ink bg-paper-raised">
       <ArtPlate
         item={item}
-        sizes="(max-width: 640px) 25vw, 15vw"
+        sizes={artSizes}
         className="w-[38%] shrink-0 border-r border-ink"
       >
         <div className="absolute bottom-2 left-2 z-10">
@@ -347,7 +452,7 @@ function SmCard({ item, isFresh }: CardVariantProps) {
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2.5">
         <CardMeter item={item} padForPoll />
         <ChipRow item={item} isFresh={isFresh} />
-        <h2 className="font-syne text-sm font-black leading-tight text-ink line-clamp-3 group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2">
+        <h2 className="shrink-0 font-syne text-sm font-black leading-tight text-ink line-clamp-3">
           {item.title}
         </h2>
 
@@ -363,7 +468,7 @@ function SmCard({ item, isFresh }: CardVariantProps) {
           {item.author && (
             <span className="font-mono text-[9px] text-ink-faint">{item.author}</span>
           )}
-          <CreatorChip item={item} dim />
+          <CreatorChip item={item} />
         </div>
 
         {genres.length > 0 && (
@@ -381,38 +486,36 @@ function SmCard({ item, isFresh }: CardVariantProps) {
           </div>
         )}
       </div>
-
-      <PollCardCanvas item={item} />
     </article>
   )
 }
 
 // ── MD card — 2×1 (wide) or 1×2 (tall) ──────────────────────────────────────
 //
-// Orientation mirrors lib/curation.ts MD_GEOMETRY (read-only contract):
-// visual types (mix/franja) get wide 2×1 cells → side art plate; text types
-// get tall 1×2 cells → top art plate; evento md is a 1×1 square, where the
-// side plate reads best too.
-function MdCard({ item, isFresh }: CardVariantProps) {
+// Orientation follows the ACTUAL rendered cell (passed down from ContentGrid,
+// clamped spans): wide or square → side art plate, tall → top art plate. It
+// must NOT be inferred from the content type — MD_GEOMETRY's mapping is only
+// the spawn shape, and rankItems' SHAPE_CYCLE variety pass reassigns any type
+// into a wide 2×1 bar; a text type in a 150px bar with the tall layout
+// starves the caption until the clamped title collapses. The type heuristic
+// survives only as a fallback for wirers that pass no orientation.
+function MdCard({ item, isFresh, artSizes, orientation }: CardVariantProps) {
   const genres = genreEntries(item.genres, 3)
   const time = item.date ? fmtTime(item.date) : ''
   const isMix = item.type === 'mix'
-  const sideArt =
-    item.type === 'mix' || item.type === 'franja' || item.type === 'evento'
+  const sideArt = orientation
+    ? orientation === 'wide'
+    : item.type === 'mix' || item.type === 'franja' || item.type === 'evento'
 
   return (
     <article
-      className={`group relative flex h-full cursor-pointer overflow-hidden border border-ink bg-paper-raised ${
+      className={`relative flex h-full cursor-pointer overflow-hidden border border-ink bg-paper-raised ${
         sideArt ? 'flex-row' : 'flex-col'
       }`}
     >
       <ArtPlate
         item={item}
-        sizes={
-          sideArt
-            ? '(max-width: 640px) 40vw, 25vw'
-            : '(max-width: 640px) 50vw, 33vw'
-        }
+        sizes={artSizes}
         className={
           sideArt
             ? 'w-[42%] shrink-0 border-r border-ink'
@@ -439,7 +542,10 @@ function MdCard({ item, isFresh }: CardVariantProps) {
           </div>
         )}
 
-        <h2 className="font-syne text-lg font-black leading-tight text-ink line-clamp-2 group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2">
+        {/* shrink-0: a line-clamped block's min-content height is ~0, so in
+            an overconstrained caption it silently collapses before anything
+            else — the title must never be the first thing to go. */}
+        <h2 className="shrink-0 font-syne text-lg font-black leading-tight text-ink line-clamp-2">
           {item.title}
         </h2>
 
@@ -468,7 +574,7 @@ function MdCard({ item, isFresh }: CardVariantProps) {
               {item.readTime} min
             </span>
           )}
-          <CreatorChip item={item} dim />
+          <CreatorChip item={item} />
           {genres.slice(0, 2).map(({ id, name }) => (
             <GenreChipButton
               key={id}
@@ -487,8 +593,6 @@ function MdCard({ item, isFresh }: CardVariantProps) {
           )}
         </div>
       </div>
-
-      <PollCardCanvas item={item} />
     </article>
   )
 }
@@ -500,15 +604,15 @@ function MdCard({ item, isFresh }: CardVariantProps) {
 // type; the consuming block pads its top by the ramp height (pt-7 = 28px)
 // so no glyph ever rides the fade. Below, a bottom caption bar on paper
 // (border-t border-ink) carries the meter, chip row + meta.
-function LgCard({ item, isFresh }: CardVariantProps) {
+function LgCard({ item, isFresh, artSizes }: CardVariantProps) {
   const genres = genreEntries(item.genres, 4)
   const tags = getTagNames(item.tags).slice(0, 4)
 
   return (
-    <article className="group relative flex h-full cursor-pointer flex-col overflow-hidden border border-ink bg-paper-raised">
+    <article className="relative flex h-full cursor-pointer flex-col overflow-hidden border border-ink bg-paper-raised">
       <ArtPlate
         item={item}
-        sizes="(max-width: 1024px) 100vw, 66vw"
+        sizes={artSizes}
         className="min-h-0 flex-1"
       >
         <div
@@ -527,7 +631,7 @@ function LgCard({ item, isFresh }: CardVariantProps) {
               </div>
             )}
 
-            <h2 className="font-syne text-2xl font-black leading-tight text-panel-text md:text-3xl group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2">
+            <h2 className="font-syne text-2xl font-black leading-tight text-panel-text md:text-3xl">
               {item.title}
             </h2>
 
@@ -616,14 +720,12 @@ function LgCard({ item, isFresh }: CardVariantProps) {
           )}
         </div>
       </div>
-
-      <PollCardCanvas item={item} />
     </article>
   )
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-function ContentCardImpl({ item, size = 'sm' }: ContentCardProps) {
+function ContentCardImpl({ item, size = 'sm', orientation }: ContentCardProps) {
   const { open } = useOverlay()
   // Root ref — feeds getBoundingClientRect for the overlay open-origin.
   const ref = useRef<HTMLDivElement | null>(null)
@@ -680,7 +782,25 @@ function ContentCardImpl({ item, size = 'sm' }: ContentCardProps) {
   // it doesn't compete with upcoming items for the eye; the PASADO chip
   // itself renders inline in the caption's ChipRow.
   const past = item.type === 'evento' && isExpired(item)
+  const artSizes = cardArtSizes(item, size, orientation)
 
+  // Two faces, one card. The poster face (art + title) is what the feed
+  // shows at rest; the dense face (the full caption card) sits on top and
+  // is revealed by the «ficha» wipe (globals.css .card-face-dense): a
+  // bottom-to-top clip-path pass with a hover-intent delay in, a fast
+  // release out, and an instant cut under prefers-reduced-motion.
+  // group-focus-within covers both the wrapper's own tabIndex focus and
+  // tabbing onto the dense face's inner links, which keeps every chip
+  // reachable without a mouse. On touch there is no hover: the tap opens
+  // the overlay, which carries the same info.
+  // overflow-hidden clips the sheet's 10px rise mid-wipe (it would poke
+  // past the card frame into the grid gap); the wrapper's own focus
+  // outline and .print-fresh box-shadow are not clipped by it.
+  // The poster face is aria-hidden so screen readers hear one card, not two;
+  // it contains no focusable elements (SavedBadge is pointer-events-none,
+  // DateChip is static). PollCardCanvas rides the wrapper — above both faces
+  // (chip z-20 / ballot z-30) — so the poll affordance stays visible at rest
+  // and an open ballot survives the pointer leaving the card.
   return (
     <div
       ref={ref}
@@ -690,11 +810,19 @@ function ContentCardImpl({ item, size = 'sm' }: ContentCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`Abrir ${item.title}`}
-      className={`relative h-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2 ${
+      className={`content-card group relative h-full cursor-pointer overflow-hidden focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2 ${
         isFresh ? 'print-fresh' : ''
       } ${past ? 'opacity-70 grayscale-[30%]' : ''}`}
     >
-      <Inner item={item} isFresh={isFresh} />
+      <div aria-hidden className="h-full">
+        <PosterFace item={item} size={size} artSizes={artSizes} />
+      </div>
+
+      <div className="card-face-dense pointer-events-none absolute inset-0 group-hover:pointer-events-auto group-focus-within:pointer-events-auto">
+        <Inner item={item} isFresh={isFresh} artSizes={artSizes} orientation={orientation} />
+      </div>
+
+      <PollCardCanvas item={item} />
     </div>
   )
 }
