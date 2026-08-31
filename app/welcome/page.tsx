@@ -149,7 +149,6 @@ export default function WelcomePage() {
               paper. The only Syne display moment of the gate. */}
           <header className="wl-brand">
             <span className="wl-wordmark">GRADIENTE</span>
-            <span className="wl-brand-tag">ACCESO · SOLO INVITACIÓN</span>
           </header>
 
           <div className="wl-stage">
@@ -178,22 +177,8 @@ export default function WelcomePage() {
                     className="wl-cell"
                     onClick={() => openLogin('login')}
                   >
-                    <span className="wl-ic" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                      >
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                    </span>
                     <span>
                       <b>Iniciar sesión</b>
-                      <i>Usuario registrado</i>
                     </span>
                   </button>
 
@@ -202,22 +187,8 @@ export default function WelcomePage() {
                     className="wl-cell"
                     onClick={() => setPanel('codigo')}
                   >
-                    <span className="wl-ic" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="square"
-                        strokeLinejoin="miter"
-                      >
-                        <path d="m9 8-4 4 4 4" />
-                        <path d="m15 8 4 4-4 4" />
-                      </svg>
-                    </span>
                     <span>
-                      <b>Insertar código</b>
-                      <i>Acceso por invitación</i>
+                      <b>Acceso por invitación</b>
                     </span>
                   </button>
                 </div>
@@ -347,14 +318,13 @@ export default function WelcomePage() {
           flex: 0 0 auto;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: flex-start;
           gap: 16px;
           text-align: left;
         }
-        /* Both marks ride paper-glass chips so they stay legible wherever the
+        /* The mark rides a paper-glass chip so it stays legible wherever the
            prism's hue cycle happens to be dark. */
-        .wl-wordmark,
-        .wl-brand-tag {
+        .wl-wordmark {
           border: 1px solid var(--wl-ink);
           background: rgba(246, 244, 236, 0.78);
           backdrop-filter: blur(7px) saturate(1.1);
@@ -365,12 +335,6 @@ export default function WelcomePage() {
           font: 800 18px/24px var(--wl-syne);
           letter-spacing: -0.01em;
           color: var(--wl-ink);
-        }
-        .wl-brand-tag {
-          padding: 5px 10px;
-          font: 700 11px/16px var(--wl-mono);
-          letter-spacing: 0.14em;
-          color: var(--wl-ink-soft);
         }
 
         .wl-face {
@@ -436,32 +400,11 @@ export default function WelcomePage() {
           background: var(--wl-ink);
           color: var(--wl-paper);
         }
-        .wl-cell .wl-ic {
-          flex: 0 0 auto;
-          width: 40px;
-          height: 40px;
-          display: grid;
-          place-items: center;
-          border: 1px solid currentColor;
-        }
-        .wl-cell .wl-ic svg {
-          width: 19px;
-          height: 19px;
-        }
         .wl-cell b {
           display: block;
           font: 700 13px/18px var(--wl-mono);
           letter-spacing: 0.12em;
           text-transform: uppercase;
-        }
-        .wl-cell i {
-          display: block;
-          margin-top: 3px;
-          font: 400 11px/16px var(--wl-mono);
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          opacity: 0.62;
-          font-style: normal;
         }
 
         /* The waitlist bar is the page's ONE acid use: a fill-block with ink
