@@ -22,6 +22,10 @@ import { unlockedEmojisFor } from '@/lib/trophies'
 // to authenticated only — `comments_authenticated_insert` policy). After
 // success, `invalidateComments(itemId)` re-fetches the column.
 
+// House focus grammar — 2px ink outline, offset 2.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
 interface CommentComposerProps {
   itemId: string
   parentId: string | null
@@ -57,10 +61,8 @@ export function CommentComposer({
       <button
         type="button"
         onClick={() => openLogin()}
-        className="w-full border border-dashed px-3 py-2 text-left font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary"
-        style={{ borderColor: '#242424' }}
+        className={`min-h-11 w-full border border-dashed border-ink px-3 py-2 text-left font-mono text-[10px] tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
       >
-        <span style={{ color: '#F97316' }}>[+]</span>{' '}
         {variant === 'root'
           ? 'INICIA SESIÓN PARA COMENTAR'
           : 'INICIA SESIÓN PARA RESPONDER'}
@@ -78,7 +80,7 @@ export function CommentComposer({
           // Focus the textarea after it mounts.
           setTimeout(() => textareaRef.current?.focus(), 0)
         }}
-        className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary"
+        className={`font-mono text-[10px] tracking-widest text-ink-faint transition-colors hover:text-ink ${FOCUS_RING}`}
       >
         ↳ RESPONDER
       </button>
@@ -139,8 +141,8 @@ export function CommentComposer({
         className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-widest"
         aria-hidden
       >
-        <span className="text-muted">
-          COMO <span className="text-primary">@{currentUser?.username}</span>
+        <span className="text-ink-faint">
+          COMO <span className="font-bold text-ink">@{currentUser?.username}</span>
         </span>
       </div>
       <textarea
@@ -152,8 +154,7 @@ export function CommentComposer({
         placeholder={placeholder}
         rows={variant === 'root' ? 2 : 3}
         disabled={submitting}
-        className="resize-y border bg-black px-3 py-2 font-mono text-[12px] leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange disabled:opacity-60"
-        style={{ borderColor: '#242424' }}
+        className={`resize-y border border-ink bg-paper-raised px-3 py-2 font-grotesk text-d15 text-ink transition-colors placeholder:text-ink-faint focus:bg-white disabled:opacity-60 ${FOCUS_RING}`}
       />
 
       <EmojiAffordance
@@ -178,14 +179,7 @@ export function CommentComposer({
       />
 
       {error && (
-        <div
-          className="border px-2 py-1 font-mono text-[10px] tracking-widest"
-          style={{
-            borderColor: '#E63329',
-            color: '#E63329',
-            backgroundColor: '#E6332910',
-          }}
-        >
+        <div className="border border-sys-red-paper px-2 py-1 font-mono text-[10px] tracking-widest text-sys-red-paper">
           {error}
         </div>
       )}
@@ -196,7 +190,7 @@ export function CommentComposer({
             type="button"
             onClick={cancel}
             disabled={submitting}
-            className="font-mono text-[10px] tracking-widest text-muted transition-colors hover:text-primary disabled:opacity-40"
+            className={`min-h-11 px-2 font-mono text-[10px] tracking-widest text-ink-faint transition-colors hover:text-ink disabled:opacity-40 ${FOCUS_RING}`}
           >
             CANCELAR
           </button>
@@ -205,12 +199,7 @@ export function CommentComposer({
           type="button"
           onClick={submit}
           disabled={submitting || body.trim().length === 0}
-          className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          style={{
-            borderColor: '#F97316',
-            color: '#F97316',
-            backgroundColor: 'rgba(249,115,22,0.08)',
-          }}
+          className={`min-h-11 border border-ink bg-ink px-4 font-mono text-[10px] tracking-widest text-paper transition-colors enabled:hover:bg-paper-raised enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
         >
           {submitting ? '▶ ENVIANDO…' : '▶ ENVIAR'}
         </button>
@@ -227,6 +216,10 @@ export function CommentComposer({
 // textarea cursor; the body renderer (CommentBody) swaps tokens for the
 // styled glyph on read. The button list silently shrinks/expands as the
 // user earns more trophies.
+//
+// Paper chips: ink border + ink token label; the trophy hue only appears on
+// the glyph inside a tiny ink swatch (black-panel legality — the catalog
+// colors fail contrast directly on cream).
 function EmojiAffordance({ onInsert }: { onInsert: (token: string) => void }) {
   const earnedKeys = useMyTrophies()
   const unlocked = unlockedEmojisFor(earnedKeys).filter(
@@ -236,7 +229,7 @@ function EmojiAffordance({ onInsert }: { onInsert: (token: string) => void }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="font-mono text-[9px] tracking-widest text-muted">
+      <span className="font-mono text-[9px] tracking-widest text-ink-faint">
         DESBLOQUEADOS:
       </span>
       {unlocked.map((emoji) => (
@@ -244,11 +237,16 @@ function EmojiAffordance({ onInsert }: { onInsert: (token: string) => void }) {
           key={emoji.token}
           type="button"
           onClick={() => onInsert(emoji.token)}
-          className="flex items-center gap-1 border px-1.5 py-px font-mono text-[10px] tracking-widest transition-opacity hover:opacity-80"
-          style={{ borderColor: emoji.color, color: emoji.color }}
+          className={`flex items-center gap-1 border border-ink px-1.5 py-px font-mono text-[10px] tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           title={`Insertar ${emoji.token}`}
         >
-          <span className="font-syne font-black">{emoji.glyph}</span>
+          <span
+            aria-hidden
+            className="flex h-3.5 w-3.5 shrink-0 items-center justify-center bg-ink font-syne text-[10px] font-black leading-none"
+            style={{ color: emoji.color }}
+          >
+            {emoji.glyph}
+          </span>
           <span className="text-[9px]">{emoji.token}</span>
         </button>
       ))}

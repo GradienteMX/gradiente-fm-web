@@ -143,12 +143,12 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     articleBody: (row.article_body as ArticleBlock[] | null) ?? undefined,
     footnotes: (row.footnotes as Footnote[] | null) ?? undefined,
     heroCaption: row.hero_caption ?? undefined,
-    partnerKind: row.partner_kind ?? undefined,
-    partnerUrl: row.partner_url ?? undefined,
-    partnerLastUpdated: row.partner_last_updated ?? undefined,
-    // partner_id added in migration 0015; cast bypasses stale generated
+    franjaKind: row.franja_kind ?? undefined,
+    franjaUrl: row.franja_url ?? undefined,
+    franjaLastUpdated: row.franja_last_updated ?? undefined,
+    // franja_id added in migration 0015; cast bypasses stale generated
     // types until `npx supabase gen types typescript` regenerates.
-    partnerId: (row as { partner_id?: string | null }).partner_id ?? undefined,
+    franjaId: (row as { franja_id?: string | null }).franja_id ?? undefined,
     createdById: (row as { created_by?: string | null }).created_by ?? undefined,
     marketplaceEnabled: row.marketplace_enabled,
     marketplaceDescription: row.marketplace_description ?? undefined,

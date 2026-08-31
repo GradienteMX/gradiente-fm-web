@@ -7,7 +7,7 @@ updated: 2026-05-07
 
 # Home — `/`
 
-> The one page that isn't a category filter. Portada hero + HP-curated mosaic + left category rail + scraped-events rail + right partners rail.
+> The one page that isn't a category filter. Portada hero + HP-curated mosaic + left category rail + scraped-events rail + right franjas rail.
 
 ## Source
 
@@ -21,12 +21,12 @@ updated: 2026-05-07
 │ VibeSlider  (from layout.tsx)                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  ┌──CategoryRail──┬──Main column──┬──PartnersRail──┐    │
+│  ┌──CategoryRail──┬──Main column──┬──FranjasRail──┐    │
 │  │  (sticky, lg+) │               │  (hidden, md+) │    │
 │  │                │  HeroCard     │                │    │
-│  │  EVENTO  12    │               │  partner 1     │    │
-│  │  MIX      8    │  EventosRail  │  partner 2     │    │
-│  │  REVIEW   3    │  (auto-scroll │  partner 3     │    │
+│  │  EVENTO  12    │               │  franja 1     │    │
+│  │  MIX      8    │  EventosRail  │  franja 2     │    │
+│  │  REVIEW   3    │  (auto-scroll │  franja 3     │    │
 │  │  …             │   marquee)    │                │    │
 │  │                │               │                │    │
 │  │                │  ContentGrid  │                │    │
@@ -43,16 +43,16 @@ updated: 2026-05-07
 const homeItems  = filterForHome(allItems, now)  // upcoming only, date ASC
 const hero       = getPinnedHero(allItems)       // single portada item
 
-const partners = allItems.filter(i => i.type === 'partner')
+const franjas = allItems.filter(i => i.type === 'franja')
 const gridItems = homeItems.filter(i =>
-  i.type !== 'partner' && (!hero || i.id !== hero.id)
+  i.type !== 'franja' && (!hero || i.id !== hero.id)
 )
 ```
 
 - **`homeItems`** excludes expired events and expired articles.
 - **`hero`** is pulled from the full `allItems` (pinned items aren't subject to "upcoming" filter).
 - **`gridItems`** excludes the hero to prevent double-render.
-- **Partners** are routed to the [[PartnersRail]], never into the grid — see [[Partners Isolation]].
+- **Franjas** are routed to the [[FranjasRail]], never into the grid — see [[Franjas Isolation]].
 
 ## Components used
 
@@ -60,7 +60,7 @@ const gridItems = homeItems.filter(i =>
 - [[HeroCard]] — the single pinned item
 - [[EventosRail]] — auto-scrolling rail of scraped events under the hero
 - [[ContentGrid]] with `mode="home"` — HP-curated mosaic
-- [[PartnersRail]] — chronological, isolated
+- [[FranjasRail]] — chronological, isolated
 
 ## "TODO LO QUE VIENE"
 
@@ -78,5 +78,5 @@ See [[Voice and Copy]] for more examples.
 - [[Pinned Hero]]
 - [[ContentGrid]]
 - [[HP Curation System]]
-- [[Partners Isolation]]
+- [[Franjas Isolation]]
 - [[VibeContext]]

@@ -151,9 +151,9 @@ function itemToRow(item: ContentItem): ItemInsert {
     article_body: (item.articleBody ?? []) as unknown as Database['public']['Tables']['items']['Insert']['article_body'],
     footnotes: (item.footnotes ?? []) as unknown as Database['public']['Tables']['items']['Insert']['footnotes'],
     hero_caption: item.heroCaption ?? null,
-    partner_kind: item.partnerKind ?? null,
-    partner_url: item.partnerUrl ?? null,
-    partner_last_updated: item.partnerLastUpdated ?? null,
+    franja_kind: item.franjaKind ?? null,
+    franja_url: item.franjaUrl ?? null,
+    franja_last_updated: item.franjaLastUpdated ?? null,
     marketplace_enabled: item.marketplaceEnabled ?? false,
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
@@ -206,17 +206,17 @@ async function insertItems() {
   }
 
   // Marketplace listings — separate table since migration 0010. Each
-  // partner item carries a `marketplaceListings` array in MOCK_ITEMS;
+  // franja item carries a `marketplaceListings` array in MOCK_ITEMS;
   // expand to individual rows.
   const listings = MOCK_ITEMS.flatMap((item) =>
-    (item.type === 'partner' && item.marketplaceListings)
-      ? item.marketplaceListings.map((l) => ({ partnerId: item.id, listing: l }))
+    (item.type === 'franja' && item.marketplaceListings)
+      ? item.marketplaceListings.map((l) => ({ franjaId: item.id, listing: l }))
       : [],
   )
   if (listings.length > 0) {
-    const listingRows = listings.map(({ partnerId, listing }) => ({
+    const listingRows = listings.map(({ franjaId, listing }) => ({
       id: listing.id,
-      partner_id: partnerId,
+      franja_id: franjaId,
       title: listing.title,
       category: listing.category,
       subcategory: listing.subcategory ?? null,
@@ -278,8 +278,8 @@ async function insertUsers(): Promise<{
       role: u.role,
       is_mod: u.isMod ?? false,
       is_og: u.isOG ?? false,
-      partner_id: u.partnerId ?? null,
-      partner_admin: u.partnerAdmin ?? false,
+      franja_id: u.franjaId ?? null,
+      franja_admin: u.franjaAdmin ?? false,
       joined_at: u.joinedAt,
       seed: true,
     })

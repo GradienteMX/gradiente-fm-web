@@ -9,7 +9,7 @@
 //   4. foro replies in threads I started + replies quoting my replies
 //   5. LOGRO — my trophy unlocks (user_trophies, public-read RLS — VALIDATED,
 //      ships per R3)
-//   6. OFERTA — partner-team only, decorates the inbox route's unanswered
+//   6. OFERTA — franja-team only, decorates the inbox route's unanswered
 //      listing ids (listing_comments is a SEPARATE system, never merged into
 //      the editorial comments model — it only shares this rendered list)
 //
@@ -98,8 +98,8 @@ function rowToUser(row: any): User {
     role: row.role,
     isMod: row.is_mod || undefined,
     isOG: row.is_og || undefined,
-    partnerId: row.partner_id ?? undefined,
-    partnerAdmin: row.partner_admin || undefined,
+    franjaId: row.franja_id ?? undefined,
+    franjaAdmin: row.franja_admin || undefined,
     joinedAt: row.joined_at,
     avatarUrl: row.avatar_url ?? undefined,
     bio: row.bio ?? undefined,
@@ -111,13 +111,13 @@ function rowToUser(row: any): User {
 // The merged reverse-chron inbox. One call per provider tick (60s poll +
 // focus). Includes LOGRO (R3: validated → ships). OFERTA rows are appended
 // separately by the provider via fetchOfertaActivity (they depend on the
-// partner slice's inbox fetch).
+// franja slice's inbox fetch).
 export async function fetchActivity(userId: string): Promise<ActivityRow[]> {
   const supabase = createClient()
 
   // Step A — my footprint (id lists). `created_by` is post-0012; cast past
   // the stale generated types (useMyPublishedItems idiom). published=true is
-  // explicit law: RLS alone lets partner teams read own unpublished rows.
+  // explicit law: RLS alone lets franja teams read own unpublished rows.
   const [myItemsRes, myCommentsRes, myThreadsRes, myRepliesRes, myTrophiesRes] =
     await Promise.all([
       supabase
@@ -361,12 +361,12 @@ export async function fetchActivity(userId: string): Promise<ActivityRow[]> {
   return merged
 }
 
-// ── OFERTA fold-in (partner-team only) ──────────────────────────────────────
+// ── OFERTA fold-in (franja-team only) ──────────────────────────────────────
 //
-// The inbox route (GET /api/partners/[id]/inbox) stays the authority on which
+// The inbox route (GET /api/franjas/[id]/inbox) stays the authority on which
 // listings have an open buyer thread — this only decorates those ids with the
 // latest comment's actor + timestamp so the rows sort honestly into the
-// merged list. Called by the provider with the partner slice's data; obeys
+// merged list. Called by the provider with the franja slice's data; obeys
 // that slice's ≥5-min cadence floor (never its own poll).
 export async function fetchOfertaActivity(
   unansweredListingIds: readonly string[],

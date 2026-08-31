@@ -1367,10 +1367,10 @@ export default function AboutPage() {
                     <td>Publicas con tu nombre, acumulas reacciones, recibes un rango automático</td>
                   </tr>
                   <tr>
-                    <td>PARTNER</td>
+                    <td>FRANJA</td>
                     <td>
                       Para sellos, promotoras, colectivos, espacios. Perfil propio, marketplace integrado,
-                      equipo con permisos para publicar desde el espacio del partner
+                      equipo con permisos para publicar desde el espacio del franja
                     </td>
                   </tr>
                 </tbody>
@@ -1883,7 +1883,7 @@ export default function AboutPage() {
                   escribir reseñas o subir mixes desde adentro de tu proyecto.
                 </p>
                 <p>
-                  Cada partner tiene su equipo de admins y miembros que pueden publicar desde el espacio. Y
+                  Cada franja tiene su equipo de admins y miembros que pueden publicar desde el espacio. Y
                   si abres tus foros al público, puedes forjar alianzas, sumar gente de tu comunidad, dejar
                   que el círculo cercano aporte sin necesariamente formar parte del equipo.
                 </p>

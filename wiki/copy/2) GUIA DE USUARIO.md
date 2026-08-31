@@ -14,7 +14,7 @@ Tienes dos capas de identidad, pueden coexistir:
 
 **Usuario** — publicas con tu nombre, acumulas reacciones, recibes un rango automático.
 
-**Partner** — para sellos, promotoras, colectivos, espacios. Perfil propio, marketplace integrado, equipo con permisos para publicar desde el espacio del partner.
+**Franja** — para sellos, promotoras, colectivos, espacios. Perfil propio, marketplace integrado, equipo con permisos para publicar desde el espacio del franja.
 
 ---
 

@@ -19,7 +19,7 @@
 //   novedades      one browser query (fetchNovedadesPool) — shares the 60s tick
 //   events         one browser query (published eventos, date ≥ today) — mount + focus
 //   vibeSelf       own vibe_checks rows — mount (RLS probe VALIDATED, WP0-C)
-//   partner        GET /api/partners/[id] + /inbox — mount + focus, ≥5-MIN FLOOR
+//   franja        GET /api/franjas/[id] + /inbox — mount + focus, ≥5-MIN FLOOR
 //
 // Realtime: NONE in v1 — polling is the honest register (the colophon prints
 // the true lastTickAt). A single optional `dashboard:activity` channel
@@ -66,9 +66,9 @@ import {
 } from '@/lib/dashboard/activity'
 import {
   fetchNovedadesPool,
-  fetchPartnerOptions,
+  fetchFranjaOptions,
   filterByFollows,
-  type PartnerOption,
+  type FranjaOption,
 } from '@/lib/dashboard/novedades'
 import { ITEM_ROW_SELECT, mapItemRowToContentItem } from '@/lib/dashboard/openItem'
 import { readFollows, subscribeFollows, type DashboardFollow } from '@/lib/dashboard/localState'
@@ -95,7 +95,7 @@ const EMPTY_ERRORS: Readonly<Partial<Record<DashboardSliceKey, true>>> = Object.
 // Focus revalidation dedupe — rapid alt-tabbing never storms the backend.
 const FOCUS_FLOOR_MS = 10_000
 // The inbox route loads every comment per call — hard ≥5-min floor (§3.9).
-const PARTNER_FLOOR_MS = 5 * 60_000
+const FRANJA_FLOOR_MS = 5 * 60_000
 const EVENTS_LIMIT = 60
 
 // ── Slice types ─────────────────────────────────────────────────────────────
@@ -116,15 +116,15 @@ export interface VibeSelfCheck {
   updatedAt: string
 }
 
-// GET /api/partners/[id] (+ /inbox) mapped to camelCase. Mirrors the
-// MiPartnerSection mappers — keep in sync with lib/data/items.ts
+// GET /api/franjas/[id] (+ /inbox) mapped to camelCase. Mirrors the
+// MiFranjaSection mappers — keep in sync with lib/data/items.ts
 // rowToMarketplaceListing (server twin).
-export interface PartnerSlice {
+export interface FranjaSlice {
   id: string
   slug: string
   title: string
-  partnerKind: string | null
-  partnerUrl: string | null
+  franjaKind: string | null
+  franjaUrl: string | null
   imageUrl: string
   marketplaceEnabled: boolean
   marketplaceDescription: string | null
@@ -146,12 +146,12 @@ export type DashboardSliceKey =
   | 'novedades'
   | 'events'
   | 'vibeSelf'
-  | 'partner'
+  | 'franja'
 
-// afterMutation scopes: 'all' re-runs heartbeat + events + vibeSelf (+partner,
-// floor bypassed — an explicit user action is not a poll); 'partner' re-runs
-// only the partner slice + its OFERTA fold-in.
-export type DashboardMutationScope = 'all' | 'partner'
+// afterMutation scopes: 'all' re-runs heartbeat + events + vibeSelf (+franja,
+// floor bypassed — an explicit user action is not a poll); 'franja' re-runs
+// only the franja slice + its OFERTA fold-in.
+export type DashboardMutationScope = 'all' | 'franja'
 
 // ── Lab boundary (fixtures inject HERE and only here) ───────────────────────
 
@@ -164,12 +164,12 @@ export interface DashboardInitialSlices {
   trophies?: readonly string[]
   activity?: ActivityRow[]
   novedades?: ContentItem[]
-  partnerOptions?: PartnerOption[]
+  franjaOptions?: FranjaOption[]
   events?: ContentItem[]
   vibeSelf?: VibeSelfCheck[]
-  partner?: PartnerSlice | null
+  franja?: FranjaSlice | null
   follows?: DashboardFollow[]
-  // Registry override (e.g. partner/admin scenarios include 'mercado').
+  // Registry override (e.g. franja/admin scenarios include 'mercado').
   registry?: readonly WidgetId[]
   // Failed-slice scenario: flagged slices report error and never load.
   errors?: Partial<Record<DashboardSliceKey, true>>
@@ -186,21 +186,21 @@ export interface DashboardData {
   published: ContentItem[]
   engagement: EngagementSlice | null
   trophies: ReadonlySet<string>
-  // Merged reverse-chron inbox incl. the partner-team OFERTA fold-in.
+  // Merged reverse-chron inbox incl. the franja-team OFERTA fold-in.
   activity: ActivityRow[]
   // The global pool — widgets apply filterByFollows (mechanical lens only).
   novedades: ContentItem[]
-  partnerOptions: PartnerOption[]
+  franjaOptions: FranjaOption[]
   events: ContentItem[]
   vibeSelf: VibeSelfCheck[]
-  partner: PartnerSlice | null
+  franja: FranjaSlice | null
 
   // Follows, provider-hosted so lab fixtures flow through the one boundary.
   // Widgets WRITE via lib/dashboard/localState (addFollow/removeFollow);
   // this mirror updates through its subscription.
   follows: DashboardFollow[]
 
-  // User-scoped widget registry (§3.9: no 'mercado' for non-partner,
+  // User-scoped widget registry (§3.9: no 'mercado' for non-franja,
   // non-admin users — the widget does not exist in their registry).
   registry: readonly WidgetId[]
 
@@ -296,7 +296,7 @@ async function fetchVibeSelf(uid: string): Promise<VibeSelfCheck[]> {
   }))
 }
 
-// Browser twin of MiPartnerSection's mapListingRow (which is file-private).
+// Browser twin of MiFranjaSection's mapListingRow (which is file-private).
 // Keep in sync with lib/data/items.ts rowToMarketplaceListing.
 function mapListingRow(row: Record<string, unknown>): MarketplaceListing {
   return {
@@ -323,15 +323,15 @@ function mapListingRow(row: Record<string, unknown>): MarketplaceListing {
   }
 }
 
-async function fetchPartnerSlice(partnerId: string): Promise<PartnerSlice> {
-  const encoded = encodeURIComponent(partnerId)
+async function fetchFranjaSlice(franjaId: string): Promise<FranjaSlice> {
+  const encoded = encodeURIComponent(franjaId)
   const [pRes, iRes] = await Promise.all([
-    fetch(`/api/partners/${encoded}`),
-    fetch(`/api/partners/${encoded}/inbox`),
+    fetch(`/api/franjas/${encoded}`),
+    fetch(`/api/franjas/${encoded}/inbox`),
   ])
-  if (!pRes.ok) throw new Error(`partner ${pRes.status}`)
-  const pJson = (await pRes.json()) as { partner: Record<string, unknown> }
-  const row = pJson.partner
+  if (!pRes.ok) throw new Error(`franja ${pRes.status}`)
+  const pJson = (await pRes.json()) as { franja: Record<string, unknown> }
+  const row = pJson.franja
   // Inbox failure degrades to zero badges (honest absence, not a dead slice).
   let unanswered: string[] = []
   if (iRes.ok) {
@@ -342,8 +342,8 @@ async function fetchPartnerSlice(partnerId: string): Promise<PartnerSlice> {
     id: String(row.id),
     slug: String(row.slug),
     title: String(row.title),
-    partnerKind: (row.partner_kind as string | null) ?? null,
-    partnerUrl: (row.partner_url as string | null) ?? null,
+    franjaKind: (row.franja_kind as string | null) ?? null,
+    franjaUrl: (row.franja_url as string | null) ?? null,
     imageUrl: String(row.image_url ?? ''),
     marketplaceEnabled: !!row.marketplace_enabled,
     marketplaceDescription: (row.marketplace_description as string | null) ?? null,
@@ -371,7 +371,7 @@ export function DashboardDataProvider({
   const { currentUser, authResolved } = useAuth()
   const fixtureMode = initialSlices !== undefined
   const uid = fixtureMode ? null : currentUser?.id ?? null
-  const partnerId = fixtureMode ? null : currentUser?.partnerId ?? null
+  const franjaId = fixtureMode ? null : currentUser?.franjaId ?? null
 
   // Single consumers of the cache-reactive hooks (§3.10). Called
   // unconditionally (hooks rule); ignored in fixture mode — with no auth in
@@ -387,10 +387,10 @@ export function DashboardDataProvider({
   const [activityBase, setActivityBase] = useState<ActivityRow[]>([])
   const [ofertaRows, setOfertaRows] = useState<ActivityRow[]>([])
   const [novedadesPool, setNovedadesPool] = useState<ContentItem[]>([])
-  const [partnerOptions, setPartnerOptions] = useState<PartnerOption[]>([])
+  const [franjaOptions, setFranjaOptions] = useState<FranjaOption[]>([])
   const [events, setEvents] = useState<ContentItem[]>([])
   const [vibeSelf, setVibeSelf] = useState<VibeSelfCheck[]>([])
-  const [partner, setPartner] = useState<PartnerSlice | null>(null)
+  const [franja, setFranja] = useState<FranjaSlice | null>(null)
   const [lastTickAt, setLastTickAt] = useState<string | null>(null)
   const [fetchLoaded, setFetchLoaded] = useState<Partial<Record<DashboardSliceKey, boolean>>>({})
   const [fetchErrors, setFetchErrors] = useState<Partial<Record<DashboardSliceKey, true>>>({})
@@ -421,12 +421,12 @@ export function DashboardDataProvider({
   }, [])
 
   // ── Registry (§3.9) ───────────────────────────────────────────────────────
-  const isMercadoUser = !!currentUser?.partnerId || canAssignRoles(currentUser)
+  const isMercadoUser = !!currentUser?.franjaId || canAssignRoles(currentUser)
   const registry = useMemo<readonly WidgetId[]>(() => {
     if (fixtureMode) {
       return (
         initialSlices?.registry ??
-        ALL_WIDGET_IDS.filter((id) => id !== 'mercado' || initialSlices?.partner != null)
+        ALL_WIDGET_IDS.filter((id) => id !== 'mercado' || initialSlices?.franja != null)
       )
     }
     return ALL_WIDGET_IDS.filter((id) => id !== 'mercado' || isMercadoUser)
@@ -508,7 +508,7 @@ export function DashboardDataProvider({
     let cancelled = false
     let heartbeatInFlight = false
     let lastHeartbeatMs = 0
-    let lastPartnerMs = 0
+    let lastFranjaMs = 0
 
     // engagement + activity + novedades share the single 60s tick.
     async function runHeartbeat(): Promise<void> {
@@ -560,28 +560,28 @@ export function DashboardDataProvider({
       }
     }
 
-    async function runPartnerOptions(): Promise<void> {
-      const options = await fetchPartnerOptions()
-      if (!cancelled) setPartnerOptions(options)
+    async function runFranjaOptions(): Promise<void> {
+      const options = await fetchFranjaOptions()
+      if (!cancelled) setFranjaOptions(options)
     }
 
-    // Partner + its OFERTA activity fold-in, on the same ≥5-min-floored
+    // Franja + its OFERTA activity fold-in, on the same ≥5-min-floored
     // cadence (the inbox route loads every comment per call).
-    async function runPartner(force: boolean): Promise<void> {
-      if (!partnerId) return
+    async function runFranja(force: boolean): Promise<void> {
+      if (!franjaId) return
       const now = Date.now()
-      if (!force && now - lastPartnerMs < PARTNER_FLOOR_MS) return
-      lastPartnerMs = now
+      if (!force && now - lastFranjaMs < FRANJA_FLOOR_MS) return
+      lastFranjaMs = now
       try {
-        const slice = await fetchPartnerSlice(partnerId)
+        const slice = await fetchFranjaSlice(franjaId)
         if (cancelled) return
-        setPartner(slice)
-        markSlice('partner', true)
+        setFranja(slice)
+        markSlice('franja', true)
         const titleById = new Map(slice.listings.map((l) => [l.id, l.title]))
         const rows = await fetchOfertaActivity(slice.unansweredListingIds, titleById)
         if (!cancelled) setOfertaRows(rows)
       } catch {
-        if (!cancelled) markSlice('partner', false)
+        if (!cancelled) markSlice('franja', false)
       }
     }
 
@@ -589,8 +589,8 @@ export function DashboardDataProvider({
     void runHeartbeat()
     void runEvents()
     void runVibeSelf()
-    void runPartnerOptions()
-    void runPartner(true)
+    void runFranjaOptions()
+    void runFranja(true)
 
     const interval = window.setInterval(() => void runHeartbeat(), HEARTBEAT_MS)
 
@@ -599,17 +599,17 @@ export function DashboardDataProvider({
       if (Date.now() - lastHeartbeatMs < FOCUS_FLOOR_MS) return
       void runHeartbeat()
       void runEvents()
-      void runPartner(false) // own 5-min floor
+      void runFranja(false) // own 5-min floor
     }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
 
     revalidateRef.current = async (scope) => {
-      if (scope === 'partner') {
-        await runPartner(true)
+      if (scope === 'franja') {
+        await runFranja(true)
         return
       }
-      await Promise.all([runHeartbeat(), runEvents(), runVibeSelf(), runPartner(true)])
+      await Promise.all([runHeartbeat(), runEvents(), runVibeSelf(), runFranja(true)])
     }
 
     return () => {
@@ -619,7 +619,7 @@ export function DashboardDataProvider({
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onFocus)
     }
-  }, [fixtureMode, authResolved, uid, partnerId, markSlice])
+  }, [fixtureMode, authResolved, uid, franjaId, markSlice])
 
   const afterMutation = useCallback(
     async (scope: DashboardMutationScope = 'all') => {
@@ -648,10 +648,10 @@ export function DashboardDataProvider({
     [fx, activityBase, ofertaRows],
   )
   const novedades = fx ? fx.novedades ?? [] : novedadesPool
-  const partnerOptionsSlice = fx ? fx.partnerOptions ?? [] : partnerOptions
+  const franjaOptionsSlice = fx ? fx.franjaOptions ?? [] : franjaOptions
   const eventsSlice = fx ? fx.events ?? [] : events
   const vibeSelfSlice = fx ? fx.vibeSelf ?? [] : vibeSelf
-  const partnerSlice = fx ? fx.partner ?? null : partner
+  const franjaSlice = fx ? fx.franja ?? null : franja
   const follows = fx ? fx.follows ?? [] : localFollows
   const bootIsoRef = useRef(new Date().toISOString())
   const lastTick = fx ? fx.lastTickAt ?? bootIsoRef.current : lastTickAt
@@ -685,7 +685,7 @@ export function DashboardDataProvider({
         'novedades',
         'events',
         'vibeSelf',
-        'partner',
+        'franja',
       ]
       for (const key of keys) all[key] = fx.errors?.[key] ? false : true
       return all
@@ -723,7 +723,7 @@ export function DashboardDataProvider({
       novedades: present(loaded.novedades, followedNow.length > 0),
       agenda: present(loaded.events, eventsSlice.length > 0),
       mapa: present(loaded.events, eventsSlice.length > 0),
-      mercado: partnerSlice ? partnerSlice.listings.length > 0 : undefined,
+      mercado: franjaSlice ? franjaSlice.listings.length > 0 : undefined,
     }
   }, [
     loaded,
@@ -734,7 +734,7 @@ export function DashboardDataProvider({
     novedades,
     follows,
     eventsSlice,
-    partnerSlice,
+    franjaSlice,
   ])
 
   const mapaAutoExpandEligible = useMemo(
@@ -753,10 +753,10 @@ export function DashboardDataProvider({
       trophies,
       activity,
       novedades,
-      partnerOptions: partnerOptionsSlice,
+      franjaOptions: franjaOptionsSlice,
       events: eventsSlice,
       vibeSelf: vibeSelfSlice,
-      partner: partnerSlice,
+      franja: franjaSlice,
       follows,
       registry,
       layoutMeta,
@@ -778,10 +778,10 @@ export function DashboardDataProvider({
       trophies,
       activity,
       novedades,
-      partnerOptionsSlice,
+      franjaOptionsSlice,
       eventsSlice,
       vibeSelfSlice,
-      partnerSlice,
+      franjaSlice,
       follows,
       registry,
       layoutMeta,

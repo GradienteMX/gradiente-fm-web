@@ -1,7 +1,7 @@
 'use client'
 
 // Spatial Identity Canvas — the pannable/zoomable honeycomb viewport.
-// One continuous surface: the global terrain and the partner focus state are
+// One continuous surface: the global terrain and the franja focus state are
 // two camera positions over the SAME plane (spec § One continuous surface).
 // The camera transform is applied imperatively (ref → style) so pan/zoom
 // stays off the React render path; React state receives a throttled mirror
@@ -35,12 +35,12 @@ import {
   neighborItemId,
   type CompactArrangement,
   type MapaLayout,
-  type PartnerCluster,
+  type FranjaCluster,
 } from '@/lib/mapa/layout'
 import {
   computeFocusArrangement,
   placeGlobalListings,
-  rankRelatedPartners,
+  rankRelatedFranjas,
   type FocusArrangement,
 } from '@/lib/mapa/focus'
 import {
@@ -51,11 +51,11 @@ import { recordItems } from '@/lib/itemsCache'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
 import { SmartImage } from '@/components/SmartImage'
-import { KIND_LABEL } from '@/components/overlay/PartnerOverlay'
+import { KIND_LABEL } from '@/components/overlay/FranjaOverlay'
 import { MapaCell } from './MapaCell'
 import { MapaFilterColumn } from './MapaFilterColumn'
 import { MapaListingCell } from './MapaListingCell'
-import { PartnerObi } from './PartnerObi'
+import { FranjaObi } from './FranjaObi'
 
 const ZMIN = 0.22
 const ZMAX = 1.6
@@ -82,9 +82,9 @@ const LENS_TYPE_LABEL: Record<string, string> = {
 
 interface MapaCanvasProps {
   layout: MapaLayout
-  clusters: PartnerCluster[]
-  /** EVERY partner identity row — feeds the selector; most have no cluster. */
-  partners: ContentItem[]
+  clusters: FranjaCluster[]
+  /** EVERY franja identity row — feeds the selector; most have no cluster. */
+  franjas: ContentItem[]
   initialFocusSlug: string | null
 }
 
@@ -95,7 +95,7 @@ function easeInOutCubic(t: number): number {
 export function MapaCanvas({
   layout,
   clusters,
-  partners,
+  franjas,
   initialFocusSlug,
 }: MapaCanvasProps) {
   const { open } = useOverlay()
@@ -133,7 +133,7 @@ export function MapaCanvas({
   const lastAppliedZ = useRef<number | null>(null)
 
   const focusedCluster = useMemo(
-    () => clusters.find((c) => c.partner.slug === focusSlug) ?? null,
+    () => clusters.find((c) => c.franja.slug === focusSlug) ?? null,
     [clusters, focusSlug],
   )
   const focusMemberIds = useMemo(
@@ -142,21 +142,21 @@ export function MapaCanvas({
   )
 
   // Focus reflow arrangements are deterministic per (layout, cluster) —
-  // computed once per partner and cached so re-focusing is instant and the
+  // computed once per franja and cached so re-focusing is instant and the
   // delta objects keep a stable identity for cell memoization.
   const arrangementCache = useRef(new Map<string, FocusArrangement>())
   const getArrangement = useCallback(
-    (cluster: PartnerCluster): FocusArrangement => {
-      const hit = arrangementCache.current.get(cluster.partner.slug)
+    (cluster: FranjaCluster): FocusArrangement => {
+      const hit = arrangementCache.current.get(cluster.franja.slug)
       if (hit) return hit
       const arr = computeFocusArrangement(
         layout,
         cluster,
-        cluster.partner.marketplaceEnabled
-          ? cluster.partner.marketplaceListings ?? []
+        cluster.franja.marketplaceEnabled
+          ? cluster.franja.marketplaceListings ?? []
           : [],
       )
-      arrangementCache.current.set(cluster.partner.slug, arr)
+      arrangementCache.current.set(cluster.franja.slug, arr)
       return arr
     },
     [layout],
@@ -201,7 +201,7 @@ export function MapaCanvas({
   // AFINIDAD continent mode (opt-in): the terrain's affinity structure
   // breathes — high-affinity regions ring up as continents and ocean opens
   // between the masses. Nothing hides; everything drifts rigidly. Computed
-  // once per layout (deterministic) and cached; suspended while a partner
+  // once per layout (deterministic) and cached; suspended while a franja
   // focus owns the geometry.
   const [affinityOn, setAffinityOn] = useState(false)
   const continentCache = useRef<{
@@ -222,7 +222,7 @@ export function MapaCanvas({
   // Positional restructuring: with categories hidden, the visible terrain
   // re-tessellates through the same placement rules — the map as if those
   // categories never existed. Cached per hidden-combination; suspended while
-  // a partner focus or the continent drift owns the geometry (hidden cells
+  // a franja focus or the continent drift owns the geometry (hidden cells
   // then fade in place inside their continents).
   const compactCache = useRef(new Map<string, CompactArrangement | null>())
   const compactArrangement = useMemo(() => {
@@ -253,11 +253,11 @@ export function MapaCanvas({
     () => (focusArrangement ? new Set(focusArrangement.relatedIds) : null),
     [focusArrangement],
   )
-  // Affine partners, most resonant first — the obi carousel order.
-  const rankedPartners = useMemo(
+  // Affine franjas, most resonant first — the obi carousel order.
+  const rankedFranjas = useMemo(
     () =>
       focusedCluster
-        ? rankRelatedPartners(layout, clusters, focusedCluster)
+        ? rankRelatedFranjas(layout, clusters, focusedCluster)
         : [],
     [clusters, focusedCluster, layout],
   )
@@ -283,18 +283,18 @@ export function MapaCanvas({
     return [ahora, archivo]
   }, [layout])
   // Marketplace listings that can materialize on this map (they render as
-  // MERCADO nodes inside their partner's focus cluster). Drives the MERCADO
-  // kill-switch — honest chip: absent when no clustered partner sells.
+  // MERCADO nodes inside their franja's focus cluster). Drives the MERCADO
+  // kill-switch — honest chip: absent when no clustered franja sells.
   const mercadoCount = useMemo(() => {
     let n = 0
     for (const c of clusters) {
-      if (c.partner.marketplaceEnabled) {
-        n += c.partner.marketplaceListings?.length ?? 0
+      if (c.franja.marketplaceEnabled) {
+        n += c.franja.marketplaceListings?.length ?? 0
       }
     }
     return n
   }, [clusters])
-  // The focused partner's member items — the obi derives its contextual
+  // The focused franja's member items — the obi derives its contextual
   // per-kind lines (próxima fecha, mercado count…) from the real cluster.
   const focusMemberItems = useMemo(
     () =>
@@ -306,18 +306,18 @@ export function MapaCanvas({
     [focusMemberIds, layout.placed],
   )
 
-  // Partner selector panel + the identities that have no cluster yet.
-  const [partnersOpen, setPartnersOpen] = useState(false)
-  const inertPartners = useMemo(() => {
-    const clustered = new Set(clusters.map((c) => c.partner.id))
-    return [...partners]
+  // Franja selector panel + the identities that have no cluster yet.
+  const [franjasOpen, setFranjasOpen] = useState(false)
+  const inertFranjas = useMemo(() => {
+    const clustered = new Set(clusters.map((c) => c.franja.id))
+    return [...franjas]
       .filter((p) => !clustered.has(p.id))
       .sort((a, b) => a.title.localeCompare(b.title))
-  }, [clusters, partners])
+  }, [clusters, franjas])
 
-  // Global MERCADO satellites — every marketplace partner's listings placed
+  // Global MERCADO satellites — every marketplace franja's listings placed
   // at the free cells nearest its cluster (see placeGlobalListings). They
-  // exist at EVERY view; the focused partner's satellites hand over to the
+  // exist at EVERY view; the focused franja's satellites hand over to the
   // focus arrangement's own listing arc.
   const globalListings = useMemo(
     () => placeGlobalListings(layout, clusters),
@@ -325,26 +325,26 @@ export function MapaCanvas({
   )
 
   // Marketplace listing detail — one INDIVIDUAL listing's canonical detail
-  // surface (?partner=&listing=), mounted directly over the map (openable
+  // surface (?franja=&listing=), mounted directly over the map (openable
   // from the global satellites too, not only from focus). Closing it
   // returns straight to the map state underneath, never to a grid.
   const [openListingRef, setOpenListingRef] = useState<{
-    partnerSlug: string
+    franjaSlug: string
     listingId: string
   } | null>(null)
   const openListing = useCallback(
-    (listing: MarketplaceListing, partnerSlug: string) => {
+    (listing: MarketplaceListing, franjaSlug: string) => {
       const url = new URL(window.location.href)
-      url.searchParams.set('partner', partnerSlug)
+      url.searchParams.set('franja', franjaSlug)
       url.searchParams.set('listing', listing.id)
       window.history.pushState(window.history.state, '', url.toString())
-      setOpenListingRef({ partnerSlug, listingId: listing.id })
+      setOpenListingRef({ franjaSlug, listingId: listing.id })
     },
     [],
   )
   const closeListing = useCallback(() => {
     const url = new URL(window.location.href)
-    url.searchParams.delete('partner')
+    url.searchParams.delete('franja')
     url.searchParams.delete('listing')
     window.history.replaceState(window.history.state, '', url.toString())
     setOpenListingRef(null)
@@ -354,24 +354,24 @@ export function MapaCanvas({
   const openListingEntry = useMemo(() => {
     if (!openListingRef) return null
     const cluster = clusters.find(
-      (c) => c.partner.slug === openListingRef.partnerSlug,
+      (c) => c.franja.slug === openListingRef.franjaSlug,
     )
     if (!cluster) return null
-    const sorted = [...(cluster.partner.marketplaceListings ?? [])].sort(
+    const sorted = [...(cluster.franja.marketplaceListings ?? [])].sort(
       (a, b) =>
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     )
     const idx = sorted.findIndex((l) => l.id === openListingRef.listingId)
     if (idx < 0) return null
-    return { listing: sorted[idx], index: idx + 1, partner: cluster.partner }
+    return { listing: sorted[idx], index: idx + 1, franja: cluster.franja }
   }, [clusters, openListingRef])
 
-  // Warm the overlay slug cache with every map item + ALL partner identity
+  // Warm the overlay slug cache with every map item + ALL franja identity
   // rows, so cell clicks and ?item= deep links resolve through OverlayRouter
   // (same bridge ContentGrid provides on grid pages).
   useEffect(() => {
-    recordItems([...layout.placed.map((p) => p.item), ...partners])
-  }, [layout, partners])
+    recordItems([...layout.placed.map((p) => p.item), ...franjas])
+  }, [layout, franjas])
 
   // Boot ripple delays — center-out, plane-space distance to terrain center,
   // ms-quantized so cell memo props stay stable primitives.
@@ -541,9 +541,9 @@ export function MapaCanvas({
   }, [])
 
 
-  const focusPartner = useCallback(
+  const focusFranja = useCallback(
     (slug: string, opts?: { push?: boolean; animate?: boolean }) => {
-      const cluster = clusters.find((c) => c.partner.slug === slug)
+      const cluster = clusters.find((c) => c.franja.slug === slug)
       if (!cluster) return
       setFocusSlug(slug)
       if (opts?.push !== false) writeFocusToUrl(slug)
@@ -579,7 +579,7 @@ export function MapaCanvas({
   }, [])
 
   // Camera refit when the mode flips: the drift and the zoom-out travel
-  // together. While a partner focus is up the focus camera owns the view —
+  // together. While a franja focus is up the focus camera owns the view —
   // unfocusing refits through zoomGlobal (which already reads activeBounds).
   const prevAffinityRef = useRef(false)
   useEffect(() => {
@@ -593,12 +593,12 @@ export function MapaCanvas({
   useEffect(() => {
     const onPop = () => {
       const slug = new URL(window.location.href).searchParams.get('focus')
-      if (slug) focusPartner(slug, { push: false })
+      if (slug) focusFranja(slug, { push: false })
       else zoomGlobal({ push: false })
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
-  }, [focusPartner, zoomGlobal])
+  }, [focusFranja, zoomGlobal])
 
   // ── Boot: measure, initial camera, resize ─────────────────────────────────
 
@@ -608,14 +608,14 @@ export function MapaCanvas({
     reducedMotionRef.current = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
     ).matches
-    // Deep link straight into a listing detail: /mapa?focus=X&partner=X&listing=Y
+    // Deep link straight into a listing detail: /mapa?focus=X&franja=X&listing=Y
     {
       const params = new URL(window.location.href).searchParams
       const listingParam = params.get('listing')
-      const partnerParam = params.get('partner')
-      if (listingParam && partnerParam) {
+      const franjaParam = params.get('franja')
+      if (listingParam && franjaParam) {
         setOpenListingRef({
-          partnerSlug: partnerParam,
+          franjaSlug: franjaParam,
           listingId: listingParam,
         })
       }
@@ -646,7 +646,7 @@ export function MapaCanvas({
     measure()
 
     const initialCluster = initialFocusSlug
-      ? clusters.find((c) => c.partner.slug === initialFocusSlug) ?? null
+      ? clusters.find((c) => c.franja.slug === initialFocusSlug) ?? null
       : null
     cameraRef.current = clampCamera(
       initialCluster
@@ -728,7 +728,7 @@ export function MapaCanvas({
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
-      setPartnersOpen(false) // terrain interaction dismisses the selector
+      setFranjasOpen(false) // terrain interaction dismisses the selector
       // First interaction ends the boot ripple (see onWheel).
       containerRef.current?.classList.remove('mapa-booting')
       stopMotion()
@@ -1098,16 +1098,16 @@ export function MapaCanvas({
         )}
 
         {/* Focus state: identity rosette + marketplace listing nodes. The
-            identity is a full 7-cell rosette carrying the partner image at
+            identity is a full 7-cell rosette carrying the franja image at
             dominant-slab scale (2026-08-20, Iker's call — the single-hex
             nucleus was too small to read or hit); links to the dossier. */}
         {/* Global MERCADO satellites — at every view except their own
-            partner's focus (the focus arrangement re-places those). They
+            franja's focus (the focus arrangement re-places those). They
             ride their anchor member's delta, dim like non-member terrain
             while another identity is focused, and fade during compaction
             (the repack can claim their coast). */}
         {globalListings
-          .filter((g) => g.partnerSlug !== focusSlug)
+          .filter((g) => g.franjaSlug !== focusSlug)
           .map((g) => (
             <MapaListingCell
               key={g.placement.listing.id}
@@ -1116,7 +1116,7 @@ export function MapaCanvas({
               hidden={hidden.has('mercado') || compactArrangement != null}
               dimmed={focusArrangement != null}
               delta={moveDeltas?.[g.anchorItemId] ?? null}
-              onOpen={(l) => openListing(l, g.partnerSlug)}
+              onOpen={(l) => openListing(l, g.franjaSlug)}
             />
           ))}
 
@@ -1126,15 +1126,15 @@ export function MapaCanvas({
               <MapaListingCell
                 key={lp.listing.id}
                 placement={lp}
-                currency={focusedCluster.partner.marketplaceCurrency ?? 'MXN'}
+                currency={focusedCluster.franja.marketplaceCurrency ?? 'MXN'}
                 hidden={hidden.has('mercado')}
-                onOpen={(l) => openListing(l, focusedCluster.partner.slug)}
+                onOpen={(l) => openListing(l, focusedCluster.franja.slug)}
               />
             ))}
             <Link
-              href={`/p/${focusedCluster.partner.slug}`}
+              href={`/f/${focusedCluster.franja.slug}`}
               data-mapa-node
-              aria-label={`${focusedCluster.partner.title} — entrar al dossier del partner`}
+              aria-label={`${focusedCluster.franja.title} — entrar al dossier del franja`}
               className="animate-fade-in absolute z-10 block no-underline"
               style={{
                 left: focusArrangement.identityBox.x,
@@ -1143,7 +1143,7 @@ export function MapaCanvas({
                 height: focusArrangement.identityBox.height,
               }}
             >
-              {/* Media stack — the partner image FILLS the rosette (same
+              {/* Media stack — the franja image FILLS the rosette (same
                   treatment as a dominant content slab). */}
               <div
                 className="absolute inset-0 bg-[#101010]"
@@ -1151,10 +1151,10 @@ export function MapaCanvas({
                   clipPath: `path('${focusArrangement.identityOutline}')`,
                 }}
               >
-                {focusedCluster.partner.imageUrl && (
+                {focusedCluster.franja.imageUrl && (
                   <div className="absolute inset-0">
                     <SmartImage
-                      src={focusedCluster.partner.imageUrl}
+                      src={focusedCluster.franja.imageUrl}
                       alt=""
                       sizes="640px"
                       draggable={false}
@@ -1164,20 +1164,20 @@ export function MapaCanvas({
                 )}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-black/70" />
                 {/* Prominent identity type — the cell must read as THE
-                    partner, not as one more content slab. */}
+                    franja, not as one more content slab. */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-[14%] text-center">
                   <span className="inline-flex w-fit items-center border border-primary/70 bg-[#0D0D0DCC] px-2 py-0.5 font-mono text-[11px] tracking-[0.2em] text-primary">
-                    {'//'}PARTNER
-                    {focusedCluster.partner.partnerKind
-                      ? ` · ${KIND_LABEL[focusedCluster.partner.partnerKind]}`
+                    {'//'}FRANJA
+                    {focusedCluster.franja.franjaKind
+                      ? ` · ${KIND_LABEL[focusedCluster.franja.franjaKind]}`
                       : ''}
                   </span>
                   <span className="font-syne text-5xl font-extrabold uppercase leading-[0.95] tracking-tight text-primary [text-shadow:0_2px_18px_rgba(0,0,0,0.85)]">
-                    {focusedCluster.partner.title}
+                    {focusedCluster.franja.title}
                   </span>
-                  {focusedCluster.partner.subtitle && (
+                  {focusedCluster.franja.subtitle && (
                     <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary/75">
-                      {focusedCluster.partner.subtitle}
+                      {focusedCluster.franja.subtitle}
                     </span>
                   )}
                 </div>
@@ -1227,8 +1227,8 @@ export function MapaCanvas({
         </span>
       </div>
 
-      {/* Top-right: partner selector + zoom controls. The selector scales to
-          the full partner roster (78 in prod): identities WITH terrain are
+      {/* Top-right: franja selector + zoom controls. The selector scales to
+          the full franja roster (78 in prod): identities WITH terrain are
           focusable with their publication count; the rest are listed inert —
           an honest index, not fake affordances. */}
       <div
@@ -1238,61 +1238,61 @@ export function MapaCanvas({
         <div className="relative">
           <button
             type="button"
-            onClick={() => setPartnersOpen((o) => !o)}
-            aria-expanded={partnersOpen}
+            onClick={() => setFranjasOpen((o) => !o)}
+            aria-expanded={franjasOpen}
             aria-haspopup="listbox"
             className={`border px-3 py-1.5 font-mono text-[10px] tracking-[0.14em] backdrop-blur-sm transition-colors ${
-              focusSlug || partnersOpen
+              focusSlug || franjasOpen
                 ? 'border-sys-orange bg-sys-orange/15 text-sys-orange'
                 : 'border-border bg-base/80 text-secondary hover:border-primary/50 hover:text-primary'
             }`}
           >
-            ◎ PARTNERS{focusSlug ? ` · ${focusSlug.toUpperCase()}` : ''}
+            ◎ FRANJAS{focusSlug ? ` · ${focusSlug.toUpperCase()}` : ''}
           </button>
-          {partnersOpen && (
+          {franjasOpen && (
             <div className="absolute right-0 top-full mt-2 max-h-[62dvh] w-72 overflow-y-auto border border-border bg-base/95 backdrop-blur-sm">
               <p className="border-b border-border/60 px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-muted">
                 {'//'}CON TERRENO
               </p>
               {clusters.map((c) => (
                 <button
-                  key={c.partner.id}
+                  key={c.franja.id}
                   type="button"
                   onClick={() => {
-                    setPartnersOpen(false)
-                    if (focusSlug === c.partner.slug) zoomGlobal()
-                    else focusPartner(c.partner.slug)
+                    setFranjasOpen(false)
+                    if (focusSlug === c.franja.slug) zoomGlobal()
+                    else focusFranja(c.franja.slug)
                   }}
-                  aria-pressed={focusSlug === c.partner.slug}
+                  aria-pressed={focusSlug === c.franja.slug}
                   className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                    focusSlug === c.partner.slug
+                    focusSlug === c.franja.slug
                       ? 'bg-sys-orange/10 text-sys-orange'
                       : 'text-secondary hover:bg-elevated hover:text-primary'
                   }`}
                 >
-                  {c.partner.imageUrl && (
+                  {c.franja.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={c.partner.imageUrl}
+                      src={c.franja.imageUrl}
                       alt=""
                       loading="lazy"
                       className="h-6 w-6 shrink-0 border border-border object-cover"
                     />
                   )}
                   <span className="min-w-0 flex-1 truncate font-mono text-[11px] tracking-wide">
-                    {c.partner.title}
+                    {c.franja.title}
                   </span>
                   <span className="shrink-0 font-mono text-[9px] text-muted">
                     {c.itemIds.length}
                   </span>
                 </button>
               ))}
-              {inertPartners.length > 0 && (
+              {inertFranjas.length > 0 && (
                 <>
                   <p className="border-y border-border/60 px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-muted">
                     {'//'}SIN CONTENIDO EN EL MAPA
                   </p>
-                  {inertPartners.map((p) => (
+                  {inertFranjas.map((p) => (
                     <div
                       key={p.id}
                       className="flex items-center gap-2.5 px-3 py-1.5 opacity-45"
@@ -1361,27 +1361,27 @@ export function MapaCanvas({
         onToggleAffinity={toggleAffinity}
       />
 
-      {/* Partner identity strip — contextual chrome, never terrain. */}
+      {/* Franja identity strip — contextual chrome, never terrain. */}
       {focusedCluster && (
-        <PartnerObi
+        <FranjaObi
           cluster={focusedCluster}
           items={focusMemberItems}
-          relatedPartners={rankedPartners.map((r) => ({
-            slug: r.cluster.partner.slug,
-            title: r.cluster.partner.title,
+          relatedFranjas={rankedFranjas.map((r) => ({
+            slug: r.cluster.franja.slug,
+            title: r.cluster.franja.title,
           }))}
-          onFocusPartner={(slug) => focusPartner(slug)}
+          onFocusFranja={(slug) => focusFranja(slug)}
           onZoomGlobal={() => zoomGlobal()}
         />
       )}
 
-      {/* One individual listing's canonical detail (?partner=&listing=),
+      {/* One individual listing's canonical detail (?franja=&listing=),
           directly over the map — no marketplace grid in between. Opens from
           the global satellites and from the focus arc alike. */}
       {openListingEntry && (
         <MarketplaceListingDetail
           listing={openListingEntry.listing}
-          partner={openListingEntry.partner}
+          franja={openListingEntry.franja}
           index={openListingEntry.index}
           onClose={closeListing}
         />

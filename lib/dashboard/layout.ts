@@ -155,7 +155,7 @@ export const DEFAULT_DESKTOP_LAYOUT: readonly LayoutEntry[] = [
   { id: 'novedades', x: 0, y: 6, w: 4, h: 3 },
   { id: 'agenda', x: 4, y: 6, w: 4, h: 3 },
   { id: 'actividad', x: 8, y: 6, w: 4, h: 3 },
-  // Row 4: partner-team/admin only (registry-gated).
+  // Row 4: franja-team/admin only (registry-gated).
   { id: 'mercado', x: 0, y: 9, w: 6, h: 2 },
 ]
 
@@ -280,7 +280,7 @@ export function deriveMobileOrder(layout: readonly LayoutEntry[]): WidgetId[] {
 // Unknown `v` → defaults win. Unknown WidgetIds are dropped. Missing widgets
 // are appended at the bottom at their default size. Sizes snap to the
 // widget's allowedSizes. `widgets` scopes the registry per user (MERCADO
-// exists only for partner-team accounts — §3.9).
+// exists only for franja-team accounts — §3.9).
 
 export function normalizeLayoutMeta(
   raw: unknown,

@@ -9,7 +9,7 @@ import type { Json } from '@/lib/supabase/database.types'
 //
 // Self-only by virtue of the session — we never accept a target user id from
 // the body. RLS (`users_self_update`) is the final gate; it already pins
-// role / is_mod / is_og / partner_id / partner_admin so even if the request
+// role / is_mod / is_og / franja_id / franja_admin so even if the request
 // body slipped one of those in we'd fail the with-check. We still ignore
 // unknown fields here for hygiene.
 //

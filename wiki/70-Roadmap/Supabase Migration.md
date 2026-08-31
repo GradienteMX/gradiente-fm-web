@@ -63,7 +63,7 @@ The editor currently edits `mockData.ts` in VSCode and PRs changes. With Supabas
 create table items (
   id text primary key,
   slug text unique,
-  type text check (type in ('evento','mix','noticia','review','editorial','opinion','partner')),
+  type text check (type in ('evento','mix','noticia','review','editorial','opinion','franja')),
   title text not null,
   subtitle text,
   excerpt text,
@@ -91,10 +91,10 @@ create table items (
   editorial bool default false,
   pinned bool default false,
   body_preview text,
-  -- partner
-  partner_kind text check (partner_kind in ('promo','label','promoter','venue','sponsored')),
-  partner_url text,
-  partner_last_updated timestamptz,
+  -- franja
+  franja_kind text check (franja_kind in ('promo','label','promoter','venue','sponsored')),
+  franja_url text,
+  franja_last_updated timestamptz,
   -- curation
   hp float,
   hp_last_updated_at timestamptz

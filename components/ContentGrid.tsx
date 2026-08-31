@@ -1,9 +1,11 @@
 'use client'
 
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { usePathname } from 'next/navigation'
 import { parseISO } from 'date-fns'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { ContentItem } from '@/lib/types'
+import { isPaperRoute } from '@/lib/chrome/paperRoutes'
 import { useVibe } from '@/context/VibeContext'
 import { filterByVibe, vibeMid, vibeToColor } from '@/lib/utils'
 import { itemMatchesGenreFilter } from '@/lib/genres'
@@ -17,42 +19,44 @@ import { RecurationSweep } from './grid/RecurationSweep'
 // Per-type voice when the grid is empty under an active filter — feels more
 // "us" than a single generic line. Uses the active categoryFilter (when set)
 // to pick copy. Falls back to the vibe-range message when no category is
-// pinned.
+// pinned. «EL PLIEGO» register: a dashed ink box on the raised paper stock;
+// the category accent is a swatch square paired with its 2-letter code (color
+// is never the only signal), never colored text.
 
 import type { ContentType } from '@/lib/types'
-import { categoryColor } from '@/lib/utils'
+import { categoryColorOnLight, TYPE_CODES } from '@/lib/dashboard/palette'
 
 const EMPTY_BY_TYPE: Partial<Record<ContentType, { line: string; sub: string }>> = {
   evento: {
-    line: '// AGENDA · CALMA TEMPORAL',
+    line: 'AGENDA · CALMA TEMPORAL',
     sub: 'Sin eventos en este rango. La escena respira; vuelve en unos días.',
   },
   mix: {
-    line: '// CABINA · BOOTH VACÍO',
+    line: 'CABINA · BOOTH VACÍO',
     sub: 'Ningún mix coincide con el filtro activo. Sube el rango de vibe o limpia el foco.',
   },
   noticia: {
-    line: '// SIN NOTICIAS · TRANSMISIÓN ESTABLE',
+    line: 'SIN NOTICIAS · TRANSMISIÓN ESTABLE',
     sub: 'No hay nada nuevo que reportar. Buena señal — o malas frecuencias.',
   },
   review: {
-    line: '// SIN RESEÑAS · ARCHIVO ABIERTO',
+    line: 'SIN RESEÑAS · ARCHIVO ABIERTO',
     sub: 'Aún no hay críticas en este corte. Está cocinándose una, prometido.',
   },
   editorial: {
-    line: '// PRENSA · PAUSA EDITORIAL',
+    line: 'PRENSA · PAUSA EDITORIAL',
     sub: 'No hay editoriales en este rango. Estamos pensando antes de escribir.',
   },
   opinion: {
-    line: '// COLUMNA · MICRÓFONO ABIERTO',
+    line: 'COLUMNA · MICRÓFONO ABIERTO',
     sub: 'Sin opiniones en este rango. Pronto alguien dirá algo incómodo.',
   },
   articulo: {
-    line: '// ARCHIVO LARGO · SILENCIO',
+    line: 'ARCHIVO LARGO · SILENCIO',
     sub: 'Sin artículos largos en este corte. Investigación en curso.',
   },
   listicle: {
-    line: '// LISTAS · CURADURÍA EN PAUSA',
+    line: 'LISTAS · CURADURÍA EN PAUSA',
     sub: 'Sin listas que coincidan. La próxima entrega está siendo seleccionada.',
   },
 }
@@ -65,28 +69,32 @@ function EmptyState({
   category?: ContentType | null
 }) {
   const copy = category ? EMPTY_BY_TYPE[category] : null
-  const headline = copy?.line ?? label ?? '// SIN CONTENIDO EN ESTE RANGO DE VIBE'
+  const headline = copy?.line ?? label ?? 'SIN CONTENIDO EN ESTE RANGO DE VIBE'
   const sub = copy?.sub
-  const accent = category ? categoryColor(category) : '#888888'
 
   return (
     <div
-      className="flex min-h-48 flex-col items-center justify-center gap-3 border border-border px-6 py-8 text-center"
+      className="flex min-h-48 flex-col items-center justify-center gap-3 border border-dashed border-ink bg-paper-raised px-6 py-8 text-center"
       style={{ gridColumn: '1 / -1' }}
     >
-      <div className="hazard-stripe h-1 w-20" />
-      <p
-        className="font-mono text-xs tracking-widest"
-        style={{ color: accent }}
-      >
+      {category && (
+        <span className="flex items-center gap-2 font-mono text-d11 uppercase tracking-widest text-ink">
+          <span
+            aria-hidden
+            className="h-2.5 w-2.5 shrink-0 border border-ink"
+            style={{ backgroundColor: categoryColorOnLight(category) }}
+          />
+          {TYPE_CODES[category]}
+        </span>
+      )}
+      <p className="font-mono text-d13 uppercase tracking-widest text-ink">
         {headline}
       </p>
       {sub && (
-        <p className="max-w-md font-mono text-[11px] leading-relaxed text-muted">
+        <p className="max-w-md font-grotesk text-d13 leading-relaxed text-ink-soft">
           {sub}
         </p>
       )}
-      <div className="hazard-stripe h-1 w-20" />
     </div>
   )
 }
@@ -179,6 +187,13 @@ const MosaicItem = forwardRef<
 
 export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridProps) {
   const { vibeRange, categoryFilter, genreFilter, setVisibleGenres } = useVibe()
+
+  // Ground hint for the re-curation sweep, derived from the «EL PLIEGO»
+  // ground map so the two stay in agreement: paper routes get ink blocks,
+  // while the not-yet-flipped ContentGrid hosts (/u/[username] fase E,
+  // /e/[slug] fase F) keep the dark grey estática.
+  const pathname = usePathname()
+  const sweepGround = isPaperRoute(pathname ?? '/') ? 'paper' : 'dark'
 
   // Measure how many columns the mosaic actually has so MosaicItem can clamp
   // the curation's 3-column layout to the real width. MIN_TRACK mirrors the
@@ -359,7 +374,7 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
           (pointer-events-none); the card DOM, click-to-open, focus, selection,
           screen-reader, the layout="position" reflow + stepped entrants below
           are all untouched. Skips first mount and reduced-motion. */}
-      <RecurationSweep signature={sweepSignature} vibeColor={sweepColor} />
+      <RecurationSweep signature={sweepSignature} vibeColor={sweepColor} ground={sweepGround} />
       {/* AnimatePresence intentionally NOT used here. With `mode="popLayout"`
           + `layoutId` Framer was failing to unmount filtered-out cards
           (children stayed in the DOM at full opacity even after their exit
@@ -374,6 +389,12 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
           item.type === 'evento' &&
           !!item.date &&
           parseISO(item.date).getTime() < Date.now()
+        // The cell's real aspect, from the same clamp MosaicItem applies —
+        // MdCard picks side-vs-top art plate from THIS, never from the
+        // content type (SHAPE_CYCLE reassigns shapes across types, and the
+        // phone clamp reshapes cells; see CardOrientation in ContentCard).
+        const effColSpan = Math.min(layout.colSpan, cols)
+        const orientation = effColSpan >= layout.rowSpan ? 'wide' : 'tall'
         return (
           <MosaicItem
             key={item.id}
@@ -384,7 +405,11 @@ export function ContentGrid({ items, mode = 'home', emptyLabel }: ContentGridPro
             isPast={isPast}
             animateLayout={animateLayout}
           >
-            <ContentCard item={item} size={layout.tier === 'xl' ? 'lg' : layout.tier} />
+            <ContentCard
+              item={item}
+              size={layout.tier === 'xl' ? 'lg' : layout.tier}
+              orientation={orientation}
+            />
           </MosaicItem>
         )
       })}

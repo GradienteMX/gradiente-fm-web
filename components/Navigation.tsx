@@ -4,227 +4,288 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
+import { useSearch } from '@/components/search/useSearch'
 import { AuthBadge } from '@/components/auth/AuthBadge'
 import { SystemObject } from '@/components/brand/SystemObject'
+import { AhoraChip } from '@/components/chrome/AhoraChip'
 import { useFeedPulse } from '@/lib/hooks/useFeedPulse'
+import { isPaperRoute } from '@/lib/chrome/paperRoutes'
 
-// Header destinations. Trimmed from 9 → 5 on 2026-05-12 to break the visual
-// equivalence with the SECCIÓN rail (beta testers were ignoring FORO +
-// MARKETPLACE because they read as duplicates of //NOTICIA / //MIX / etc
-// filter rows). The /about entry (labeled EMPIEZA AQUÍ) surfaces the
-// invitation-as-about page — the orientation/guide for new visitors.
-// Every item renders in sys-orange by default; only the *active* item
-// switches to an orange → red gradient + glow. The differentiation is
-// "selected vs not," not "this item is its own color."
+// ── Navigation — the pliego masthead (dual-stamped) ─────────────────────────
+//
+// ONE anatomy, TWO grounds, chosen at runtime via isPaperRoute(pathname):
+//
+//   INK stamping (still-dark routes — foro, marketplace, franja, overlays…):
+//   the 64px black strip from fase A, unchanged. Active destination = bold +
+//   2px acid baseline (acid on panel is a sanctioned use); everything else is
+//   mono d13 panel-text with a plain hover underline.
+//
+//   PAPER stamping (feed routes — home, agenda, category pages): same strip
+//   printed on paper — bg-paper, ink type, 2px ink base rule. Active
+//   destination = bold + 2px sys-red-paper baseline (red is the PUBLIC
+//   editorial/live accent on paper; acid stays reserved for the ink stamping
+//   and own-action badges). Chips are ink hairline + fill inversion.
+//
+// The SystemObject mark rasterizes the thermal ramp (grey→orange, tuned
+// against black) — on paper it sits on a small 32px bg-panel plate with an
+// ink border so the instrument stays legible (instrument doctrine).
+//
+// No glow, no gradients, no scanlines — the print language is borders, fills,
+// and type, on either ground.
+//
+// The mobile menu is the ONLY phone entry to login/registro — AuthBadge is
+// desktop-only — so it keeps the full set: destinations, feedback, and the
+// auth controls, every row ≥44px.
+
 const NAV_LINKS = [
-  { href: '/',            label: 'HOME' },
-  { href: '/agenda',      label: 'AGENDA' },
-  { href: '/foro',        label: 'FORO' },
-  { href: '/marketplace', label: 'MARKETPLACE' },
-  { href: '/about',       label: 'EMPIEZA AQUÍ' },
+  { href: '/', label: 'INICIO' },
+  { href: '/agenda', label: 'AGENDA' },
+  { href: '/foro', label: 'FORO' },
+  { href: '/marketplace', label: 'MERCADO' },
 ]
 
-// Beta feedback form — external Google Form, opens in a new tab. Rendered as
-// a distinct amber CTA chip (not a section link) so it reads as "give us
-// feedback" rather than another destination.
+// Beta feedback form — external Google Form, opens in a new tab.
 const FEEDBACK_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSc71uI_yNHJW0z-iN2KVughYGURNQGl-wY7vTz8Q_03RzQfuw/viewform'
 
-// Active-state gradient — sys-orange → sys-red, matching the header's top
-// accent bar so the "this is where you are" cue is visually rhymed with the
-// brand chrome. Inline (not Tailwind) because it feeds WebkitBackgroundClip.
-const ACTIVE_GRADIENT = 'linear-gradient(to right, #F97316, #E63329)'
+// Focus ring for controls on the ink strip (outline-ink is invisible there)
+// vs on the paper strip (the house 2px ink outline, offset 2).
+const FOCUS_ON_PANEL =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
+const FOCUS_ON_PAPER =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 export function Navigation() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   // AuthBadge is desktop-only (hidden md:flex), so the mobile menu carries the
-  // login / registro / dashboard / salir controls instead.
+  // login / registro / panel / salir controls instead.
   const { isAuthed, openLogin, logout } = useAuth()
+  const { openSearch } = useSearch()
 
   // Live feed piece count — feeds the brand mark's signal strength only.
   const { activeCount } = useFeedPulse()
 
+  // Which stamping? Paper routes get the paper masthead; everything else
+  // keeps the fase-A ink strip.
+  const paper = isPaperRoute(pathname)
+  const focusRing = paper ? FOCUS_ON_PAPER : FOCUS_ON_PANEL
+
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href)
+
+  // Bordered chip (BUSCAR / FEEDBACK BETA) — hairline + fill inversion on
+  // either ground.
+  const chipClass = paper
+    ? 'border border-ink px-2 py-1 font-mono text-d11 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper'
+    : 'border border-panel-text/60 px-2 py-1 font-mono text-d11 uppercase tracking-widest text-panel-text hover:bg-panel-text hover:text-panel'
+
+  // Mobile menu row separators: ink hairlines on paper, faint panel-text on ink.
+  const rowBorder = paper ? 'border-b border-ink' : 'border-b border-panel-text/20'
+
   return (
-    <header className="eva-scanlines sticky top-0 z-50 bg-base">
-
-      {/* ── Top gradient bar ── */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-sys-red via-sys-orange to-sys-red" />
-
-      {/* ── Main bar ── */}
-      <div className="h-[54px] border-b border-border-subtle">
-      <div className="mx-auto flex h-full max-w-screen-2xl items-stretch px-4 md:px-8">
-
-        {/* ── Logo — wordmark lockup ── */}
+    <header
+      className={`sticky top-0 z-50 ${
+        paper
+          ? 'border-b-2 border-ink bg-paper text-ink'
+          : 'border-b border-ink bg-panel text-panel-text'
+      }`}
+    >
+      <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-stretch gap-4 px-4 md:px-8">
+        {/* ── Wordmark lockup ── */}
         <Link
           href="/"
-          className="group flex items-center gap-2.5 border-r-2 border-sys-orange pl-3 pr-4 transition-colors hover:bg-hover"
+          aria-label="Inicio"
+          className={`flex shrink-0 items-center gap-2.5 ${focusRing}`}
         >
-          {/* Living ASCII brand mark — a rotating icosahedron lattice
-              rasterized into a character grid, lit by the live feed piece
-              count (tonight's signal strength). Density/heat/spin ARE the
-              readout — no raw number. ~40px, canvas-2D, no WebGL context. */}
-          <SystemObject signalStrength={activeCount} size={40} />
-          <div className="flex flex-col gap-[3px]">
-            <span className="font-syne text-[17px] font-black leading-none tracking-tighter text-sys-orange">
+          {/* Living ASCII brand mark — canvas-2D icosahedron lit by the live
+              feed piece count. Density/heat/spin ARE the readout. Its ramp is
+              tuned against black, so on paper it rides a small panel plate. */}
+          {paper ? (
+            <span
+              aria-hidden
+              className="flex h-8 w-8 shrink-0 items-center justify-center border border-ink bg-panel"
+            >
+              <SystemObject signalStrength={activeCount} size={28} />
+            </span>
+          ) : (
+            <SystemObject signalStrength={activeCount} size={32} />
+          )}
+          <span className="flex flex-col gap-0.5">
+            <span
+              className={`font-syne text-d18 font-extrabold leading-none tracking-tight ${
+                paper ? 'text-ink' : 'text-panel-text'
+              }`}
+            >
               GRADIENTE
             </span>
-            <span className="font-mono text-[6px] tracking-[0.2em] text-muted">
-              // SUBSISTEMA·CULTURAL·CDMX
+            <span
+              className={`hidden font-mono text-d11 uppercase tracking-widest sm:block ${
+                paper ? 'text-ink-faint' : 'text-panel-text/60'
+              }`}
+            >
+              SUBSISTEMA CULTURAL · CDMX
             </span>
-          </div>
+          </span>
         </Link>
 
-        {/* ── Desktop nav links ──
-            Inactive = always-visible sys-orange (no dim-until-active —
-            the original complaint was that inactive items vanished).
-            Active = orange → red gradient text + matching bottom bar +
-            subtle tinted bg. The gradient is the only thing that swaps;
-            color identity is consistent, "selected" is what reads. */}
-        <nav className="hidden flex-1 items-stretch justify-center md:flex">
+        {/* ── Desktop destinations ── */}
+        <nav
+          aria-label="Navegación"
+          className="hidden min-w-0 flex-1 items-stretch justify-center md:flex"
+        >
           {NAV_LINKS.map((link) => {
-            const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
+            const active = isActive(link.href)
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className="group relative flex items-center justify-center border-r border-border-subtle px-6 transition-colors"
-                style={{
-                  // Subtle gradient tint behind the active item — mirrors
-                  // the text gradient at ~6% opacity. Reads as "boxed"
-                  // without dominating.
-                  background: active
-                    ? 'linear-gradient(to right, rgba(249,115,22,0.08), rgba(230,51,41,0.08))'
-                    : 'transparent',
-                }}
+                aria-current={active ? 'page' : undefined}
+                className={`relative flex items-center px-4 font-mono text-d13 uppercase tracking-widest ${
+                  active
+                    ? paper
+                      ? 'font-bold text-ink'
+                      : 'font-bold text-panel-text'
+                    : paper
+                      ? 'text-ink-soft hover:underline hover:underline-offset-4'
+                      : 'text-panel-text/80 hover:underline hover:underline-offset-4'
+                } ${focusRing}`}
               >
-                {/* Label.
-                    - Inactive: solid sys-orange, no glow.
-                    - Active: gradient text via bg-clip. `text-shadow` does
-                      NOT render on bg-clipped text (the underlying glyph
-                      is transparent), so the active glow uses `filter:
-                      drop-shadow()` instead — that works because filter
-                      operates on the rendered pixels, gradient included. */}
-                <span
-                  className={`font-syne text-[13px] font-bold leading-none tracking-widest ${
-                    active ? '' : 'text-sys-orange'
-                  }`}
-                  style={
-                    active
-                      ? {
-                          background: ACTIVE_GRADIENT,
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text',
-                          filter: 'drop-shadow(0 0 6px rgba(249,115,22,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
-                        }
-                      : undefined
-                  }
-                >
-                  {link.label}
-                </span>
-                {/* Active bottom bar — same orange→red gradient as the label */}
+                {link.label}
+                {/* Active baseline — sys-red-paper on paper (the public live
+                    accent), acid on panel (sanctioned use). */}
                 {active && (
                   <span
-                    className="absolute bottom-0 left-0 right-0 h-[2px]"
-                    style={{
-                      background:
-                        'linear-gradient(to right, transparent, #F97316, #E63329, transparent)',
-                      boxShadow: '0 0 6px rgba(249,115,22,0.5)',
-                    }}
+                    aria-hidden
+                    className={`absolute inset-x-0 bottom-0 h-0.5 ${
+                      paper ? 'bg-sys-red-paper' : 'bg-acid'
+                    }`}
                   />
                 )}
-                {/* Hover crosshair */}
-                <span
-                  className="absolute right-1 top-1 font-mono text-[9px] text-sys-orange opacity-0 transition-opacity group-hover:opacity-30"
-                >+</span>
               </Link>
             )
           })}
         </nav>
 
-        {/* Feedback (beta) — external Google Form, new tab. Amber chip so it
-            reads as a distinct CTA, not another section. */}
-        <a
-          href={FEEDBACK_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden items-center border-l border-border-subtle px-3 md:flex"
-        >
-          <span className="border border-sys-amber/60 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-sys-amber transition-colors hover:bg-sys-amber/10">
-            FEEDBACK BETA
-          </span>
-        </a>
+        {/* ── Right cluster ── */}
+        <div className="ml-auto flex shrink-0 items-center gap-3">
+          {/* Now-playing chip — its own subscriber leaf, so audio ticks never
+              re-render this header. Hidden on phones (the HUD covers it).
+              Ground-aware internally via isPaperRoute. */}
+          <div className="hidden sm:block">
+            <AhoraChip />
+          </div>
 
-        {/* Auth badge — LOGIN / DASHBOARD slot */}
-        <AuthBadge />
+          {/* Búsqueda — the visible trigger for the global SearchOverlay
+              (the `/` shortcut in SearchProvider is the other door). */}
+          <button
+            type="button"
+            onClick={openSearch}
+            className={`hidden min-h-11 items-center md:flex ${focusRing}`}
+            aria-label="Buscar"
+          >
+            <span className={`flex items-center gap-1.5 ${chipClass}`}>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                aria-hidden
+              >
+                <circle cx="6" cy="6" r="4.4" />
+                <path d="M9.4 9.4 L13 13" />
+              </svg>
+              BUSCAR
+            </span>
+          </button>
 
-        {/* Mobile toggle */}
-        <button
-          className="ml-auto flex items-center px-4 text-sys-orange md:hidden"
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-label="Menú"
-        >
-          <span className="font-syne text-xl font-black">
-            {mobileOpen ? '×' : '≡'}
-          </span>
-        </button>
+          {/* Feedback (beta) — external Google Form, new tab. */}
+          <a
+            href={FEEDBACK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`hidden min-h-11 items-center md:flex ${focusRing}`}
+          >
+            <span className={chipClass}>FEEDBACK BETA</span>
+          </a>
+
+          {/* Identity slot — desktop only. Ground-aware internally. */}
+          <AuthBadge />
+
+          {/* Mobile toggle — inherits the strip's ink/panel-text color. */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Menú"
+            aria-expanded={mobileOpen}
+            className={`flex min-h-11 min-w-11 items-center justify-center md:hidden ${focusRing}`}
+          >
+            <span aria-hidden className="font-syne text-xl font-extrabold">
+              {mobileOpen ? '×' : '≡'}
+            </span>
+          </button>
+        </div>
       </div>
-      </div>
 
-      {/* ── Mobile menu ── */}
+      {/* ── Mobile menu — hard cut open/close, stamped like the strip ── */}
       {mobileOpen && (
-        <nav className="border-t border-border-subtle bg-base">
+        <nav
+          aria-label="Navegación"
+          className={`md:hidden ${
+            paper ? 'border-t border-ink bg-paper' : 'border-t border-panel-text/20'
+          }`}
+        >
           {NAV_LINKS.map((link) => {
-            const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
+            const active = isActive(link.href)
             return (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 border-b border-border-subtle px-4 py-3"
-                style={{
-                  background: active
-                    ? 'linear-gradient(to right, rgba(249,115,22,0.08), rgba(230,51,41,0.08))'
-                    : 'transparent',
-                }}
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-11 items-center gap-3 px-4 font-mono text-d13 uppercase tracking-widest ${rowBorder} ${
+                  active
+                    ? paper
+                      ? 'font-bold text-ink'
+                      : 'font-bold text-panel-text'
+                    : paper
+                      ? 'text-ink-soft'
+                      : 'text-panel-text/80'
+                } ${focusRing}`}
               >
-                <span className="font-mono text-[10px] text-sys-orange">
-                  {active ? '▶' : '·'}
-                </span>
+                {/* 8px square marks the active row: sys-red-paper on paper
+                    (editorial state, not an own-action — acid stays out),
+                    acid on panel (legal there). A transparent twin keeps the
+                    labels aligned. */}
                 <span
-                  className={`font-syne text-xs font-bold tracking-widest ${
-                    active ? '' : 'text-sys-orange'
-                  }`}
-                  style={
+                  aria-hidden
+                  className={`h-2 w-2 shrink-0 ${
                     active
-                      ? {
-                          background: ACTIVE_GRADIENT,
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text',
-                          filter: 'drop-shadow(0 0 6px rgba(249,115,22,0.7)) drop-shadow(0 0 14px rgba(230,51,41,0.35))',
-                        }
-                      : undefined
-                  }
-                >
-                  {link.label}
-                </span>
+                      ? paper
+                        ? 'bg-sys-red-paper'
+                        : 'bg-acid'
+                      : 'bg-transparent'
+                  }`}
+                />
+                {link.label}
               </Link>
             )
           })}
+
           {/* Feedback (beta) — external, opens new tab */}
           <a
             href={FEEDBACK_URL}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-3 border-b border-border-subtle px-4 py-3"
+            className={`flex min-h-11 items-center gap-3 px-4 font-mono text-d13 uppercase tracking-widest ${rowBorder} ${
+              paper ? 'text-ink-soft' : 'text-panel-text/80'
+            } ${focusRing}`}
           >
-            <span className="font-mono text-[10px] text-sys-amber">·</span>
-            <span className="font-syne text-xs font-bold tracking-widest text-sys-amber">
-              FEEDBACK BETA
-            </span>
+            <span aria-hidden className="h-2 w-2 shrink-0 bg-transparent" />
+            FEEDBACK BETA
           </a>
 
           {/* Auth controls — only place login/registro is reachable on phones. */}
@@ -232,23 +293,29 @@ export function Navigation() {
             <>
               <button
                 type="button"
-                onClick={() => { setMobileOpen(false); openLogin('login') }}
-                className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3.5 text-left"
+                onClick={() => {
+                  setMobileOpen(false)
+                  openLogin('login')
+                }}
+                className={`flex min-h-11 w-full items-center gap-3 px-4 text-left font-mono text-d13 uppercase tracking-widest ${rowBorder} ${
+                  paper ? 'text-ink' : 'text-panel-text'
+                } ${focusRing}`}
               >
-                <span className="font-mono text-[10px] text-sys-orange">⏎</span>
-                <span className="font-syne text-xs font-bold tracking-widest text-sys-orange">
-                  INICIAR SESIÓN
-                </span>
+                <span aria-hidden className="h-2 w-2 shrink-0 bg-transparent" />
+                INICIAR SESIÓN
               </button>
               <button
                 type="button"
-                onClick={() => { setMobileOpen(false); openLogin('signup') }}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                onClick={() => {
+                  setMobileOpen(false)
+                  openLogin('signup')
+                }}
+                className={`flex min-h-11 w-full items-center gap-3 px-4 text-left font-mono text-d13 uppercase tracking-widest ${
+                  paper ? 'text-ink' : 'text-panel-text'
+                } ${focusRing}`}
               >
-                <span className="font-mono text-[10px] text-sys-orange">+</span>
-                <span className="font-syne text-xs font-bold tracking-widest text-sys-orange">
-                  REGISTRARSE
-                </span>
+                <span aria-hidden className="h-2 w-2 shrink-0 bg-transparent" />
+                REGISTRARSE
               </button>
             </>
           ) : (
@@ -256,22 +323,25 @@ export function Navigation() {
               <Link
                 href="/dashboard"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 border-b border-border-subtle px-4 py-3.5"
+                className={`flex min-h-11 items-center gap-3 px-4 font-mono text-d13 uppercase tracking-widest ${rowBorder} ${
+                  paper ? 'text-ink' : 'text-panel-text'
+                } ${focusRing}`}
               >
-                <span className="h-2 w-2 rounded-full bg-sys-green" />
-                <span className="font-syne text-xs font-bold tracking-widest text-sys-green">
-                  DASHBOARD
-                </span>
+                <span aria-hidden className="h-2 w-2 shrink-0 bg-transparent" />
+                PANEL
               </Link>
               <button
                 type="button"
-                onClick={() => { setMobileOpen(false); logout() }}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                onClick={() => {
+                  setMobileOpen(false)
+                  void logout()
+                }}
+                className={`flex min-h-11 w-full items-center gap-3 px-4 text-left font-mono text-d13 uppercase tracking-widest ${
+                  paper ? 'text-ink-soft' : 'text-panel-text/80'
+                } ${focusRing}`}
               >
-                <span className="font-mono text-[10px] text-muted">⏻</span>
-                <span className="font-syne text-xs font-bold tracking-widest text-muted">
-                  SALIR
-                </span>
+                <span aria-hidden className="h-2 w-2 shrink-0 bg-transparent" />
+                SALIR
               </button>
             </>
           )}

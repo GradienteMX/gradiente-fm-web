@@ -53,7 +53,7 @@ HP halves every `ATTENTION_HALF_LIFE_HOURS[type]`:
 | review | 14 days |
 | noticia | 48h (2 days) |
 | opinion | 10 days |
-| partner | 365 days (effectively static) |
+| franja | 365 days (effectively static) |
 
 Decay is **lazy** — we don't run a cron. `currentHp(item, now)` computes the decayed value on read from the stored snapshot:
 
@@ -91,7 +91,7 @@ Multipliers correct cross-type dominance:
 | evento | 1.0 |
 | mix | 1.0 |
 | noticia | 0.8 |
-| partner | 1.0 |
+| franja | 1.0 |
 
 Noticias decay fast AND get downweighted — news shouldn't dominate a music site.
 
@@ -140,7 +140,7 @@ Without per-type spans, every `md` and `lg` card was `colSpan: 2` in a 3-col gri
 | Type | `md` geometry | Rationale |
 |---|---|---|
 | review · articulo · listicle · editorial · opinion · noticia | **1×2 tall** | Long-form prose reads better in a portrait card |
-| evento · mix · partner | **2×1 wide** | Flyer / cover art reads better at width |
+| evento · mix · franja | **2×1 wide** | Flyer / cover art reads better at width |
 
 Tall `1×2` tiles slot into column 3 alongside wide `2×1` neighbors, so the right rail stops being a wall of 1×1 squares.
 

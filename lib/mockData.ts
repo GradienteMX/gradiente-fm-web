@@ -1,6 +1,5 @@
 import type { ContentItem } from "./types";
 import { SCRAPED_EVENTS } from "./scrapedEvents";
-import { NOCHE_NEGRA_SEED } from "./nocheNegraSeed";
 
 // All imageUrl values reference /flyers/* — served from public/flyers/
 // Real info: Fascinoma (fascinoma.space · @fascinoma_mx) + Club Japan (Monterrey 56, Roma Norte · @japan_cdmx)
@@ -84,10 +83,10 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-industrial",
-    // Explicit partner attribution — Club Japan publishes this item.
-    // Mirrors prod, where items.partner_id stamps the venue's own nights
+    // Explicit franja attribution — Club Japan publishes this item.
+    // Mirrors prod, where items.franja_id stamps the venue's own nights
     // (see wiki/70-Roadmap/Spatial Identity Canvas.md § focus eligibility).
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "japan-cdmx-industrial-night-abr26",
     type: "evento",
     title: "CLUB JAPAN — INDUSTRIAL NIGHT",
@@ -160,7 +159,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-rat-pack",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "club-japan-rat-pack-crew-may26",
     type: "evento",
     title: "CLUB JAPAN × RAT PACK CREW",
@@ -255,7 +254,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-hardtechno-may",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "club-japan-hard-techno-residency-may26",
     type: "evento",
     title: "CLUB JAPAN — Hard Techno Residency",
@@ -523,7 +522,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "mx-004",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "japan-cdmx-mixcloud-best-of",
     type: "mix",
     title: "Japan CDMX Mixcloud — Best Of 2025",
@@ -641,7 +640,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "no-002",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "club-japan-10-aniversario",
     type: "noticia",
     title:
@@ -761,10 +760,10 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-003",
-    // Editorial partner attachment — this piece is explicitly about Club
-    // Japan (spec eligibility precedence 5: an editor attached the partner
-    // entity). Same items.partner_id mechanism as publisher attribution.
-    partnerId: "pa-club-japan",
+    // Editorial franja attachment — this piece is explicitly about Club
+    // Japan (spec eligibility precedence 5: an editor attached the franja
+    // entity). Same items.franja_id mechanism as publisher attribution.
+    franjaId: "pa-club-japan",
     slug: "review-club-japan-noche-tipica",
     type: "review",
     title: "Club Japan: una noche típica en el sótano de Roma Norte",
@@ -807,7 +806,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ed-001",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "shawn-raynaldo-club-japan-pedagogia",
     type: "editorial",
     title: "Club Japan y la pedagogía de la oscuridad",
@@ -1077,7 +1076,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ar-002",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "soundsystem-mexicano-linaje-oculto",
     type: "articulo",
     title: "El sound system mexicano: un linaje oculto",
@@ -1315,7 +1314,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "li-hard-techno-cdmx-2026",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "cinco-tracks-hard-techno-cdmx-2026",
     type: "listicle",
     title: "5 tracks que definieron el hard techno en CDMX",
@@ -2067,7 +2066,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "ev-japan-cierre-temporada",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "club-japan-cierre-temporada-jun26",
     type: "evento",
     title: "CLUB JAPAN — CIERRE DE TEMPORADA",
@@ -2306,7 +2305,7 @@ const RAW_ITEMS: ContentItem[] = [
 
   {
     id: "rv-006",
-    partnerId: "pa-club-japan",
+    franjaId: "pa-club-japan",
     slug: "review-cosmetic-residency-japan",
     type: "review",
     title: "Cøsmetic en residencia: cómo dominar un venue en 90 minutos",
@@ -2707,13 +2706,13 @@ const RAW_ITEMS: ContentItem[] = [
     readTime: 6,
   },
 
-  // ─── PARTNERS (rail) ─────────────────────────────────────────────────────
-  // Independent zone — chronological by partnerLastUpdated, no ranking, no vibe filter.
+  // ─── FRANJAS (rail) ─────────────────────────────────────────────────────
+  // Independent zone — chronological by franjaLastUpdated, no ranking, no vibe filter.
 
   {
     id: "pa-naafi",
     slug: "naafi",
-    type: "partner",
+    type: "franja",
     title: "N.A.A.F.I.",
     subtitle: "Sello · CDMX",
     vibeMin: 7, vibeMax: 7,
@@ -2721,9 +2720,9 @@ const RAW_ITEMS: ContentItem[] = [
     tags: [],
     imageUrl: "/flyers/rf-074.jpg",
     publishedAt: "2026-04-17T10:00:00",
-    partnerKind: "label",
-    partnerUrl: "https://naafi.net",
-    partnerLastUpdated: "2026-04-17T10:00:00",
+    franjaKind: "label",
+    franjaUrl: "https://naafi.net",
+    franjaLastUpdated: "2026-04-17T10:00:00",
     marketplaceEnabled: true,
     marketplaceDescription:
       "Catálogo físico del sello: vinilos, cassettes y merch de las ediciones limitadas de N.A.A.F.I. Pagos directos al sello, recogida en CDMX o envío a todo México. Lo que aquí se va, no se reimprime.",
@@ -2819,7 +2818,7 @@ const RAW_ITEMS: ContentItem[] = [
   {
     id: "pa-club-japan",
     slug: "club-japan",
-    type: "partner",
+    type: "franja",
     title: "Club Japan",
     subtitle: "Venue · Roma Norte",
     vibeMin: 8, vibeMax: 8,
@@ -2827,12 +2826,12 @@ const RAW_ITEMS: ContentItem[] = [
     tags: [],
     imageUrl: "/flyers/rf-075.jpg",
     publishedAt: "2026-04-16T12:00:00",
-    partnerKind: "venue",
-    partnerUrl: "https://instagram.com/japan_cdmx",
-    partnerLastUpdated: "2026-04-16T12:00:00",
-    // Marketplace — dev-seed mirror of an approved marketplace partner, so
+    franjaKind: "venue",
+    franjaUrl: "https://instagram.com/japan_cdmx",
+    franjaLastUpdated: "2026-04-16T12:00:00",
+    // Marketplace — dev-seed mirror of an approved marketplace franja, so
     // the /mapa focus cluster can demo listing nodes (mockup: the East Asia
-    // Electronics Network LP cell). Listings ride the partner row jsonb.
+    // Electronics Network LP cell). Listings ride the franja row jsonb.
     marketplaceEnabled: true,
     marketplaceDescription:
       "Selección física del sótano: vinilos de la red East Asia Electronics, cassettes de sesiones residentes y merch del club.",
@@ -2882,7 +2881,7 @@ const RAW_ITEMS: ContentItem[] = [
   {
     id: "pa-fascinoma",
     slug: "fascinoma",
-    type: "partner",
+    type: "franja",
     title: "FASCiNOMA",
     subtitle: "Promotora · Festival",
     vibeMin: 6, vibeMax: 6,
@@ -2890,14 +2889,14 @@ const RAW_ITEMS: ContentItem[] = [
     tags: [],
     imageUrl: "/flyers/rf-076.jpg",
     publishedAt: "2026-04-15T09:00:00",
-    partnerKind: "promoter",
-    partnerUrl: "https://fascinoma.space",
-    partnerLastUpdated: "2026-04-15T09:00:00",
+    franjaKind: "promoter",
+    franjaUrl: "https://fascinoma.space",
+    franjaLastUpdated: "2026-04-15T09:00:00",
   },
   {
     id: "pa-multiforo-alicia",
     slug: "multiforo-alicia",
-    type: "partner",
+    type: "franja",
     title: "Multiforo Alicia",
     subtitle: "Venue · Roma",
     vibeMin: 5, vibeMax: 5,
@@ -2905,14 +2904,14 @@ const RAW_ITEMS: ContentItem[] = [
     tags: [],
     imageUrl: "/flyers/rf-077.jpg",
     publishedAt: "2026-04-13T18:00:00",
-    partnerKind: "venue",
-    partnerUrl: "https://forodealiciatickets.com",
-    partnerLastUpdated: "2026-04-13T18:00:00",
+    franjaKind: "venue",
+    franjaUrl: "https://forodealiciatickets.com",
+    franjaLastUpdated: "2026-04-13T18:00:00",
   },
   {
     id: "pa-passline",
     slug: "passline-promo",
-    type: "partner",
+    type: "franja",
     title: "Passline · Boletos sin cargos",
     subtitle: "Promo · Mayo",
     vibeMin: 5, vibeMax: 5,
@@ -2920,17 +2919,14 @@ const RAW_ITEMS: ContentItem[] = [
     tags: [],
     imageUrl: "/flyers/rf-078.jpg",
     publishedAt: "2026-04-10T08:00:00",
-    partnerKind: "sponsored",
-    partnerUrl: "https://passline.com",
-    partnerLastUpdated: "2026-04-10T08:00:00",
+    franjaKind: "plataforma",
+    franjaUrl: "https://passline.com",
+    franjaLastUpdated: "2026-04-10T08:00:00",
   },
 ];
 
 export const MOCK_ITEMS: ContentItem[] = [
   ...RAW_ITEMS,
-  // Noche Negra partner catalogue — own module (lib/nocheNegraSeed.ts) so the
-  // demo stays separable from the legacy seed; /mapa also merges it directly.
-  ...NOCHE_NEGRA_SEED,
   ...SCRAPED_EVENTS,
 ].map((item) => ({
   ...item,

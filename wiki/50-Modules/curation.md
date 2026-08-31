@@ -56,18 +56,18 @@ SPAWN_HP_EDITORIAL    = 50
 
 ATTENTION_HALF_LIFE_HOURS = {
   evento: 72, mix: 504, editorial: 168, review: 336,
-  noticia: 48, opinion: 240, articulo: 336, listicle: 336, partner: 8760
+  noticia: 48, opinion: 240, articulo: 336, listicle: 336, franja: 8760
 }
 
 FRESHNESS_HALF_LIFE_HOURS = {
   evento: 336, mix: 720, editorial: 240, review: 504,
-  noticia: 72, opinion: 336, articulo: 504, listicle: 504, partner: 8760
+  noticia: 72, opinion: 336, articulo: 504, listicle: 504, franja: 8760
 }
 
 TYPE_SCORE_MULTIPLIER = {
   review: 1.3, articulo: 1.3, listicle: 1.3,
   opinion: 1.2, editorial: 1.1, noticia: 0.8
-}   // evento, mix, partner default to 1.0
+}   // evento, mix, franja default to 1.0
 
 // Tier thresholds (score-gated)
 LG_THRESHOLD = 1.0
@@ -76,7 +76,7 @@ MD_THRESHOLD = 0.5
 // Per-type md geometry (Lever 1 — see § Ranking pipeline)
 MD_GEOMETRY = {
   review/articulo/listicle/editorial/opinion/noticia: { colSpan: 1, rowSpan: 2 },  // tall
-  evento/mix/partner:                                  { colSpan: 2, rowSpan: 1 },  // wide
+  evento/mix/franja:                                  { colSpan: 2, rowSpan: 1 },  // wide
 }
 
 // Rank-aware caps + weave (Levers 2 + 3)

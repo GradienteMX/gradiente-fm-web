@@ -9,14 +9,14 @@ import { MarketplaceListingDetail } from './MarketplaceListingDetail'
 
 // ── MarketplaceOverlay ─────────────────────────────────────────────────────
 //
-// Per-partner marketplace card — full-screen overlay matching the
+// Per-franja marketplace card — full-screen overlay matching the
 // reference screenshot. Layout:
 //
 //   ┌──────────────────────────────────────────────────────────────┐
 //   │ //MKT  ·  GRADIENTE MARKETPLACE v1.0.3       [GUARDAR] [×]  │
 //   ├───────────────────────┬──────────────────────────────────────┤
 //   │  IDENTITY PANEL       │  LISTINGS GRID                       │
-//   │  • partner name       │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ │
+//   │  • franja name       │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ │
 //   │  • description        │  │ 01   │ │ 02   │ │ 03   │ │ 04   │ │
 //   │  • totals row         │  │ …    │ │ …    │ │ …    │ │ …    │ │
 //   │  • quick filters      │  └──────┘ └──────┘ └──────┘ └──────┘ │
@@ -24,16 +24,16 @@ import { MarketplaceListingDetail } from './MarketplaceListingDetail'
 //   │  • help text          │                                      │
 //   └───────────────────────┴──────────────────────────────────────┘
 //
-// Driven by `?partner=<slug>` URL param on `/marketplace`. ESC closes
+// Driven by `?franja=<slug>` URL param on `/marketplace`. ESC closes
 // (route navigates back to `/marketplace`).
 
 interface Props {
-  partnerSlug: string
-  partner: ContentItem | null
+  franjaSlug: string
+  franja: ContentItem | null
   onClose: () => void
 }
 
-export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
+export function MarketplaceOverlay({ franjaSlug, franja, onClose }: Props) {
   const router = useRouter()
   const search = useSearchParams()
   // usePathname returns the URL without basePath; router.replace re-applies
@@ -46,20 +46,20 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
   const activeListing = useMemo<
     { listing: MarketplaceListing; index: number } | null
   >(() => {
-    if (!listingId || !partner) return null
+    if (!listingId || !franja) return null
     // sortedListings drives the index badge in the grid; we mirror that
     // ordering here so the sub-overlay's chrome shows the same number.
-    const sorted = [...(partner.marketplaceListings ?? [])].sort(
+    const sorted = [...(franja.marketplaceListings ?? [])].sort(
       (a, b) =>
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     )
     const idx = sorted.findIndex((l) => l.id === listingId)
     if (idx < 0) return null
     return { listing: sorted[idx], index: idx + 1 }
-  }, [listingId, partner])
+  }, [listingId, franja])
 
   const onCloseListing = () => {
-    // Strip listing= only — partner= stays so we drop back into the partner
+    // Strip listing= only — franja= stays so we drop back into the franja
     // overlay, not the catalog grid.
     const params = new URLSearchParams(search?.toString() ?? '')
     params.delete('listing')
@@ -68,7 +68,7 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
   }
 
   // ESC: when the sub-overlay is up, ITS handler fires first (added later in
-  // the effect chain). The partner overlay's ESC only runs when the
+  // the effect chain). The franja overlay's ESC only runs when the
   // sub-overlay isn't mounted — guard against double-close just in case.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -87,7 +87,7 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
     }
   }, [])
 
-  if (!partner) {
+  if (!franja) {
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-backdrop-in"
@@ -99,10 +99,10 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
           onClick={(e) => e.stopPropagation()}
         >
           <span className="font-mono text-[11px] tracking-widest text-sys-red">
-            //PARTNER·NO·ENCONTRADO
+            //FRANJA·NO·ENCONTRADO
           </span>
           <p className="font-mono text-[10px] tracking-widest text-muted">
-            slug: {partnerSlug}
+            slug: {franjaSlug}
           </p>
           <button
             type="button"
@@ -116,8 +116,8 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
     )
   }
 
-  const listings = partner.marketplaceListings ?? []
-  const enabled = partner.marketplaceEnabled === true
+  const listings = franja.marketplaceListings ?? []
+  const enabled = franja.marketplaceEnabled === true
 
   return (
     <div
@@ -131,13 +131,13 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
         className="eva-box eva-scanlines relative z-10 flex w-full max-w-6xl flex-col overflow-hidden bg-base overlay-panel-in"
         style={{ maxHeight: 'min(94vh, 980px)' }}
       >
-        <Chrome partner={partner} listingCount={listings.length} onClose={onClose} />
+        <Chrome franja={franja} listingCount={listings.length} onClose={onClose} />
 
         {!enabled ? (
           <DisabledState />
         ) : (
           <Body
-            partner={partner}
+            franja={franja}
             listings={listings}
             router={router}
             pathname={pathname}
@@ -149,7 +149,7 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
       {activeListing && (
         <MarketplaceListingDetail
           listing={activeListing.listing}
-          partner={partner}
+          franja={franja}
           index={activeListing.index}
           onClose={onCloseListing}
         />
@@ -161,11 +161,11 @@ export function MarketplaceOverlay({ partnerSlug, partner, onClose }: Props) {
 // ── Chrome (top status bar) ────────────────────────────────────────────────
 
 function Chrome({
-  partner,
+  franja,
   listingCount,
   onClose,
 }: {
-  partner: ContentItem
+  franja: ContentItem
   listingCount: number
   onClose: () => void
 }) {
@@ -212,7 +212,7 @@ function DisabledState() {
           //MARKETPLACE·INACTIVO
         </span>
         <p>
-          Este partner aún no tiene marketplace activo. Pídele al equipo de
+          Este franja aún no tiene marketplace activo. Pídele al equipo de
           GRADIENTE que lo apruebe desde el panel de admin.
         </p>
       </div>
@@ -223,13 +223,13 @@ function DisabledState() {
 // ── Body — identity panel + listings grid ──────────────────────────────────
 
 function Body({
-  partner,
+  franja,
   listings,
   router,
   pathname,
   search,
 }: {
-  partner: ContentItem
+  franja: ContentItem
   listings: MarketplaceListing[]
   router: ReturnType<typeof useRouter>
   pathname: string
@@ -257,12 +257,12 @@ function Body({
         </span>
 
         <h1 className="font-syne text-3xl font-black leading-none text-primary">
-          {partner.title.toUpperCase()}
+          {franja.title.toUpperCase()}
         </h1>
 
-        {partner.marketplaceDescription && (
+        {franja.marketplaceDescription && (
           <p className="font-mono text-[11px] leading-relaxed text-secondary">
-            {partner.marketplaceDescription}
+            {franja.marketplaceDescription}
           </p>
         )}
 
@@ -285,21 +285,21 @@ function Body({
         </dl>
 
         <dl className="flex flex-col gap-1 border border-border/60 bg-black/30 p-3 font-mono text-[10px]">
-          {partner.marketplaceLocation && (
+          {franja.marketplaceLocation && (
             <StatRow
               label="UBICACIÓN"
-              value={partner.marketplaceLocation}
+              value={franja.marketplaceLocation}
               icon={<MapPin size={10} strokeWidth={1.5} />}
             />
           )}
           <StatRow
             label="MONEDA"
-            value={partner.marketplaceCurrency ?? '—'}
+            value={franja.marketplaceCurrency ?? '—'}
           />
-          {partner.partnerUrl && (
+          {franja.franjaUrl && (
             <StatRow
               label="WEB"
-              value={partner.partnerUrl.replace(/^https?:\/\//, '')}
+              value={franja.franjaUrl.replace(/^https?:\/\//, '')}
               icon={<Share2 size={10} strokeWidth={1.5} />}
             />
           )}
@@ -307,8 +307,8 @@ function Body({
 
         <p className="font-mono text-[9px] leading-relaxed text-muted">
           //CONSEJO — los precios y la disponibilidad se actualizan
-          directamente desde el equipo del partner. Si te interesa un item,
-          escríbele al partner por su web o redes; GRADIENTE no procesa
+          directamente desde el equipo del franja. Si te interesa un item,
+          escríbele al franja por su web o redes; GRADIENTE no procesa
           pagos.
         </p>
       </aside>
@@ -330,8 +330,8 @@ function Body({
               //SIN·LISTINGS
             </span>
             <p>
-              Este partner aún no agregó items al marketplace. Vuelve más
-              tarde o sigue al partner en sus redes.
+              Este franja aún no agregó items al marketplace. Vuelve más
+              tarde o sigue al franja en sus redes.
             </p>
           </div>
         ) : (
@@ -340,7 +340,7 @@ function Body({
               <MarketplaceListingCard
                 key={l.id}
                 listing={l}
-                partner={partner}
+                franja={franja}
                 index={i + 1}
                 onClick={() => {
                   const params = new URLSearchParams(search?.toString() ?? '')

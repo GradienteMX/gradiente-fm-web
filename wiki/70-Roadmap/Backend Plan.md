@@ -7,7 +7,7 @@ updated: 2026-05-03
 
 # Backend Plan
 
-> Consolidated plan to take Gradiente FM off `sessionStorage` + mock data onto a real backend. Beta-launch target: ~50 invited people (mods, partners, readers, insiders). Loose timeline — getting this right beats getting it fast. Decided 2026-05-02.
+> Consolidated plan to take Gradiente FM off `sessionStorage` + mock data onto a real backend. Beta-launch target: ~50 invited people (mods, franjas, readers, insiders). Loose timeline — getting this right beats getting it fast. Decided 2026-05-02.
 >
 > Replaces the older [[Supabase Migration]] sketch and absorbs Phase 3 of [[Scraper Pipeline]]. [[Admin Dashboard]] is still current and complementary.
 
@@ -52,7 +52,7 @@ State that needs to leave the browser:
 |---|---|---|
 | [`lib/mockData.ts`](../../lib/mockData.ts) | `items` table + `getItems()` | server components stay async, swap import |
 | [`lib/scrapedEvents.ts`](../../lib/scrapedEvents.ts) | `items` rows where `source='scraper:ra'` | scraper UPSERTs by `external_id` |
-| [`lib/mockUsers.ts`](../../lib/mockUsers.ts) | `users` table joined to `auth.users` | role/isMod/isOG/partnerId/partnerAdmin live here |
+| [`lib/mockUsers.ts`](../../lib/mockUsers.ts) | `users` table joined to `auth.users` | role/isMod/isOG/franjaId/franjaAdmin live here |
 | [`lib/userOverrides.ts`](../../lib/userOverrides.ts) | direct UPDATEs on `users` from `/admin` | sessionStorage hack goes away |
 | [`lib/drafts.ts`](../../lib/drafts.ts) | `drafts` table keyed by `author_id` | survives across devices |
 | [`lib/comments.ts`](../../lib/comments.ts) + [`mockComments.ts`](../../lib/mockComments.ts) | `comments` + `comment_reactions` | tombstone via `deletion_*` cols |
@@ -68,8 +68,8 @@ Pure functions ([`utils.ts`](../../lib/utils.ts), [`curation.ts`](../../lib/cura
 
 ```sql
 items                -- existing sketch + foreign-keyed source/external_id; indexes on (type, hp desc), (published_at desc), (external_id) unique partial where source='scraper:ra'; tsvector GIN for FTS (point 22); seed boolean default false
-users                -- id (=auth.users.id), username unique, display_name, role, is_mod, is_og, partner_id, partner_admin, joined_at, profile_meta jsonb
-invite_codes         -- code, intended_role, partner_id, partner_admin, created_by, used_by, used_at, expires_at
+users                -- id (=auth.users.id), username unique, display_name, role, is_mod, is_og, franja_id, franja_admin, joined_at, profile_meta jsonb
+invite_codes         -- code, intended_role, franja_id, franja_admin, created_by, used_by, used_at, expires_at
 drafts               -- id, author_id, item_payload jsonb, updated_at
 comments             -- id, item_id, parent_id, author_id, body, created_at, edited_at, deletion_*
 comment_reactions    -- comment_id, user_id, kind ('signal'|'provocative'); unique(comment_id,user_id)
@@ -106,7 +106,7 @@ Sketch:
 
 1. Email + invite code → magic link to verify email
 2. User sets username + password
-3. Postgres trigger reads invite code's `intended_role` + `partner_id`, applies to new `users` row, marks code used
+3. Postgres trigger reads invite code's `intended_role` + `franja_id`, applies to new `users` row, marks code used
 
 ### Login (every visit after)
 
@@ -125,10 +125,10 @@ The `admin/admin` sessionStorage shortcut in [[useAuth]] gets ripped out in chun
 
 ## Beta gate (invite codes)
 
-- `invite_codes` table holds pre-generated codes carrying `intended_role`, `partner_id`, `partner_admin`, `expires_at`
+- `invite_codes` table holds pre-generated codes carrying `intended_role`, `franja_id`, `franja_admin`, `expires_at`
 - Pre-generate ~80 codes (50 + buffer for slip)
 - Single-use; redemption is atomic (INSERT user + UPDATE code in one RPC, point 15)
-- Codes can be assigned a partner team membership at creation — partners get codes that auto-grant `partnerId` + `partnerAdmin` flags
+- Codes can be assigned a franja team membership at creation — franjas get codes that auto-grant `franjaId` + `franjaAdmin` flags
 
 ## User content lifecycle
 
@@ -152,7 +152,7 @@ Server-side fallback: Supabase Storage trigger rejects any object > the per-buck
 | Comment | 15 min for author, always for mod/admin | always (tombstone preserves thread shape) | pg_cron sweep, 60d after tombstone |
 | Foro thread | 15 min author, always mod/admin | always (tombstone) | with parent / per retention rule below |
 | Foro reply | 15 min author, always mod/admin | always | with parent thread |
-| Marketplace listing | always for partner team / mod / admin | hard delete (no value in tombstones) | immediate |
+| Marketplace listing | always for franja team / mod / admin | hard delete (no value in tombstones) | immediate |
 | Editorial draft | always for author, no one else | n/a | author-initiated |
 | Published item | guide/admin always; insider on own only | unpublish = `published=false` | admin-only, audit-logged |
 
@@ -247,7 +247,7 @@ The plan deliberately leaves space for known future arcs:
   badges               -- id, item_id, image_url, kind, minted_at
   user_badges          -- user_id, badge_id, awarded_at
   ```
-  Plus `users.profile_meta jsonb` (already in the schema) so the hover-mini-profile can grow new fields without migrations. Verification gesture (QR scan / NFC tap / partner-issued one-time code) stays out of scope here — backend just needs to accept the verified-attendance record once the gesture exists.
+  Plus `users.profile_meta jsonb` (already in the schema) so the hover-mini-profile can grow new fields without migrations. Verification gesture (QR scan / NFC tap / franja-issued one-time code) stays out of scope here — backend just needs to accept the verified-attendance record once the gesture exists.
 
 ## Budget
 
@@ -278,7 +278,7 @@ Free tier holds far longer than 50 people — Supabase free is 50K MAU. The clif
 | 12 | No rate limiting | Upstash token bucket on every write route + RLS deny patterns |
 | 13 | No compression | Next.js auto br/gzip. R2 serves WebP |
 | 14 | No error alerting | Sentry for app-side errors; GitHub Actions failure email for scraper |
-| 15 | No transactions | Multi-step writes go through Supabase RPCs (publish, partner team add, invite redeem) |
+| 15 | No transactions | Multi-step writes go through Supabase RPCs (publish, franja team add, invite redeem) |
 | 16 | No health check | `/api/health` does `select 1` against DB; returns 503 if unreachable |
 | 17 | Memory leaks | Vercel serverless = no long-lived processes |
 | 18 | No graceful shutdown | Same — serverless |
@@ -310,7 +310,7 @@ Five independently-shippable chunks plus the beta-open milestone. Loose timeline
 - **Storage choice timing** — start on Supabase Storage and migrate to R2 later, or start on R2? Decided: Supabase Storage for beta, R2 if egress matters.
 - **HP rollup interval** — 5 min picked to align with the countdown UX. Could be tighter (1 min, more compute) or looser (15 min, sparser interactions). Re-evaluate after first week of beta data.
 - **Foro 30-day deletion** — feels right but might be too aggressive once active threads accumulate value. Watchpoint after beta.
-- **Image upload caps** — current draft per surface; revisit if a real partner needs higher-res product shots.
+- **Image upload caps** — current draft per surface; revisit if a real franja needs higher-res product shots.
 - **Whether to surface the SYSTEM UPDATE countdown beyond `/` home feed** — could also live on `/agenda`, `/foro` catalog, etc. Hold for now; ship on home only.
 
 ## Links

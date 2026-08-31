@@ -3,14 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
 import { getRelatedByVibe } from '@/lib/itemsCache'
-import {
-  categoryColor,
-  fmtDateFull,
-  vibeToColor,
-  vibeMid,
-} from '@/lib/utils'
+import { fmtDateFull } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
-import { Calendar, User } from 'lucide-react'
 import { ContentCard } from '@/components/cards/ContentCard'
 import { BodyBlocks } from './ArticuloOverlay'
 import { SmartImage } from '@/components/SmartImage'
@@ -19,16 +13,22 @@ import { PollSection } from '@/components/poll/PollSection'
 import { VibeFader } from '@/components/VibeFader'
 import { OverlayLinks } from './OverlayLinks'
 import { OverlayEntities } from './OverlayEntities'
+import {
+  categoryColorOnLight,
+  typeCode,
+  typeDisplayLabel,
+} from '@/lib/dashboard/palette'
 
 interface ListicleOverlayProps {
   item: ContentItem
 }
 
-// Listicle layout — list-structured longform (e.g. "Top 10 tracks of X").
-// Shares BodyBlocks with ArticuloOverlay, which handles the `track` block kind.
+// Listicle layout — list-structured longform (e.g. "Top 10 tracks of X") on
+// the fase-C paper sheet. Shares BodyBlocks with ArticuloOverlay, which
+// handles the `track` block kind (ink faceplate rows). Keeps its OWN anatomy:
+// rank index left rail (not a TOC), ENTRADAS/ORDEN derivation, DISPATCH firma.
 export function ListicleOverlay({ item }: ListicleOverlayProps) {
-  const color = categoryColor('listicle')
-  const vibeColor = vibeToColor(vibeMid(item))
+  const color = categoryColorOnLight(item.type)
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -68,81 +68,86 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
   const related = useMemo(() => getRelated(item), [item])
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative bg-paper text-ink">
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="px-5 pt-10 md:px-12 md:pt-14">
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <span
-            className="inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] tracking-widest"
-            style={{
-              borderColor: `${color}66`,
-              color,
-              backgroundColor: `${color}10`,
-            }}
-          >
-            {item.editorial && <span>★</span>}
-            LISTA
-          </span>
-          {trackBlocks.length > 0 && (
+          {/* Type register — swatch + code + label (hue never alone). */}
+          <span className="inline-flex items-center gap-1.5 border border-ink bg-paper-raised px-2 py-1 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
             <span
-              className="ml-auto font-mono text-[10px] tracking-widest"
-              style={{ color }}
+              aria-hidden
+              className="h-[9px] w-[9px] shrink-0"
+              style={{ backgroundColor: color }}
+            />
+            {typeCode(item.type)} · {typeDisplayLabel(item.type)}
+          </span>
+          {item.editorial && (
+            <span
+              className="bg-sys-red-paper px-1.5 py-1 font-mono text-[10px] leading-none text-paper-raised"
+              title="Selección editorial"
             >
+              ★
+            </span>
+          )}
+          {trackBlocks.length > 0 && (
+            <span className="ml-auto font-mono text-d11 font-bold tracking-widest text-ink">
               {String(trackBlocks.length).padStart(2, '0')} ENTRADAS ·{' '}
               {rankDirection === 'countdown'
                 ? 'COUNTDOWN'
                 : rankDirection === 'ascending'
                   ? 'ASCENDENTE'
-                  : 'SIN·RANGO'}
+                  : 'SIN RANGO'}
             </span>
           )}
         </div>
 
-        <h1
-          className="mb-6 max-w-[22ch] font-syne text-4xl font-black leading-[1.02] text-primary md:text-6xl"
-          style={{ letterSpacing: '-0.01em' }}
-        >
+        <h1 className="mb-6 max-w-[22ch] font-syne text-d28 font-black tracking-[-0.01em] text-ink [text-wrap:balance] md:text-display">
           {item.title}
         </h1>
 
         {(item.subtitle || item.excerpt) && (
-          <p
-            className="mb-8 max-w-[62ch] font-grotesk text-lg leading-relaxed md:text-xl"
-            style={{ color: vibeColor }}
-          >
+          <p className="mb-8 max-w-[62ch] font-grotesk text-d18 leading-relaxed text-ink-soft md:text-xl">
             {item.subtitle || item.excerpt}
           </p>
         )}
 
-        <dl className="flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-border py-4">
+        <dl className="flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-ink py-4">
           {item.author && (
-            <div className="flex items-center gap-3">
-              <User size={11} className="text-muted" />
-              <dt className="sys-label">POR</dt>
-              <dd className="font-grotesk text-sm text-primary">{item.author}</dd>
+            <div className="flex items-baseline gap-3">
+              <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                POR
+              </dt>
+              <dd className="font-grotesk text-d15 font-bold text-ink">
+                {item.author}
+              </dd>
             </div>
           )}
           {item.publishedAt && (
-            <div className="flex items-center gap-3">
-              <Calendar size={11} className="text-muted" />
-              <dt className="sys-label">FECHA</dt>
-              <dd className="font-grotesk text-sm text-secondary">
+            <div className="flex items-baseline gap-3">
+              <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                FECHA
+              </dt>
+              <dd className="font-grotesk text-d13 text-ink-soft">
                 {fmtDateFull(item.publishedAt)}
               </dd>
             </div>
           )}
-          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-            <span className="sys-label">VIBE</span>
+          {/* Vibe fader on its faceplate seat — instrument doctrine, same
+              band as the dashboard ReproductorWidget's mini fader. */}
+          <div className="flex w-full min-w-0 items-center gap-3 border border-ink bg-panel px-3 py-2 sm:ml-auto sm:w-auto">
+            <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-panel-text">
+              VIBE
+            </span>
             <VibeFader item={item} />
           </div>
         </dl>
       </header>
 
-      {/* ── Hero ───────────────────────────────────────────────────── */}
+      {/* ── Hero — ink-framed plate, category underline ─────────────── */}
       {item.imageUrl && (
         <figure className="mt-8 px-5 md:mt-10 md:px-12">
           <div
-            className="relative overflow-hidden border border-border bg-elevated"
+            className="relative overflow-hidden border border-ink bg-panel"
             style={{ aspectRatio: '16 / 9' }}
           >
             <SmartImage
@@ -151,13 +156,14 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
               sizes="(max-width: 768px) 100vw, 720px"
               className="object-cover object-top"
             />
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5"
-              style={{ backgroundColor: color }}
-            />
           </div>
+          <div
+            aria-hidden
+            className="h-[3px] w-full"
+            style={{ backgroundColor: color }}
+          />
           {item.heroCaption && (
-            <figcaption className="mt-2 font-mono text-[10px] tracking-widest text-secondary">
+            <figcaption className="mt-2 font-mono text-d11 tracking-widest text-ink-faint">
               {item.heroCaption}
             </figcaption>
           )}
@@ -166,41 +172,44 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
 
       {/* ── Reading area ───────────────────────────────────────────── */}
       <div className="grid gap-6 px-5 py-10 md:grid-cols-12 md:gap-10 md:px-12 md:py-14">
-        {/* Left rail — list progress / mini index */}
+        {/* Left rail — rank index + scroll progress */}
         <aside className="hidden md:col-span-2 md:block">
           <div className="sticky top-4 flex flex-col gap-3">
-            <span className="sys-label text-muted">LISTA</span>
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+              LISTA
+            </span>
             {trackBlocks.length > 0 ? (
               <ol className="flex flex-col gap-1.5">
                 {trackBlocks.map((t, i) => (
                   <li
                     key={i}
-                    className="group flex items-baseline gap-2 font-mono text-[10px] leading-snug"
+                    className="flex items-baseline gap-2 font-mono text-d11 leading-snug"
                   >
-                    <span
-                      className="shrink-0 tabular-nums text-muted"
-                      style={{ color }}
-                    >
+                    <span className="shrink-0 font-bold tabular-nums text-ink">
                       {t.rank !== undefined ? String(t.rank).padStart(2, '0') : '—'}
                     </span>
-                    <span className="truncate text-secondary">
+                    <span className="truncate text-ink-soft">
                       {t.artist} · {t.title}
                     </span>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="font-mono text-[10px] text-muted">[SIN ENTRADAS]</p>
+              <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                SIN ENTRADAS
+              </p>
             )}
 
-            <div className="mt-4 border-t border-border pt-3">
-              <span className="sys-label text-muted">PROGRESO</span>
-              <div className="mt-1 font-mono text-[10px] tabular-nums text-primary">
+            <div className="mt-4 border-t border-ink pt-3">
+              <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                PROGRESO
+              </span>
+              <div className="mt-1 font-mono text-d11 tabular-nums text-ink">
                 {String(scrollPct).padStart(2, '0')}%
               </div>
               <div className="mt-1 font-mono text-[10px] tracking-[0.2em]" aria-hidden>
-                <span style={{ color }}>{'█'.repeat(filled)}</span>
-                <span className="text-muted">
+                <span className="text-ink">{'█'.repeat(filled)}</span>
+                <span className="text-ink-faint">
                   {'·'.repeat(scrollBlocks - filled)}
                 </span>
               </div>
@@ -210,20 +219,16 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
 
         {/* Main column */}
         <article className="min-w-0 md:col-span-7">
-          <BodyBlocks blocks={blocks} color={color} vibeColor={vibeColor} item={item} />
+          <BodyBlocks blocks={blocks} color={color} item={item} />
 
-          <div className="mt-14 flex flex-col items-start gap-3 border-t border-border pt-6">
-            <div
-              className="h-1 w-16"
-              style={{
-                backgroundImage:
-                  'repeating-linear-gradient(-45deg, var(--color-muted) 0 6px, transparent 6px 12px)',
-                opacity: 0.6,
-              }}
-              aria-hidden
-            />
-            <p className="font-mono text-[11px] tracking-widest text-muted">
-              FIN DE LA LISTA
+          {/* End-of-list marker — double ink rule + FIN */}
+          <div className="mt-14">
+            <div aria-hidden>
+              <div className="h-px w-full bg-ink" />
+              <div className="mt-[3px] h-px w-full bg-ink" />
+            </div>
+            <p className="mt-3 text-center font-mono text-d11 font-bold tracking-[0.35em] text-ink">
+              FIN
             </p>
           </div>
         </article>
@@ -234,17 +239,14 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             {item.author && (
               <RailBlock label="FIRMA">
                 <div className="flex items-start gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center border border-border bg-elevated font-syne text-sm font-black"
-                    style={{ color }}
-                  >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-ink font-syne text-sm font-black text-paper-raised">
                     {initials(item.author)}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-grotesk text-sm text-primary">
+                    <p className="font-grotesk text-d13 font-bold text-ink">
                       {item.author}
                     </p>
-                    <p className="font-mono text-[10px] text-muted">
+                    <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
                       DISPATCH · RANKED
                     </p>
                   </div>
@@ -253,52 +255,65 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
             )}
 
             <RailBlock label="META">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
-                <dt className="text-muted">TIPO</dt>
-                <dd style={{ color }}>: //LISTA</dd>
-                <dt className="text-muted">ENTRADAS</dt>
-                <dd className="text-secondary">
-                  : {trackBlocks.length}
-                </dd>
-                <dt className="text-muted">ORDEN</dt>
-                <dd className="text-secondary">
-                  :{' '}
-                  {rankDirection === 'countdown'
-                    ? 'Countdown'
-                    : rankDirection === 'ascending'
-                      ? 'Ascendente'
-                      : 'Sin rango'}
-                </dd>
-                <dt className="text-muted">SEÑAL</dt>
-                <dd className="flex items-center gap-1.5">
-                  <span>:</span>
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-                  <span className="text-sys-green">ACTIVA</span>
-                </dd>
-              </dl>
-              <OverlayEntities entities={item.entities} color={vibeColor} />
-              <OverlayLinks links={item.links} color={vibeColor} />
+              <div className="flex flex-col gap-3">
+                <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1.5 font-mono text-d11">
+                  <dt className="uppercase tracking-widest text-ink-faint">
+                    TIPO
+                  </dt>
+                  <dd className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-ink">
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    {typeCode(item.type)} · {typeDisplayLabel(item.type)}
+                  </dd>
+                  {trackBlocks.length > 0 && (
+                    <>
+                      <dt className="uppercase tracking-widest text-ink-faint">
+                        ENTRADAS
+                      </dt>
+                      <dd className="tabular-nums text-ink-soft">
+                        {trackBlocks.length}
+                      </dd>
+                    </>
+                  )}
+                  <dt className="uppercase tracking-widest text-ink-faint">
+                    ORDEN
+                  </dt>
+                  <dd className="text-ink-soft">
+                    {rankDirection === 'countdown'
+                      ? 'Countdown'
+                      : rankDirection === 'ascending'
+                        ? 'Ascendente'
+                        : 'Sin rango'}
+                  </dd>
+                </dl>
+                <OverlayEntities entities={item.entities} color={color} />
+                <OverlayLinks links={item.links} color={color} />
+              </div>
             </RailBlock>
 
             {(genres.length > 0 || tags.length > 0) && (
               <RailBlock label="ETIQUETAS">
-                <ul className="flex flex-col gap-1.5 font-mono text-xs">
+                <ul className="flex flex-wrap items-center gap-1.5">
                   {genres.map(({ id, name }) => (
-                    <li key={id} className="flex items-center gap-2">
-                      <span className="text-muted">#</span>
+                    <li key={id}>
                       <GenreChipButton
                         genreId={id}
-                        className=""
-                        style={{ color: vibeColor }}
+                        ground="paper"
+                        className="inline-flex px-1.5 py-0.5 font-mono text-d11"
                       >
                         {name}
                       </GenreChipButton>
                     </li>
                   ))}
                   {tags.map((t) => (
-                    <li key={t} className="flex items-center gap-2">
-                      <span className="text-muted">#</span>
-                      <span className="text-secondary">{t}</span>
+                    <li
+                      key={t}
+                      className="px-1.5 py-0.5 font-mono text-d11 text-ink-soft"
+                    >
+                      #{t}
                     </li>
                   ))}
                 </ul>
@@ -312,23 +327,20 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
           ranked body and before related lists. Choices auto-derive from the
           listicle's `track` blocks; see [[polls]] resolvePollChoices. */}
       {item.poll && (
-        <section className="border-t border-border bg-surface/40 px-5 py-8 md:px-12">
+        <section className="border-t border-ink px-5 py-8 md:px-12">
           <PollSection item={item} className="max-w-2xl" />
         </section>
       )}
 
       {/* Related */}
       {related.length > 0 && (
-        <section className="border-t border-border bg-surface/40 px-5 py-10 md:px-12">
+        <section className="border-t border-ink px-5 py-10 md:px-12">
           <div className="mb-5 flex items-center gap-3">
-            <span
-              className="font-mono text-[11px] tracking-widest"
-              style={{ color }}
-            >
-              //SIGUIENTES·LISTAS
+            <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              SIGUIENTES LISTAS
             </span>
-            <div className="h-px flex-1 bg-border" />
-            <span className="sys-label text-muted">
+            <div className="h-px flex-1 bg-ink" />
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
               {related.length} · CURADO
             </span>
           </div>
@@ -342,33 +354,29 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
         </section>
       )}
 
-      {/* Sticky footer */}
-      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t border-border bg-base/95 px-4 py-2 backdrop-blur-sm md:px-6">
-        <div className="flex items-center gap-3">
-          <span className="sys-label text-muted">SCROLL</span>
-          <span className="font-mono text-[11px] tabular-nums text-primary">
-            {String(scrollPct).padStart(2, '0')}%
+      {/* Sticky footer — SCROLL progress strip on paper */}
+      <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-ink bg-paper px-4 py-2 md:px-6">
+        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          SCROLL
+        </span>
+        <span className="font-mono text-d11 tabular-nums text-ink">
+          {String(scrollPct).padStart(2, '0')}%
+        </span>
+        <span
+          className="ml-1 font-mono text-[10px] tracking-[0.3em] text-ink"
+          aria-hidden
+        >
+          {'█'.repeat(filled)}
+          <span className="text-ink-faint">
+            {'·'.repeat(scrollBlocks - filled)}
           </span>
-          <span
-            className="ml-1 font-mono tracking-[0.3em]"
-            aria-hidden
-            style={{ color, fontSize: 10 }}
-          >
-            {'█'.repeat(filled)}
-            <span className="text-muted">
-              {'·'.repeat(scrollBlocks - filled)}
-            </span>
-          </span>
-        </div>
-        <div className="hidden items-center gap-4 font-mono text-[10px] tracking-widest sm:flex">
-          <span className="text-sys-green">· MODO LECTURA · LISTA</span>
-        </div>
+        </span>
       </div>
     </div>
   )
 }
 
-// ── Rail block ──────────────────────────────────────────────────────────────
+// ── Rail block — raised-paper plate with a hairline header ──────────────────
 function RailBlock({
   label,
   children,
@@ -377,9 +385,11 @@ function RailBlock({
   children: React.ReactNode
 }) {
   return (
-    <section className="border border-border bg-surface">
-      <header className="border-b border-border px-3 py-1.5">
-        <span className="sys-label text-primary">{label}</span>
+    <section className="border border-ink bg-paper-raised">
+      <header className="border-b border-ink px-3 py-1.5">
+        <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+          {label}
+        </span>
       </header>
       <div className="p-3">{children}</div>
     </section>
@@ -406,7 +416,7 @@ function buildBlocks(item: ContentItem): ArticleBlock[] {
     return [
       {
         kind: 'p',
-        text: '[LISTA SIN CUERPO · CONTENIDO PENDIENTE DE INGESTA]',
+        text: 'LISTA SIN CUERPO · CONTENIDO PENDIENTE DE INGESTA',
       },
     ]
   }

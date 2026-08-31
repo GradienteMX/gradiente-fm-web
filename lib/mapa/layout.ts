@@ -94,7 +94,7 @@ const W_ANCHOR_COMPACT = 1.4 // identity gravity holds clusters together while p
 // the map, derived only from its id, and its attributed items feel a pull
 // toward an anchor point on that bearing. Regions emerge around anchors as
 // content accumulates; the bearing never moves, so the geography is learnable
-// and stable across dataset changes (a partner is always "to the north-east").
+// and stable across dataset changes (a franja is always "to the north-east").
 const W_ANCHOR = 0.55 // per hex of distance between candidate and anchor
 const ANCHOR_RADIUS = 8 // anchor ring radius, in hexes from origin
 
@@ -290,7 +290,7 @@ export function placeItems(
     const item = ordered[i]
     features[i] = extractFeatures(item)
     types[i] = item.type
-    anchors[i] = item.partnerId ? identityAnchorPx(item.partnerId) : null
+    anchors[i] = item.franjaId ? identityAnchorPx(item.franjaId) : null
   }
 
   // Per-item affinity cache against already-placed neighbors, generation-
@@ -518,10 +518,10 @@ export function neighborItemId(
   return null
 }
 
-// ── Identity clusters (partner focus) ────────────────────────────────────────
+// ── Identity clusters (franja focus) ────────────────────────────────────────
 
-export interface PartnerCluster {
-  partner: ContentItem
+export interface FranjaCluster {
+  franja: ContentItem
   itemIds: string[]
   cells: Axial[]
   bbox: { x: number; y: number; width: number; height: number }
@@ -529,21 +529,21 @@ export interface PartnerCluster {
   perimeter: string
 }
 
-// Focus eligibility is EXPLICIT attribution only: items.partnerId === partner
+// Focus eligibility is EXPLICIT attribution only: items.franjaId === franja
 // id. Never inferred from venue strings, author strings, tags, or filenames
-// (spec § Partner-focused content eligibility).
-export function partnerClusters(
+// (spec § Franja-focused content eligibility).
+export function franjaClusters(
   layout: MapaLayout,
-  partners: readonly ContentItem[],
-): PartnerCluster[] {
-  const out: PartnerCluster[] = []
-  for (const partner of partners) {
-    if (partner.type !== 'partner') continue
-    const members = layout.placed.filter((p) => p.item.partnerId === partner.id)
+  franjas: readonly ContentItem[],
+): FranjaCluster[] {
+  const out: FranjaCluster[] = []
+  for (const franja of franjas) {
+    if (franja.type !== 'franja') continue
+    const members = layout.placed.filter((p) => p.item.franjaId === franja.id)
     if (members.length === 0) continue
     const cells = members.flatMap((m) => m.cells)
     out.push({
-      partner,
+      franja,
       itemIds: members.map((m) => m.item.id),
       cells,
       bbox: cellsBBox(cells, HEX_R),
@@ -551,7 +551,7 @@ export function partnerClusters(
     })
   }
   // Deterministic order for chrome affordances.
-  return out.sort((a, b) => (a.partner.slug < b.partner.slug ? -1 : 1))
+  return out.sort((a, b) => (a.franja.slug < b.franja.slug ? -1 : 1))
 }
 
 // ── Compaction (visibility filters) ─────────────────────────────────────────
@@ -593,7 +593,7 @@ export function compactLayout(
     const p = visible[i]
     features[i] = extractFeatures(p.item)
     types[i] = p.item.type
-    anchors[i] = p.item.partnerId ? identityAnchorPx(p.item.partnerId) : null
+    anchors[i] = p.item.franjaId ? identityAnchorPx(p.item.franjaId) : null
   }
   const affVal = new Float64Array(n)
   const affGen = new Int32Array(n)

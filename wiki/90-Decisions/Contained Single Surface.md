@@ -26,7 +26,7 @@ Verbatim from the project lead (2026-04-23):
 1. **No `/[type]/[slug]` detail routes.** Card click → overlay, not navigation. The earlier recommendation in [[Open Questions]] to build dedicated routes with NGE reader chrome is **overruled** by this decision.
 2. **URL updates via `?item=<slug>`**, not via route change. This preserves shareability (deep-linking) without breaking containment. See [[useOverlay]].
 3. **Article bodies, mix playback, event details, tracklists** all render inside the overlay. Not in new tabs, not on dedicated pages.
-4. **External URLs** (ticket purchases, SoundCloud, Substack origin credits, partner websites) are **explicit user-chosen escape hatches** from inside the overlay — styled as clearly-secondary actions, never the default card behavior.
+4. **External URLs** (ticket purchases, SoundCloud, Substack origin credits, franja websites) are **explicit user-chosen escape hatches** from inside the overlay — styled as clearly-secondary actions, never the default card behavior.
 5. **Section navigation** (`/agenda`, `/editorial`, `/mixes`, …) still uses Next.js routes. Containment is about **content consumption**, not section switching. If the user later wants sections contained too (e.g. tabbed filter), that'll be a separate decision.
 6. **Transitions should reinforce containment.** The CRT boot-in + dim/blur backdrop make it feel like the content emerges from the grid, not that the grid is replaced. See [[Overlay System]].
 

@@ -1,7 +1,7 @@
 'use client'
 
 // Spatial Identity Canvas — marketplace listing node.
-// A listing is a content node inside its partner's focus cluster (spec
+// A listing is a content node inside its franja's focus cluster (spec
 // § Marketplace behavior): product photo, //MERCADO chip, price + status as
 // minimal metadata. Rim uses the spec's warm-sand marketplace direction —
 // marketplace has no ContentType, so `categoryColor` can't provide it
@@ -26,11 +26,11 @@ export interface MapaListingCellProps {
   currency: string
   /** The MERCADO kill-switch — fade in place, same contract as MapaCell. */
   hidden: boolean
-  /** Partner focus on ANOTHER identity — recede like non-member terrain. */
+  /** Franja focus on ANOTHER identity — recede like non-member terrain. */
   dimmed?: boolean
   /**
    * View-arrangement translation (plane px) inherited from the node's anchor
-   * member, so global satellites ride their partner's mass through the
+   * member, so global satellites ride their franja's mass through the
    * continent drift and focus displacement.
    */
   delta?: { dx: number; dy: number } | null

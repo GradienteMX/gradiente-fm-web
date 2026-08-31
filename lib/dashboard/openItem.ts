@@ -103,12 +103,12 @@ export function mapItemRowToContentItem(row: any): ContentItem {
     articleBody: row.article_body ?? undefined,
     footnotes: row.footnotes ?? undefined,
     heroCaption: row.hero_caption ?? undefined,
-    partnerKind: row.partner_kind ?? undefined,
-    partnerUrl: row.partner_url ?? undefined,
-    partnerLastUpdated: row.partner_last_updated ?? undefined,
+    franjaKind: row.franja_kind ?? undefined,
+    franjaUrl: row.franja_url ?? undefined,
+    franjaLastUpdated: row.franja_last_updated ?? undefined,
     verified: row.verified ?? undefined,
     featuredItemId: row.featured_item_id ?? undefined,
-    partnerId: row.partner_id ?? undefined,
+    franjaId: row.franja_id ?? undefined,
     createdById: row.created_by ?? undefined,
     marketplaceEnabled: row.marketplace_enabled ?? false,
     marketplaceDescription: row.marketplace_description ?? undefined,
@@ -142,7 +142,7 @@ export async function ensureItemBySlug(slug: string): Promise<ContentItem | null
       .from('items')
       .select(ITEM_ROW_SELECT)
       .eq('slug', slug)
-      // RLS lets partner teams read their own unpublished rows — filter
+      // RLS lets franja teams read their own unpublished rows — filter
       // explicitly, same law as getItems() (a leak occurred before).
       .eq('published', true)
       .maybeSingle()

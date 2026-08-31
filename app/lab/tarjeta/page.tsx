@@ -15,7 +15,7 @@ const DEMO: InviteCard = {
   role: 'insider',
   folio: '001/150',
   issued: 'JUN 2026',
-  partner: null,
+  franja: null,
   status: 'active',
 }
 

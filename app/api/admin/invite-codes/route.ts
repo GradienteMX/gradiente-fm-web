@@ -13,8 +13,8 @@ import { createClient } from '@/lib/supabase/server'
 interface CreateBody {
   intended_role?: 'user' | 'curator' | 'guide' | 'insider' | 'admin'
   intended_is_mod?: boolean
-  intended_partner_id?: string | null
-  intended_partner_admin?: boolean
+  intended_franja_id?: string | null
+  intended_franja_admin?: boolean
   card_name?: string | null
   expires_in_days?: number | null
 }
@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
 
   const role = body.intended_role ?? 'user'
   const isMod = !!body.intended_is_mod
-  const partnerId = body.intended_partner_id?.trim() || null
-  const partnerAdmin = !!body.intended_partner_admin && !!partnerId
+  const franjaId = body.intended_franja_id?.trim() || null
+  const franjaAdmin = !!body.intended_franja_admin && !!franjaId
   const cardName = body.card_name?.trim() || null
   const expiresInDays = body.expires_in_days ?? 30
   const expiresAt =
@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
       code,
       intended_role: role,
       intended_is_mod: isMod,
-      intended_partner_id: partnerId,
-      intended_partner_admin: partnerAdmin,
+      intended_franja_id: franjaId,
+      intended_franja_admin: franjaAdmin,
       card_name: cardName,
       folio,
       created_by: user.id,

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Database } from '@/lib/supabase/database.types'
+import type { Database, Json } from '@/lib/supabase/database.types'
 import type {
   ArticleBlock,
   ContentItem,
@@ -12,7 +12,7 @@ import type {
   MarketplaceListing,
   MixEmbed,
   MixTrack,
-  PartnerKind,
+  FranjaKind,
   PollAttachment,
   PollChoice,
 } from '@/lib/types'
@@ -21,21 +21,21 @@ type ItemRow = Database['public']['Tables']['items']['Row']
 type PollRow = Database['public']['Tables']['polls']['Row']
 type MarketplaceListingRow = Database['public']['Tables']['marketplace_listings']['Row']
 
-// Minimal partner shape resolved via a follow-up query (NOT an embedded
-// PostgREST join) when `partner_id` is set. Mirrors the
+// Minimal franja shape resolved via a follow-up query (NOT an embedded
+// PostgREST join) when `franja_id` is set. Mirrors the
 // `fetchVibeCheckAggregates` pattern below — two-query merge is more
 // resilient than PostgREST's self-FK embed, which depends on the schema
 // cache being fresh and tends to lag behind migrations. See migration
-// 0015 + wiki/90-Decisions/Partner Authoring.md.
-type EmbeddedPartner = {
+// 0015 + wiki/90-Decisions/Franja Authoring.md.
+type EmbeddedFranja = {
   id: string
   title: string
   slug: string
-  partner_kind: string | null
+  franja_kind: string | null
   marketplace_enabled: boolean
 }
 
-// Minimal creator shape — same two-query pattern as EmbeddedPartner. Pulled
+// Minimal creator shape — same two-query pattern as EmbeddedFranja. Pulled
 // per-render from items.created_by → users via `fetchCreatorsByIds`.
 type EmbeddedCreator = {
   id: string
@@ -46,16 +46,16 @@ type EmbeddedCreator = {
 
 // Embedded join shape — `polls.item_id` is unique so PostgREST returns a
 // single object (not an array) for the relation; marketplace_listings is
-// 1:N keyed on partner_id, returned as an array. `partner` is resolved
-// by `fetchPartnersByIds` after the main query lands.
+// 1:N keyed on franja_id, returned as an array. `franja` is resolved
+// by `fetchFranjasByIds` after the main query lands.
 type ItemRowWithPoll = ItemRow & {
   poll: PollRow | null
   marketplace_listings: MarketplaceListingRow[] | null
 }
 
 // Listings are pulled via the same SELECT so consumers don't need a second
-// round-trip. The catalog + overlay both render off this one query. Partner
-// attribution is resolved separately — see `attachPartner` below.
+// round-trip. The catalog + overlay both render off this one query. Franja
+// attribution is resolved separately — see `attachFranja` below.
 const ITEMS_SELECT =
   '*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at), marketplace_listings(*)'
 
@@ -136,15 +136,16 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     // book formats added to item_format in 0038; cast past stale generated enum.
     format: (item.format ?? null) as ItemInsert['format'],
     // subject_kind / country / year added in migration 0038; cast bypasses
-    // stale generated types (same story as partner_id / harvest fields below).
+    // stale generated types (same story as franja_id / harvest fields below).
     ...(item.subjectKind !== undefined ? { subject_kind: item.subjectKind } : {}),
     ...(item.country !== undefined ? { country: item.country || null } : {}),
     ...(item.year !== undefined ? { year: item.year ?? null } : {}),
-    // links jsonb (migration 0041, applied). Conditional spread + cast bypasses
-    // the stale generated types. Sent whenever defined so emptying the list
+    // links jsonb (migration 0041). Sent whenever defined so emptying the list
     // writes [] and clears the column; undefined (untouched) leaves it alone.
+    // The cast is still needed — EntityLink is an interface, and interfaces
+    // don't satisfy Json's index signature even when structurally compatible.
     ...(item.links !== undefined
-      ? { links: item.links as unknown as object }
+      ? { links: item.links as unknown as Json }
       : {}),
     image_url: item.imageUrl ?? null,
     published_at: item.publishedAt,
@@ -181,24 +182,25 @@ export function contentItemToRow(item: ContentItem, opts?: { published?: boolean
     article_body: (item.articleBody ?? []) as unknown as ItemInsert['article_body'],
     footnotes: (item.footnotes ?? []) as unknown as ItemInsert['footnotes'],
     hero_caption: item.heroCaption ?? null,
-    partner_kind: item.partnerKind ?? null,
-    partner_url: item.partnerUrl ?? null,
-    partner_last_updated: tsOrNull(item.partnerLastUpdated),
-    // Partner dossier fields — migration 0040; conditional spread like partner_id.
+    franja_kind: item.franjaKind ?? null,
+    franja_url: item.franjaUrl ?? null,
+    franja_last_updated: tsOrNull(item.franjaLastUpdated),
+    // Franja dossier fields — migration 0040; conditional spread like franja_id.
     ...(item.verified !== undefined ? { verified: item.verified } : {}),
+    ...(item.sponsored !== undefined ? { sponsored: item.sponsored } : {}),
     ...(item.featuredItemId !== undefined
       ? { featured_item_id: item.featuredItemId }
       : {}),
-    // partner_id added in migration 0015; cast bypasses stale generated
+    // franja_id added in migration 0015; cast bypasses stale generated
     // types until `npx supabase gen types typescript` regenerates.
-    ...(item.partnerId !== undefined ? { partner_id: item.partnerId } : {}),
+    ...(item.franjaId !== undefined ? { franja_id: item.franjaId } : {}),
     marketplace_enabled: item.marketplaceEnabled ?? false,
     marketplace_description: item.marketplaceDescription ?? null,
     marketplace_location: item.marketplaceLocation ?? null,
     marketplace_currency: item.marketplaceCurrency ?? null,
     // marketplace_listings live in their own table since migration 0010 —
     // the publish flow inserts the item row first; listings are managed via
-    // /api/partners/[id]/listings endpoints once the partner exists.
+    // /api/franjas/[id]/listings endpoints once the franja exists.
     hp: item.hp ?? null,
     hp_last_updated_at: tsOrNull(item.hpLastUpdatedAt),
     published: opts?.published ?? true,
@@ -265,19 +267,20 @@ function rowToContentItem(row: ItemRowWithPoll): ContentItem {
     articleBody: (row.article_body as ArticleBlock[] | null) ?? undefined,
     footnotes: (row.footnotes as Footnote[] | null) ?? undefined,
     heroCaption: row.hero_caption ?? undefined,
-    partnerKind: row.partner_kind ?? undefined,
-    partnerUrl: row.partner_url ?? undefined,
-    partnerLastUpdated: row.partner_last_updated ?? undefined,
-    // Partner dossier fields — migration 0040; cast bypasses stale generated types.
+    franjaKind: row.franja_kind ?? undefined,
+    franjaUrl: row.franja_url ?? undefined,
+    franjaLastUpdated: row.franja_last_updated ?? undefined,
+    // Franja dossier fields — migration 0040; cast bypasses stale generated types.
     verified: (row as { verified?: boolean }).verified ?? undefined,
+    sponsored: (row as { sponsored?: boolean }).sponsored ?? undefined,
     featuredItemId:
       (row as { featured_item_id?: string | null }).featured_item_id ?? undefined,
-    // partner_id added in migration 0015; cast bypasses stale generated
+    // franja_id added in migration 0015; cast bypasses stale generated
     // types until `npx supabase gen types typescript` regenerates.
-    partnerId: (row as { partner_id?: string | null }).partner_id ?? undefined,
-    // created_by added in migration 0012; same cast story as partner_id.
+    franjaId: (row as { franja_id?: string | null }).franja_id ?? undefined,
+    // created_by added in migration 0012; same cast story as franja_id.
     createdById: (row as { created_by?: string | null }).created_by ?? undefined,
-    // partner field is populated by attachPartner() in the consumer fns
+    // franja field is populated by attachFranja() in the consumer fns
     // below (getItems / getItemBySlug). Leave undefined here.
     marketplaceEnabled: row.marketplace_enabled,
     marketplaceDescription: row.marketplace_description ?? undefined,
@@ -347,10 +350,10 @@ function attachAggregate(
   }
 }
 
-// ── Partner attribution merge ──────────────────────────────────────────────
+// ── Franja attribution merge ──────────────────────────────────────────────
 //
-// Mirrors fetchVibeCheckAggregates: a second query pulls the partner rows
-// referenced by any item's `partner_id`, then `attachPartner` merges the
+// Mirrors fetchVibeCheckAggregates: a second query pulls the franja rows
+// referenced by any item's `franja_id`, then `attachFranja` merges the
 // minimal shape onto each item.
 //
 // Done this way instead of a PostgREST self-FK embed because the embed
@@ -358,37 +361,37 @@ function attachAggregate(
 // behind migrations (PGRST200 errors on first deploy). The two-query
 // approach is cache-agnostic.
 
-async function fetchPartnersByIds(ids: string[]): Promise<Map<string, EmbeddedPartner>> {
-  const out = new Map<string, EmbeddedPartner>()
+async function fetchFranjasByIds(ids: string[]): Promise<Map<string, EmbeddedFranja>> {
+  const out = new Map<string, EmbeddedFranja>()
   if (ids.length === 0) return out
   const supabase = createClient()
   const { data, error } = await supabase
     .from('items')
-    .select('id, title, slug, partner_kind, marketplace_enabled')
+    .select('id, title, slug, franja_kind, marketplace_enabled')
     .in('id', ids)
   if (error) {
-    console.error('[fetchPartnersByIds] Supabase error:', error)
+    console.error('[fetchFranjasByIds] Supabase error:', error)
     return out
   }
-  for (const row of (data ?? []) as EmbeddedPartner[]) {
+  for (const row of (data ?? []) as EmbeddedFranja[]) {
     out.set(row.id, row)
   }
   return out
 }
 
-function attachPartner(
+function attachFranja(
   item: ContentItem,
-  partner: EmbeddedPartner | undefined,
+  franja: EmbeddedFranja | undefined,
 ): ContentItem {
-  if (!partner) return item
+  if (!franja) return item
   return {
     ...item,
-    partner: {
-      id: partner.id,
-      title: partner.title,
-      slug: partner.slug,
-      kind: (partner.partner_kind ?? 'venue') as PartnerKind,
-      marketplaceEnabled: partner.marketplace_enabled,
+    franja: {
+      id: franja.id,
+      title: franja.title,
+      slug: franja.slug,
+      kind: (franja.franja_kind ?? 'venue') as FranjaKind,
+      marketplaceEnabled: franja.marketplace_enabled,
     },
   }
 }
@@ -398,9 +401,9 @@ function attachPartner(
 // Public content read — drives the home feed + every type page. Returns
 // PUBLISHED items only, and the SAME set for every viewer (No-Algorithm: the
 // feed must not vary by who's logged in). We filter `published=true` EXPLICITLY
-// rather than lean on RLS: the items_partner_team_read policy (migration 0026)
-// lets a partner member read their OWN partner's unpublished drafts so BORRADORES
-// can list them — and without this filter those drafts leaked into the partner's
+// rather than lean on RLS: the items_franja_team_read policy (migration 0026)
+// lets a franja member read their OWN franja's unpublished drafts so BORRADORES
+// can list them — and without this filter those drafts leaked into the franja's
 // home feed + events rail. Unpublished drafts live only in dashboard surfaces,
 // which query them directly (drafts table, BORRADORES, etc.).
 //
@@ -418,24 +421,24 @@ export async function getItems(): Promise<ContentItem[]> {
     return []
   }
   const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
-  // Parallel fetches: vibe-check aggregates, partner-attribution, AND
+  // Parallel fetches: vibe-check aggregates, franja-attribution, AND
   // creator-attribution rows. All three look up by ids drawn from the items
   // array; can run concurrently.
-  const partnerIds = Array.from(
-    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  const franjaIds = Array.from(
+    new Set(items.map((i) => i.franjaId).filter((id): id is string => !!id)),
   )
   const creatorIds = Array.from(
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
-  const [aggregates, partners, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
-    fetchPartnersByIds(partnerIds),
+    fetchFranjasByIds(franjaIds),
     fetchCreatorsByIds(creatorIds),
     fetchEntitiesByItemIds(items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
-    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachFranja(i, i.franjaId ? franjas.get(i.franjaId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
     .map((i) => attachEntities(i, entities.get(i.id)))
 }
@@ -534,19 +537,19 @@ export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]
   const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
   if (items.length === 0) return items
 
-  const partnerIds = Array.from(
-    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  const franjaIds = Array.from(
+    new Set(items.map((i) => i.franjaId).filter((id): id is string => !!id)),
   )
   // All items here share the same creator (`userId`), so resolve once.
-  const [aggregates, partners, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
-    fetchPartnersByIds(partnerIds),
+    fetchFranjasByIds(franjaIds),
     fetchCreatorsByIds([userId]),
     fetchEntitiesByItemIds(items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
-    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachFranja(i, i.franjaId ? franjas.get(i.franjaId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
     .map((i) => attachEntities(i, entities.get(i.id)))
 }
@@ -582,28 +585,28 @@ export async function getItemsByEntity(entityId: string): Promise<ContentItem[]>
   const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
   if (items.length === 0) return items
 
-  const partnerIds = Array.from(
-    new Set(items.map((i) => i.partnerId).filter((id): id is string => !!id)),
+  const franjaIds = Array.from(
+    new Set(items.map((i) => i.franjaId).filter((id): id is string => !!id)),
   )
   const creatorIds = Array.from(
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
-  const [aggregates, partners, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
-    fetchPartnersByIds(partnerIds),
+    fetchFranjasByIds(franjaIds),
     fetchCreatorsByIds(creatorIds),
     fetchEntitiesByItemIds(items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
-    .map((i) => attachPartner(i, i.partnerId ? partners.get(i.partnerId) : undefined))
+    .map((i) => attachFranja(i, i.franjaId ? franjas.get(i.franjaId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
     .map((i) => attachEntities(i, entities.get(i.id)))
 }
 
 // ── Creator attribution merge ──────────────────────────────────────────────
 //
-// Same shape as fetchPartnersByIds: pull all referenced users in one query,
+// Same shape as fetchFranjasByIds: pull all referenced users in one query,
 // attach to each item. Powers the @username chip + link to /u/[username]
 // rendered by ContentCard / overlays.
 
@@ -620,7 +623,7 @@ async function fetchCreatorsByIds(ids: string[]): Promise<Map<string, EmbeddedCr
     return out
   }
   // `avatar_url` is a post-0017 column; cast through unknown for the same
-  // stale-generated-types reason as partner / created_by handling.
+  // stale-generated-types reason as franja / created_by handling.
   for (const row of (data ?? []) as unknown as EmbeddedCreator[]) {
     out.set(row.id, row)
   }
@@ -645,7 +648,7 @@ function attachCreator(
 
 // ── Scene-entity attribution merge ──────────────────────────────────────────
 //
-// Same two-query pattern as partners/creators (more resilient than a
+// Same two-query pattern as franjas/creators (more resilient than a
 // PostgREST embed right after a migration, when the FK may lag the schema
 // cache). Pulls item_entities for the given items, resolves the referenced
 // entities, and returns a Map<itemId, EntityRef[]>. Powers the CONTEXTO rail
@@ -732,34 +735,34 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   }
   if (!data) return null
   const item = rowToContentItem(data as unknown as ItemRowWithPoll)
-  const [aggregates, partners, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities] = await Promise.all([
     fetchVibeCheckAggregates([item.id]),
-    item.partnerId ? fetchPartnersByIds([item.partnerId]) : Promise.resolve(new Map()),
+    item.franjaId ? fetchFranjasByIds([item.franjaId]) : Promise.resolve(new Map()),
     item.createdById ? fetchCreatorsByIds([item.createdById]) : Promise.resolve(new Map()),
     fetchEntitiesByItemIds([item.id]),
   ])
   const withAgg = attachAggregate(item, aggregates.get(item.id))
-  const withPartner = attachPartner(withAgg, item.partnerId ? partners.get(item.partnerId) : undefined)
-  const withCreator = attachCreator(withPartner, item.createdById ? creators.get(item.createdById) : undefined)
+  const withFranja = attachFranja(withAgg, item.franjaId ? franjas.get(item.franjaId) : undefined)
+  const withCreator = attachCreator(withFranja, item.createdById ? creators.get(item.createdById) : undefined)
   return attachEntities(withCreator, entities.get(item.id))
 }
 
-// Items attributed to a partner via the //PRESENTA self-FK — drives the full
-// /p/[slug] partner page (PRÓXIMOS / ARCHIVO / catalog facts / actividad).
+// Items attributed to a franja via the //PRESENTA self-FK — drives the full
+// /p/[slug] franja page (PRÓXIMOS / ARCHIVO / catalog facts / actividad).
 // Server-fetched so a DIRECT visit works (the client itemsCache is only warm
-// on grid pages). Lean: no aggregate/creator/entity merge — the partner-page
-// cards only need base item fields. `partner_id` is a post-0015 column; cast
+// on grid pages). Lean: no aggregate/creator/entity merge — the franja-page
+// cards only need base item fields. `franja_id` is a post-0015 column; cast
 // bypasses the stale generated types (same as getItemsByCreatedBy).
-export async function getItemsByPartner(partnerId: string): Promise<ContentItem[]> {
+export async function getItemsByFranja(franjaId: string): Promise<ContentItem[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('items')
     .select(ITEMS_SELECT)
-    .eq('partner_id' as never, partnerId as never)
+    .eq('franja_id' as never, franjaId as never)
     .eq('published', true)
     .order('published_at', { ascending: false })
   if (error) {
-    console.error('[getItemsByPartner] Supabase error:', error)
+    console.error('[getItemsByFranja] Supabase error:', error)
     return []
   }
   return ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)

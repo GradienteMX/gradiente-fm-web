@@ -24,7 +24,7 @@ function getPinnedHero(items): ContentItem | null {
 ## Constraints
 
 - **Only one.** If multiple items have `pinned: true`, the most recent `publishedAt` wins.
-- **Text types only.** Eligible: `editorial`, `review`, `noticia`, `opinion`. **Not**: `evento`, `mix`, `partner`. The hero is about editorial voice — events and mixes don't belong in portada.
+- **Text types only.** Eligible: `editorial`, `review`, `noticia`, `opinion`. **Not**: `evento`, `mix`, `franja`. The hero is about editorial voice — events and mixes don't belong in portada.
 - **Hero is removed from the grid** to avoid double-rendering. See [app/page.tsx:18-21](../../app/page.tsx).
 
 ## Why exactly one

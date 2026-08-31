@@ -117,9 +117,9 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
   const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   // EDITORIAL is a staff lever (mirror of /api/items: role guide|admin).
-  // Partner row: partner-team member + stampable type (listicle is).
+  // Franja row: franja-team member + stampable type (listicle is).
   const isStaff = currentUser?.role === 'guide' || currentUser?.role === 'admin'
-  const showPartner = !!currentUser?.partnerId
+  const showFranja = !!currentUser?.franjaId
 
   const onAnchor = (anchorId: string) => {
     document.getElementById(anchorId)?.scrollIntoView({ block: 'start' })
@@ -144,9 +144,9 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
           showEditorial={isStaff}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={showPartner}
-          partnerValue={draft.attributePartner ?? !!draft.partnerId}
-          onPartnerChange={(v) => patch({ attributePartner: v })}
+          showFranja={showFranja}
+          franjaValue={draft.attributeFranja ?? !!draft.franjaId}
+          onFranjaChange={(v) => patch({ attributeFranja: v })}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

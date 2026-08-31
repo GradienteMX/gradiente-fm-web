@@ -52,7 +52,7 @@ export const MOCK_USERS: User[] = [
   {
     // OG is now a flag, not a category. loma_grave is an early-registered
     // reader with the cosmetic badge. She also runs N.A.A.F.I.'s
-    // marketplace team (`partnerAdmin: true`) — which means she's the
+    // marketplace team (`franjaAdmin: true`) — which means she's the
     // person inside the team who can add/kick other team members. See
     // [[Marketplace]].
     id: 'u-og-loma',
@@ -60,8 +60,8 @@ export const MOCK_USERS: User[] = [
     displayName: 'loma grave',
     role: 'user',
     isOG: true,
-    partnerId: 'pa-naafi',
-    partnerAdmin: true,
+    franjaId: 'pa-naafi',
+    franjaAdmin: true,
     joinedAt: '2024-11-04T00:00:00',
   },
   {
@@ -92,15 +92,15 @@ export const MOCK_USERS: User[] = [
     joinedAt: '2026-01-09T00:00:00',
   },
   {
-    // yagual is a regular team member of N.A.A.F.I. (no partnerAdmin flag).
+    // yagual is a regular team member of N.A.A.F.I. (no franjaAdmin flag).
     // She can edit listings and the marketplace card, but only loma_grave
-    // (the team's partnerAdmin) or a site admin can add/remove her from
+    // (the team's franjaAdmin) or a site admin can add/remove her from
     // the team.
     id: 'u-normal-yag',
     username: 'yagual',
     displayName: 'yagual',
     role: 'user',
-    partnerId: 'pa-naafi',
+    franjaId: 'pa-naafi',
     joinedAt: '2026-03-14T00:00:00',
   },
 ]
@@ -171,9 +171,10 @@ export const RANK_COLOR: Record<UserRank, string> = {
 // staff carry their role chip as their identity marker and don't need
 // the additional frame. NORMIE has no frame (no progression yet).
 //
-// Returns inline-style props (border + boxShadow) — callers spread them
-// onto the avatar container element. Tailwind can't generate dynamic
-// colors per render, so inline is the cleanest path.
+// Returns inline-style props (border only — no glow: the frame renders on
+// paper surfaces now) — callers spread them onto the avatar container
+// element. Tailwind can't generate dynamic colors per render, so inline is
+// the cleanest path.
 export interface AvatarFrameStyle {
   borderColor?: string
   borderWidth?: string
@@ -189,7 +190,6 @@ export function avatarFrameStyle(user: User, rank: UserRank): AvatarFrameStyle {
   return {
     borderColor: color,
     borderWidth: '2px',
-    boxShadow: `0 0 10px color-mix(in srgb, ${color} 30%, transparent)`,
   }
 }
 

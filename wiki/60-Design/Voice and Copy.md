@@ -55,7 +55,7 @@ The chrome speaks a different language — mono-font, all-caps, `//` tokens, NGE
 
 - Generic "Welcome to our site" / "Subscribe to our newsletter" voice.
 - English chrome in the UI (`HOME`, `MIXES`, `AGENDA` are OK as they're international titles; `Loading…` is not — use `CARGANDO` or `// SINC`).
-- Corporate/sponsored copy voice anywhere outside the `partner` card label.
+- Corporate/sponsored copy voice anywhere outside the `franja` card label.
 
 ## Links
 

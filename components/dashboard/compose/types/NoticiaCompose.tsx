@@ -12,7 +12,7 @@
 // EDITORIAL and VINCULAR A MI PROMOTORA move from the dark IDENTIDAD section
 // to the rail's PUBLICACIÓN panel — same gates as production: the editorial
 // lever is staff-only (guide/admin — app/api/items/route.ts isStaff), the
-// partner toggle is partner-team only on stamped types (noticia qualifies).
+// franja toggle is franja-team only on stamped types (noticia qualifies).
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -116,12 +116,12 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
   const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   // Rail gates — REAL rows only. Editorial lever is staff (guide/admin,
-  // mirrors app/api/items isStaff); the partner stamp is partner-team on
-  // stamped types (noticia is one — PartnerAttributionField parity).
+  // mirrors app/api/items isStaff); the franja stamp is franja-team on
+  // stamped types (noticia is one — FranjaAttributionField parity).
   const showEditorial =
     currentUser?.role === 'guide' || currentUser?.role === 'admin'
-  const showPartner = !!currentUser?.partnerId
-  const partnerValue = draft.attributePartner ?? !!draft.partnerId
+  const showFranja = !!currentUser?.franjaId
+  const franjaValue = draft.attributeFranja ?? !!draft.franjaId
 
   const onAnchor = (anchorId: string) => {
     document.getElementById(anchorId)?.scrollIntoView({ block: 'start' })
@@ -146,9 +146,9 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={showPartner}
-          partnerValue={partnerValue}
-          onPartnerChange={(v) => patch({ attributePartner: v })}
+          showFranja={showFranja}
+          franjaValue={franjaValue}
+          onFranjaChange={(v) => patch({ attributeFranja: v })}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

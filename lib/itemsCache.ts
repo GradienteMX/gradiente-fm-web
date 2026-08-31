@@ -32,8 +32,8 @@ export function getItemBySlugSync(slug: string): ContentItem | null {
 }
 
 // Snapshot read of every item the client has seen this session. Used by
-// PartnerOverlay to surface a partner's body of //PRESENTA-attributed work
-// without needing a dedicated server fetch — partners draw from whatever the
+// FranjaOverlay to surface a franja's body of //PRESENTA-attributed work
+// without needing a dedicated server fetch — franjas draw from whatever the
 // active page already streamed in. Returns a fresh array so callers can
 // filter/sort without mutating shared state.
 export function getAllItemsSync(): ContentItem[] {
@@ -74,7 +74,7 @@ export function getRelatedByVibe(
     .filter(
       (c) =>
         c.id !== item.id &&
-        c.type !== 'partner' &&
+        c.type !== 'franja' &&
         (!types || types.includes(c.type)),
     )
     .sort((a, b) => {

@@ -24,7 +24,7 @@ const ATTENTION_HALF_LIFE_HOURS: Record<ContentType, number> = {
   opinion: 10 * 24,
   articulo: 14 * 24,
   listicle: 14 * 24,
-  partner: 365 * 24, // partners don't decay — rail orders chronologically
+  franja: 365 * 24, // franjas don't decay — rail orders chronologically
 }
 
 // Freshness half-life — decays position independent of HP
@@ -37,7 +37,7 @@ const FRESHNESS_HALF_LIFE_HOURS: Record<ContentType, number> = {
   opinion: 14 * 24,
   articulo: 21 * 24,
   listicle: 21 * 24,
-  partner: 365 * 24,
+  franja: 365 * 24,
 }
 
 // ── Basics ───────────────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ export type PeakByType = Record<ContentType, number>
 
 export function computePeakByType(items: ContentItem[], now: Date = new Date()): PeakByType {
   const peaks: PeakByType = {
-    evento: 1, mix: 1, editorial: 1, review: 1, noticia: 1, opinion: 1, articulo: 1, listicle: 1, partner: 1,
+    evento: 1, mix: 1, editorial: 1, review: 1, noticia: 1, opinion: 1, articulo: 1, listicle: 1, franja: 1,
   }
   for (const item of items) {
     const hp = currentHp(item, now)
@@ -214,7 +214,7 @@ const MD_GEOMETRY: Record<ContentItem['type'], { colSpan: 1 | 2; rowSpan: 1 | 2 
   evento:    { colSpan: 1, rowSpan: 1 },
   // Visual → wide landscape (flyer / cover art reads better at width)
   mix:       { colSpan: 2, rowSpan: 1 },
-  partner:   { colSpan: 2, rowSpan: 1 },
+  franja:   { colSpan: 2, rowSpan: 1 },
 }
 
 // Thresholds back to original 1.0 / 0.5 — `rankItems` applies rank-aware caps

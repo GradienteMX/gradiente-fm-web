@@ -7,7 +7,7 @@ export type ContentType =
   | 'opinion'
   | 'articulo'
   | 'listicle'
-  | 'partner'
+  | 'franja'
 
 // Structured body blocks for long-form `articulo` items.
 // Falls back to paragraph-split `bodyPreview` when absent.
@@ -54,24 +54,29 @@ export interface MixTrack {
 
 export type MixStatus = 'disponible' | 'exclusivo' | 'archivo' | 'proximamente'
 
-export type PartnerKind =
-  | 'promo'
+// What a franja IS. Commercial arrangement is NOT a kind — it rides the
+// separate `sponsored` flag below, because "we have a deal with them" is an
+// attribute of a franja, never a species of one. (`promo` and `sponsored`
+// were dropped from this union in the partner→franja rename; `promo` rows
+// became `colectivo`, and the one `sponsored` row — Passline — became
+// `plataforma` + `sponsored: true`.)
+export type FranjaKind =
   | 'label'
   | 'promoter'
   | 'venue'
-  | 'sponsored'
   | 'dealer'
   | 'colectivo'
   | 'festival'
   | 'club'
   | 'medios'
   | 'mix-series'
+  | 'plataforma'
 
-// ── Marketplace listing (lives on a partner ContentItem) ──────────────────
+// ── Marketplace listing (lives on a franja ContentItem) ──────────────────
 //
-// Each marketplace-enabled partner carries a list of these. A listing is
+// Each marketplace-enabled franja carries a list of these. A listing is
 // the smallest unit a buyer interacts with — vinyl record, cassette, synth,
-// merch piece, etc. Edited individually inside the partner's dashboard
+// merch piece, etc. Edited individually inside the franja's dashboard
 // section (mini compose flow per listing). Status flips manually as items
 // move through the sale pipeline.
 
@@ -105,7 +110,7 @@ export interface MarketplaceListing {
   title: string
   category: MarketplaceListingCategory
   subcategory?: string                // member of SUBCATEGORIES_BY_CATEGORY[category]
-  price: number                       // numeric amount; currency lives on the partner card
+  price: number                       // numeric amount; currency lives on the franja card
   condition: MarketplaceListingCondition
   // Multi-image — first index is the portada (lead image used by card grid +
   // overlay hero). Empty array means no image yet (renders the category
@@ -132,7 +137,7 @@ export interface MarketplaceListing {
 
 // Lightweight comment on a marketplace listing (migration 0033). Separate from
 // the editorial `Comment` type — no reactions, no rank effects. One level of
-// replies (parentId). `isSeller` flags comments by the listing's partner team.
+// replies (parentId). `isSeller` flags comments by the listing's franja team.
 export interface ListingComment {
   id: string
   listingId: string
@@ -152,7 +157,7 @@ export interface ListingComment {
 // Per-category subcategory catalog — drives the dependent <select> in the
 // composer. `other` intentionally has no subcategories (the field hides).
 // First-pass list lifted from the [[Marketplace]] § "Planned refinement"
-// design doc; expand as partners ask for new shapes.
+// design doc; expand as franjas ask for new shapes.
 export const SUBCATEGORIES_BY_CATEGORY: Record<MarketplaceListingCategory, string[]> = {
   vinyl: ['7"', '10"', '12"', 'LP', 'EP', 'Single', 'Compilation', 'Box Set', 'Picture Disc', 'Coloured'],
   cassette: ['Album', 'EP', 'Mixtape', 'Bootleg'],
@@ -173,7 +178,7 @@ export type ContentSource =
   | 'scraper:ra'
   | 'scraper:instagram'
   | 'manual:editor'
-  | 'manual:partner'
+  | 'manual:franja'
   // Archivo Vivo 2005-2013 — posts reconstructed from the Internet Archive
   // (living-archive pilot in gradiente-ops). Drives the //ARCHIVO cell
   // treatment on /mapa and the visible-credit contract from MANUAL.md.
@@ -268,41 +273,45 @@ export interface ContentItem {
   articleBody?: ArticleBlock[]
   footnotes?: Footnote[]
   heroCaption?: string    // caption for the hero/lead image
-  // Partner rail fields (type === 'partner' only)
-  partnerKind?: PartnerKind
-  partnerUrl?: string     // outbound link (site, Instagram, Bandcamp, etc.)
-  partnerLastUpdated?: string  // ISO — overrides publishedAt for rail ordering
-  // Partner dossier fields (migration 0040 / project_partner_page_revamp).
-  verified?: boolean       // official/verified partner → //VERIFICADO badge
-  featuredItemId?: string  // partner-chosen //HISTORIA DESTACADA item (items.id)
+  // Franja rail fields (type === 'franja' only)
+  franjaKind?: FranjaKind
+  franjaUrl?: string     // outbound link (site, Instagram, Bandcamp, etc.)
+  franjaLastUpdated?: string  // ISO — overrides publishedAt for rail ordering
+  // Franja dossier fields (migration 0040 / project_franja_page_revamp).
+  verified?: boolean       // official/verified franja → //VERIFICADO badge
+  featuredItemId?: string  // franja-chosen //HISTORIA DESTACADA item (items.id)
+  // Commercial arrangement — Gradiente has a deal with this franja. Deliberately
+  // NOT a FranjaKind: kind says what a franja IS, this says whether money
+  // changes hands. Exactly one row carries it today (Passline).
+  sponsored?: boolean
 
-  // Partner attribution — when set on a NON-partner item, the item was authored
-  // (or scraper-matched) on behalf of that partner organization. Drives the
+  // Franja attribution — when set on a NON-franja item, the item was authored
+  // (or scraper-matched) on behalf of that franja organization. Drives the
   // //PRESENTA · X chip on cards + the PUBLICADO POR //X byline in overlays.
-  // References a partner ContentItem.id (e.g. "pa-club-japan-ppur"). See
-  // [[Partner Authoring]] for the trust-via-attribution model.
-  partnerId?: string
-  // Composer opt-out (transient — not a DB column). When a partner-team member
-  // publishes a stamped type, the items API attributes it to their partner
+  // References a franja ContentItem.id (e.g. "pa-club-japan-ppur"). See
+  // [[Franja Authoring]] for the trust-via-attribution model.
+  franjaId?: string
+  // Composer opt-out (transient — not a DB column). When a franja-team member
+  // publishes a stamped type, the items API attributes it to their franja
   // UNLESS this is explicitly false, letting a seller post as a personal/
   // unbranded contribution. Default (undefined) = attribute. See /api/items.
-  attributePartner?: boolean
-  // Minimal partner attribution data — resolved server-side via a self-join
-  // when `partnerId` is set. Populated by `rowToContentItem` in lib/data/items.ts.
+  attributeFranja?: boolean
+  // Minimal franja attribution data — resolved server-side via a self-join
+  // when `franjaId` is set. Populated by `rowToContentItem` in lib/data/items.ts.
   // Cards + overlay read these fields directly so no prop-drilling or context
   // lookup is needed on the rendering surfaces. Browser-side hooks (useSavedItems,
   // useMyPublishedItems) leave this undefined — chip simply doesn't render there.
-  partner?: {
+  franja?: {
     id: string
     title: string
-    kind: PartnerKind
+    kind: FranjaKind
     slug: string
     marketplaceEnabled: boolean
   }
 
   // Author attribution — the user (if any) who published this item. References
   // `items.created_by` on the users table. Populated server-side by
-  // `attachCreator` in lib/data/items.ts (same pattern as `partner` above).
+  // `attachCreator` in lib/data/items.ts (same pattern as `franja` above).
   // Drives the @username chip on cards and the link to /u/[username]. Stays
   // distinct from `author` (the free-text byline string) — many editorial
   // pieces will have both: a curator's username + an explicit author byline
@@ -324,13 +333,13 @@ export interface ContentItem {
   harvestedAmount?: number      // how much HL flowed to the user
   hpDecayMultiplier?: number    // default 1.0; 1.7 after harvest
 
-  // Marketplace fields (type === 'partner' only). When `marketplaceEnabled`
-  // is true, the partner shows up at `/marketplace` with their card +
-  // listings. Admin sets the flag in [[AdminUsersEditor]]; the partner team
+  // Marketplace fields (type === 'franja' only). When `marketplaceEnabled`
+  // is true, the franja shows up at `/marketplace` with their card +
+  // listings. Admin sets the flag in [[AdminUsersEditor]]; the franja team
   // edits the rest of the fields from their dashboard section. See
   // [[Marketplace]] for the full design.
   marketplaceEnabled?: boolean
-  marketplaceDescription?: string  // partner-authored intro copy
+  marketplaceDescription?: string  // franja-authored intro copy
   marketplaceLocation?: string     // "CDMX, MX"
   marketplaceCurrency?: string     // "MXN"
   marketplaceListings?: MarketplaceListing[]
@@ -413,7 +422,7 @@ export interface Entity {
 
 // Lightweight reference carried on a ContentItem — enough to render a
 // clickable chip without a second fetch. Resolved server-side by
-// `attachEntities` in lib/data/items.ts (same pattern as `partner`/`creator`).
+// `attachEntities` in lib/data/items.ts (same pattern as `franja`/`creator`).
 export interface EntityRef {
   id: string
   kind: EntityKind
@@ -468,14 +477,14 @@ export interface User {
   role: Role
   isMod?: boolean         // pruning flag — admins get it implicitly via canModerate()
   isOG?: boolean          // first-wave registrant cosmetic badge
-  // Marketplace-team membership. When `partnerId` is set, the user belongs
-  // to that partner's team and gains access to the partner-only dashboard
-  // section. `partnerAdmin: true` (only meaningful when `partnerId` is set)
+  // Marketplace-team membership. When `franjaId` is set, the user belongs
+  // to that franja's team and gains access to the franja-only dashboard
+  // section. `franjaAdmin: true` (only meaningful when `franjaId` is set)
   // grants in-team admin powers — adding/removing other team members of
-  // the SAME partner. Site admins (`role === 'admin'`) override both.
+  // the SAME franja. Site admins (`role === 'admin'`) override both.
   // See [[Marketplace]].
-  partnerId?: string      // references a partner ContentItem.id (e.g. "pa-club-japan")
-  partnerAdmin?: boolean  // in-team admin for own partner (kick/add team)
+  franjaId?: string      // references a franja ContentItem.id (e.g. "pa-club-japan")
+  franjaAdmin?: boolean  // in-team admin for own franja (kick/add team)
   joinedAt: string        // ISO
   // Public-profile fields (migration 0017). All optional — null in DB → undefined here.
   avatarUrl?: string      // public URL from the uploads bucket

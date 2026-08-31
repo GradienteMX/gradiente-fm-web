@@ -71,11 +71,11 @@ describe('categoryColorOnLight — §1.5 map', () => {
         'articulo',
         'editorial',
         'evento',
+        'franja',
         'listicle',
         'mix',
         'noticia',
         'opinion',
-        'partner',
         'review',
       ],
     )

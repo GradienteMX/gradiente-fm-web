@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Reply } from 'lucide-react'
@@ -57,7 +58,20 @@ export function PostHeader({ authorId, createdAt, onIdClick }: PostHeaderProps) 
           {FLAG_LABEL[flag]}
         </span>
       ))}
-      <span className="text-primary">@{author?.username ?? 'desconocido'}</span>
+      {/* Fase E door: @username links to /u/[username]. Guarded — seed/anon
+          posts without a username keep the plain span. stopPropagation so the
+          link doesn't also trigger any post-level interaction. */}
+      {author?.username ? (
+        <Link
+          href={`/u/${author.username}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-primary transition-colors hover:text-sys-orange"
+        >
+          @{author.username}
+        </Link>
+      ) : (
+        <span className="text-primary">@{author?.username ?? 'desconocido'}</span>
+      )}
       {isMe && <span style={{ color: '#F97316' }}>[TÚ]</span>}
       <span className="tabular-nums text-muted">
         {format(created, "dd MMM yyyy · HH:mm", { locale: es })}

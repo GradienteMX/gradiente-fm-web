@@ -59,7 +59,7 @@ Closed polls (past `closesAt`) reveal results unconditionally — the gate is fo
 | `mix` | `from-tracklist` | `tracklist` array | "Mejor track del set?" |
 | `evento` | `attendance` | fixed (`VOY` / `TAL VEZ` / `NO PUEDO`) | "Vas?" |
 | `noticia`, `review`, `editorial`, `opinion`, `articulo` | `freeform` | editor authors | (editor authors) |
-| `partner` | (none) | — | — |
+| `franja` | (none) | — | — |
 
 Editors can override the prompt for any kind. For non-freeform kinds, choices are auto-derived; the editor doesn't author them. For freeform, the [[Dashboard Forms]] PollFieldset surfaces an add/remove choice list.
 

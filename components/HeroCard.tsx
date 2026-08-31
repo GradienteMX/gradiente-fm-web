@@ -1,37 +1,34 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { vibeToColor, vibeMid, fmtDateShort } from '@/lib/utils'
-import { VibeMeter } from '@/components/VibeMeter'
+import { effectiveVibeBand, fmtDateShort } from '@/lib/utils'
+import { VibeMeterLight } from '@/components/dashboard/widgets/shared/VibeMeterLight'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
 import { SavedBadge } from '@/components/cards/SavedBadge'
 import { SmartImage } from '@/components/SmartImage'
-import { Clock, ArrowRight } from 'lucide-react'
+import {
+  categoryColorOnLight,
+  typeCode,
+  typeDisplayLabel,
+} from '@/lib/dashboard/palette'
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { useVibe } from '@/context/VibeContext'
 import { recordItems } from '@/lib/itemsCache'
 
-const TYPE_LABEL: Record<ContentItem['type'], string> = {
-  evento: 'EVENTO',
-  mix: 'MIX',
-  noticia: 'NOTICIA',
-  review: 'REVIEW',
-  editorial: 'EDITORIAL',
-  opinion: 'OPINIÓN',
-  articulo: 'ARTÍCULO',
-  listicle: 'LISTA',
-  partner: 'PARTNER',
-}
-
 interface HeroCardProps {
   item: ContentItem
 }
 
+// PORTADA — the pinned hero rendered as the paper's front page («EL PLIEGO»
+// fase B). Selection stays upstream (getPinnedHero in app/page.tsx); this
+// component renders whatever arrives. Split frame: text page | artwork plate.
+// Dark art inside the paper frame is intentional — the flyer is where ink
+// bleeds through; the frame itself stays paper.
 export function HeroCard({ item }: HeroCardProps) {
-  const vibeColor = vibeToColor(vibeMid(item))
+  const typeColor = categoryColorOnLight(item.type)
   const genres = item.genres.map((id) => ({
     id,
     name: getGenreById(id)?.name ?? id,
@@ -77,6 +74,13 @@ export function HeroCard({ item }: HeroCardProps) {
     ? [item.excerpt]
     : []
 
+  const bylineParts = [
+    item.author ? `POR ${item.author.toUpperCase()}` : null,
+    item.readTime ? `LECTURA ${item.readTime} MIN` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <section
       ref={ref}
@@ -85,115 +89,70 @@ export function HeroCard({ item }: HeroCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`Abrir ${item.title}`}
-      className="group mb-6 cursor-pointer border border-border focus:outline-none focus-visible:ring-1 focus-visible:ring-sys-red"
+      className="group mb-6 cursor-pointer border border-ink bg-paper-raised focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
     >
-      {/* Header bar */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-sys-red">//</span>
-          <span className="sys-label">EN PORTADA</span>
-          <span className="sys-label text-muted">· SE ACTUALIZA SEMANALMENTE</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 animate-pulse bg-sys-green" />
-          <span className="sys-label text-sys-green">PINNED</span>
-        </div>
+      {/* Kicker row — red PORTADA fill chip + pinned fact. Printed, not live:
+          no dot, no pulse. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink px-4 py-2">
+        <span className="bg-sys-red-paper px-2 py-0.5 font-mono text-d11 font-bold uppercase tracking-widest text-paper-raised">
+          PORTADA
+        </span>
+        <span className="font-mono text-d11 uppercase tracking-widest text-sys-red-paper">
+          ⌖ FIJADA · SE ACTUALIZA SEMANALMENTE
+        </span>
       </div>
 
-      {/* Main body: image left, text right */}
-      <div className="flex flex-col md:flex-row md:h-[360px] md:overflow-hidden" style={{ minHeight: 260 }}>
-
-        {/* LEFT — image */}
-        <div className="relative w-full overflow-hidden md:w-[45%]" style={{ minHeight: 260 }}>
-          {item.imageUrl ? (
-            <SmartImage
-              src={item.imageUrl}
-              alt={item.title}
-              priority
-              sizes="(max-width: 768px) 100vw, 45vw"
-              className="object-cover object-top"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-elevated" />
-          )}
-
-          {/* Bottom gradient to blend with text panel */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30 md:to-black/60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden" />
-
-          {/* Vibe meter — left edge, slot 0 at top. Full 11-slot scale;
-              the lit segments are the item's band reading. */}
-          <VibeMeter
-            item={item}
-            size="sm"
-            vertical
-            className="absolute bottom-0 left-0 top-0"
-          />
-
-          {/* Type badge */}
-          <div className="absolute left-4 top-4">
-            <span className="bg-black/75 px-2 py-1 font-mono text-[10px] tracking-widest text-secondary backdrop-blur-sm">
-              //{TYPE_LABEL[item.type]}
-            </span>
-          </div>
-
-          {/* Saved indicator — top-right corner, only when bookmarked */}
-          <div className="absolute right-4 top-4">
-            <SavedBadge itemId={item.id} />
-          </div>
-
-          {/* NGE bracket — bottom left corner */}
-          <div className="absolute bottom-4 left-4">
-            <div
-              className="h-4 w-4 border-b border-l"
-              style={{ borderColor: `${vibeColor}80` }}
-            />
-          </div>
-
-          {/* Poll affordance — chip when closed, full canvas when open. */}
-          <PollCardCanvas item={item} />
-        </div>
-
-        {/* RIGHT — text */}
-        <div className="flex flex-1 flex-col justify-between border-t border-border bg-surface p-6 md:border-l md:border-t-0">
-          {/* Top: meta + title */}
+      {/* Split body: text page left, artwork plate right */}
+      <div className="flex flex-col md:min-h-[360px] md:flex-row">
+        {/* LEFT — text page */}
+        <div className="flex min-w-0 flex-1 flex-col justify-between p-6">
           <div>
-            {/* Meta row */}
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              {item.author && (
-                <span className="font-mono text-xs tracking-wide" style={{ color: vibeColor }}>
-                  {item.author.toUpperCase()}
-                </span>
-              )}
+            {/* Meta row — type swatch pairs with the 2-letter code (color is
+                never the only signal), then date + optional subtitle. */}
+            <div className="mb-4 flex flex-wrap items-center gap-2 font-mono text-d11 uppercase tracking-widest text-ink-soft">
+              <span
+                aria-hidden
+                className="h-2 w-2 shrink-0 border border-ink"
+                style={{ backgroundColor: typeColor }}
+              />
+              <span className="font-bold" style={{ color: typeColor }}>
+                {typeCode(item.type)}
+              </span>
+              <span>{typeDisplayLabel(item.type)}</span>
               {item.publishedAt && (
-                <span className="sys-label">{fmtDateShort(item.publishedAt)}</span>
-              )}
-              {item.readTime && (
-                <span className="sys-label flex items-center gap-1">
-                  <Clock size={9} />
-                  {item.readTime} MIN LECTURA
-                </span>
+                <>
+                  <span className="text-ink-faint">·</span>
+                  <span className="text-ink-faint">
+                    {fmtDateShort(item.publishedAt)}
+                  </span>
+                </>
               )}
               {item.subtitle && (
-                <span className="sys-label text-muted">{item.subtitle}</span>
+                <>
+                  <span className="text-ink-faint">·</span>
+                  <span className="text-ink-faint">{item.subtitle}</span>
+                </>
               )}
             </div>
 
-            {/* Title */}
-            <h1 className="mb-5 font-syne text-3xl font-black leading-tight text-primary md:text-4xl">
+            {/* Headline — balanced wrap at a size that keeps whole words in
+                the column. break-words is banned here: it splits mid-word with
+                no hyphen («Venezue/la»); the clamp guarantees fit instead. */}
+            <h1
+              lang="es"
+              className="mb-5 font-syne text-d28 font-black leading-none text-ink md:text-[clamp(34px,3.4vw,52px)] [text-wrap:balance]"
+            >
               {item.title}
             </h1>
 
-            {/* Body paragraphs */}
+            {/* Dek */}
             <div className="space-y-3">
               {paragraphs.map((p, i) => (
                 <p
                   key={i}
                   className={[
-                    'font-grotesk leading-relaxed',
-                    i === 0
-                      ? 'text-base text-secondary'
-                      : 'text-sm text-muted',
+                    'font-grotesk',
+                    i === 0 ? 'text-d15 text-ink-soft' : 'text-d13 text-ink-faint',
                     i >= 2 ? 'hidden md:block' : '',
                   ].join(' ')}
                 >
@@ -203,16 +162,14 @@ export function HeroCard({ item }: HeroCardProps) {
             </div>
           </div>
 
-          {/* Bottom: genres + CTA */}
           <div className="mt-6">
-            {/* Genre + tag chips */}
+            {/* Genre + tag chips — paper ground */}
             <div className="mb-4 flex flex-wrap gap-1.5">
               {genres.map(({ id, name }) => (
                 <GenreChipButton
                   key={id}
                   genreId={id}
-                  className="px-2 py-0.5 font-mono text-[9px] tracking-wide"
-                  style={{ backgroundColor: `${vibeColor}18`, color: vibeColor }}
+                  className="border border-ink bg-paper px-2 py-0.5 font-mono text-d11 uppercase tracking-widest text-ink"
                 >
                   {name}
                 </GenreChipButton>
@@ -220,25 +177,55 @@ export function HeroCard({ item }: HeroCardProps) {
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="border border-border px-2 py-0.5 font-mono text-[9px] text-muted"
+                  className="border border-ink px-2 py-0.5 font-mono text-d11 uppercase tracking-widest text-ink-faint"
                 >
                   {t}
                 </span>
               ))}
             </div>
 
-            {/* CTA */}
-            <button className="group flex items-center gap-2 border border-border bg-elevated px-4 py-2.5 font-mono text-xs tracking-widest text-secondary transition-all hover:border-primary hover:text-primary">
-              LEER COMPLETO
-              <ArrowRight
-                size={14}
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </button>
+            {/* Byline row on a hairline. The whole card opens the overlay, so
+                LEER COMPLETO is a printed pointer, not a nested control. */}
+            <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-ink pt-3 font-mono text-d11 uppercase tracking-widest">
+              <span className="text-ink-soft">{bylineParts}</span>
+              <span className="px-1 font-bold text-ink transition-colors group-hover:bg-ink group-hover:text-paper">
+                LEER COMPLETO →
+              </span>
+            </div>
           </div>
+        </div>
+
+        {/* RIGHT — artwork plate. Fill image, so the wrapper is positioned and
+            sized (aspect box on mobile, stretched column on md+). */}
+        <div className="relative aspect-[4/3] w-full overflow-hidden border-t border-ink md:aspect-auto md:w-[45%] md:border-l md:border-t-0">
+          {item.imageUrl ? (
+            <SmartImage
+              src={item.imageUrl}
+              alt={item.title}
+              priority
+              sizes="(max-width: 768px) 100vw, 45vw"
+              className="object-cover object-top"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-ink" />
+          )}
+
+          {/* Saved indicator — top-right corner, only when bookmarked */}
+          <div className="absolute right-4 top-4">
+            <SavedBadge itemId={item.id} />
+          </div>
+
+          {/* Vibe reading — words-only calibrated plate seated on the art's
+              bottom edge (aria-label speaks VIBE_SLOT_NAMES, never numbers). */}
+          <VibeMeterLight
+            band={effectiveVibeBand(item)}
+            className="absolute inset-x-0 bottom-0"
+          />
+
+          {/* Poll affordance — chip when closed, full canvas when open. */}
+          <PollCardCanvas item={item} />
         </div>
       </div>
     </section>
   )
 }
-

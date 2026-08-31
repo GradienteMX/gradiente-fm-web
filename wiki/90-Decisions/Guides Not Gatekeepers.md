@@ -20,7 +20,7 @@ Verbatim from the project lead (via the user):
 1. **Editorial content enters the main grid**, not a separate "featured" lane. Editor-written editorials/reviews/opinions/mixes and editor-selected "insider approved" events live alongside scraped events.
 2. **`editorial: true` is a boost, not a lock.** Spawn HP: 20 → 50. Head start, not permanent placement. See [[Editorial Flag]].
 3. **HP decay is the democratic mechanism.** If editorial picks don't get interacted with, HP decays. Feed self-corrects toward the audience's actual taste.
-4. **Partners are separate** — they stay in their rail. That's about editorial integrity (sponsored vs curated), not about hiding anything from users. See [[Partners Isolation]].
+4. **Franjas are separate** — they stay in their rail. That's about editorial integrity (sponsored vs curated), not about hiding anything from users. See [[Franjas Isolation]].
 
 ## What "user attention" means (current + planned)
 
@@ -69,5 +69,5 @@ The editor is the author. The audience is the editor.
 - [[Pinned Hero]]
 - [[No Algorithm]]
 - [[Size and Position as Only Signals]]
-- [[Partners Isolation]]
+- [[Franjas Isolation]]
 - [[Open Questions]]

@@ -33,7 +33,7 @@ interface Props {
 export function PollFieldset({ type, poll, onChange }: Props) {
   const kind = defaultPollKindForType(type)
   if (!kind) {
-    // partner → no poll (rail item, not a feed item)
+    // franja → no poll (rail item, not a feed item)
     return null
   }
 
@@ -236,7 +236,7 @@ function defaultPollKindForType(type: ContentType): PollKind | null {
     case 'opinion':
     case 'articulo':
       return 'freeform'
-    case 'partner':
+    case 'franja':
       return null
   }
 }

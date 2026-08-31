@@ -22,7 +22,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
-import { MarqueeText } from '@/components/audio/NowPlayingHud'
+import { MarqueeText } from '@/components/audio/MarqueeText'
 import {
   pickOpenSourceUrl,
   pickPlayableSource,

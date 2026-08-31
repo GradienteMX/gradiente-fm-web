@@ -3,7 +3,8 @@
 import { CheckCircle2 } from 'lucide-react'
 import type { ContentItem, PollChoice } from '@/lib/types'
 import { useAuth } from '@/components/auth/useAuth'
-import { vibeToColor, vibeMid } from '@/lib/utils'
+import { categoryColorOnLight } from '@/lib/dashboard/palette'
+import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import {
   castVote,
   isPollClosed,
@@ -14,11 +15,18 @@ import {
 
 // ── PollSection ────────────────────────────────────────────────────────────
 //
-// Permanent poll surface inside an overlay. Sibling of [[PollCardCanvas]]
-// (same data model, same anonymous-until-vote rule) but laid out as a full
-// section instead of a temporary canvas. Mounts in [[ListicleOverlay]],
-// [[MixOverlay]], [[EventoOverlay]], [[ReaderOverlay]], [[ArticuloOverlay]]
-// — wherever the parent content has a `poll` attachment.
+// Permanent poll surface inside an overlay — the printed ballot, sibling of
+// [[PollCardCanvas]] (same data model, same anonymous-until-vote rule) but
+// laid out as a full section instead of a temporary canvas. Mounts in
+// [[ListicleOverlay]], [[MixOverlay]], [[EventoOverlay]], [[ReaderOverlay]],
+// [[ArticuloOverlay]] — wherever the parent content has a `poll` attachment.
+//
+// Fase C register: a paper-raised sheet with ink hairlines. Choice rows are
+// bordered ink rows (fill inversion on hover while votable); once results
+// show, each row carries a category-ink fill bar at low alpha plus the bold
+// mono % — the viewer's own pick inverts to a full ink fill with an inline
+// check. Category hue is never the sole signal: the % + (n) text carries
+// the value.
 
 interface Props {
   item: ContentItem
@@ -49,34 +57,37 @@ export function PollSection({ item, className = '' }: Props) {
     castVote(poll.id, viewerId, [choiceId])
   }
 
-  const accent = vibeToColor(vibeMid(item))
+  // Result bars carry the item's category ink at reduced opacity — the
+  // on-cream palette, same as PollCardCanvas.
+  const accent = categoryColorOnLight(item.type)
 
   return (
     <section
       className={
-        'flex flex-col gap-3 border bg-elevated/30 p-4 ' + className
+        'flex flex-col gap-3 border border-ink bg-paper-raised p-4 text-ink ' +
+        className
       }
-      style={{ borderColor: '#3a3a3a' }}
       aria-label="Encuesta"
     >
-      <header className="flex items-center justify-between gap-2 font-mono text-[10px] tracking-widest">
-        <span style={{ color: '#FBBF24' }}>
-          //ENCUESTA{closed ? ' · CERRADA' : ''}
+      <header className="flex items-center justify-between gap-2 font-mono text-d11 tracking-widest">
+        <span className="font-bold text-sys-red-paper">
+          ENCUESTA
+          {closed && <span className="text-ink-faint"> · CERRADA</span>}
         </span>
-        {showResults && (
-          <span className="tabular-nums text-muted">
+        {showResults && results.totalVotes > 0 && (
+          <span className="tabular-nums text-ink-faint">
             {results.totalVotes} VOTO{results.totalVotes === 1 ? '' : 'S'}
           </span>
         )}
       </header>
 
-      <h3 className="font-syne text-lg font-bold leading-tight text-primary">
+      <h3 className="font-syne text-d18 font-bold leading-tight text-ink">
         {poll.prompt}
       </h3>
 
       <div className="flex flex-col gap-1.5">
         {choices.length === 0 ? (
-          <p className="font-mono text-[11px] leading-relaxed text-muted">
+          <p className="font-mono text-d11 leading-relaxed text-ink-faint">
             La encuesta no tiene opciones.
           </p>
         ) : (
@@ -97,8 +108,8 @@ export function PollSection({ item, className = '' }: Props) {
       </div>
 
       {!showResults && (
-        <p className="font-mono text-[10px] leading-relaxed text-muted">
-          //ANÓNIMO·HASTA·VOTAR — los resultados aparecen cuando emitas tu
+        <p className="font-mono text-d11 leading-relaxed text-ink-faint">
+          ANÓNIMO HASTA VOTAR — los resultados aparecen cuando emitas tu
           voto. {!viewerId && 'Inicia sesión para participar.'}
         </p>
       )}
@@ -108,11 +119,11 @@ export function PollSection({ item, className = '' }: Props) {
 
 // ── Choice row ─────────────────────────────────────────────────────────────
 //
-// Same shape as PollCardCanvas's row, but with the section's larger padding
-// and font sizes so it reads at overlay-level rather than card-level. Could
-// be merged later into a shared primitive if both surfaces need to stay
-// pixel-identical; for now they have their own copies because the visual
-// constraints differ (card = pinch in 1×1 image area; overlay = roomy).
+// Same shape as PollCardCanvas's row, but at overlay scale (min-h-11 target,
+// d13 mono). While votable the row is a plain bordered ink row with a fill
+// inversion on hover. Once results show, the row reads as data — a fill bar
+// in the item's category ink at low alpha plus the bold mono % and (n); the
+// viewer's own pick wears a full ink fill with an inline check instead.
 
 function ChoiceRow({
   choice,
@@ -134,42 +145,47 @@ function ChoiceRow({
   onVote: () => void
 }) {
   const pct = showResults && total > 0 ? Math.round((count / total) * 100) : 0
+  const votable = !closed && !showResults
   return (
     <button
       type="button"
       onClick={onVote}
       disabled={closed}
       aria-pressed={pickedByMe}
-      className="relative flex items-center justify-between border px-3 py-2 font-mono text-[11px] tracking-widest transition-colors disabled:cursor-default"
-      style={{
-        borderColor: pickedByMe ? accent : '#3a3a3a',
-        backgroundColor: pickedByMe ? `${accent}1f` : 'transparent',
-        color: pickedByMe ? accent : '#9CA3AF',
-      }}
+      className={`relative flex min-h-11 items-center justify-between gap-2 overflow-hidden border border-ink px-3 py-2 font-mono text-d13 tracking-widest transition-colors disabled:cursor-default ${
+        pickedByMe
+          ? 'bg-ink text-panel-text'
+          : votable
+            ? 'text-ink hover:bg-ink hover:text-panel-text'
+            : 'text-ink'
+      } ${FOCUS_RING}`}
     >
-      {showResults && (
+      {/* Result fill bar — category ink at low alpha, behind the text. The
+          picked row is already a full ink fill, so it skips the bar. */}
+      {showResults && !pickedByMe && (
         <span
           aria-hidden
           className="absolute inset-y-0 left-0 transition-[width]"
           style={{
             width: `${pct}%`,
-            backgroundColor: pickedByMe ? `${accent}3a` : `${accent}14`,
+            backgroundColor: `${accent}26`,
           }}
         />
       )}
       <span className="relative z-10 flex min-w-0 items-center gap-2">
         {pickedByMe && (
-          <CheckCircle2 size={11} strokeWidth={1.5} style={{ color: accent }} aria-hidden />
+          <CheckCircle2 size={12} strokeWidth={1.5} aria-hidden />
         )}
         <span className="truncate text-left">{choice.label}</span>
       </span>
       {showResults && (
-        <span
-          className="relative z-10 shrink-0 tabular-nums"
-          style={{ color: pickedByMe ? accent : '#9CA3AF' }}
-        >
+        <span className="relative z-10 shrink-0 font-bold tabular-nums">
           {pct}%
-          <span className="ml-2 text-muted">
+          <span
+            className={`ml-2 font-normal ${
+              pickedByMe ? 'opacity-70' : 'text-ink-faint'
+            }`}
+          >
             ({count})
           </span>
         </span>

@@ -8,7 +8,7 @@ import type { ListingComment } from '@/lib/types'
 //
 // Listing comments are public-square within the invite-gated site: any authed
 // user can read/post. `isSeller` marks comments by a member of the listing's
-// partner team (resolved here so the UI can badge seller replies). RLS on
+// franja team (resolved here so the UI can badge seller replies). RLS on
 // listing_comments enforces self-write from the DB side.
 
 type AuthorRow = {
@@ -16,7 +16,7 @@ type AuthorRow = {
   username: string
   display_name: string
   avatar_url: string | null
-  partner_id: string | null
+  franja_id: string | null
 }
 
 type CommentRow = {
@@ -29,7 +29,7 @@ type CommentRow = {
   author: AuthorRow | null
 }
 
-function toComment(row: CommentRow, sellerPartnerId: string | null): ListingComment | null {
+function toComment(row: CommentRow, sellerFranjaId: string | null): ListingComment | null {
   if (!row.author) return null
   return {
     id: row.id,
@@ -45,20 +45,20 @@ function toComment(row: CommentRow, sellerPartnerId: string | null): ListingComm
       avatarUrl: row.author.avatar_url ?? undefined,
     },
     isSeller:
-      !!sellerPartnerId && row.author.partner_id === sellerPartnerId,
+      !!sellerFranjaId && row.author.franja_id === sellerFranjaId,
   }
 }
 
-async function sellerPartnerId(
+async function sellerFranjaId(
   supabase: ReturnType<typeof createClient>,
   listingId: string,
 ): Promise<string | null> {
   const { data } = await supabase
     .from('marketplace_listings')
-    .select('partner_id')
+    .select('franja_id')
     .eq('id', listingId)
     .maybeSingle()
-  return (data as { partner_id?: string | null } | null)?.partner_id ?? null
+  return (data as { franja_id?: string | null } | null)?.franja_id ?? null
 }
 
 export async function GET(
@@ -71,22 +71,22 @@ export async function GET(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data, error }, partnerId] = await Promise.all([
+  const [{ data, error }, franjaId] = await Promise.all([
     supabase
       .from('listing_comments')
       .select(
-        'id, listing_id, parent_id, body, created_at, edited_at, author:users(id, username, display_name, avatar_url, partner_id)',
+        'id, listing_id, parent_id, body, created_at, edited_at, author:users(id, username, display_name, avatar_url, franja_id)',
       )
       .eq('listing_id', params.lid)
       .order('created_at', { ascending: true }),
-    sellerPartnerId(supabase, params.lid),
+    sellerFranjaId(supabase, params.lid),
   ])
   if (error) {
     console.error('[GET listing comments]', error)
     return NextResponse.json({ error: 'Failed to load comments' }, { status: 500 })
   }
   const comments = ((data ?? []) as unknown as CommentRow[])
-    .map((r) => toComment(r, partnerId))
+    .map((r) => toComment(r, franjaId))
     .filter((c): c is ListingComment => c !== null)
   return NextResponse.json({ comments })
 }
@@ -123,7 +123,7 @@ export async function POST(
       body,
     })
     .select(
-      'id, listing_id, parent_id, body, created_at, edited_at, author:users(id, username, display_name, avatar_url, partner_id)',
+      'id, listing_id, parent_id, body, created_at, edited_at, author:users(id, username, display_name, avatar_url, franja_id)',
     )
     .single()
   if (error) {
@@ -133,8 +133,8 @@ export async function POST(
     console.error('[POST listing comment]', error)
     return NextResponse.json({ error: 'Failed to post comment' }, { status: 500 })
   }
-  const partnerId = await sellerPartnerId(supabase, params.lid)
+  const franjaId = await sellerFranjaId(supabase, params.lid)
   return NextResponse.json({
-    comment: toComment(data as unknown as CommentRow, partnerId),
+    comment: toComment(data as unknown as CommentRow, franjaId),
   })
 }

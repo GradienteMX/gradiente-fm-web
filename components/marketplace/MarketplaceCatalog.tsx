@@ -14,36 +14,36 @@ const FEED_LIMIT = 20
 // ── MarketplaceCatalog ─────────────────────────────────────────────────────
 //
 // Page body for `/marketplace`. Two surfaces:
-//   - Grid of every marketplace-enabled partner (clicking a tile goes to
-//     `?partner=<slug>` which opens the overlay on top).
-//   - The overlay itself, mounted when the URL has the `partner` param.
+//   - Grid of every marketplace-enabled franja (clicking a tile goes to
+//     `?franja=<slug>` which opens the overlay on top).
+//   - The overlay itself, mounted when the URL has the `franja` param.
 //
-// Receives partners from the /marketplace page server prefetch (real DB) so
-// newly approved partners appear on the next render. Previously read from a
+// Receives franjas from the /marketplace page server prefetch (real DB) so
+// newly approved franjas appear on the next render. Previously read from a
 // sessionStorage-backed mock layer that couldn't see admin-created rows.
 //
 // Same idiom as the foro catalog (`?thread=` URL-driven overlay).
 
-export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
+export function MarketplaceCatalog({ franjas }: { franjas: ContentItem[] }) {
   const search = useSearchParams()
   const router = useRouter()
   // basePath is auto-prepended by router.replace; usePathname() returns the
   // pathname WITHOUT basePath, which is what router expects. Reading
   // window.location.pathname instead would double the basePath on Pages.
   const pathname = usePathname()
-  const partnerSlug = search?.get('partner') ?? null
+  const franjaSlug = search?.get('franja') ?? null
 
-  // Sort by listing count desc, then by partner title alphabetic. Keeps the
-  // catalog reading "active" — partners with more inventory float up.
+  // Sort by listing count desc, then by franja title alphabetic. Keeps the
+  // catalog reading "active" — franjas with more inventory float up.
   const sorted = useMemo(
     () =>
-      [...partners].sort((a, b) => {
+      [...franjas].sort((a, b) => {
         const ac = a.marketplaceListings?.length ?? 0
         const bc = b.marketplaceListings?.length ?? 0
         if (bc !== ac) return bc - ac
         return a.title.localeCompare(b.title)
       }),
-    [partners],
+    [franjas],
   )
 
   // Flat item feed — every listing across every store, capped at FEED_LIMIT.
@@ -70,22 +70,22 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
       const popularity = Math.min(RECENCY_DAYS, Math.log1p(l.views ?? 0) * 4)
       return recency + popularity
     }
-    const all: { listing: MarketplaceListing; partner: ContentItem }[] = []
-    for (const p of partners) {
+    const all: { listing: MarketplaceListing; franja: ContentItem }[] = []
+    for (const p of franjas) {
       for (const l of p.marketplaceListings ?? []) {
-        all.push({ listing: l, partner: p })
+        all.push({ listing: l, franja: p })
       }
     }
     all.sort((a, b) => score(b.listing) - score(a.listing))
     return all.slice(0, FEED_LIMIT)
-  }, [partners])
+  }, [franjas])
 
-  // Open a specific listing detail — sets both params so the partner overlay
+  // Open a specific listing detail — sets both params so the franja overlay
   // mounts and immediately surfaces the listing sub-overlay.
   const openListing = useCallback(
     (slug: string, listingId: string) => {
       const params = new URLSearchParams(search?.toString() ?? '')
-      params.set('partner', slug)
+      params.set('franja', slug)
       params.set('listing', listingId)
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     },
@@ -93,11 +93,11 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
   )
 
   const onCloseOverlay = useCallback(() => {
-    // Strip both `partner=` and `listing=` so closing the partner card
+    // Strip both `franja=` and `listing=` so closing the franja card
     // never leaves an orphaned listing param in the URL. The sub-overlay's
     // own close handler (in MarketplaceOverlay) only strips `listing=`.
     const params = new URLSearchParams(search?.toString() ?? '')
-    params.delete('partner')
+    params.delete('franja')
     params.delete('listing')
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
@@ -115,13 +115,13 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
             </span>
           </header>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {feed.map(({ listing, partner }, i) => (
+            {feed.map(({ listing, franja }, i) => (
               <MarketplaceListingCard
                 key={listing.id}
                 listing={listing}
-                partner={partner}
+                franja={franja}
                 index={i + 1}
-                onClick={() => openListing(partner.slug, listing.id)}
+                onClick={() => openListing(franja.slug, listing.id)}
               />
             ))}
           </div>
@@ -133,17 +133,17 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
         <header className="flex items-baseline justify-between gap-3 border-b border-border pb-3 font-mono text-[10px] tracking-widest text-muted">
           <span style={{ color: '#FBBF24' }}>TIENDAS</span>
           <span className="tabular-nums">
-            {sorted.length} PARTNER{sorted.length === 1 ? '' : 'S'}
+            {sorted.length} FRANJA{sorted.length === 1 ? '' : 'S'}
           </span>
         </header>
 
         {sorted.length === 0 ? (
           <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 p-6 font-mono text-[11px] text-muted">
             <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
-              //SIN·PARTNERS·ACTIVOS
+              //SIN·FRANJAS·ACTIVOS
             </span>
             <p>
-              Aún ningún partner tiene marketplace habilitado. Vuelve cuando los
+              Aún ningún franja tiene marketplace habilitado. Vuelve cuando los
               primeros catálogos aparezcan — o si eres admin, activa uno desde{' '}
               <span className="text-secondary">Marketplace · Aprobaciones</span>{' '}
               en el dashboard.
@@ -152,16 +152,16 @@ export function MarketplaceCatalog({ partners }: { partners: ContentItem[] }) {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sorted.map((p) => (
-              <MarketplaceCard key={p.id} partner={p} />
+              <MarketplaceCard key={p.id} franja={p} />
             ))}
           </div>
         )}
       </section>
 
-      {partnerSlug && (
+      {franjaSlug && (
         <MarketplaceOverlay
-          partnerSlug={partnerSlug}
-          partner={sorted.find((p) => p.slug === partnerSlug) ?? null}
+          franjaSlug={franjaSlug}
+          franja={sorted.find((p) => p.slug === franjaSlug) ?? null}
           onClose={onCloseOverlay}
         />
       )}

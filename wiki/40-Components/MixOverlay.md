@@ -59,7 +59,7 @@ Design goals (per the conversation that produced this):
 - [[OverlayShell]]
 - [[Embed Primitive]]
 - [[Content Types]]
-- [[GenericOverlay]] — former fallback, now only used for `partner` (no partner overlay built) and anything else that slips through the switch
+- [[GenericOverlay]] — former fallback, now only used for `franja` (no franja overlay built) and anything else that slips through the switch
 
 ## Open questions
 

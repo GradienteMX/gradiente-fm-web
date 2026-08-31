@@ -21,7 +21,7 @@ updated: 2026-04-25
 
 ## Where it's used
 
-- [[About]] — `/about` route — what Gradiente is + vibe filter explainer + partner ecosystem
+- [[About]] — `/about` route — what Gradiente is + vibe filter explainer + franja ecosystem
 - [[Manifesto]] — `/manifesto` route — editorial declaration scaffolded around `wiki/90-Decisions/` principles
 - [[Equipo]] — `/equipo` route — collaborator list with GH handles + per-person bio placeholders
 

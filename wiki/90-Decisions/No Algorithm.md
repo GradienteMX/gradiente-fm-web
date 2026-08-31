@@ -55,7 +55,7 @@ It's a **decay function applied to editor choices**, not a recommender.
 
 - **Multi-editor era.** If Gradiente grows past one curator, editorial disagreement surfaces. Not an algorithm problem yet; a governance problem.
 - **Event discovery at scale.** If the agenda grows past ~50 upcoming events, personalization pressure rises. Possible compromise: filter/sort preferences via [[VibeContext]] persistence (localStorage only, no server).
-- **Partner monetization.** If sponsored placements become significant revenue, pressure to loosen [[Partners Isolation]] will appear. Hold the line.
+- **Franja monetization.** If sponsored placements become significant revenue, pressure to loosen [[Franjas Isolation]] will appear. Hold the line.
 
 ## Carve-out — user ranks
 
@@ -66,6 +66,6 @@ The rank system introduced in [[Roles and Ranks]] (NORMIE → DETONADOR / ENIGMA
 - [[HP Curation System]]
 - [[Size and Position as Only Signals]]
 - [[Editorial Flag]]
-- [[Partners Isolation]]
+- [[Franjas Isolation]]
 - [[Gamification]]
 - [[Roles and Ranks]] — the carve-out's full reasoning

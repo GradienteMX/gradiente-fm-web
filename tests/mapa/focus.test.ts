@@ -1,4 +1,4 @@
-// Spatial Identity Canvas — partner focus reflow tests.
+// Spatial Identity Canvas — franja focus reflow tests.
 // Run: npm run test:mapa
 
 import assert from 'node:assert/strict'
@@ -17,14 +17,14 @@ import { isConnected } from '@/lib/mapa/polyhex'
 import {
   HEX_R,
   identityBearing,
-  partnerClusters,
+  franjaClusters,
   placeItems,
 } from '@/lib/mapa/layout'
 import {
   computeFocusArrangement,
   computeLensArrangement,
   placeGlobalListings,
-  rankRelatedPartners,
+  rankRelatedFranjas,
 } from '@/lib/mapa/focus'
 
 const NOW = new Date('2026-08-18T12:00:00Z')
@@ -46,7 +46,7 @@ function makeItem(overrides: Partial<ContentItem>): ContentItem {
   }
 }
 
-// Partner archive across many types + surrounding unrelated terrain.
+// Franja archive across many types + surrounding unrelated terrain.
 function makeDataset(): ContentItem[] {
   seq = 0
   const items: ContentItem[] = []
@@ -66,7 +66,7 @@ function makeDataset(): ContentItem[] {
     items.push(
       makeItem({
         type,
-        partnerId: 'pa-test',
+        franjaId: 'pa-test',
         venue: type === 'evento' ? 'Test Club' : undefined,
         date: type === 'evento' ? '2026-08-22T22:00:00Z' : undefined,
         genres: ['hard-techno'],
@@ -83,7 +83,7 @@ function makeDataset(): ContentItem[] {
     )
   }
   // Related-but-unattributed exterior — same venue/genre as the members but
-  // NO partnerId. Feeds the relevance belt during focus.
+  // NO franjaId. Feeds the relevance belt during focus.
   for (let i = 0; i < 4; i++) {
     items.push(
       makeItem({
@@ -97,17 +97,17 @@ function makeDataset(): ContentItem[] {
   return items
 }
 
-const PARTNER_ROW = makeItem({
+const FRANJA_ROW = makeItem({
   id: 'pa-test',
-  slug: 'test-partner',
-  type: 'partner',
-  title: 'Test Partner',
+  slug: 'test-franja',
+  type: 'franja',
+  title: 'Test Franja',
 })
 
 function build() {
   const items = makeDataset()
   const layout = placeItems(items, NOW)
-  const [cluster] = partnerClusters(layout, [PARTNER_ROW])
+  const [cluster] = franjaClusters(layout, [FRANJA_ROW])
   return { items, layout, cluster }
 }
 
@@ -148,11 +148,11 @@ describe('global marketplace satellites', () => {
     const items = makeDataset()
     const layout = placeItems(items, NOW)
     const row = {
-      ...PARTNER_ROW,
+      ...FRANJA_ROW,
       marketplaceEnabled: true,
       marketplaceListings: LISTINGS,
     }
-    const clusters = partnerClusters(layout, [row])
+    const clusters = franjaClusters(layout, [row])
     return { layout, clusters }
   }
 
@@ -190,9 +190,9 @@ describe('global marketplace satellites', () => {
     }
   })
 
-  it('skips partners without marketplace', () => {
+  it('skips franjas without marketplace', () => {
     const { layout } = buildWithMarketplace()
-    const bare = partnerClusters(layout, [PARTNER_ROW])
+    const bare = franjaClusters(layout, [FRANJA_ROW])
     assert.equal(placeGlobalListings(layout, bare).length, 0)
   })
 })
@@ -233,14 +233,14 @@ describe('identity bearings', () => {
     }
   }
 
-  function twoPartnerDataset(extraFiller: number): ContentItem[] {
+  function twoFranjaDataset(extraFiller: number): ContentItem[] {
     seq = 500
     const items: ContentItem[] = []
     for (let i = 0; i < 6; i++) {
       items.push(
         makeItem({
           type: i % 2 ? 'evento' : 'mix',
-          partnerId: i % 2 ? idA : idB,
+          franjaId: i % 2 ? idA : idB,
           genres: [i % 2 ? 'hard-techno' : 'ambient'],
           date: i % 2 ? '2026-08-22T22:00:00Z' : undefined,
         }),
@@ -264,25 +264,25 @@ describe('identity bearings', () => {
   })
 
   it('two identities with opposing bearings grow clusters in different directions', () => {
-    const layout = placeItems(twoPartnerDataset(0), NOW)
+    const layout = placeItems(twoFranjaDataset(0), NOW)
     const cellsA = layout.placed
-      .filter((p) => p.item.partnerId === idA)
+      .filter((p) => p.item.franjaId === idA)
       .flatMap((p) => p.cells)
     const cellsB = layout.placed
-      .filter((p) => p.item.partnerId === idB)
+      .filter((p) => p.item.franjaId === idB)
       .flatMap((p) => p.cells)
     const sep = circularDiff(clusterAngle(cellsA), clusterAngle(cellsB))
     assert.ok(sep > Math.PI / 4, `angular separation ${sep.toFixed(2)} rad`)
   })
 
   it('an identity keeps its direction when unrelated content is added', () => {
-    const before = placeItems(twoPartnerDataset(0), NOW)
-    const after = placeItems(twoPartnerDataset(10), NOW)
+    const before = placeItems(twoFranjaDataset(0), NOW)
+    const after = placeItems(twoFranjaDataset(10), NOW)
     for (const id of [idA, idB]) {
       const angleOf = (layout: typeof before) =>
         clusterAngle(
           layout.placed
-            .filter((p) => p.item.partnerId === id)
+            .filter((p) => p.item.franjaId === id)
             .flatMap((p) => p.cells),
         )
       const drift = circularDiff(angleOf(before), angleOf(after))
@@ -462,7 +462,7 @@ describe('focus reflow', () => {
     const { items, layout, cluster } = build()
     const arr = computeFocusArrangement(layout, cluster)
     const expected = items
-      .filter((i) => !i.partnerId && i.venue === 'Test Club')
+      .filter((i) => !i.franjaId && i.venue === 'Test Club')
       .map((i) => i.id)
     assert.ok(expected.length >= 4)
     for (const id of expected) {
@@ -498,9 +498,9 @@ describe('focus reflow', () => {
     const arr = computeFocusArrangement(layout, cluster)
     const unrelated = items.filter(
       (i) =>
-        !i.partnerId &&
+        !i.franjaId &&
         i.venue !== 'Test Club' &&
-        i.type !== 'partner' &&
+        i.type !== 'franja' &&
         (i.genres[0] === 'house' || i.genres[0] === 'ambient'),
     )
     assert.ok(unrelated.length > 0)
@@ -543,15 +543,15 @@ describe('focus reflow', () => {
   })
 })
 
-describe('partner carousel ranking', () => {
-  it('ranks affine partners first', () => {
+describe('franja carousel ranking', () => {
+  it('ranks affine franjas first', () => {
     seq = 800
     const items: ContentItem[] = []
     for (let i = 0; i < 3; i++) {
       items.push(
         makeItem({
           type: 'evento',
-          partnerId: 'pa-aa',
+          franjaId: 'pa-aa',
           venue: 'Shared Venue',
           genres: ['hard-techno'],
           date: '2026-08-22T22:00:00Z',
@@ -560,14 +560,14 @@ describe('partner carousel ranking', () => {
     }
     for (let i = 0; i < 2; i++) {
       items.push(
-        makeItem({ type: 'mix', partnerId: 'pa-bb', genres: ['hard-techno'] }),
+        makeItem({ type: 'mix', franjaId: 'pa-bb', genres: ['hard-techno'] }),
       )
     }
     for (let i = 0; i < 2; i++) {
       items.push(
         makeItem({
           type: 'noticia',
-          partnerId: 'pa-cc',
+          franjaId: 'pa-cc',
           genres: ['dub-reggae'],
           publishedAt: '2026-01-01T12:00:00Z',
         }),
@@ -579,13 +579,13 @@ describe('partner carousel ranking', () => {
     const layout = placeItems(items, NOW)
     seq = 900
     const rows = ['pa-aa', 'pa-bb', 'pa-cc'].map((id) =>
-      makeItem({ id, slug: id, type: 'partner', title: id.toUpperCase() }),
+      makeItem({ id, slug: id, type: 'franja', title: id.toUpperCase() }),
     )
-    const clusters = partnerClusters(layout, rows)
-    const focused = clusters.find((c) => c.partner.id === 'pa-aa')!
-    const ranked = rankRelatedPartners(layout, clusters, focused)
+    const clusters = franjaClusters(layout, rows)
+    const focused = clusters.find((c) => c.franja.id === 'pa-aa')!
+    const ranked = rankRelatedFranjas(layout, clusters, focused)
     assert.equal(ranked.length, 2)
-    assert.equal(ranked[0].cluster.partner.id, 'pa-bb')
+    assert.equal(ranked[0].cluster.franja.id, 'pa-bb')
     assert.ok(ranked[0].score > ranked[1].score)
   })
 })

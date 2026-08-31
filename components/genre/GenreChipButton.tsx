@@ -12,6 +12,11 @@ interface GenreChipButtonProps {
   style?: React.CSSProperties
   // Optional rendered label override. Defaults to the genre's display name.
   children?: ReactNode
+  // Ground the chip sits on. 'dark' (default) keeps the legacy overlay/dark
+  // styling untouched; 'paper' renders the fase-B print grammar — 1px ink
+  // hairline, ink text, hover = fill inversion (no scale/brightness), focus =
+  // 2px ink outline offset 2.
+  ground?: 'dark' | 'paper'
 }
 
 // Clickable genre chip. Same UX whether triggered from a card on the home
@@ -25,6 +30,7 @@ export function GenreChipButton({
   className,
   style,
   children,
+  ground = 'dark',
 }: GenreChipButtonProps) {
   const { setGenreFilter } = useVibe()
   const { close } = useOverlay()
@@ -54,12 +60,18 @@ export function GenreChipButton({
   const baseHover =
     'cursor-pointer transition-all duration-150 hover:scale-110 hover:brightness-150 focus-visible:outline focus-visible:outline-1 focus-visible:outline-current'
 
+  // Paper ground (fase B feed cards): printed chip — ink hairline + ink text,
+  // hover is a straight fill inversion. Deliberately NO scale/brightness and
+  // no glow; motion stays on the grid, not the chips.
+  const paperBase =
+    'cursor-pointer border border-ink text-ink transition-colors hover:bg-ink hover:text-paper-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2'
+
   return (
     <button
       type="button"
       onClick={handleClick}
       title={`Filtrar por género · ${name}`}
-      className={`${className ?? ''} ${baseHover}`.trim()}
+      className={`${className ?? ''} ${ground === 'paper' ? paperBase : baseHover}`.trim()}
       style={style}
     >
       {children ?? name}

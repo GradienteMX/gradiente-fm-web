@@ -5,7 +5,7 @@
 // editorial configuration, not learned.
 //
 // Signals used (spec § Affinity placement):
-//   partner attribution · creator · entities · artists · venue · city ·
+//   franja attribution · creator · entities · artists · venue · city ·
 //   genres (exact + shared-root rollup) · curated tags · date proximity.
 // Content type is NOT a positive input; the repeated-type penalty lives in
 // the placement scorer (lib/mapa/layout.ts), not here.
@@ -17,7 +17,7 @@ import { getGenreById, getTagById } from '@/lib/genres'
 // ── Weights (global editorial config) ────────────────────────────────────────
 
 export const AFFINITY_WEIGHTS = {
-  partner: 8, // same explicit partner attribution — the cluster-forming signal
+  franja: 8, // same explicit franja attribution — the cluster-forming signal
   entityEach: 4,
   entityCap: 8,
   artistEach: 3,
@@ -42,7 +42,7 @@ const TIME_DECAY_DAYS = 30
 
 export interface AffinityFeatures {
   id: string
-  partnerId: string | null
+  franjaId: string | null
   creatorId: string | null
   entityIds: ReadonlySet<string>
   artists: ReadonlySet<string>
@@ -96,7 +96,7 @@ export function extractFeatures(item: ContentItem): AffinityFeatures {
   )
   return {
     id: item.id,
-    partnerId: item.partnerId ?? null,
+    franjaId: item.franjaId ?? null,
     creatorId: item.createdById ?? null,
     entityIds: new Set((item.entities ?? []).map((e) => e.id)),
     artists: new Set((item.artists ?? []).map(normalizeName)),
@@ -122,7 +122,7 @@ export function affinityScore(a: AffinityFeatures, b: AffinityFeatures): number 
   const W = AFFINITY_WEIGHTS
   let s = 0
 
-  if (a.partnerId && a.partnerId === b.partnerId) s += W.partner
+  if (a.franjaId && a.franjaId === b.franjaId) s += W.franja
   if (a.creatorId && a.creatorId === b.creatorId) s += W.creator
 
   s += Math.min(W.entityCap, intersectionSize(a.entityIds, b.entityIds) * W.entityEach)

@@ -11,8 +11,8 @@
 // ArticuloBlocksEditor (colocated pliego port). Required rules come from
 // requiredFields.ts (TÍTULO · SLUG · CUERPO = articleBody non-empty).
 //
-// No partner rail row: articulo is house-voice (not in the API's
-// PARTNER_STAMPED_TYPES) — the dark form carries no PartnerAttributionField
+// No franja rail row: articulo is house-voice (not in the API's
+// FRANJA_STAMPED_TYPES) — the dark form carries no FranjaAttributionField
 // either, so the row stays hidden rather than decorative.
 
 import { useEffect, useState } from 'react'
@@ -152,9 +152,9 @@ export function ArticuloCompose({ onClose }: { onClose: () => void }) {
           showEditorial={isStaff}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={false}
-          partnerValue={false}
-          onPartnerChange={() => {}}
+          showFranja={false}
+          franjaValue={false}
+          onFranjaChange={() => {}}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

@@ -53,7 +53,7 @@ If `sorted.length === 0`, returns `null` — no header, no chrome. Other pages t
 ## Where it's mounted
 
 - [[Home]] page (`app/page.tsx`) — between the [[HeroCard]] and the main mosaic
-- The page filters: `railEvents` = scraped + not-elevated; `gridItems` = everything else minus partners minus the hero. The `isRailEvent` predicate is the single source of truth for the split
+- The page filters: `railEvents` = scraped + not-elevated; `gridItems` = everything else minus franjas minus the hero. The `isRailEvent` predicate is the single source of truth for the split
 
 ## What it depends on
 

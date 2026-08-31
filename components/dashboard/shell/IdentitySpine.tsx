@@ -26,6 +26,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData, type VibeSelfCheck } from '@/components/dashboard/DashboardDataProvider'
 import type { User } from '@/lib/types'
@@ -453,6 +454,16 @@ export function IdentitySpine({ userOverride }: { userOverride?: User } = {}) {
                 />
                 {badge.label}
               </span>
+              {/* Fase E door: the owner's route to their printed expediente.
+                  ↗ = leaves the dashboard surface (house glyph law). */}
+              {handle && (
+                <Link
+                  href={`/u/${handle}`}
+                  className={`inline-flex min-h-11 items-center font-mono text-d11 font-bold tracking-widest text-ink underline-offset-2 hover:underline ${FOCUS_RING}`}
+                >
+                  VER PERFIL PÚBLICO ↗
+                </Link>
+              )}
               <SaveIndicator status={status} error={error} />
             </div>
           </div>

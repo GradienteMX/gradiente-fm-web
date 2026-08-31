@@ -45,7 +45,7 @@ export const CATEGORY_ON_LIGHT: Record<ContentType, string> = {
   articulo: '#705207', // spec #8A6508 measured 4.46:1 — darkened
   noticia: DASH_INK_SOFT,
   listicle: '#A81A5B',
-  partner: '#4B5563',
+  franja: '#4B5563',
 }
 
 export function categoryColorOnLight(type: ContentType): string {
@@ -55,7 +55,7 @@ export function categoryColorOnLight(type: ContentType): string {
 // ── Type language (canonical Spanish display labels) ────────────────────────
 // ONE chip vocabulary for the whole dashboard — mirrors CrearZone's
 // COMPOSE_TYPE_LABELS exactly for the 8 composable types and completes the
-// ContentType union (listicle → LISTA, partner → PARTNER). Never render a raw
+// ContentType union (listicle → LISTA, franja → FRANJA). Never render a raw
 // `item.type` enum in the UI; the planned articulo/editorial/opinion external
 // merge only edits rows here.
 export const TYPE_DISPLAY_LABELS: Record<ContentType, string> = {
@@ -67,7 +67,7 @@ export const TYPE_DISPLAY_LABELS: Record<ContentType, string> = {
   opinion: 'OPINIÓN',
   articulo: 'ARTÍCULO',
   listicle: 'LISTA',
-  partner: 'PARTNER',
+  franja: 'FRANJA',
 }
 
 export function typeDisplayLabel(type: ContentType): string {
@@ -86,7 +86,7 @@ export const TYPE_CODES: Record<ContentType, string> = {
   opinion: 'OP',
   articulo: 'AR',
   listicle: 'LI',
-  partner: 'PA',
+  franja: 'PA',
 }
 
 export function typeCode(type: ContentType): string {

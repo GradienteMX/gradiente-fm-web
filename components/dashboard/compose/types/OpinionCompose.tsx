@@ -9,8 +9,8 @@
 //
 // EDITORIAL and VINCULAR A MI PROMOTORA move to the rail's PUBLICACIÓN panel:
 // editorial lever is staff-only (guide/admin — app/api/items isStaff), the
-// partner stamp is partner-team only (opinión is a stamped scene-voice type —
-// PartnerAttributionField parity).
+// franja stamp is franja-team only (opinión is a stamped scene-voice type —
+// FranjaAttributionField parity).
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -115,8 +115,8 @@ export function OpinionCompose({ onClose }: { onClose: () => void }) {
 
   const showEditorial =
     currentUser?.role === 'guide' || currentUser?.role === 'admin'
-  const showPartner = !!currentUser?.partnerId
-  const partnerValue = draft.attributePartner ?? !!draft.partnerId
+  const showFranja = !!currentUser?.franjaId
+  const franjaValue = draft.attributeFranja ?? !!draft.franjaId
 
   const onAnchor = (anchorId: string) => {
     document.getElementById(anchorId)?.scrollIntoView({ block: 'start' })
@@ -141,9 +141,9 @@ export function OpinionCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={showPartner}
-          partnerValue={partnerValue}
-          onPartnerChange={(v) => patch({ attributePartner: v })}
+          showFranja={showFranja}
+          franjaValue={franjaValue}
+          onFranjaChange={(v) => patch({ attributeFranja: v })}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

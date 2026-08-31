@@ -1,115 +1,155 @@
 'use client'
 
 import Link from 'next/link'
-import { LogOut } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
+import { SmartImage } from '@/components/SmartImage'
+import { isPaperRoute } from '@/lib/chrome/paperRoutes'
 
-// Slots into the Navigation header next to the MAGI/timer cluster.
-// Swaps LOGIN button ↔ DASHBOARD link + LOGOUT when authed.
+// ── AuthBadge — the masthead's identity slot (desktop) ──────────────────────
 //
-// Treated as a primary action region, not decorative chrome — the rest of the
-// header uses very dim colors and sub-6px captions, but the auth controls have
-// to read clearly. So we drop the dim "UNIT·ACCESS" / "ID·NULL" captions and
-// give the button itself the weight it needs to be tappable at a glance.
+// Anon: a bordered INICIAR SESIÓN chip → LoginOverlay. Authed: avatar +
+// @username trigger that drops a paper panel (bg-paper, ink border,
+// shadow-lift) with the three identity rows: PANEL, VER PERFIL PÚBLICO,
+// SALIR. Hover is fill inversion, rows clear the 44px floor, and the menu
+// closes on outside click, Esc, and any row activation. Phones never see
+// this — the Navigation mobile menu owns the auth controls there.
+//
+// Dual-stamped like the masthead (via isPaperRoute — no prop drilling): the
+// TRIGGER prints panel-text on the ink strip and ink on the paper strip; the
+// DROPDOWN was already a paper object, so it is identical on both grounds.
+
+const FOCUS_ON_PANEL =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
+const FOCUS_ON_PAPER =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
 export function AuthBadge() {
-  const { isAuthed, username, openLogin, logout } = useAuth()
+  const { isAuthed, username, currentUser, openLogin, logout } = useAuth()
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Which ground is the trigger printed on? (The dropdown is paper either way.)
+  const paper = isPaperRoute(usePathname())
+  const focusRing = paper ? FOCUS_ON_PAPER : FOCUS_ON_PANEL
+
+  // Outside click + Esc close the dropdown; listeners exist only while open.
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (e: PointerEvent) => {
+      const root = rootRef.current
+      if (root && e.target instanceof Node && !root.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
 
   if (!isAuthed) {
     return (
-      <div
-        className="hidden items-stretch md:flex"
-        style={{ borderLeft: '1px solid #140B00' }}
-      >
+      <div className="hidden items-center md:flex">
         <button
+          type="button"
           onClick={() => openLogin()}
-          aria-label="Iniciar sesión"
-          className="group flex items-center justify-center gap-2 px-4 transition-colors hover:bg-[#1A0900]"
+          className={`flex min-h-11 items-center border px-3 font-mono text-d13 uppercase tracking-widest ${
+            paper
+              ? 'border-ink text-ink hover:bg-ink hover:text-paper'
+              : 'border-panel-text/60 text-panel-text hover:bg-panel-text hover:text-panel'
+          } ${focusRing}`}
         >
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{
-              backgroundColor: '#FF6600',
-              boxShadow: '0 0 6px #FF6600, 0 0 12px #FF660066',
-              animation: 'blink 1.6s step-end infinite',
-            }}
-          />
-          <span
-            className="font-syne text-[13px] font-black tracking-widest"
-            style={{
-              color: '#FF8C00',
-              textShadow: '0 0 6px #FF6600, 0 0 14px #FF440055',
-            }}
-          >
-            LOGIN
-          </span>
-          <span
-            className="font-mono text-[9px] tracking-widest"
-            style={{ color: '#7A4400' }}
-          >
-            ⏎
-          </span>
+          INICIAR SESIÓN
         </button>
       </div>
     )
   }
 
-  return (
-    <div
-      className="hidden items-stretch md:flex"
-      style={{ borderLeft: '1px solid #140B00' }}
-    >
-      {/* Dashboard access — primary action, treated as a real button. */}
-      <Link
-        href="/dashboard"
-        className="group flex items-center gap-2 px-4 transition-colors hover:bg-[#011a0c]"
-        aria-label="Abrir dashboard"
-      >
-        <span
-          className="h-2 w-2 animate-pulse rounded-full"
-          style={{
-            backgroundColor: '#4ADE80',
-            boxShadow: '0 0 6px #4ADE80, 0 0 12px #4ADE8066',
-          }}
-        />
-        <div className="flex flex-col items-start leading-tight">
-          <span
-            className="font-syne text-[13px] font-black tracking-widest"
-            style={{
-              color: '#4ADE80',
-              textShadow: '0 0 6px #4ADE8088, 0 0 14px #4ADE8044',
-            }}
-          >
-            DASHBOARD
-          </span>
-          <span
-            className="font-mono text-[9px] tracking-wider"
-            style={{ color: '#888' }}
-          >
-            @{username ?? 'user'}
-          </span>
-        </div>
-      </Link>
+  const handle = username ?? currentUser?.username ?? 'usuario'
 
-      {/* Logout — secondary, but labeled so it's discoverable. */}
+  return (
+    <div ref={rootRef} className="relative hidden items-center md:flex">
       <button
-        onClick={logout}
-        aria-label="Cerrar sesión"
-        title="Cerrar sesión"
-        className="group flex items-center gap-1.5 border-l border-[#140B00] px-3 transition-colors hover:bg-[#1A0000]"
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`Cuenta de @${handle}`}
+        className={`flex min-h-11 items-center gap-2 px-1 ${
+          paper ? 'text-ink' : 'text-panel-text'
+        } ${focusRing}`}
       >
-        <LogOut
-          size={12}
-          strokeWidth={1.75}
-          className="transition-colors"
-          style={{ color: '#777' }}
-        />
+        {/* 28px avatar — image when the profile has one, Syne initial block
+            otherwise. SmartImage is a fill image, so the span is positioned. */}
         <span
-          className="font-mono text-[10px] font-bold tracking-widest transition-colors group-hover:text-[#E63329]"
-          style={{ color: '#999' }}
+          className={`relative block h-7 w-7 shrink-0 overflow-hidden border ${
+            paper ? 'border-ink' : 'border-panel-text'
+          }`}
         >
-          SALIR
+          {currentUser?.avatarUrl ? (
+            <SmartImage
+              src={currentUser.avatarUrl}
+              alt=""
+              className="object-cover"
+              sizes="28px"
+            />
+          ) : (
+            <span
+              className={`flex h-full w-full items-center justify-center font-syne text-d13 font-bold uppercase ${
+                paper ? 'bg-ink text-paper' : 'bg-panel-text text-panel'
+              }`}
+            >
+              {handle.slice(0, 1)}
+            </span>
+          )}
+        </span>
+        <span className="font-mono text-d13 tracking-widest">@{handle}</span>
+        <span aria-hidden className="font-mono text-d11">
+          ⌄
         </span>
       </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label={`Cuenta de @${handle}`}
+          className="absolute right-0 top-full z-50 min-w-[220px] border border-ink bg-paper text-ink shadow-lift"
+        >
+          <Link
+            role="menuitem"
+            href="/dashboard"
+            onClick={() => setOpen(false)}
+            className={`flex min-h-11 items-center px-4 font-mono text-d13 uppercase tracking-widest hover:bg-ink hover:text-paper ${FOCUS_ON_PAPER}`}
+          >
+            PANEL
+          </Link>
+          <Link
+            role="menuitem"
+            href={`/u/${handle}`}
+            onClick={() => setOpen(false)}
+            className={`flex min-h-11 items-center gap-2 border-t border-ink px-4 font-mono text-d13 uppercase tracking-widest hover:bg-ink hover:text-paper ${FOCUS_ON_PAPER}`}
+          >
+            VER PERFIL PÚBLICO <span aria-hidden>↗</span>
+          </Link>
+          <button
+            role="menuitem"
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              void logout()
+            }}
+            className={`flex min-h-11 w-full items-center border-t border-ink px-4 text-left font-mono text-d13 uppercase tracking-widest text-sys-red-paper hover:bg-sys-red-paper hover:text-paper ${FOCUS_ON_PAPER}`}
+          >
+            SALIR
+          </button>
+        </div>
+      )}
     </div>
   )
 }

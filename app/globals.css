@@ -27,6 +27,14 @@
   --font-syne: 'Syne', sans-serif;
   --font-space-grotesk: 'Space Grotesk', sans-serif;
   --font-space-mono: 'Space Mono', monospace;
+
+  /* ── Chrome heights (fase A) — the ONE place sticky arithmetic lives.
+     Consumers: Navigation (h), VibeSlider (sticky top), GlobalPlayerBar
+     (bar + spacer height). CategoryRail keeps measuring [data-vibe-strip]
+     at runtime, so it needs no constant here. Change these two values,
+     never a hardcoded px offset in a component. */
+  --gr-nav-h: 64px;
+  --gr-player-h: 56px;
 }
 
 /* ── Base reset ───────────────────────────────────────────── */
@@ -304,27 +312,21 @@ body {
   }
 }
 
-/* ── Overlay: phosphor warm-up flash ─────────────────────── */
-@keyframes overlay-phosphor-in {
-  0%   { opacity: 0.95; }
-  60%  { opacity: 0.3; }
-  100% { opacity: 0; }
-}
-
+/* overlay-phosphor-in retired in fase C (the paper sheet has no warm-up flash). */
 .overlay-backdrop-in  { animation: overlay-backdrop-in 0.18s ease-out both; }
 .overlay-backdrop-out { animation: overlay-backdrop-out 0.2s ease-in both; }
 .overlay-panel-in     { animation: overlay-panel-in 0.5s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
 .overlay-panel-out    { animation: overlay-panel-out 0.24s ease-in both; }
-.overlay-phosphor-in  { animation: overlay-phosphor-in 0.6s ease-out both; }
 
 /* ── Comment focus pulse — fired when arriving from a saved-comment
-   deep-link. Cyan outline pulse (non-permanent — outline reverts after
-   the animation since fill-mode is omitted). Outline is used instead of
-   background so the user-own-comment background stays intact. */
+   deep-link. Red outline pulse on the paper column (fase C — was cyan on
+   the dark terminal; non-permanent — outline reverts after the animation
+   since fill-mode is omitted). Outline is used instead of background so
+   the user-own-comment background stays intact. */
 @keyframes comment-focus-flash {
-  0%   { outline-color: rgba(34, 211, 238, 0.95); outline-width: 2px; }
-  60%  { outline-color: rgba(34, 211, 238, 0.45); outline-width: 2px; }
-  100% { outline-color: rgba(34, 211, 238, 0);    outline-width: 2px; }
+  0%   { outline-color: rgba(196, 43, 32, 0.95); outline-width: 2px; }
+  60%  { outline-color: rgba(196, 43, 32, 0.45); outline-width: 2px; }
+  100% { outline-color: rgba(196, 43, 32, 0);    outline-width: 2px; }
 }
 .comment-focus-flash {
   outline-style: solid;
@@ -333,86 +335,15 @@ body {
   animation: comment-focus-flash 2.4s ease-out 1;
 }
 
-/* ── Fresh-published — card glitch chrome ────────────────── */
-/* Applies to editor-composed items for ~1 hour after publish. The
-   `--glitch-color` custom property is set per-card in ContentCard so the
-   pulse adopts the type's color (mix=blue, articulo=yellow, etc.). Falls
-   back to the orange/red palette so the keyframes still look right if the
-   variable is missing. */
-@keyframes fresh-border-pulse {
-  0%, 100% {
-    border-color: var(--glitch-color, #E63329);
-    box-shadow:
-      0 0 0 1px var(--glitch-color, #E63329),
-      0 0 8px color-mix(in srgb, var(--glitch-color, #E63329) 45%, transparent),
-      inset 0 0 12px color-mix(in srgb, var(--glitch-color, #E63329) 18%, transparent);
-  }
-  50% {
-    border-color: var(--glitch-color, #F97316);
-    box-shadow:
-      0 0 0 1px var(--glitch-color, #F97316),
-      0 0 16px color-mix(in srgb, var(--glitch-color, #F97316) 55%, transparent),
-      inset 0 0 18px color-mix(in srgb, var(--glitch-color, #F97316) 22%, transparent);
-  }
-}
-
-/* Animate `top` (parent-relative) rather than `transform: translateY` —
-   translateY's percentage is relative to the element's OWN height, so a
-   thin scanline only travels ~1/3 of the card. Using top: -25% → 110%
-   makes the line traverse the full card from above to below. */
-@keyframes fresh-scanline-sweep {
-  0%   { top: -25%; opacity: 0; }
-  8%   { opacity: 0.95; }
-  92%  { opacity: 0.95; }
-  100% { top: 110%; opacity: 0; }
-}
-
-@keyframes fresh-cover-flicker {
-  0%, 92%, 100% { filter: none; }
-  93%           { filter: brightness(1.2) contrast(1.15) hue-rotate(-8deg); }
-  95%           { filter: brightness(0.85) contrast(0.9) hue-rotate(6deg); }
-  97%           { filter: brightness(1.1) saturate(1.4); }
-}
-
-@keyframes fresh-chip-flicker {
-  0%, 100%       { opacity: 1; }
-  4%, 7%         { opacity: 0.45; }
-  10%            { opacity: 1; }
-}
-
-.fresh-glitch {
-  animation: fresh-border-pulse 1.6s ease-in-out infinite;
-}
-.fresh-scanline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 18%;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    color-mix(in srgb, var(--glitch-color, #F97316) 0%, transparent) 5%,
-    color-mix(in srgb, var(--glitch-color, #F97316) 45%, transparent) 50%,
-    color-mix(in srgb, var(--glitch-color, #F97316) 0%, transparent) 95%,
-    transparent 100%
-  );
-  mix-blend-mode: screen;
-  animation: fresh-scanline-sweep 2.4s linear infinite;
-}
-.fresh-cover-flicker {
-  animation: fresh-cover-flicker 3.2s ease-in-out infinite;
-}
-.fresh-chip-flicker {
-  animation: fresh-chip-flicker 2.8s steps(20, end) infinite;
-}
+/* The fresh-glitch CRT kit (border pulse / scanline sweep / cover flicker /
+   chip flicker) was retired in fase B — the recién-publicado marker is now
+   the .print-fresh out-of-register pulse defined at the end of this file. */
 
 /* The archival grayscale-develop flyer treatment (.flyer-*) was removed for
    performance — feed cards now render full-color and static (no per-card
    filter/blend, no hover develop, no 3D tilt). */
 
-/* HUD marquee — NowPlayingHud track/artist lines scroll horizontally when the
+/* HUD marquee — MarqueeText (GlobalPlayerBar / MiniTransport / ReproductorWidget) track/artist lines scroll horizontally when the
    text overflows the narrow rail. Two copies of the text each translate -100%
    for a seamless loop (the second enters as the first exits). Neutralized
    under prefers-reduced-motion below (falls back to a static truncated line). */
@@ -436,23 +367,11 @@ body {
    animation, so it is unaffected. (cursor-blink / animate-scanline are
    currently unused but neutralized here for safety.) */
 @media (prefers-reduced-motion: reduce) {
-  .fresh-glitch,
-  .fresh-scanline,
-  .fresh-cover-flicker,
-  .fresh-chip-flicker,
   .animate-scanline,
   .animate-pulse,
   .hud-marquee,
   .cursor-blink::after {
     animation: none !important;
-  }
-  /* fresh-cover-flicker modulates brightness() on its keyframes; ensure no
-     residual filter is left applied, and hide the now-static scanline bar. */
-  .fresh-cover-flicker {
-    filter: none !important;
-  }
-  .fresh-scanline {
-    opacity: 0 !important;
   }
 }
 
@@ -635,30 +554,10 @@ html.dash-route body {
   scrollbar-color: #111111 #EDEBE3; /* Firefox */
 }
 
-/* ── COSECHAR modal reskin (byte-untouched HarvestConfirmModal) — FIX-A ─────
-   Scoped to dashboard surfaces via html.dash-route (app/dashboard/layout.tsx
-   + the /lab toggle) AND the modal's unique root signature
-   (.z-[100].backdrop-blur-sm — the only such element; CRTShader's z-[100]
-   overlay has no backdrop-blur and is suppressed on /dashboard anyway).
-   Globally-mounted chrome (PublishConfirmOverlay, player) sits outside this
-   root and is untouched. Warm-ink panel register (formerly shared with the
-   retired .dash-press compose reskin — this block is its sole holder now):
-   acid replaces the legacy orange, the harvest ceremony itself is intact. */
-html.dash-route .z-\[100\].backdrop-blur-sm .bg-surface { background-color: #161513; }
-html.dash-route .z-\[100\].backdrop-blur-sm .bg-base\/40 { background-color: rgba(14, 13, 11, 0.5); }
-html.dash-route .z-\[100\].backdrop-blur-sm .border-sys-orange { border-color: #D8FF00; }
-html.dash-route .z-\[100\].backdrop-blur-sm .text-sys-orange { color: #D8FF00; }
-html.dash-route .z-\[100\].backdrop-blur-sm .bg-sys-orange\/10 { background-color: rgba(216, 255, 0, 0.1); }
-html.dash-route .z-\[100\].backdrop-blur-sm .border-border { border-color: #3A362E; }
-html.dash-route .z-\[100\].backdrop-blur-sm .border-border\/60 { border-color: rgba(58, 54, 46, 0.75); }
-html.dash-route .z-\[100\].backdrop-blur-sm .text-secondary { color: #C2BCAE; }
-html.dash-route .z-\[100\].backdrop-blur-sm .text-muted { color: #9A9384; }
-/* State compensators (ties with the remaps above resolve to the state). */
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:text-primary:hover { color: #EDEBE3; }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:text-secondary:hover { color: #EDEBE3; }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:border-secondary:hover { border-color: #C2BCAE; }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/10:hover { background-color: rgba(216, 255, 0, 0.1); }
-html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/20:hover { background-color: rgba(216, 255, 0, 0.18); }
+/* The COSECHAR CSS-attack (utility-class remap of the byte-untouched dark
+   HarvestConfirmModal, keyed on .z-[100].backdrop-blur-sm) was deleted in
+   fase C — the modal is now a native pliego sheet carrying every style
+   locally, and it no longer renders backdrop-blur-sm at all. */
 
 /* ── Pressed states — «EL PLIEGO» deliberate :active (fix 10, ADDITIVE) ─────
    Diagnosis: NO :active rule exists anywhere in this sheet — the red-on-black
@@ -722,13 +621,9 @@ html.dash-route .z-\[100\].backdrop-blur-sm .hover\:bg-sys-orange\/20:hover { ba
   color: #EDEBE3;
 }
 
-/* The harvest modal mounts OUTSIDE .dash-shell (portal): its selection joins
-   the pliego register here so no press on a dash surface can flash the
-   legacy red-on-black selection. Same root signature as the reskin above. */
-html.dash-route .z-\[100\].backdrop-blur-sm ::selection {
-  background-color: #D8FF00;
-  color: #111111;
-}
+/* The harvest modal's portal ::selection patch left with the CSS-attack
+   above (fase C) — the native pliego modal styles its own selection scope
+   via html.dash-route / html.paper-route. */
 
 /* ── ACTIVIDAD ledger — the directed void (fix 9a, ADDITIVE) ────────────────
    Sparse days leave room between the last activity row and the pinned
@@ -744,4 +639,104 @@ html.dash-route .z-\[100\].backdrop-blur-sm ::selection {
     rgba(92, 88, 80, 0.22) 23px, /* ink-faint, low alpha */
     rgba(92, 88, 80, 0.22) 24px
   );
+}
+
+
+/* ── «EL PLIEGO» paper ground (fase B) ─────────────────────────────────────
+   Scoped under html.paper-route — toggled by components/chrome/PaperGround,
+   mounted by every route listed in lib/chrome/paperRoutes.ts. Mirror of the
+   dashboard's dash-route mechanism: the CLASS paints documentElement/body so
+   rubber-band overscroll never flashes charcoal under the paper page. */
+html.paper-route {
+  background-color: #EDEBE3;
+  color: #111111;
+}
+html.paper-route body {
+  background-color: #EDEBE3;
+  color: #111111;
+}
+html.paper-route ::selection {
+  background-color: #D8FF00;
+  color: #111111;
+}
+html.paper-route ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html.paper-route ::-webkit-scrollbar-track {
+  background: #EDEBE3;
+}
+html.paper-route ::-webkit-scrollbar-thumb {
+  background: #111111;
+  border: 2px solid #EDEBE3;
+}
+html.paper-route ::-webkit-scrollbar-thumb:hover {
+  background: #3D3A33;
+}
+
+/* ── Print out-of-register pulse (fase B) ──────────────────────────────────
+   The paper translation of the old fresh-glitch CRT kit: a freshly published
+   card (first hour, scraper-sourced excluded — the TIMER logic lives in
+   ContentCard, unchanged) reads as a sheet whose color plates slipped.
+   Stepped, never smooth (print misregisters in registration jumps, and
+   steps() keeps it under any flicker-frequency concern). Uses box-shadow
+   plate ghosts in the two working accent inks — red plate right, HP-blue
+   plate left — swapping sides each beat.
+   Consumers add .print-fresh to the card frame. */
+@keyframes print-misregister {
+  0%, 49.9% {
+    box-shadow: 1.5px 0 0 0 rgba(196, 43, 32, 0.55), -1.5px 0 0 0 rgba(29, 78, 216, 0.35);
+  }
+  50%, 100% {
+    box-shadow: -1.5px 0 0 0 rgba(196, 43, 32, 0.55), 1.5px 0 0 0 rgba(29, 78, 216, 0.35);
+  }
+}
+.print-fresh {
+  animation: print-misregister 2.8s steps(2, jump-none) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .print-fresh {
+    animation: none;
+    box-shadow: 1.5px 0 0 0 rgba(196, 43, 32, 0.55);
+  }
+}
+
+/* ── The «ficha» wipe (ContentCard dense face) ─────────────────────────────
+   The dense caption card slides up over the resting poster like a spec
+   sheet fed through a platen: a bottom-to-top clip-path wipe plus a 10px
+   rise of the sheet itself. Directional and mechanical — a roller pass,
+   not a dissolve — so the poster underneath never visibly changes crop.
+
+   Timing is asymmetric on purpose: entry is a 220ms ease-out pass gated by
+   a 60ms hover-intent delay (skimming the cursor across the mosaic must
+   not strobe the cards it crosses); exit is a fast 130ms release with NO
+   delay. The delay lives on the hovered state's transition so it applies
+   entering only.
+
+   `.content-card` is the wrapper hook (also carries Tailwind's `group` for
+   the pointer-events flip in ContentCard). :focus-within mirrors :hover so
+   keyboard reveal takes the same pass. Reduced motion falls back to the
+   instant cut — the pre-wipe behavior, kept deliberately. */
+.card-face-dense {
+  clip-path: inset(100% 0 0 0);
+  transform: translateY(10px);
+  transition:
+    clip-path 130ms cubic-bezier(0.3, 0, 0.7, 1),
+    transform 130ms cubic-bezier(0.3, 0, 0.7, 1);
+}
+.content-card:hover .card-face-dense,
+.content-card:focus-within .card-face-dense {
+  clip-path: inset(0 0 0 0);
+  transform: translateY(0);
+  transition:
+    clip-path 220ms cubic-bezier(0.16, 1, 0.3, 1) 60ms,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1) 60ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-face-dense,
+  .content-card:hover .card-face-dense,
+  .content-card:focus-within .card-face-dense {
+    transition: none;
+    transform: none;
+  }
 }

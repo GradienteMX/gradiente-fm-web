@@ -354,7 +354,7 @@ describe('normalizeLayoutMeta', () => {
     assert.deepEqual([...meta.mobileOrder].sort(), [...ALL_WIDGET_IDS].sort())
   })
 
-  it('scopes the registry: non-partner accounts have no mercado anywhere', () => {
+  it('scopes the registry: non-franja accounts have no mercado anywhere', () => {
     const registry = ALL_WIDGET_IDS.filter((id) => id !== 'mercado')
     const meta = normalizeLayoutMeta(
       {

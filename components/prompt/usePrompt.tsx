@@ -98,7 +98,7 @@ export function PromptProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Type-to-confirm — used for high-friction destructive actions
-  // (e.g. partner hard-delete). Resolves true only when the user types
+  // (e.g. franja hard-delete). Resolves true only when the user types
   // the exact required string and clicks confirm; cancel / ESC / mismatch
   // resolve false.
   const typeToConfirm = useCallback(

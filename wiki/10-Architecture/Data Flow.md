@@ -39,7 +39,7 @@ components/**                ← renders; reads VibeContext for client filtering
 
 ### Entry points
 
-- [app/page.tsx](../../app/page.tsx) — Home. Calls `filterForHome` (removes expired) + `getPinnedHero` + splits out partners. Passes to [[ContentGrid]] in `mode="home"`.
+- [app/page.tsx](../../app/page.tsx) — Home. Calls `filterForHome` (removes expired) + `getPinnedHero` + splits out franjas. Passes to [[ContentGrid]] in `mode="home"`.
 - [app/agenda/page.tsx](../../app/agenda/page.tsx) and siblings — call `filterForCategory(type)` and pass to [[ContentGrid]] in `mode="category"`.
 
 ### Server-side filtering (pure)
@@ -59,7 +59,7 @@ See [[HP Curation System]] for the full math. The key transform is [`rankItems`]
 ## Invariants
 
 - `filterForHome` runs only on the server. `filterByVibe` runs only on the client. Don't cross the streams.
-- **Partners never flow into the main grid** — filtered out in [app/page.tsx:16](../../app/page.tsx). See [[Partners Isolation]].
+- **Franjas never flow into the main grid** — filtered out in [app/page.tsx:16](../../app/page.tsx). See [[Franjas Isolation]].
 - **Hero is removed from the grid** to avoid double-rendering (same file, `i.id !== hero.id` check).
 
 ## Links

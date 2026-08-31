@@ -10,8 +10,8 @@
 //
 // The EDITORIAL lever moves to the rail's PUBLICACIÓN panel, staff-gated
 // (guide/admin — app/api/items isStaff; RLS forces it off for anyone else).
-// Editorial is house-voice: no partner attribution row (parity with the dark
-// form, which never mounted PartnerAttributionField here).
+// Editorial is house-voice: no franja attribution row (parity with the dark
+// form, which never mounted FranjaAttributionField here).
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -140,9 +140,9 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
-          showPartner={false}
-          partnerValue={false}
-          onPartnerChange={() => {}}
+          showFranja={false}
+          franjaValue={false}
+          onFranjaChange={() => {}}
           onSave={workbench.saveDraft}
           onSaveAndClose={() => {
             workbench.saveDraft()

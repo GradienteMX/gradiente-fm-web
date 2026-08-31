@@ -1,23 +1,16 @@
-import nextDynamic from 'next/dynamic'
 import { CategoryRail } from '@/components/CategoryRail'
 import { EventosRail } from '@/components/EventosRail'
 import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
 import { FeedHeader } from '@/components/FeedHeader'
 import { HeroCard } from '@/components/HeroCard'
-import { PartnersRail } from '@/components/PartnersRail'
-import { PartnersDrawer } from '@/components/PartnersDrawer'
+import { FranjasRail } from '@/components/FranjasRail'
+import { FranjasDrawer } from '@/components/FranjasDrawer'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
+import { PaperGround } from '@/components/chrome/PaperGround'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
 import { parseISO } from 'date-fns'
-
-// SHOWPIECE — teletext signal-field background. Client-only (raw WebGL),
-// loaded with ssr:false so it never touches LCP; the component self-gates to
-// capable surfaces and mounts after idle. Fixed z-0 canvas behind all content.
-const VibeFluid = nextDynamic(() => import('@/components/fluid/VibeFluid'), {
-  ssr: false,
-})
 
 // Reads from Supabase via cookies()-aware server client → forces dynamic.
 // Will become `revalidate = 300` once the SYSTEM UPDATE countdown lands
@@ -30,12 +23,12 @@ export default async function HomePage() {
   const homeItems = filterForHome(allItems, now)
   const hero = getPinnedHero(allItems)
 
-  // Partners live in the right rail, never in the main mosaic. The
+  // Franjas live in the right rail, never in the main mosaic. The
   // marketplace-enabled subset feeds MarketplaceRail directly so the
   // home page reflects admin approvals on the next request (no
   // sessionStorage detour).
-  const partners = allItems.filter((i) => i.type === 'partner')
-  const marketplacePartners = partners.filter((p) => p.marketplaceEnabled)
+  const franjas = allItems.filter((i) => i.type === 'franja')
+  const marketplaceFranjas = franjas.filter((p) => p.marketplaceEnabled)
 
   // Placement model — eventos can live in the rail, the mosaic, or both:
   //   - Default (editorial=false, elevated=false): rail only. Listings.
@@ -44,7 +37,7 @@ export default async function HomePage() {
   //   - elevated=true: mosaic only. Removes from the rail (rare — for events
   //     where marquee placement is wrong).
   //
-  // Non-evento items always go to the mosaic; partners stay isolated.
+  // Non-evento items always go to the mosaic; franjas stay isolated.
   // Past events are NEVER in the mosaic — they belong only to the /agenda
   // events section. The rail's job is "PRÓXIMOS · ORDEN CRONOLÓGICO".
   const isRailEvent = (i: ContentItem) =>
@@ -93,7 +86,7 @@ export default async function HomePage() {
   const railEvents = homeItems.filter(isRailEvent)
   const gridItems = homeItems.filter(
     (i) =>
-      i.type !== 'partner' &&
+      i.type !== 'franja' &&
       (!hero || i.id !== hero.id) &&
       // Non-eventos pass through; eventos require editorial or elevated.
       (i.type !== 'evento' || isMosaicEvent(i)),
@@ -101,14 +94,15 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* SHOWPIECE — signal-field background. The fluid is fixed at z-0
-          (visible above the page background); the feed wrapper is lifted to
-          z-10 so it always paints ABOVE the field by explicit z-order — not
-          source-order luck, and without burying the fluid behind an opaque
-          ancestor background (which z-[-1] did). */}
-      <VibeFluid />
+      {/* «EL PLIEGO» ground flip — toggles html.paper-route while mounted;
+          globals.css paints the paper ground on documentElement/body (so
+          overscroll never flashes charcoal). The page paints NO background
+          of its own. The old full-viewport VibeFluid moved into the left
+          rail as EL CAMPO (components/fluid/ElCampo, mounted by
+          CategoryRail). */}
+      <PaperGround />
 
-      <div className="relative z-10 flex gap-6">
+      <div className="flex gap-6">
         {/* Left category rail — desktop only, sticky */}
         <CategoryRail items={gridItems} />
 
@@ -129,21 +123,21 @@ export default async function HomePage() {
           <HomeFeedWithDrafts items={gridItems} mode="home" />
         </div>
 
-        {/* Independent right column — partners rail at top, marketplace entry
+        {/* Independent right column — franjas rail at top, marketplace entry
             below. Shown only at `lg+`, where there's room for a third zone; in
             the 768-1024 band it used to squeeze the feed into a cramped 2-col
-            mosaic. Below lg the feed takes the full width and partners move to
-            the PartnersDrawer (marketplace stays reachable via the nav link). */}
+            mosaic. Below lg the feed takes the full width and franjas move to
+            the FranjasDrawer (marketplace stays reachable via the nav link). */}
         <div className="hidden flex-col gap-4 lg:flex">
-          <PartnersRail items={partners} />
+          <FranjasRail items={franjas} />
           <div className="w-[260px]">
-            <MarketplaceRail partners={marketplacePartners} />
+            <MarketplaceRail franjas={marketplaceFranjas} />
           </div>
         </div>
       </div>
 
-      {/* Mobile/tablet partner access (below lg) — slide-in drawer + edge tab. */}
-      <PartnersDrawer partners={partners} />
+      {/* Mobile/tablet franja access (below lg) — slide-in drawer + edge tab. */}
+      <FranjasDrawer franjas={franjas} />
     </>
   )
 }

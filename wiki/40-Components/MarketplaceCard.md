@@ -1,24 +1,24 @@
 # MarketplaceCard
 
-> `components/marketplace/MarketplaceCard.tsx` — single partner tile in the [[MarketplaceCatalog]] grid.
+> `components/marketplace/MarketplaceCard.tsx` — single franja tile in the [[MarketplaceCatalog]] grid.
 
 ## What it does
 
-Renders one marketplace-enabled partner as an image-forward card. Clicking navigates to `/marketplace?partner=<slug>`, which opens [[MarketplaceOverlay]] over the catalog.
+Renders one marketplace-enabled franja as an image-forward card. Clicking navigates to `/marketplace?franja=<slug>`, which opens [[MarketplaceOverlay]] over the catalog.
 
-Visual idiom mirrors [[PartnersRail]] (image-forward, NGE chrome) with additional marketplace meta in a three-column footer:
+Visual idiom mirrors [[FranjasRail]] (image-forward, NGE chrome) with additional marketplace meta in a three-column footer:
 
 | Column | Value |
 |--------|-------|
 | ITEMS | Total listing count (padded to 2 digits) |
 | DISPONIBLES | Available listings (green) |
-| ZONA | `partner.marketplaceLocation` |
+| ZONA | `franja.marketplaceLocation` |
 
 ## Props
 
 | Prop | Type |
 |------|------|
-| `partner` | `ContentItem` with `type === 'partner'` |
+| `franja` | `ContentItem` with `type === 'franja'` |
 
 ## Related
 

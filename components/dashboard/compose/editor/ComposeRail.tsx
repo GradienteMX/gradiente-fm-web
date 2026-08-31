@@ -8,7 +8,7 @@
 //                        the slim acid-on-ink bar + the ✓/○ checklist (rows
 //                        scroll to their field via onAnchor).
 //   PUBLICACIÓN          only REAL rows — EDITORIAL (staff-gated) and
-//                        VINCULAR A MI PROMOTORA (partner-team only). Hidden
+//                        VINCULAR A MI PROMOTORA (franja-team only). Hidden
 //                        when ungated, never disabled decoration. The whole
 //                        panel disappears when no row is real. (No
 //                        «Visibilidad» select, no «Programar» — those don't
@@ -53,10 +53,10 @@ export interface ComposeRailProps {
   showEditorial: boolean
   editorialValue: boolean
   onEditorialChange: (value: boolean) => void
-  // VINCULAR A MI PROMOTORA — partner-team only; row hidden when false.
-  showPartner: boolean
-  partnerValue: boolean
-  onPartnerChange: (value: boolean) => void
+  // VINCULAR A MI PROMOTORA — franja-team only; row hidden when false.
+  showFranja: boolean
+  franjaValue: boolean
+  onFranjaChange: (value: boolean) => void
   // ACCIONES: saveDraft · save + close to dashboard · publish recipe
   // (requestPublish → PublishConfirmOverlay; the ONE confirm stays outside).
   onSave: () => void
@@ -144,9 +144,9 @@ export function ComposeRail({
   showEditorial,
   editorialValue,
   onEditorialChange,
-  showPartner,
-  partnerValue,
-  onPartnerChange,
+  showFranja,
+  franjaValue,
+  onFranjaChange,
   onSave,
   onSaveAndClose,
   onPublish,
@@ -247,7 +247,7 @@ export function ComposeRail({
       </RailPanel>
 
       {/* ── PUBLICACIÓN — only when at least one REAL row exists ─────────── */}
-      {(showEditorial || showPartner) && (
+      {(showEditorial || showFranja) && (
         <RailPanel title="PUBLICACIÓN">
           {showEditorial && (
             <ToggleRow
@@ -257,11 +257,11 @@ export function ComposeRail({
               onChange={onEditorialChange}
             />
           )}
-          {showPartner && (
+          {showFranja && (
             <ToggleRow
               label="VINCULAR A MI PROMOTORA"
-              value={partnerValue}
-              onChange={onPartnerChange}
+              value={franjaValue}
+              onChange={onFranjaChange}
             />
           )}
         </RailPanel>

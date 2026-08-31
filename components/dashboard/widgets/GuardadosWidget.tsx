@@ -43,9 +43,9 @@ const UNDO_MS = 6_000
 const NOTICE_MS = 4_000
 
 // GUARDADOS shows everything that is not a mix (REPRODUCTOR's material) —
-// partner rows never enter collections.
+// franja rows never enter collections.
 function belongsHere(item: ContentItem): boolean {
-  return item.type !== 'mix' && item.type !== 'partner'
+  return item.type !== 'mix' && item.type !== 'franja'
 }
 
 function timeAgo(iso: string | null | undefined): string {

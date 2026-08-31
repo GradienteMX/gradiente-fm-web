@@ -1,23 +1,19 @@
 import type { Metadata } from 'next'
 import { getItems } from '@/lib/data/items'
 import { MOCK_ITEMS } from '@/lib/mockData'
-import {
-  NOCHE_NEGRA_ITEMS,
-  NOCHE_NEGRA_PARTNER,
-} from '@/lib/nocheNegraSeed'
 import archiveSeedJson from '@/lib/data/archiveSeed.json'
 import {
-  partnerClusters,
+  franjaClusters,
   placeItems,
   type MapaLayout,
-  type PartnerCluster,
+  type FranjaCluster,
 } from '@/lib/mapa/layout'
 import type { ContentItem } from '@/lib/types'
 import { MapaCanvas } from '@/components/mapa/MapaCanvas'
 
 // EXPERIMENTAL — Spatial Identity Canvas vertical slice.
 // See wiki/70-Roadmap/Spatial Identity Canvas.md. This route is a prototype
-// of the global honeycomb terrain; the production home/partner surfaces are
+// of the global honeycomb terrain; the production home/franja surfaces are
 // untouched. Layout is computed ONCE server-side (deterministic pure
 // functions in lib/mapa/) and hydrated as props, so server and client agree
 // by construction.
@@ -43,7 +39,7 @@ interface PageProps {
 // feed placement. Best-effort only (serverless instances are ephemeral).
 const layoutCache = new Map<
   string,
-  { layout: MapaLayout; clusters: PartnerCluster[] }
+  { layout: MapaLayout; clusters: FranjaCluster[] }
 >()
 const LAYOUT_CACHE_MAX = 3
 
@@ -63,17 +59,10 @@ function datasetKey(items: readonly ContentItem[], nowMs: number): string {
     mix(i.id)
     mix(i.hpLastUpdatedAt ?? '')
     mix(String(i.hp ?? ''))
-    mix(i.partnerId ?? '')
+    mix(i.franjaId ?? '')
   }
   return `${nowMs}:${items.length}:${h >>> 0}`
 }
-
-// Noche Negra demo catalogue (2026-08-20, Iker's ask): the mature-partner-
-// focus demo must be visible in EVERY dev context — an authed local session
-// reads the live DB, where the catalogue's rows don't exist (it is file-side
-// mock data), so without this merge the demo only appeared for anonymous
-// sessions. Dev-only: prod never shows the mock catalogue.
-const NN_DEMO = process.env.NODE_ENV !== 'production'
 
 export default async function MapaPage({ searchParams }: PageProps) {
   const fetched = await getItems()
@@ -82,23 +71,7 @@ export default async function MapaPage({ searchParams }: PageProps) {
   // the rest of the app leans on — real Gradiente content, not invented
   // placeholder. In production authed sessions `fetched` is always non-empty
   // (real rows + visible seed rows).
-  let all = fetched.length > 0 ? fetched : MOCK_ITEMS
-  if (NN_DEMO) {
-    const hasNN = all.some(
-      (i) => i.type !== 'partner' && i.partnerId === NOCHE_NEGRA_PARTNER.id,
-    )
-    if (!hasNN) {
-      // Replace the DB's bare partner row with the demo one (marketplace-
-      // enabled, listings) and add the catalogue items that aren't present.
-      const ids = new Set(all.map((i) => i.id))
-      all = [
-        ...all.filter((i) => i.id !== NOCHE_NEGRA_PARTNER.id),
-        NOCHE_NEGRA_PARTNER,
-        ...NOCHE_NEGRA_ITEMS.filter((i) => !ids.has(i.id)),
-      ]
-    }
-  }
-
+  const all = fetched.length > 0 ? fetched : MOCK_ITEMS
   // Archivo Vivo 2005-2013 (living-archive pilot) — file-side seed built by
   // scripts/buildArchiveSeed.ts from the gradiente-ops dataset. Map-only for
   // now: the archive era rings the terrain periphery (its 2010-era dates are
@@ -114,21 +87,21 @@ export default async function MapaPage({ searchParams }: PageProps) {
   // Mapa Placement Rules.md).
   const nowMs = Math.floor(Date.now() / 600_000) * 600_000
   const now = new Date(nowMs)
-  // Terrain rules (wiki/70-Roadmap/Mapa Placement Rules.md): partner identity
+  // Terrain rules (wiki/70-Roadmap/Mapa Placement Rules.md): franja identity
   // rows are never terrain, and — per the image-only rule — neither is any
   // item without imagery. The map is a visual surface; imageless content
   // stays reachable through its section pages and search.
   const terrainItems = [
-    ...all.filter((i) => i.type !== 'partner' && i.imageUrl),
+    ...all.filter((i) => i.type !== 'franja' && i.imageUrl),
     ...archiveItems.filter((i) => i.imageUrl),
   ]
-  const partners = all.filter((i) => i.type === 'partner')
+  const franjas = all.filter((i) => i.type === 'franja')
 
   const key = datasetKey(terrainItems, nowMs)
   let cached = layoutCache.get(key)
   if (!cached) {
     const layout = placeItems(terrainItems, now, { syntheticHl: SYNTHETIC_HL })
-    cached = { layout, clusters: partnerClusters(layout, partners) }
+    cached = { layout, clusters: franjaClusters(layout, franjas) }
     layoutCache.set(key, cached)
     while (layoutCache.size > LAYOUT_CACHE_MAX) {
       const oldest = layoutCache.keys().next().value
@@ -141,7 +114,7 @@ export default async function MapaPage({ searchParams }: PageProps) {
     <MapaCanvas
       layout={cached.layout}
       clusters={cached.clusters}
-      partners={partners}
+      franjas={franjas}
       initialFocusSlug={searchParams.focus ?? null}
     />
   )

@@ -2,26 +2,29 @@
 
 import { useEffect, useRef } from 'react'
 
-// ── Teletext signal-acquisition transition ───────────────────────────────────
+// ── Halftone print-resolve transition ────────────────────────────────────────
 //
-// Replaces the old CRT-boot scaleX/scaleY keyframe (globals.css
-// `overlay-panel-in`) with a broadcast "tuning in" reveal: the panel content is
-// masked by an animated teletext block-mosaic that resolves from coarse signal
-// noise into a clear picture in a sweep emanating from the clicked card's
-// position. Reads as "SEÑAL ADQUIRIDA".
+// Fase C re-tune of the block-mosaic reveal for the paper chassis: the panel
+// content is masked by an animated grid of ink-density blocks — shades of
+// #111111 pressed onto the paper tone #EDEBE3 — that resolves from coarse
+// print noise into the clean sheet in a ragged wavefront emanating from the
+// clicked card's position. The panel resolves OUT of print noise (the page
+// coming off the press), no longer CRT static. Mechanism is unchanged from
+// the teletext era — only the block palette moved.
 //
 // IMPLEMENTATION — canvas-2D, NO WebGL. Home idle already sits at the Safari
 // WebGL context ceiling (VibeFluid backdrop + ParticleField3D), and the overlay
 // is the most-traversed surface on the site, so a new persistent GL context
-// here is forbidden. A transient 2D canvas gives the same teletext look at zero
+// here is forbidden. A transient 2D canvas gives the halftone look at zero
 // context cost. The canvas is mounted only while the transition runs and is
 // fully torn down on completion (RAF cancelled, canvas removed) — there is no
 // GL state to dispose.
 //
 // The mask covers the PANEL ONLY. Sizing uses offsetWidth/offsetHeight on the
 // panel element (NOT getBoundingClientRect — the panel transform makes gBCR
-// return a near-zero box; documented trap). Block cells are colored from the
-// grey ramp with a hint of the item's vibe slot color — not a full rainbow.
+// return a near-zero box; documented trap). Block cells are ink-on-paper
+// mixes with a hint of the item's vibe slot color at the wavefront edge — not
+// a full rainbow.
 //
 // Photosensitivity: the mosaic is continuous spatial resolution / one-shot,
 // never a full-surface luminance oscillation. reduced-motion gets an instant
@@ -49,7 +52,7 @@ export interface SignalTransitionProps {
 }
 
 // ── Tunables ──────────────────────────────────────────────────────────────
-const CELL_PX = 14 // teletext block edge in CSS px — coarse signal grid
+const CELL_PX = 14 // halftone block edge in CSS px — coarse print grid
 const DUR_IN = 520 // resolve duration (ms) — within the 450-550 brief window
 const DUR_OUT = 300 // de-resolve + cut (ms) — faster, broadcast cut
 // Width of the resolving wavefront as a fraction of the max sweep distance.
@@ -127,7 +130,7 @@ export function SignalTransition({
     canvas.style.width = '100%'
     canvas.style.height = '100%'
     canvas.style.pointerEvents = 'none'
-    canvas.style.zIndex = '40' // above content (phosphor flash is z-20, rail z-30)
+    canvas.style.zIndex = '40' // above all panel content (header chrome included)
     // Block-mosaic mask is OPAQUE where unresolved → it hides panel content
     // beneath it, then erases (clears) as cells resolve, revealing the panel.
     const ctx = canvas.getContext('2d')
@@ -174,9 +177,14 @@ export function SignalTransition({
       1
 
     const [vr, vg, vb] = hexToRgb(vibeColor)
-    // Grey-ramp base for the noise blocks (estática). Slot 5 #948E85 family,
-    // darkened toward the panel base so blocks read as a dim signal grid.
-    const GREY: [number, number, number] = [0x4a, 0x47, 0x44]
+    // Print-noise ramp (fase C): every unresolved cell is an ink-density
+    // block — DASH_INK #111111 at a per-cell density over the paper tone
+    // DASH_PAPER #EDEBE3. The density is PRE-MIXED into an opaque fill
+    // (rather than alpha-compositing ink over the live panel) so solid-noise
+    // cells genuinely mask the content beneath — the sheet has to resolve OUT
+    // of the print noise, not merely tint over a legible panel.
+    const PAPER: [number, number, number] = [0xed, 0xeb, 0xe3]
+    const INK: [number, number, number] = [0x11, 0x11, 0x11]
 
     const start = performance.now()
     const dur = phase === 'in' ? DUR_IN : DUR_OUT
@@ -232,31 +240,34 @@ export function SignalTransition({
           }
           if (coverage <= 0) continue
 
-          // Block alpha. Solid-noise cells sit near-opaque (0.86–1.0) so they
-          // genuinely mask the content beneath — the picture has to resolve
-          // OUT of the noise, not merely tint over a legible panel. The per-cell
-          // brightness step comes from the STABLE hash (NOT per-frame RNG), so
-          // it reads as a fixed static-grid texture, never an animated strobe.
-          // Mid-resolve cells fade alpha→0 (coverage) so content sharpens in.
-          const twinkle = 0.86 + h * 0.14
-          const alpha = coverage * twinkle
+          // Per-cell ink density from the STABLE hash (NOT per-frame RNG), so
+          // the grid reads as a fixed halftone texture, never an animated
+          // strobe. 0.30–0.92 ink over paper — dark speckle on a light sheet.
+          // Solid-noise cells stay FULLY OPAQUE (alpha = coverage, 1 ahead of
+          // the front) so they mask the panel; mid-resolve cells fade
+          // alpha→0 with coverage so the sheet sharpens in.
+          const density = 0.3 + h * 0.62
+          const baseR = PAPER[0] + (INK[0] - PAPER[0]) * density
+          const baseG = PAPER[1] + (INK[1] - PAPER[1]) * density
+          const baseB = PAPER[2] + (INK[2] - PAPER[2]) * density
 
-          // Color: grey base for ahead-of-front noise; cells right at the
-          // resolving front pick up a hint of the vibe color (the signal
-          // "warming in"). Blend amount peaks in the front band.
+          // Color: ink-on-paper base for ahead-of-front noise; cells right at
+          // the resolving front pick up a hint of the vibe color — the color
+          // plate biting before the ink settles. Blend amount peaks in the
+          // front band (unchanged mechanism/amount from the dark-era tuning).
           const warm =
             cellFront > 0 && cellFront < FRONT_BAND
               ? 1 - Math.abs(cellFront / FRONT_BAND - 0.5) * 2
               : 0
           const mix = warm * 0.55
-          const r = Math.round(GREY[0] * (1 - mix) + vr * mix)
-          const g = Math.round(GREY[1] * (1 - mix) + vg * mix)
-          const b = Math.round(GREY[2] * (1 - mix) + vb * mix)
+          const r = Math.round(baseR * (1 - mix) + vr * mix)
+          const g = Math.round(baseG * (1 - mix) + vg * mix)
+          const b = Math.round(baseB * (1 - mix) + vb * mix)
 
-          ctx.globalAlpha = alpha
+          ctx.globalAlpha = coverage
           ctx.fillStyle = `rgb(${r},${g},${b})`
-          // Inset the block a hair so the grid shows as discrete teletext
-          // cells with thin gaps (the character-grid lineage), not a flat fill.
+          // Inset the block a hair so the grid shows as discrete halftone
+          // cells with thin gutters (the print-screen lineage), not a flat fill.
           const gap = Math.max(0.5, cw * 0.06)
           ctx.fillRect(ix * cw + gap, iy * ch + gap, cw - gap * 2, ch - gap * 2)
         }

@@ -2,77 +2,61 @@
 type: component
 status: current
 tags: [component, card, mosaic, overlay]
-updated: 2026-04-23
+updated: 2026-08-30
 ---
 
 # ContentCard
 
-> One card component, three size tiers (sm/md/lg). Image-forward, dark gradient overlay, type badge, vibe color accent. Clicking opens a full-screen overlay — see [[Overlay System]].
+> One card component, three size tiers (sm/md/lg), **two faces**: at rest every card is a poster (full-bleed artwork + title), on hover/keyboard-focus it CUTS to the dense caption card (meter, chips, meta, genres). Clicking opens a full-screen overlay — see [[Overlay System]].
 
 ## Source
 
 [components/cards/ContentCard.tsx](../../components/cards/ContentCard.tsx)
 
-## Client component? Yes
+## The two faces (2026-08-30)
 
-Became a client component when overlay click handling landed — it calls [[useOverlay]] and captures the card's bounding rect on click. Inner sub-cards (SmCard/MdCard/LgCard) are still pure render.
+Iker's call after fase B shipped: the caption-forward tiers made the feed read as text with small images, inverting the image-forward law. The fix keeps BOTH looks:
 
-## Three tiers
+- **Poster face (rest)** — `PosterFace`, shared by all tiers: full-bleed `ArtPlate`, the **kicker dash** + title (+ subtitle on md/lg) seated on the ink scrim slab (`PANEL_SCRIM_GRADIENT`), `DateChip` beside the title for events, `SavedBadge` top-left. Nothing else. It is `aria-hidden` (no focusables inside) so screen readers hear one card, not two.
+  - **Kicker dash** = the type signal at rest: a short category-colored rule (28px, 36px on lg × 4px) above the title, where a magazine kicker sits. Color-only is a *sanctioned bend* of the never-color-alone law: the poster is aria-hidden (AT reads the dense face's full swatch+code+word pairing) and the complete signal is one hover away. Uses `categoryColor` (lib/utils — the DARK-ground palette) because it sits on the ink scrim, not cream. Known alias: reseña/artículo ambers blur at glance level by design.
+- **Dense face (hover/focus)** — the fase-B tier layouts (`SmCard`/`MdCard`/`LgCard`), absolutely positioned `inset-0`, revealed by the **«ficha» wipe** (`.card-face-dense` in globals.css): a bottom-to-top `clip-path` pass + 10px rise — the spec sheet fed through a platen, directional and mechanical, never a dissolve. Timing is asymmetric: in = 220ms `cubic-bezier(0.16,1,0.3,1)` after a **60ms hover-intent delay** (skimming the cursor across the mosaic must not strobe cards); out = 130ms, no delay. The card wrapper carries `overflow-hidden` to clip the sheet's rise mid-wipe. `prefers-reduced-motion` falls back to the instant cut. `:focus-within` mirrors `:hover` — covers both the wrapper's `tabIndex` focus and tabbing onto inner links, so every chip stays keyboard-reachable and keyboard users get the same pass.
+- **Touch** — no hover exists; the tap opens the overlay, which carries the same info. The poster face is the whole mobile read.
+- **`PollCardCanvas` rides the wrapper**, above both faces (chip z-20 / ballot z-30): the poll affordance stays visible at rest and an open ballot survives the pointer leaving the card.
 
-### SM (1×1, 280–380px square-ish)
-Minimal: title (2 lines), date, venue/author, up to 2 genres. Event date-block in top-right when applicable.
+**Egress trap**: both faces render the same artwork. `cardArtSizes(item, size)` produces ONE `sizes` string per card, used by both plates — diverging `sizes` attrs would make the browser download two resolutions of the same image per card (~140 cards). Keep them shared.
 
-### MD (2×1 wide or 1×2 tall)
-Adds: artists row, subtitle, meta row with icons (MapPin/Play/Clock/Ticket), expanded genre chips.
+## Three tiers (the dense face)
 
-### LG (2×2 featured)
-Full bells: 4 artists, subtitle, 2-3 line excerpt, genre + tag chips with color backgrounds, venue + city, price, tickets button, read time. Date-block scaled up.
+### SM (1×1)
+Side art plate (38%) + caption column: meter, chip row, title (3 lines), date/venue/author, up to 2 genres.
+
+### MD (2×1 wide, 1×2 tall, or 1×1)
+Side plate (42%) when the **rendered cell** is wide/square, top plate (45%) when tall. Orientation comes from ContentGrid (clamped `colSpan` vs `rowSpan`), NOT from the content type — `MD_GEOMETRY` is only the spawn shape and `rankItems`' SHAPE_CYCLE variety pass reassigns any type into any md shape. (The type-based inference was a real bug: a text type in a 150px wide bar used the tall layout and its line-clamped title — min-content ≈ 0 — collapsed to nothing. Titles now also carry `shrink-0` so they are never the first thing an overconstrained caption sacrifices.) Adds artists row, subtitle, meta row with icons (MapPin/Play/Clock/Ticket), CreatorChip.
+
+### LG (2×2 / 3×2 featured)
+Full-bleed art + scrim-overlaid title, bottom caption bar on paper: meter, chip row, excerpt, genre + tag chips, venue/city, price, TICKETS → button, read time.
 
 The tier is picked by [`cardLayout(item).tier`](../../lib/curation.ts) and passed in as a prop. [[ContentGrid]] is the only wirer.
 
-## Shared bits across all tiers
+## Shared bits
 
-**`CardImage`** internal component renders:
-- Background image (or solid fallback), with `group-hover:scale-105` for a subtle zoom
-- Top-to-bottom dark gradient: `from-black via-black/50 to-black/10`
-- Top-right 1px strip in vibe color (the unambiguous vibe indicator)
-- Type badge top-left: `//{TYPE_LABEL}` in category color
-- Red ★ badge next to type if `editorial: true`
-- NGE corner bracket bottom-right (subtle, vibe-colored, 60% alpha)
-
-## The per-type date block (events only)
-
-Top-right floating block:
-
-```
-ABR       ← fmtMonthShort
- 19       ← fmtDayNumber (big)
-SAB       ← fmtDayName (3-char)
-22:00     ← fmtTime (MD/LG only)
-```
-
-Rendered inside the image area with `bg-black/70 backdrop-blur-sm` to stay legible over any cover art.
+- `ArtPlate` — the artwork zone (SmartImage `object-cover object-top`, low-alpha ink field when no image). No scrims except the LG/poster title slab, no hover zoom.
+- `ChipRow` — type identity (swatch + full display label; the 2-letter code was dropped 2026-08-30 as redundant beside the word — «LI · LISTA» → «LISTA»), editorial ★, NUEVO (`.print-fresh` first hour, scraped events excluded), BORRADOR, PASADO, //FRANJA stamp, publisher-only HL chip.
+- `CreatorChip` — @username → /u/[username] as a **stamped byline**: 1px ink hairline + hover fill-inversion, the clickable-chip grammar on paper. Deliberately distinct from the free-text `item.author` credit, which stays plain — clickable platform identity vs printed editorial credit are different registers.
+- `CardMeter` — `VibeMeterLight` with `effectiveVibeBand(item)`, pads right when a poll chip could collide.
+- `DateChip` — printed date block (mono month/day-name around a Syne day number), events only.
 
 ## Interaction
 
-The top-level export wraps the size-specific sub-card (`SmCard` / `MdCard` / `LgCard`) in a clickable `role="button"` `<div>` that:
+The top-level export wraps both faces in a clickable `role="button"` `<div>` that:
 
-1. Captures the card's `getBoundingClientRect()` on click (used for the overlay's grow-from-origin transform).
-2. Calls `open(item.slug, rect)` from [[useOverlay]].
-3. Updates the URL to `?item=<slug>`.
-4. Mounts [[OverlayShell]] + the type-specific overlay ([[ReaderOverlay]] / [[EventoOverlay]] / [[GenericOverlay]]).
+1. Captures the card's `getBoundingClientRect()` on click (overlay grow-from-origin).
+2. Fires `recordHpEvent(item.id, 'click')` (fire-and-forget, anon 401s silently).
+3. Calls `open(item.slug, rect)` from [[useOverlay]] → URL `?item=<slug>`.
 
-Keyboard: `Enter` / `Space` trigger the same handler (`onKeyDown`). Focus ring uses `focus-visible:ring-sys-red`.
+Keyboard: `Enter` / `Space` trigger the same handler. Focus ring is the 2px ink outline.
 
-Exception: the `TICKETS →` button on LG event cards is still an `<a>` with `stopPropagation` — it bypasses the overlay and opens the ticket site directly. This is intentional: the explicit external escape hatch on event cards matches [[Contained Single Surface]]'s rule about external URLs being user-chosen, not the default.
-
-## Image strategy
-
-Uses plain `<img>` not `next/image`. Two reasons:
-1. Framer Motion `layout` animations work more reliably without Next's layout-shifting image wrapper.
-2. All images are local (`/flyers/*.jpg`) — no optimization pipeline advantage.
-
-`loading="lazy"` on the img so offscreen cards don't block initial render.
+Exception: `TICKETS →` on LG event cards is an `<a>` with `stopPropagation` — external escape hatch, per [[Contained Single Surface]].
 
 ## Links
 
@@ -81,6 +65,3 @@ Uses plain `<img>` not `next/image`. Two reasons:
 - [[useOverlay]]
 - [[Contained Single Surface]]
 - [[HP Curation System]]
-- [[Vibe Gradient]]
-- [[Color System]]
-- [[Typography]]

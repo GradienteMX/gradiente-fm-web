@@ -43,7 +43,7 @@ All content is `ContentItem` with a `type` field:
 - `editorial` — long-form editorial
 - `opinion` — opinion column
 - `articulo` — deep-dive longform feature (substack-style, structured body + footnotes)
-- `partner` — sponsor rail only, never in main grid
+- `franja` — a band on the dial (label, venue, colectivo, dealer…): rail + /f/[slug], never in main grid
 
 See [`lib/types.ts`](./lib/types.ts) and [`wiki/20-Domain/Content Types.md`](./wiki/20-Domain/Content Types.md).
 
@@ -60,7 +60,7 @@ Items decay over time via type-specific half-lives. `editorial: true` raises spa
 ## Architectural patterns
 
 - One-way data flow: `mockData.ts` → filters → curation → pages → UI
-- Partners always isolated from the main grid (separate rail, chronological order, no vibe filter)
+- Franjas always isolated from the main grid (separate rail, chronological order, no vibe filter)
 - Only one pinned hero at a time
 - Home feed ordered by HP prominence, never by `publishedAt`
 - Spanish UI copy, English code
@@ -78,7 +78,7 @@ Items decay over time via type-specific half-lives. `editorial: true` raises spa
 ## Things to avoid
 
 - Never commit `node_modules` or `.env` files
-- Never put partners in the main content grid
+- Never put franjas in the main content grid
 - Never sort home feed by `publishedAt` — use HP curation
 - Never use `git push --force` without team discussion
 - Every new `ContentItem` needs a real vibe score (not just 0)

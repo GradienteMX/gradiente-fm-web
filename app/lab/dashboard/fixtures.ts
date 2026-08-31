@@ -11,11 +11,11 @@
 import type {
   DashboardInitialSlices,
   EngagementSlice,
-  PartnerSlice,
+  FranjaSlice,
   VibeSelfCheck,
 } from '@/components/dashboard/DashboardDataProvider'
 import type { ActivityRow } from '@/lib/dashboard/activity'
-import type { PartnerOption } from '@/lib/dashboard/novedades'
+import type { FranjaOption } from '@/lib/dashboard/novedades'
 import type { DraftItem } from '@/lib/drafts'
 import type { ContentItem, MarketplaceListing, User } from '@/lib/types'
 
@@ -71,20 +71,20 @@ function makeDraft(item: ContentItem, updatedDaysAgo: number): DraftItem {
 // layout, matching LAB_USER_BASE's 00000000-…-4000-8000-… family; a1/a2/a3
 // are taken by the lab users). Queries for them succeed and return zero rows
 // → rank 'normie', anonymous actor — honest lab states, silent console.
-// ITEM/partner ids KEEP the `lab-fx-` prefix: items.id is TEXT, and the
+// ITEM/franja ids KEEP the `lab-fx-` prefix: items.id is TEXT, and the
 // prefix is the shadowing guard described above.
 const ACTOR_A = '00000000-0000-4000-8000-0000000000b1'
 const ACTOR_B = '00000000-0000-4000-8000-0000000000b2'
-const PARTNER_JAPAN = 'lab-fx-partner-japan'
-const PARTNER_FASCINOMA = 'lab-fx-partner-fascinoma'
-const PARTNER_YUYU = 'lab-fx-partner-yuyu'
+const FRANJA_JAPAN = 'lab-fx-franja-japan'
+const FRANJA_FASCINOMA = 'lab-fx-franja-fascinoma'
+const FRANJA_YUYU = 'lab-fx-franja-yuyu'
 
 // ── Shared building blocks ──────────────────────────────────────────────────
 
-const PARTNER_OPTIONS: PartnerOption[] = [
-  { id: PARTNER_JAPAN, slug: 'lab-fx-club-japan', title: 'Club Japan' },
-  { id: PARTNER_FASCINOMA, slug: 'lab-fx-fascinoma', title: 'FASCINOMA' },
-  { id: PARTNER_YUYU, slug: 'lab-fx-yuyu', title: 'YuYu Cine Club' },
+const FRANJA_OPTIONS: FranjaOption[] = [
+  { id: FRANJA_JAPAN, slug: 'lab-fx-club-japan', title: 'Club Japan' },
+  { id: FRANJA_FASCINOMA, slug: 'lab-fx-fascinoma', title: 'FASCINOMA' },
+  { id: FRANJA_YUYU, slug: 'lab-fx-yuyu', title: 'YuYu Cine Club' },
 ]
 
 // 5 upcoming events: 4 resolve through venueGeo (auto-expand eligible) + one
@@ -410,21 +410,21 @@ const NOVEDADES_RICH: ContentItem[] = [
     n: 40,
     type: 'mix',
     title: 'Japan Sessions Vol. 4',
-    partnerId: PARTNER_JAPAN,
+    franjaId: FRANJA_JAPAN,
     genres: ['techno'],
   }),
   makeItem({
     n: 41,
     type: 'noticia',
     title: 'FASCINOMA anuncia temporada',
-    partnerId: PARTNER_FASCINOMA,
+    franjaId: FRANJA_FASCINOMA,
   }),
-  makeItem({ n: 42, type: 'review', title: 'Reseña sin partner', genres: ['house'] }),
+  makeItem({ n: 42, type: 'review', title: 'Reseña sin franja', genres: ['house'] }),
   makeItem({
     n: 43,
     type: 'evento',
     title: 'Proyección + DJ set en YuYu',
-    partnerId: PARTNER_YUYU,
+    franjaId: FRANJA_YUYU,
     date: daysAhead(5),
     venue: 'Yu Yu',
   }),
@@ -443,7 +443,7 @@ const VIBE_SELF_RICH: VibeSelfCheck[] = [3, 4, 5, 6, 5, 7, 4].map((min, i) => ({
 const ENGAGEMENT_RICH: EngagementSlice = { hp: 34, lastUpdatedAt: daysAgo(0.1) }
 const ENGAGEMENT_ZERO: EngagementSlice = { hp: 0, lastUpdatedAt: null }
 
-// ── Partner scenario blocks ─────────────────────────────────────────────────
+// ── Franja scenario blocks ─────────────────────────────────────────────────
 
 const LISTINGS: MarketplaceListing[] = [
   {
@@ -493,12 +493,12 @@ const LISTINGS: MarketplaceListing[] = [
   },
 ]
 
-const PARTNER_SLICE: PartnerSlice = {
-  id: PARTNER_JAPAN,
+const FRANJA_SLICE: FranjaSlice = {
+  id: FRANJA_JAPAN,
   slug: 'lab-fx-club-japan',
   title: 'Club Japan',
-  partnerKind: 'venue',
-  partnerUrl: 'https://instagram.com/japan_cdmx',
+  franjaKind: 'venue',
+  franjaUrl: 'https://instagram.com/japan_cdmx',
   imageUrl: '',
   marketplaceEnabled: true,
   marketplaceDescription: 'Discos y objetos de la cabina.',
@@ -530,9 +530,9 @@ const OFERTA_ROWS: ActivityRow[] = [
   },
 ]
 
-// ── Scenarios (BUILD_PLAN WP2: fresh / rich / partner / admin / smallN / error)
+// ── Scenarios (BUILD_PLAN WP2: fresh / rich / franja / admin / smallN / error)
 
-export type LabScenarioKey = 'fresh' | 'rich' | 'partner' | 'admin' | 'smallN' | 'error'
+export type LabScenarioKey = 'fresh' | 'rich' | 'franja' | 'admin' | 'smallN' | 'error'
 
 export interface LabScenario {
   key: LabScenarioKey
@@ -574,46 +574,46 @@ export const LAB_SCENARIOS: Record<LabScenarioKey, LabScenario> = {
       drafts: DRAFTS_RICH,
       activity: activityRows(),
       novedades: NOVEDADES_RICH,
-      partnerOptions: PARTNER_OPTIONS,
+      franjaOptions: FRANJA_OPTIONS,
       events: EVENTS_RICH,
       vibeSelf: VIBE_SELF_RICH,
       engagement: ENGAGEMENT_RICH,
       trophies: ['published_voice', 'presence_logged', 'presence_deep'],
       follows: [
-        { kind: 'partner', key: PARTNER_JAPAN },
+        { kind: 'franja', key: FRANJA_JAPAN },
         { kind: 'genre', key: 'techno' },
       ],
     },
     user: LAB_USER_BASE,
   },
-  partner: {
-    key: 'partner',
-    label: 'PARTNER',
-    note: 'Equipo de partner: 4 artículos en el marketplace, 2 OFERTAS sin responder plegadas en ACTIVIDAD.',
+  franja: {
+    key: 'franja',
+    label: 'FRANJA',
+    note: 'Equipo de franja: 4 artículos en el marketplace, 2 OFERTAS sin responder plegadas en ACTIVIDAD.',
     slices: {
       saves: SAVES_RICH.slice(0, 4),
       published: PUBLISHED_RICH.slice(0, 2),
       activity: [...OFERTA_ROWS, ...activityRows().slice(0, 3)],
       novedades: NOVEDADES_RICH,
-      partnerOptions: PARTNER_OPTIONS,
+      franjaOptions: FRANJA_OPTIONS,
       events: EVENTS_RICH,
       engagement: ENGAGEMENT_RICH,
-      partner: PARTNER_SLICE,
-      follows: [{ kind: 'partner', key: PARTNER_FASCINOMA }],
-      // registry omitted on purpose: partner slice present → 'mercado' admitted
+      franja: FRANJA_SLICE,
+      follows: [{ kind: 'franja', key: FRANJA_FASCINOMA }],
+      // registry omitted on purpose: franja slice present → 'mercado' admitted
     },
-    user: { ...LAB_USER_BASE, id: '00000000-0000-4000-8000-0000000000a2', partnerId: 'pa-club-japan', partnerAdmin: true },
+    user: { ...LAB_USER_BASE, id: '00000000-0000-4000-8000-0000000000a2', franjaId: 'pa-club-japan', franjaAdmin: true },
   },
   admin: {
     key: 'admin',
     label: 'ADMIN',
-    note: 'Variante admin: MERCADO en el registro sin partner propio (APROBACIONES es dato del route admin, fuera del contrato del provider — WP9).',
+    note: 'Variante admin: MERCADO en el registro sin franja propio (APROBACIONES es dato del route admin, fuera del contrato del provider — WP9).',
     slices: {
       saves: SAVES_RICH.slice(0, 2),
       published: PUBLISHED_RICH.slice(0, 3),
       drafts: DRAFTS_RICH.slice(0, 1),
       activity: activityRows().slice(0, 5),
-      partnerOptions: PARTNER_OPTIONS,
+      franjaOptions: FRANJA_OPTIONS,
       events: EVENTS_RICH,
       engagement: ENGAGEMENT_RICH,
       registry: [
@@ -639,7 +639,7 @@ export const LAB_SCENARIOS: Record<LabScenarioKey, LabScenario> = {
       published: PUBLISHED_RICH.slice(0, 1),
       activity: activityRows().slice(0, 2),
       novedades: NOVEDADES_RICH.slice(0, 2),
-      partnerOptions: PARTNER_OPTIONS,
+      franjaOptions: FRANJA_OPTIONS,
       events: [
         makeItem({
           n: 50,
@@ -655,7 +655,7 @@ export const LAB_SCENARIOS: Record<LabScenarioKey, LabScenario> = {
       vibeSelf: VIBE_SELF_RICH.slice(0, 2),
       engagement: { hp: 4, lastUpdatedAt: daysAgo(2) },
       trophies: ['presence_logged'],
-      follows: [{ kind: 'partner', key: PARTNER_JAPAN }],
+      follows: [{ kind: 'franja', key: FRANJA_JAPAN }],
     },
     user: LAB_USER_BASE,
   },
@@ -672,7 +672,7 @@ export const LAB_SCENARIOS: Record<LabScenarioKey, LabScenario> = {
         novedades: true,
         events: true,
         vibeSelf: true,
-        partner: true,
+        franja: true,
       },
       lastTickAt: null,
     },
@@ -683,7 +683,7 @@ export const LAB_SCENARIOS: Record<LabScenarioKey, LabScenario> = {
 export const LAB_SCENARIO_KEYS: readonly LabScenarioKey[] = [
   'fresh',
   'rich',
-  'partner',
+  'franja',
   'admin',
   'smallN',
   'error',

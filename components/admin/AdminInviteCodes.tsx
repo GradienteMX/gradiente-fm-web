@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Database } from '@/lib/supabase/database.types'
-import type { PartnerOption } from '@/app/admin/page'
+import type { FranjaOption } from '@/app/admin/page'
 
 type InviteCodeRow = Database['public']['Tables']['invite_codes']['Row']
 type Role = 'user' | 'curator' | 'guide' | 'insider' | 'admin'
@@ -18,23 +18,23 @@ const ROLE_LABEL: Record<Role, string> = {
 
 export function AdminInviteCodes({
   initialCodes,
-  partners,
+  franjas,
 }: {
   initialCodes: InviteCodeRow[]
-  partners: PartnerOption[]
+  franjas: FranjaOption[]
 }) {
   const router = useRouter()
 
   const [cardName, setCardName] = useState('')
   const [role, setRole] = useState<Role>('user')
   const [isMod, setIsMod] = useState(false)
-  const [partnerId, setPartnerId] = useState('')
-  const [partnerAdmin, setPartnerAdmin] = useState(false)
+  const [franjaId, setFranjaId] = useState('')
+  const [franjaAdmin, setFranjaAdmin] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState<number | ''>(30)
 
-  // Lookup map for displaying partner titles in the existing-codes table —
+  // Lookup map for displaying franja titles in the existing-codes table —
   // saves a per-row find() when rendering many rows.
-  const partnerById = new Map(partners.map((p) => [p.id, p]))
+  const franjaById = new Map(franjas.map((p) => [p.id, p]))
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,8 +54,8 @@ export function AdminInviteCodes({
           card_name: cardName.trim() || null,
           intended_role: role,
           intended_is_mod: isMod,
-          intended_partner_id: partnerId.trim() || null,
-          intended_partner_admin: partnerAdmin,
+          intended_franja_id: franjaId.trim() || null,
+          intended_franja_admin: franjaAdmin,
           expires_in_days: expiresInDays === '' ? null : Number(expiresInDays),
         }),
       })
@@ -134,37 +134,37 @@ export function AdminInviteCodes({
             </span>
           </label>
 
-          <Field label="PARTNER (opcional)">
+          <Field label="FRANJA (opcional)">
             <select
-              value={partnerId}
+              value={franjaId}
               onChange={(e) => {
-                setPartnerId(e.target.value)
-                // Clear partner_admin when no partner is selected — UI hides
+                setFranjaId(e.target.value)
+                // Clear franja_admin when no franja is selected — UI hides
                 // the checkbox in that state but keep state coherent too.
-                if (!e.target.value) setPartnerAdmin(false)
+                if (!e.target.value) setFranjaAdmin(false)
               }}
               className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
               style={{ borderColor: '#242424' }}
             >
               <option value="">— ninguno (cuenta individual) —</option>
-              {partners.map((p) => (
+              {franjas.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
-                  {p.partner_kind ? `  ·  ${p.partner_kind}` : ''}
+                  {p.franja_kind ? `  ·  ${p.franja_kind}` : ''}
                 </option>
               ))}
             </select>
           </Field>
 
-          {partnerId.trim() && (
+          {franjaId.trim() && (
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={partnerAdmin}
-                onChange={(e) => setPartnerAdmin(e.target.checked)}
+                checked={franjaAdmin}
+                onChange={(e) => setFranjaAdmin(e.target.checked)}
               />
               <span className="font-mono text-[11px] text-secondary">
-                <span className="text-primary">PARTNER_ADMIN</span> (puede invitar/expulsar miembros del equipo)
+                <span className="text-primary">FRANJA_ADMIN</span> (puede invitar/expulsar miembros del equipo)
               </span>
             </label>
           )}
@@ -300,12 +300,12 @@ export function AdminInviteCodes({
                         <span className="text-muted">
                           {[
                             c.intended_is_mod ? 'MOD' : null,
-                            c.intended_partner_admin ? 'PA-ADMIN' : null,
-                            // Show the partner's TITLE (not the id) so the
+                            c.intended_franja_admin ? 'PA-ADMIN' : null,
+                            // Show the franja's TITLE (not the id) so the
                             // table reads naturally — fall back to the id
-                            // if the partner item was deleted later.
-                            c.intended_partner_id
-                              ? partnerById.get(c.intended_partner_id)?.title ?? c.intended_partner_id
+                            // if the franja item was deleted later.
+                            c.intended_franja_id
+                              ? franjaById.get(c.intended_franja_id)?.title ?? c.intended_franja_id
                               : null,
                           ]
                             .filter(Boolean)

@@ -42,7 +42,7 @@ const STATUS_COLOR: Record<MarketplaceListingStatus, string> = {
 
 interface Props {
   listing: MarketplaceListing
-  partner: ContentItem
+  franja: ContentItem
   // 1-based index for the corner number badge ("01", "02", ...).
   index: number
   // When set, the whole card becomes a button — opens the listing-detail
@@ -53,13 +53,13 @@ interface Props {
 
 export function MarketplaceListingCard({
   listing,
-  partner,
+  franja,
   index,
   onClick,
 }: Props) {
   const status = listing.status
   const statusColor = STATUS_COLOR[status]
-  const currency = partner.marketplaceCurrency ?? ''
+  const currency = franja.marketplaceCurrency ?? ''
   const ago = (() => {
     try {
       return formatDistanceToNowStrict(parseISO(listing.publishedAt), {
@@ -87,7 +87,7 @@ export function MarketplaceListingCard({
       >
         <CardBody
           listing={listing}
-          partner={partner}
+          franja={franja}
           index={index}
           status={status}
           statusColor={statusColor}
@@ -104,7 +104,7 @@ export function MarketplaceListingCard({
     >
       <CardBody
         listing={listing}
-        partner={partner}
+        franja={franja}
         index={index}
         status={status}
         statusColor={statusColor}
@@ -117,7 +117,7 @@ export function MarketplaceListingCard({
 
 function CardBody({
   listing,
-  partner,
+  franja,
   index,
   status,
   statusColor,
@@ -125,7 +125,7 @@ function CardBody({
   ago,
 }: {
   listing: MarketplaceListing
-  partner: ContentItem
+  franja: ContentItem
   index: number
   status: MarketplaceListingStatus
   statusColor: string
@@ -178,7 +178,7 @@ function CardBody({
       {/* Meta rows */}
       <dl className="flex flex-col gap-0.5 px-3 pt-2 pb-2 font-mono text-[9px] leading-relaxed">
         <Meta label="CONDICIÓN" value={listing.condition} />
-        <Meta label="VENDEDOR" value={partner.title} />
+        <Meta label="VENDEDOR" value={franja.title} />
         <Meta label="PUBLICADO" value={ago} />
       </dl>
 

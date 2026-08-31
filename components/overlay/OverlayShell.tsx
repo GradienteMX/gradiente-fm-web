@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { X, Trash2, Send, Pencil, MessageSquare, ChevronRight } from 'lucide-react'
+import { X, Trash2, Pencil, MessageSquare } from 'lucide-react'
 import {
   createContext,
   useContext,
@@ -15,7 +15,13 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { ContentItem } from '@/lib/types'
-import { categoryColor, effectiveVibeBand, vibeToColor } from '@/lib/utils'
+import { effectiveVibeBand, vibeToColor } from '@/lib/utils'
+import {
+  categoryColorOnLight,
+  TYPE_CODES,
+  TYPE_DISPLAY_LABELS,
+} from '@/lib/dashboard/palette'
+import { franjaAttributionPrefix } from '@/lib/franjaAttribution'
 import { useOverlay } from './useOverlay'
 import { SignalTransition } from './SignalTransition'
 import { ShareButton } from './ShareButton'
@@ -75,17 +81,9 @@ export function OverlayShellPreviewProvider({ children }: { children: ReactNode 
   return <OverlayShellContext.Provider value={PREVIEW_SHELL_VALUE}>{children}</OverlayShellContext.Provider>
 }
 
-const TYPE_LABEL: Record<ContentItem['type'], string> = {
-  evento: 'EVENTO',
-  mix: 'MIX',
-  noticia: 'NOTICIA',
-  review: 'REVIEW',
-  editorial: 'EDITORIAL',
-  opinion: 'OPINIÓN',
-  articulo: 'ARTÍCULO',
-  listicle: 'LISTA',
-  partner: 'PARTNER',
-}
+// House focus ring on paper grounds (fase C).
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface OverlayShellProps {
   item: ContentItem
@@ -123,8 +121,6 @@ export function OverlayShell({
   const commentsTotal = shellCommentsHook.comments.length
   const commentsLoading = shellCommentsHook.loading
 
-  const [railHover, setRailHover] = useState(false)
-
   // Admin-only hard-delete from inside the overlay. Hidden for session-only
   // items (those have their own Trash2 in SessionItemStrip via removeItem).
   // Typed-confirmation gate matches the Publicados owner-delete pattern.
@@ -156,11 +152,10 @@ export function OverlayShell({
     router.refresh()
   }
 
-  // ── Signal-acquisition transition ──────────────────────────────────────────
-  // Replaces the old CRT-boot scaleX/scaleY keyframe. A transient teletext
-  // block-mosaic (SignalTransition, canvas-2D, NO WebGL) masks the panel and
-  // resolves noise → clear on open, and de-resolves clear → noise on close.
-  // The sweep emanates from the clicked card's viewport-space center.
+  // ── Print-resolve transition ───────────────────────────────────────────────
+  // The sheet resolves out of halftone print noise (SignalTransition,
+  // canvas-2D, NO WebGL) on open, and de-resolves back into noise on close.
+  // The wavefront emanates from the clicked card's viewport-space center.
   const panelRef = useRef<HTMLDivElement | null>(null)
 
   // Click origin in viewport space — the mosaic sweep emanates from here.
@@ -172,7 +167,7 @@ export function OverlayShell({
     }
   })
 
-  // Item's vibe slot color — tints the resolving blocks (a hint, not a wash).
+  // Item's vibe slot color — warms the wavefront edge (a hint, not a wash).
   // Uses the effective band midpoint so crowd vibe checks are honored.
   const vibeColor = (() => {
     const [lo, hi] = effectiveVibeBand(item)
@@ -180,9 +175,9 @@ export function OverlayShell({
   })()
 
   // Panel opacity is shell-owned state (not an imperative panel.style mutation)
-  // so React re-renders — comments toggle, rail hover — don't clobber it. Starts
-  // at 0 to avoid a 1-frame flash of unmasked content before the mosaic canvas
-  // mounts; SignalTransition fires onReveal once the mask is in place.
+  // so React re-renders — comments toggle, chip hovers — don't clobber it.
+  // Starts at 0 to avoid a 1-frame flash of unmasked content before the mosaic
+  // canvas mounts; SignalTransition fires onReveal once the mask is in place.
   const [panelRevealed, setPanelRevealed] = useState(false)
 
   // Gate unmount on the close-transition finishing. The backdrop fade runs in
@@ -236,6 +231,14 @@ export function OverlayShell({
     commentsUsersById: shellCommentsHook.usersById,
   }
 
+  // Franja attribution stamp — the ONE surviving slash idiom on paper (the
+  // brand stamp), set in sys-red-paper. Kind-adaptive verb per
+  // lib/franjaAttribution (//PRESENTA · CLUB JAPAN, //SELLO · X, …).
+  const franjaStamp =
+    item.franja && item.franja.title
+      ? `//${franjaAttributionPrefix(item.franja.kind)} · ${item.franja.title.toUpperCase()}`
+      : null
+
   return (
     <OverlayShellContext.Provider value={shellCtxValue}>
     <div
@@ -245,8 +248,8 @@ export function OverlayShell({
       }
       onClick={close}
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" aria-hidden />
+      {/* Ink scrim — flat, no blur (fase C). */}
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       {/* Split-screen wrapper — animates max-width as comments toggle. */}
       <motion.div
@@ -255,13 +258,14 @@ export function OverlayShell({
         initial={false}
         transition={{ duration: 0.45, ease: [0.22, 0.8, 0.32, 1] }}
       >
-        {/* Panel — flex-grow:1 means it fills whatever the column doesn't.
-            Framer Motion animates the resulting width change smoothly via
-            the parent's max-width animation + the column's basis animation. */}
+        {/* Panel — the paper sheet. flex-grow:1 means it fills whatever the
+            column doesn't. Framer Motion animates the resulting width change
+            smoothly via the parent's max-width animation + the column's basis
+            animation. */}
         <div
           ref={panelRef}
           onClick={(e) => e.stopPropagation()}
-          className="eva-box eva-scanlines relative flex min-w-0 flex-col overflow-hidden bg-base"
+          className="relative flex min-w-0 flex-col overflow-hidden border border-ink bg-paper text-ink"
           style={{
             maxHeight: 'min(92dvh, 900px)',
             flexGrow: 1,
@@ -271,11 +275,11 @@ export function OverlayShell({
             // flash of unmasked content. Once SignalTransition fires onReveal
             // the canvas masks the now-opaque panel. On close we keep it at 1
             // through the de-resolve; the unmount (signalOutDone → onExited) is
-            // the broadcast cut. Reduced-motion: instant 0→1.
+            // the press cut. Reduced-motion: instant 0→1.
             opacity: panelRevealed ? 1 : 0,
           }}
         >
-          {/* Signal-acquisition mosaic — transient canvas, mounted only while
+          {/* Print-resolve mosaic — transient canvas, mounted only while
               the transition runs, fully torn down on completion. Keyed on the
               phase so the open mosaic and close mosaic are distinct mounts. */}
           <SignalTransition
@@ -287,73 +291,70 @@ export function OverlayShell({
             onReveal={() => setPanelRevealed(true)}
             onDone={exiting ? () => setSignalOutDone(true) : () => {}}
           />
-          {/* Chrome / header */}
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
+          {/* Chrome / header — raised paper band. */}
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ink bg-paper-raised px-4 py-2">
             <div className="flex min-w-0 items-center gap-3">
-              <span
-                className="shrink-0 font-mono text-[10px] tracking-widest"
-                style={{ color: categoryColor(item.type) }}
-              >
-                //{TYPE_LABEL[item.type]}
+              {/* Type chip — category swatch + 2-letter code + display label.
+                  Hue is never the sole signal; the code rides beside the
+                  swatch (review/articulo ambers alias by design). */}
+              <span className="flex shrink-0 items-center gap-1.5 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+                <span
+                  aria-hidden
+                  className="h-[9px] w-[9px] shrink-0"
+                  style={{ backgroundColor: categoryColorOnLight(item.type) }}
+                />
+                {TYPE_CODES[item.type]} · {TYPE_DISPLAY_LABELS[item.type]}
               </span>
-              <span className="sys-label hidden truncate uppercase text-muted sm:inline">
+              <span className="hidden truncate font-mono text-d11 uppercase tracking-widest text-ink-faint sm:inline">
                 {item.slug}
               </span>
-              {/* Partner attribution byline — renders when item.partner is set
-                  (resolved server-side via the partner_id self-join). Clickable
-                  through to /marketplace when the partner is marketplace-enabled;
-                  static label otherwise. See wiki/90-Decisions/Partner Authoring. */}
-              {item.partner && (
-                <span className="sys-label hidden shrink-0 items-center gap-1.5 sm:inline-flex">
-                  <span className="text-muted">PUBLICADO POR</span>
-                  {item.partner.marketplaceEnabled ? (
-                    <Link
-                      href={`/marketplace?partner=${encodeURIComponent(item.partner.slug)}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="transition-opacity hover:opacity-80"
-                      style={{ color: '#FF8800' }}
-                      title={`Ver perfil de ${item.partner.title}`}
-                    >
-                      //{item.partner.title.toUpperCase()}
-                    </Link>
-                  ) : (
-                    <span
-                      style={{ color: '#FF8800' }}
-                      title={`Publicado por ${item.partner.title}`}
-                    >
-                      //{item.partner.title.toUpperCase()}
-                    </span>
-                  )}
-                </span>
+              {/* Franja attribution byline — renders when item.franja is set
+                  (resolved server-side via the franja_id self-join). Clickable
+                  through to /marketplace when the franja is marketplace-enabled;
+                  static stamp otherwise. See wiki/90-Decisions/Franja Authoring. */}
+              {franjaStamp && item.franja && (
+                item.franja.marketplaceEnabled ? (
+                  <Link
+                    href={`/marketplace?franja=${encodeURIComponent(item.franja.slug)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`hidden shrink-0 font-mono text-d11 font-bold tracking-widest text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper-raised sm:inline ${FOCUS_RING}`}
+                    title={`Ver perfil de ${item.franja.title} en marketplace`}
+                  >
+                    {franjaStamp}
+                  </Link>
+                ) : (
+                  <span
+                    className="hidden shrink-0 font-mono text-d11 font-bold tracking-widest text-sys-red-paper sm:inline"
+                    title={`Publicado por ${item.franja.title}`}
+                  >
+                    {franjaStamp}
+                  </span>
+                )
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2">
               <SaveItemButton item={item} />
-              <ShareButton item={item} />
+              <ShareButton item={item} variant="paper" />
               {canAdminDelete && (
                 <button
                   type="button"
                   onClick={handleAdminDelete}
                   aria-label="Eliminar (admin)"
                   title="Eliminar (admin)"
-                  className="hidden items-center gap-1.5 border border-border/70 px-2.5 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-red hover:text-sys-red sm:flex"
+                  className={`hidden min-h-11 items-center gap-1.5 border border-sys-red-paper px-2.5 font-mono text-d11 font-bold tracking-widest text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper-raised sm:flex ${FOCUS_RING}`}
                 >
                   <Trash2 size={11} />
                   ELIMINAR
                 </button>
               )}
-              <span className="sys-label hidden items-center gap-1.5 text-sys-green sm:flex">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-                ONLINE
-              </span>
               <button
                 onClick={close}
                 aria-label="Cerrar"
-                className="flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-muted"
+                className={`flex min-h-11 shrink-0 items-center gap-2 border border-ink bg-ink px-3 font-mono text-d11 font-bold tracking-widest text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
               >
-                <span className="hidden sm:inline">[ESC]</span>
-                <X size={14} className="sm:hidden" />
+                <X size={12} className="sm:hidden" />
                 <span>CERRAR</span>
+                <span className="hidden sm:inline">ESC</span>
               </button>
             </div>
           </div>
@@ -368,17 +369,28 @@ export function OverlayShell({
               child wider than the panel becomes a horizontal scroll and a
               diagonal drag drifts the content sideways into empty space. Pinning
               x-hidden keeps reading strictly vertical (per-type bodies still
-              stack their wide pieces so nothing is clipped). */}
+              stack their wide pieces so nothing is clipped). The literal
+              .overflow-y-auto class is a contract — Reader/Articulo/Listicle
+              scroll instrumentation finds this element via
+              closest('.overflow-y-auto'). */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">{children}</div>
 
-          {/* Mobile-only bottom bar — comments entry + dismiss. The desktop
-              rail tab is hidden < sm, so this is the phone path into comments
-              (works for EVERY overlay type, not just ReaderOverlay). */}
-          <div className="flex shrink-0 border-t border-border bg-base/95 backdrop-blur-sm sm:hidden">
+          {/* Mobile-only bottom bar — 2×2 instrument faceplate. Top row gives
+              phones the save/share seats (the desktop header chips are hidden
+              < sm); bottom row keeps the comments entry + dismiss. The desktop
+              rail tab is hidden < sm, so COMENTARIOS here is the phone path
+              into comments (works for EVERY overlay type, not just Reader). */}
+          <div className="grid shrink-0 grid-cols-2 border-t border-ink bg-paper-raised sm:hidden">
+            <div className="border-b border-r border-ink">
+              <SaveItemButton item={item} seat="bar" />
+            </div>
+            <div className="border-b border-ink">
+              <ShareButton item={item} variant="bar" />
+            </div>
             <button
               onClick={() => setCommentsOpen(true)}
               aria-label="Mostrar comentarios"
-              className="flex flex-1 items-center justify-center gap-2 border-r border-border px-4 py-3 font-mono text-[11px] tracking-widest text-sys-orange transition-colors active:bg-elevated"
+              className={`flex min-h-[44px] items-center justify-center gap-2 border-r border-ink px-2 font-mono text-d11 font-bold tracking-widest text-ink transition-colors active:bg-ink active:text-paper ${FOCUS_RING}`}
             >
               <MessageSquare size={14} />
               <span>
@@ -389,101 +401,45 @@ export function OverlayShell({
             <button
               onClick={close}
               aria-label="Cerrar"
-              className="flex flex-1 items-center justify-center gap-2 px-4 py-3 font-mono text-[11px] tracking-widest text-primary transition-colors active:bg-elevated"
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-2 font-mono text-d11 font-bold tracking-widest text-ink transition-colors active:bg-ink active:text-paper ${FOCUS_RING}`}
             >
               <X size={14} />
               <span>CERRAR</span>
             </button>
           </div>
-
-          {/* Phosphor warm-up flash — one-shot, only on enter */}
-          {!exiting && (
-            <div
-              className="overlay-phosphor-in pointer-events-none absolute inset-0 z-20"
-              style={{
-                background:
-                  'radial-gradient(circle at center, rgba(255,140,0,0.38) 0%, transparent 60%)',
-              }}
-            />
-          )}
         </div>
 
-        {/* Rail button — horizontal "terminal tab" docked to the wrapper's
-            right edge so it always sits on the rightmost surface (panel when
-            closed, comments column when open). It sits mostly ON the surface
-            and pokes out only a small nub, because when the column opens the
-            wrapper grows to 1400px and there's almost no room to the right —
-            a wide tab poking out would clip. Closed: a bright orange CTA that
-            reads as an invitation to talk. Open: recedes to a dark "collapse"
-            control with a chevron. Hidden on mobile — comments are reachable
-            via the bottom-bar COMENTARIOS button instead. */}
+        {/* Rail tab — vertical tab docked to the wrapper's right edge so it
+            always sits on the rightmost surface (panel when closed, comments
+            column when open). Flush-mounted: when the column opens the wrapper
+            grows to 1400px and there's almost no side room, so nothing pokes
+            out. Closed: an acid fill-block with ink text (the whitelisted acid
+            use) that reads as the one invitation to talk. Open: recedes to an
+            ink-filled OCULTAR control. Count renders only when > 0. Hidden on
+            mobile — comments are reachable via the bottom-bar COMENTARIOS
+            button instead. */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
             setCommentsOpen((o) => !o)
           }}
-          onMouseEnter={() => setRailHover(true)}
-          onMouseLeave={() => setRailHover(false)}
           aria-expanded={commentsOpen}
           aria-label={commentsOpen ? 'Ocultar comentarios' : 'Mostrar comentarios'}
-          className="absolute top-1/2 z-30 hidden items-center gap-2.5 whitespace-nowrap border px-4 py-3 font-mono text-[12px] font-semibold uppercase tracking-widest sm:flex"
-          style={{
-            right: 0,
-            borderRadius: 5,
-            // Pokes out a small nub (rest) and settles almost flush on hover —
-            // stays within the ~20px of side room even at the 1400px open width.
-            transform: `translate(${railHover ? 4 : 10}px, -50%)`,
-            borderColor: commentsOpen
-              ? 'rgba(249,115,22,0.55)'
-              : railHover
-              ? '#FFB877'
-              : 'rgba(255,180,110,0.35)',
-            color: commentsOpen ? '#FF9A33' : '#1a0d02',
-            background: commentsOpen
-              ? '#0a0a0a'
-              : railHover
-              ? 'linear-gradient(180deg, #FFA24D 0%, #F97316 100%)'
-              : 'linear-gradient(180deg, #FB8B3C 0%, #F97316 100%)',
-            boxShadow: commentsOpen
-              ? 'none'
-              : railHover
-              ? '0 0 28px rgba(249,115,22,0.6), 0 4px 14px rgba(0,0,0,0.5)'
-              : '0 0 18px rgba(249,115,22,0.42), 0 3px 10px rgba(0,0,0,0.45)',
-            transition:
-              'transform 220ms cubic-bezier(0.22,0.8,0.32,1), box-shadow 220ms, background 220ms, color 220ms, border-color 220ms',
-          }}
+          className={`absolute right-0 top-1/2 z-30 hidden w-11 -translate-y-1/2 items-center justify-center border border-ink py-4 font-mono text-d11 font-bold uppercase tracking-widest transition-colors sm:flex ${
+            commentsOpen
+              ? 'bg-ink text-paper hover:bg-paper hover:text-ink'
+              : 'bg-acid text-ink hover:bg-ink hover:text-acid'
+          } ${FOCUS_RING}`}
+          style={{ writingMode: 'vertical-rl' }}
         >
           {commentsOpen ? (
-            <>
-              <ChevronRight size={15} aria-hidden />
-              <span>Ocultar</span>
-            </>
+            <span>OCULTAR</span>
           ) : (
-            <>
-              <MessageSquare size={15} aria-hidden />
-              <span>Comentarios</span>
-              {!commentsLoading && commentsTotal > 0 && (
-                <span
-                  className="tabular-nums"
-                  style={{
-                    background: 'rgba(0,0,0,0.28)',
-                    color: '#1a0d02',
-                    borderRadius: 3,
-                    padding: '1px 6px',
-                    fontSize: 11,
-                    letterSpacing: '0.08em',
-                  }}
-                >
-                  {commentsTotal}
-                </span>
-              )}
-              {commentsLoading && (
-                <span className="tabular-nums" style={{ opacity: 0.7, fontSize: 11 }}>
-                  ··
-                </span>
-              )}
-            </>
+            <span>
+              COMENTARIOS
+              {commentsTotal > 0 && !commentsLoading ? ` · ${commentsTotal}` : ''}
+            </span>
           )}
         </button>
 
@@ -495,7 +451,7 @@ export function OverlayShell({
             <motion.div
               key="comments-col"
               onClick={(e) => e.stopPropagation()}
-              className="eva-box eva-scanlines hidden min-w-0 flex-col overflow-hidden bg-base sm:flex"
+              className="hidden min-w-0 flex-col overflow-hidden border border-ink bg-paper text-ink sm:flex"
               style={{
                 maxHeight: 'min(92dvh, 900px)',
                 flexGrow: 0,
@@ -531,7 +487,7 @@ export function OverlayShell({
           commentsOpen, e.g. ReaderOverlay's). */}
       {commentsOpen && (
         <div
-          className="overlay-backdrop-in fixed inset-0 z-[60] flex flex-col bg-base sm:hidden"
+          className="overlay-backdrop-in fixed inset-0 z-[60] flex flex-col bg-paper text-ink sm:hidden"
           style={{ height: '100dvh', paddingBottom: 'env(safe-area-inset-bottom)' }}
           role="dialog"
           aria-modal="true"
@@ -549,6 +505,9 @@ export function OverlayShell({
 }
 
 // ── Session item strip ──────────────────────────────────────────────────────
+// Draft/published session banner in the paper grammar: ink chips throughout;
+// the only state accent is the acid dot-badge (≥8px, 1px ink outline) on
+// drafts — no pulsing dots, no glow.
 function SessionItemStrip({
   item,
   onDeleted,
@@ -557,7 +516,6 @@ function SessionItemStrip({
   onDeleted: () => void
 }) {
   const isDraft = item._draftState === 'draft'
-  const accent = isDraft ? '#F97316' : '#4ADE80'
   const label = isDraft
     ? 'DRAFT·SESIÓN · solo visible para ti'
     : 'PUBLICADO·SESIÓN · visible en tu feed local'
@@ -583,34 +541,23 @@ function SessionItemStrip({
   }
 
   return (
-    <div
-      className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2 backdrop-blur-sm"
-      style={{
-        borderColor: accent,
-        backgroundColor: `${accent}10`,
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className={isDraft ? 'h-1.5 w-1.5 animate-pulse rounded-full' : 'h-1.5 w-1.5 rounded-full'}
-          style={{
-            backgroundColor: accent,
-            boxShadow: `0 0 6px ${accent}, 0 0 12px ${accent}66`,
-          }}
-          aria-hidden
-        />
-        <span
-          className="font-mono text-[10px] tracking-widest"
-          style={{ color: accent }}
-        >
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-ink bg-paper-raised px-4 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        {isDraft && (
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 rounded-full border border-ink bg-acid"
+          />
+        )}
+        <span className="truncate font-mono text-d11 font-bold tracking-widest text-ink">
           {label}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={handleEdit}
-          className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/60 hover:text-primary"
+          className={`flex min-h-11 items-center gap-1.5 border border-ink px-2.5 font-mono text-d11 font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
         >
           <Pencil size={11} />
           EDITAR
@@ -618,7 +565,7 @@ function SessionItemStrip({
         <button
           type="button"
           onClick={handleDelete}
-          className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-red hover:text-sys-red"
+          className={`flex min-h-11 items-center gap-1.5 border border-sys-red-paper px-2.5 font-mono text-d11 font-bold tracking-widest text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper-raised ${FOCUS_RING}`}
         >
           <Trash2 size={11} />
           ELIMINAR
@@ -627,14 +574,8 @@ function SessionItemStrip({
           <button
             type="button"
             onClick={handlePublish}
-            className="flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors"
-            style={{
-              borderColor: accent,
-              color: accent,
-              backgroundColor: `${accent}1f`,
-            }}
+            className={`flex min-h-11 items-center gap-1.5 border border-ink bg-ink px-3 font-mono text-d11 font-bold tracking-widest text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
           >
-            <Send size={11} />
             ▶ PUBLICAR AHORA
           </button>
         )}

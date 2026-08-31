@@ -1,26 +1,36 @@
 'use client'
 
-// VibeFluid — a living teletext signal field behind the home feed.
-// (redesign 2026 · SHOWPIECE)
+// VibeFluid — the living teletext signal field, seated in the EL CAMPO bezel.
+// (redesign 2026 · SHOWPIECE — reframed as an instrument in EL PLIEGO Fase B)
 //
-// A full-viewport fixed background: a real-time 2D stable-fluids simulation
-// (GPU Gems ch.38 lineage) run at LOW resolution, then quantized through a
-// teletext block-mosaic display pass. Heat (the dye field) is mapped HARD onto
-// the 11-slot thermal ramp from lib/utils — zero-heat reads as near-black, hot
-// stirs read as brand-orange teletext blocks. The visitor stirs the signal with
-// the pointer; a single slow carrier wave keeps the field alive at rest.
+// A real-time 2D stable-fluids simulation (GPU Gems ch.38 lineage) run at LOW
+// resolution, then quantized through a teletext block-mosaic display pass.
+// Formerly a full-viewport fixed background; now it fills its PARENT — the
+// dark bezel panel rendered by components/fluid/ElCampo.tsx in the left TIPO
+// rail. Dark hardware on the paper sheet: the sim's near-black ground is the
+// inside of the instrument window, so no color re-mapping was needed. Heat
+// (the dye field) is mapped HARD onto the 11-slot thermal ramp from lib/utils
+// — zero-heat reads as near-black, hot stirs read as brand-orange teletext
+// blocks.
+//
+// The panel is a MINIATURE of the viewport — a seismograph of the page: the
+// window-level pointer and lib/heatField's hot-card sources both arrive in
+// normalized viewport coords and are injected at those same normalized sim
+// coords, so a stir anywhere on the sheet registers at the corresponding spot
+// inside the frame.
 //
 // All color comes from VIBE_SLOT_COLORS + black. No RNG anywhere — variation is
 // pointer interaction + the deterministic carrier. Photosensitivity-safe: the
 // only motion is continuous spatial flow; nothing oscillates full-surface
 // luminance (the carrier period is ~20s, far below 3Hz).
 //
-// House perf etiquette (matches CRTShader / ParticleField3D): one WebGLRenderer,
-// DPR clamped to 1, fps-capped, paused on document hidden, a single settled
-// frame under prefers-reduced-motion, full disposal on unmount, NEVER
-// loseContext. Mounted lazily after idle so LCP is untouched.
+// House perf etiquette (matches ParticleField3D): one WebGLRenderer, DPR
+// clamped to 1, fps-capped, paused on document hidden, a single settled frame
+// under prefers-reduced-motion, full disposal on unmount, NEVER loseContext.
+// Capability/idle mount gating lives in ElCampo (the ONE copy) — by the time
+// this component renders, the surface is already deemed capable.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { VIBE_SLOT_COLORS } from '@/lib/utils'
 import { getHeatSources } from '@/lib/heatField'
@@ -166,43 +176,11 @@ function makeDoubleTarget(
 
 export default function VibeFluid() {
   const containerRef = useRef<HTMLCanvasElement | null>(null)
-  // Gate: only mount the heavy sim on capable surfaces (lg+, fine pointer,
-  // deviceMemory >= 4) and after idle. Matches CRTOverlay.pickMode spirit.
-  const [enabled, setEnabled] = useState(false)
+  // NO gating here — ElCampo owns the ONE copy of the mount gates (lg+, fine
+  // pointer, deviceMemory >= 4, idle-deferred dynamic import). Double-gating
+  // would make the field silently dead on surfaces ElCampo already approved.
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    // Capability gate first (cheap, synchronous).
-    if (!window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) {
-      return
-    }
-    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
-    if (typeof mem === 'number' && mem < 4) return
-
-    // Defer mount until the browser is idle so LCP is untouched.
-    let idleHandle = 0
-    let timeoutHandle = 0
-    const ric = (
-      window as Window & {
-        requestIdleCallback?: (cb: () => void) => number
-      }
-    ).requestIdleCallback
-    if (typeof ric === 'function') {
-      idleHandle = ric(() => setEnabled(true))
-    } else {
-      timeoutHandle = window.setTimeout(() => setEnabled(true), 1200)
-    }
-    return () => {
-      const cic = (
-        window as Window & { cancelIdleCallback?: (h: number) => void }
-      ).cancelIdleCallback
-      if (idleHandle && typeof cic === 'function') cic(idleHandle)
-      if (timeoutHandle) window.clearTimeout(timeoutHandle)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!enabled) return
     const canvas = containerRef.current
     if (!canvas) return
 
@@ -397,6 +375,10 @@ export default function VibeFluid() {
 
     // ── Pointer state ────────────────────────────────────────────────────────────
     // Window-level pointer: the visitor stirs the signal. Dye scales with speed.
+    // Coords stay normalized to the VIEWPORT (clientX/innerWidth), NOT the
+    // bezel — the panel is a miniature seismograph of the whole page, so a
+    // stroke anywhere on the sheet stirs the corresponding spot in the frame.
+    // Identical convention to the heatField sources injected below.
     const pointer = {
       x: 0,
       y: 0,
@@ -425,16 +407,23 @@ export default function VibeFluid() {
     }
     window.addEventListener('pointermove', onPointerMove, { passive: true })
 
-    // ── Sizing — offsetWidth/Height (never getBoundingClientRect) ────────────────
+    // ── Sizing — bezel-driven, offsetWidth/Height (never getBoundingClientRect) ──
+    // The canvas fills its parent (absolute inset-0 inside the ElCampo bezel),
+    // so the render target tracks the PARENT box, not the window. Read the
+    // canvas's own offsetWidth/offsetHeight (layout size, transform-immune —
+    // the OverlayShell gBCR trap) and watch the bezel with a ResizeObserver;
+    // RO also fires once on observe, but resize() runs synchronously first so
+    // the target is sized before the first frame.
     const reducedMotionMq = window.matchMedia('(prefers-reduced-motion: reduce)')
     const resize = () => {
-      const w = Math.max(1, window.innerWidth)
-      const h = Math.max(1, window.innerHeight)
+      const w = Math.max(1, canvas.offsetWidth)
+      const h = Math.max(1, canvas.offsetHeight)
       renderer.setSize(w, h, false)
       displayMat.uniforms.u_resolution.value.set(w, h)
     }
     resize()
-    window.addEventListener('resize', resize)
+    const resizeObserver = new ResizeObserver(resize)
+    resizeObserver.observe(canvas.parentElement ?? canvas)
 
     // ── Sim step ──────────────────────────────────────────────────────────────────
     const splat = (
@@ -634,7 +623,7 @@ export default function VibeFluid() {
       running = false
       cancelAnimationFrame(raf)
       window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('resize', resize)
+      resizeObserver.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
       geometry.dispose()
       allMaterials.forEach((m) => m.dispose())
@@ -650,13 +639,13 @@ export default function VibeFluid() {
       // No loseContext() — StrictMode/HMR re-runs this effect; a lost context
       // poisons the canvas for the next mount (CRTShader precedent).
     }
-  }, [enabled])
+  }, [])
 
   return (
     <canvas
       ref={containerRef}
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-0 h-screen w-screen"
+      className="pointer-events-none absolute inset-0 h-full w-full"
     />
   )
 }

@@ -1,13 +1,13 @@
 ---
 type: external
 status: current
-tags: [external, venue, partner]
+tags: [external, venue, franja]
 updated: 2026-04-22
 ---
 
 # Club Japan
 
-> Venue partner. Monterrey 56, Roma Norte, CDMX.
+> Venue franja. Monterrey 56, Roma Norte, CDMX.
 
 ## What
 
@@ -33,4 +33,4 @@ Rat Pack Crew, La Mystica, BLAKK, Morbid Machines.
 
 - [[mockData]]
 - [[Content Types]]
-- [[Partners Ecosystem]]
+- [[Franjas Ecosystem]]

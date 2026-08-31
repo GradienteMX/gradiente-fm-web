@@ -31,9 +31,9 @@ import type { ContentItem, PollChoice } from '@/lib/types'
 //     retries, so a genuinely-new publish still lands — as a NEW row.
 //   - 'edit'   → knowingly editing an existing item. If a row exists, the
 //     caller must own it (created_by), be staff (guide/admin), or be a team
-//     member of the row's partner; otherwise 403. On the edit path the row's
+//     member of the row's franja; otherwise 403. On the edit path the row's
 //     original `created_by` is PRESERVED (never reassigned to the editor).
-// RLS remains the backstop: items_author/staff/partner_team policies re-check
+// RLS remains the backstop: items_author/staff/franja_team policies re-check
 // every write, and a denial surfaces as a clean 403.
 
 type PublishMode = 'create' | 'edit'
@@ -59,22 +59,22 @@ export async function POST(request: NextRequest) {
   // (the ownership check below still applies to every existing-row write).
   const mode: PublishMode = body.mode === 'create' ? 'create' : 'edit'
 
-  // Partner-authoring detection — look up the authenticated user's partnerId
-  // from the users table. If set, this is a partner-team member publishing
-  // and the row gets server-stamped with partner attribution fields. See
-  // wiki/90-Decisions/Partner Authoring.md.
+  // Franja-authoring detection — look up the authenticated user's franjaId
+  // from the users table. If set, this is a franja-team member publishing
+  // and the row gets server-stamped with franja attribution fields. See
+  // wiki/90-Decisions/Franja Authoring.md.
   //
   // The fields are stamped server-side (not trusted from the client payload)
-  // so a non-team user can't fake a partner attribution by setting partnerId
+  // so a non-team user can't fake a franja attribution by setting franjaId
   // in their composer state. Single source of truth: who is the auth user.
   const { data: userRow } = await supabase
     .from('users')
-    .select('partner_id, role')
+    .select('franja_id, role')
     .eq('id', user.id)
     .maybeSingle()
   const typedUserRow =
-    userRow as { partner_id?: string | null; role?: string | null } | null
-  const userPartnerId = typedUserRow?.partner_id ?? null
+    userRow as { franja_id?: string | null; role?: string | null } | null
+  const userFranjaId = typedUserRow?.franja_id ?? null
   const userRole = typedUserRow?.role ?? null
 
   // 1. Upsert the item row. Stamp `created_by` with the current user so the
@@ -82,48 +82,48 @@ export async function POST(request: NextRequest) {
   //    Inline cast bypass for `created_by` — added by migration 0012; remove
   //    after `npx supabase gen types typescript` regenerates database.types.ts.
   //
-  //    When the user is a partner-team member AND the item is one of the
+  //    When the user is a franja-team member AND the item is one of the
   //    scene-voice types (evento/mix/noticia/opinion/listicle), stamp
-  //    partner attribution: partner_id, source='manual:partner', editorial=true.
-  //    The editorial flag makes partner-authored events appear in BOTH the
+  //    franja attribution: franja_id, source='manual:franja', editorial=true.
+  //    The editorial flag makes franja-authored events appear in BOTH the
   //    EventosRail and the main mosaic by default (see Decision note).
-  //    house-voice types (editorial/review/articulo) skip the partner stamp
-  //    even if the user has partnerId set — those publish as personal
+  //    house-voice types (editorial/review/articulo) skip the franja stamp
+  //    even if the user has franjaId set — those publish as personal
   //    contributions, gated by insider role (canCreateContent).
-  const PARTNER_STAMPED_TYPES: ContentItem['type'][] = [
+  const FRANJA_STAMPED_TYPES: ContentItem['type'][] = [
     'evento', 'mix', 'noticia', 'opinion', 'listicle',
   ]
-  // Partner attribution is now an explicit, reversible per-item choice
-  // (attributePartner). It used to default ON, which branded EVERYTHING a
-  // partner-team member published with their promotora and gave no way to
+  // Franja attribution is now an explicit, reversible per-item choice
+  // (attributeFranja). It used to default ON, which branded EVERYTHING a
+  // franja-team member published with their promotora and gave no way to
   // remove it. The three cases:
-  //   - attributePartner === true  → stamp it (partner_id + source + editorial).
-  //   - attributePartner === false → clear any prior stamp (used to turn a
+  //   - attributeFranja === true  → stamp it (franja_id + source + editorial).
+  //   - attributeFranja === false → clear any prior stamp (used to turn a
   //     previously-branded item OFF on re-publish / edit).
   //   - undefined (toggle untouched) → leave as-is. On edit the loaded item
-  //     already carries partner_id, so omitting the override preserves it; new
-  //     items carry no partner_id, so they stay unbranded (opt-in default).
-  const isPartnerStampableType =
-    !!userPartnerId && PARTNER_STAMPED_TYPES.includes(item.type)
-  const stampAsPartner = isPartnerStampableType && item.attributePartner === true
+  //     already carries franja_id, so omitting the override preserves it; new
+  //     items carry no franja_id, so they stay unbranded (opt-in default).
+  const isFranjaStampableType =
+    !!userFranjaId && FRANJA_STAMPED_TYPES.includes(item.type)
+  const stampAsFranja = isFranjaStampableType && item.attributeFranja === true
 
   // The editorial spawn-HP boost is an editor/guide lever. A non-staff
   // authoring role (curator/insider) publishing their OWN personal (non-
-  // partner) item must not self-set it: RLS items_author_insert (migration
+  // franja) item must not self-set it: RLS items_author_insert (migration
   // 0042) enforces editorial=false, so stamp it here in lockstep — otherwise a
   // composer-defaulted editorial:true would 403 the whole publish. Staff
-  // (guide/admin) keep the lever via items_staff_insert; partner-stamped items
-  // get editorial=true from partnerOverrides below (stampAsPartner short-circuits
+  // (guide/admin) keep the lever via items_staff_insert; franja-stamped items
+  // get editorial=true from franjaOverrides below (stampAsFranja short-circuits
   // this, so the two overrides never collide).
   const isStaff = userRole === 'guide' || userRole === 'admin'
-  const forceEditorialOff = !stampAsPartner && !isStaff
+  const forceEditorialOff = !stampAsFranja && !isStaff
 
-  // type='partner' rows back partner orgs and are admin-managed (RLS enforces
+  // type='franja' rows back franja orgs and are admin-managed (RLS enforces
   // this via items_staff_insert since migration 0044); reject early with a
   // clean message rather than leaking a generic RLS violation.
-  if (item.type === 'partner' && userRole !== 'admin') {
+  if (item.type === 'franja' && userRole !== 'admin') {
     return NextResponse.json(
-      { error: 'forbidden', message: 'Solo un administrador puede crear partners.' },
+      { error: 'forbidden', message: 'Solo un administrador puede crear franjas.' },
       { status: 403 }
     )
   }
@@ -136,11 +136,11 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
   const { data: existing } = await admin
     .from('items')
-    .select('id, created_by, partner_id')
+    .select('id, created_by, franja_id')
     .eq('id', item.id)
     .maybeSingle()
   const existingRow = existing as
-    | { id: string; created_by: string | null; partner_id: string | null }
+    | { id: string; created_by: string | null; franja_id: string | null }
     | null
 
   if (mode === 'create' && existingRow) {
@@ -155,13 +155,13 @@ export async function POST(request: NextRequest) {
 
   if (existingRow) {
     // Editing an existing row: the caller must own it, be staff, or be a
-    // team member of the row's partner. RLS enforces the same set, but a
+    // team member of the row's franja. RLS enforces the same set, but a
     // pre-emptive check gives a clean 403 (vs a generic RLS violation) and
     // stops us from stamping over a row we have no business touching.
     const isOwner = existingRow.created_by === user.id
-    const isPartnerTeammate =
-      !!existingRow.partner_id && userPartnerId === existingRow.partner_id
-    if (!isOwner && !isStaff && !isPartnerTeammate) {
+    const isFranjaTeammate =
+      !!existingRow.franja_id && userFranjaId === existingRow.franja_id
+    if (!isOwner && !isStaff && !isFranjaTeammate) {
       return NextResponse.json(
         { error: 'forbidden', message: 'No puedes editar este ítem.' },
         { status: 403 }
@@ -213,14 +213,14 @@ export async function POST(request: NextRequest) {
         seed: false,
       }
 
-  const partnerOverrides = stampAsPartner
+  const franjaOverrides = stampAsFranja
     ? {
-        partner_id: userPartnerId,
-        source: 'manual:partner' as const,
+        franja_id: userFranjaId,
+        source: 'manual:franja' as const,
         editorial: true,
       }
-    : isPartnerStampableType && item.attributePartner === false
-      ? { partner_id: null, source: null }
+    : isFranjaStampableType && item.attributeFranja === false
+      ? { franja_id: null, source: null }
       : {}
   const editorialOverride = forceEditorialOff ? { editorial: false as const } : {}
   const { error: itemError } = await supabase
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
         // silently reassigning ownership (which would drop the item off the
         // real author's "Publicados" surface and their delete permission).
         created_by: existingRow ? existingRow.created_by : user.id,
-        ...partnerOverrides,
+        ...franjaOverrides,
         ...editorialOverride,
       } as unknown as typeof row,
       { onConflict: 'id' }
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
       message: itemError.message,
       details: itemError.details,
       hint: itemError.hint,
-      stampAsPartner,
+      stampAsFranja,
       itemId: item.id,
       itemType: item.type,
     })
