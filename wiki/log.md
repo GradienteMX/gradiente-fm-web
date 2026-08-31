@@ -8,7 +8,7 @@
 
 ---
 
-## 2026-08-30 · INGEST · [[ContentCard]] dos caras — póster en reposo, ficha densa al hover · working tree (sin commit)
+## 2026-08-30 · INGEST · [[ContentCard]] dos caras — póster en reposo, ficha densa al hover · `895aa6b` (pushed to `main`, Vercel desplegando)
 
 Corrección de Iker sobre fase B antes de arrancar D/F: las cards del feed quedaron texto-adelante (imagen chica, leyenda sobrecargada), invirtiendo la ley imagen-adelante — la imagen es lo que atrae al lector y lo que incentiva a quien publica a buscar buen arte. El fix conserva AMBAS lecturas:
 
