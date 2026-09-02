@@ -187,6 +187,10 @@ export function MobileNotice() {
           <button
             type="button"
             onClick={dismiss}
+            // Parity with the paper branch: this panel locks body scroll, and
+            // a locked dialog is exactly where the tap that never lands was
+            // observed. Same hardening, same reason.
+            onPointerUp={dismiss}
             aria-label="Cerrar"
             className={`flex h-11 w-11 items-center justify-center text-panel-text/70 transition-colors hover:text-panel-text ${PANEL_FOCUS_RING}`}
           >
@@ -215,6 +219,7 @@ export function MobileNotice() {
           <button
             type="button"
             onClick={dismiss}
+            onPointerUp={dismiss}
             className={`flex min-h-11 items-center justify-center border border-acid bg-acid px-6 font-mono text-d11 font-bold tracking-widest text-panel transition-colors hover:bg-panel hover:text-acid ${PANEL_FOCUS_RING}`}
           >
             ENTENDIDO
