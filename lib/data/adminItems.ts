@@ -13,6 +13,7 @@ import {
   type HpEventKind,
 } from '@/lib/hp/kinds'
 import { bucketByDay, dayRange, round } from '@/lib/dashboard/scale'
+import { ADMIN_PAGE_SIZE } from '@/lib/admin/paging'
 import type { ContentType } from '@/lib/types'
 
 // ── CONTENIDO — the surveillance surface's reads ────────────────────────────
@@ -133,7 +134,7 @@ export async function listAdminItems(opts: ListOptions = {}): Promise<AdminItemL
     estado = 'all',
     q = '',
     orden = 'hp',
-    limit = 50,
+    limit = ADMIN_PAGE_SIZE,
     offset = 0,
   } = opts
 

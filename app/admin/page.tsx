@@ -14,6 +14,7 @@ import { ModeracionTab } from '@/components/admin/ModeracionTab'
 import { getAllEventsAdmin } from '@/lib/data/items'
 import { getAdminOverview } from '@/lib/data/adminStats'
 import { listAdminItems } from '@/lib/data/adminItems'
+import { clampAdminOffset } from '@/lib/admin/paging'
 import { resolveAdminTab, legacySubTab } from '@/lib/admin/tabs'
 import type { ContentItem, ContentType } from '@/lib/types'
 import type { Database } from '@/lib/supabase/database.types'
@@ -79,6 +80,7 @@ export default async function AdminPage({
     q?: string
     orden?: string
     filtro?: string
+    desde?: string
   }
 }) {
   const supabase = createClient()
@@ -217,8 +219,10 @@ export default async function AdminPage({
             estado: (searchParams.estado as 'all' | 'publicado' | 'borrador') ?? 'all',
             q: searchParams.q ?? '',
             orden: (searchParams.orden as 'hp' | 'reciente' | 'delta' | 'caida') ?? 'hp',
+            offset: clampAdminOffset(searchParams.desde),
           })}
           dias={dias}
+          desde={clampAdminOffset(searchParams.desde)}
           filters={{
             tipo: searchParams.tipo ?? 'all',
             estado: searchParams.estado ?? 'all',
@@ -269,3 +273,4 @@ function clampDays(raw: string | undefined): number {
   if (!Number.isFinite(n)) return 30
   return Math.min(180, Math.max(7, Math.round(n)))
 }
+

@@ -17,7 +17,7 @@ import { ListicleOverlay } from './ListicleOverlay'
 import { FranjaOverlay } from './FranjaOverlay'
 
 export function OverlayRouter() {
-  const { openSlug } = useOverlay()
+  const { openSlug, consumeInspectOpen } = useOverlay()
   // Session-only drafts also need to be openable via the overlay.
   // Look here first; fall back to MOCK_ITEMS for real content.
   const drafts = useDraftItems()
@@ -50,7 +50,11 @@ export function OverlayRouter() {
       // 'click' (card-driven) because URL deep-links land here without a
       // card click. Weighted higher than click since "viewed the overlay"
       // beats "clicked through to it".
-      recordHpEvent(next.id, 'open')
+      //
+      // Unless this open arrived from /admin's CONTENIDO tab with ?inspect=1,
+      // in which case it grants nothing: measuring a piece must not move it.
+      // See the INSPECT_PARAM note in useOverlay.tsx for why.
+      if (!consumeInspectOpen(next.slug)) recordHpEvent(next.id, 'open')
       setMounted(next)
       setExiting(false)
       return
@@ -75,15 +79,17 @@ export function OverlayRouter() {
       // Closing — slug exists but resolves to nothing (e.g. draft was deleted).
       setExiting(true)
     }
-  }, [openSlug, mounted, exiting, resolveSlug])
+  }, [openSlug, mounted, exiting, resolveSlug, consumeInspectOpen])
 
   if (!mounted) return null
 
   const handleExited = () => {
     const next = resolveSlug(openSlug)
     if (next && next.slug !== mounted.slug) {
-      // Swap in the new item after the old one finished exiting.
-      recordHpEvent(next.id, 'open')
+      // Swap in the new item after the old one finished exiting. Same
+      // inspection guard as the fresh-open path above — an admin switching
+      // items inside the overlay must not grant HL either.
+      if (!consumeInspectOpen(next.slug)) recordHpEvent(next.id, 'open')
       setMounted(next)
       setExiting(false)
     } else {

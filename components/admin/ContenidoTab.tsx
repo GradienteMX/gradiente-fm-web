@@ -25,6 +25,7 @@ import {
 import { HlLever, type HlAdjustResult } from '@/components/admin/HlLever'
 import { categoryColorOnLight, typeCode, typeDisplayLabel } from '@/lib/dashboard/palette'
 import { LEDGER_EPOCH } from '@/lib/hp/kinds'
+import { ADMIN_PAGE_SIZE, adminPageCount, adminPageNumber } from '@/lib/admin/paging'
 import type {
   AdminItemDetail,
   AdminItemList,
@@ -118,10 +119,13 @@ type DetailState =
 export function ContenidoTab({
   initial,
   dias,
+  desde,
   filters,
 }: {
   initial: AdminItemList
   dias: number
+  /** Row offset of the current page, from ?desde=. Always a page boundary. */
+  desde: number
   filters: Filters
 }) {
   const router = useRouter()
@@ -139,8 +143,8 @@ export function ContenidoTab({
   // so adopting the second never clobbers a half-typed query.
   const qUrl = useRef(filters.q)
 
-  const pushFilters = useCallback(
-    (next: Partial<Filters>) => {
+  const buildHref = useCallback(
+    (next: Partial<Filters>, offset: number) => {
       const merged = { ...filters, ...next }
       const params = new URLSearchParams()
       params.set('tab', 'contenido')
@@ -151,12 +155,31 @@ export function ContenidoTab({
       if (merged.estado !== 'all') params.set('estado', merged.estado)
       if (merged.orden !== 'hp') params.set('orden', merged.orden)
       if (merged.q.trim()) params.set('q', merged.q.trim())
+      if (offset > 0) params.set('desde', String(offset))
+      return `/admin?${params.toString()}`
+    },
+    [filters, dias],
+  )
+
+  const pushFilters = useCallback(
+    (next: Partial<Filters>) => {
+      // Any filter change returns to the first page. Keeping the offset would
+      // land the operator on page 3 of a result set that may only have one,
+      // which reads as «the filter found nothing».
+      const href = buildHref(next, 0)
       // Record what the URL is about to carry, so the search box's own
       // debounce does not then fire a second, identical replace for it.
-      if (next.q !== undefined) qUrl.current = merged.q.trim()
-      startTransition(() => router.replace(`/admin?${params.toString()}`, { scroll: false }))
+      if (next.q !== undefined) qUrl.current = { ...filters, ...next }.q.trim()
+      startTransition(() => router.replace(href, { scroll: false }))
     },
-    [filters, dias, router],
+    [buildHref, filters, router],
+  )
+
+  const pushPage = useCallback(
+    (offset: number) => {
+      startTransition(() => router.replace(buildHref({}, offset), { scroll: false }))
+    },
+    [buildHref, router],
   )
 
   useEffect(() => {
@@ -251,9 +274,11 @@ export function ContenidoTab({
 
       <Sheet
         title="Corpus"
-        note={`MOSTRANDO ${rows.length} DE ${initial.total}${
-          initial.total > rows.length ? ' · TOPE 50 POR VISTA, AFINA LOS FILTROS' : ''
-        } · VENTANA ${dias}D`}
+        note={
+          initial.total === 0
+            ? `SIN RESULTADOS · VENTANA ${dias}D`
+            : `${desde + 1}–${desde + rows.length} DE ${initial.total} · VENTANA ${dias}D`
+        }
         padded={false}
       >
         {pending && <ShimmerLine />}
@@ -297,6 +322,35 @@ export function ContenidoTab({
               )
             })}
           </SheetTable>
+        )}
+
+        {initial.total > ADMIN_PAGE_SIZE && (
+          // Offset paging, not a cursor: the corpus is ranked in Node after
+          // decaying every row to now (items.hp is a stale snapshot and cannot
+          // be ordered in SQL), so the full ranked set is already in hand and a
+          // cursor would buy nothing. It also means «anterior» is exact rather
+          // than approximate, which a keyset pager over a decaying scalar
+          // could not promise.
+          <nav
+            aria-label="Paginación del corpus"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-ink px-4 py-3"
+          >
+            <InkButton
+              onClick={() => pushPage(Math.max(0, desde - ADMIN_PAGE_SIZE))}
+              disabled={desde === 0 || pending}
+            >
+              ← ANTERIOR
+            </InkButton>
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+              PÁGINA {adminPageNumber(desde)} DE {adminPageCount(initial.total)}
+            </span>
+            <InkButton
+              onClick={() => pushPage(desde + ADMIN_PAGE_SIZE)}
+              disabled={desde + rows.length >= initial.total || pending}
+            >
+              SIGUIENTE →
+            </InkButton>
+          </nav>
         )}
       </Sheet>
 
@@ -612,10 +666,16 @@ function Dossier({
     nominal: k.nominal,
   }))
 
+  // ?inspect=1 opens the overlay WITHOUT emitting the 'open' engagement event.
+  // Without it, inspecting a piece from the surveillance panel added ~1.5 HL to
+  // the very piece being measured — and since an operator opens the items they
+  // are already investigating, the error was correlated with the investigation.
+  // Franjas route to /f/[slug], which never went through OverlayRouter and so
+  // never emitted anything; no flag needed there.
   const publicHref =
     detail.type === 'franja'
       ? `/f/${encodeURIComponent(detail.slug)}`
-      : `/?item=${encodeURIComponent(detail.slug)}`
+      : `/?item=${encodeURIComponent(detail.slug)}&inspect=1`
 
   return (
     <div className="flex flex-col gap-5">
@@ -663,11 +723,13 @@ function Dossier({
                 VER EN PÚBLICO
               </InkButton>
             </span>
-            {/* Real, and the operator has to know it: OverlayRouter fires an
-                'open' event on every ?item= resolution, so inspecting a piece
-                from here adds HL to the piece being inspected. */}
+            {/* The note stays, inverted: the operator still needs to know the
+                panel does not perturb what it measures — an unstated guarantee
+                is one nobody can rely on. Onward navigation INSIDE the overlay
+                is ordinary reading and does count, which is why this says «esta
+                apertura» and not «las aperturas desde aquí». */}
             <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-              ABRIR LA FICHA PÚBLICA REGISTRA UNA APERTURA EN EL HISTORIAL DE ESTA PIEZA
+              ESTA APERTURA NO SUMA HL A LA PIEZA · INSPECCIONAR NO ES LEER
             </span>
           </div>
         </div>
