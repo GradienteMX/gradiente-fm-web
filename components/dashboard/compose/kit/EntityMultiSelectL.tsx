@@ -7,7 +7,8 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── EntityMultiSelectL — pliego fork of forms/shared/EntityMultiSelect ──────
 //
-// The dark original stays byte-untouched (/admin imports it). Logic is
+// The dark original was DELETED in fase F, so this fork is the only copy
+// (/admin imports it too now). Logic is
 // verbatim: type-ahead searches /api/entities (same contract); if the typed
 // name has no match, a "[+ crear]" affordance POSTs a new entity
 // (create-on-the-fly) and links it. Selected entities show as removable

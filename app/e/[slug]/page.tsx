@@ -5,6 +5,16 @@ import { getEntityBySlug } from '@/lib/data/entities'
 import { getItemsByEntity } from '@/lib/data/items'
 import type { EntityKind } from '@/lib/types'
 
+// ── /e/[slug] — the printed FICHA of a scene entity (fase F) ────────────────
+//
+// The public page for an artist / label / venue / promoter — NOT events, and
+// NOT a franja (franjas live at /f/[slug] and never enter a content grid).
+// Converted from the dark terminal register (border-border/bg-surface header,
+// sys-orange link chips, .nge-divider, .sys-label) to the house paper one: a
+// compact document head over the existing <ContentGrid mode="category"> body.
+// ContentGrid picks its paper branch off isPaperRoute(), so `/e` must be added
+// to PAPER_ROUTES for the grid's sweep to match this ground.
+
 export const dynamic = 'force-dynamic'
 
 const KIND_LABEL: Record<EntityKind, string> = {
@@ -13,6 +23,9 @@ const KIND_LABEL: Record<EntityKind, string> = {
   venue: 'VENUE',
   promoter: 'PROMOTORA',
 }
+
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface PageProps {
   params: { slug: string }
@@ -36,60 +49,76 @@ export default async function EntityPage({ params }: PageProps) {
   const items = await getItemsByEntity(entity.id)
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="border border-border bg-surface p-4 lg:p-6">
-        <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] tracking-widest text-muted">
-            {KIND_LABEL[entity.kind]}
-            {entity.city ? ` · ${entity.city}` : ''}
-          </span>
-          <h1 className="font-syne text-3xl font-black text-primary lg:text-4xl">
+    <>
+      <div className="flex flex-col gap-8">
+        {/* ── FICHA — the document head ──────────────────────────────────── */}
+        <header className="flex flex-col gap-3 border-b border-ink pb-6">
+          <p className="font-mono text-d11 font-bold uppercase tracking-widest text-sys-red-paper">
+            FICHA · /E/{entity.slug.toUpperCase()}
+          </p>
+
+          <h1 className="min-w-0 break-words font-syne text-display font-extrabold leading-none text-ink">
             {entity.name}
           </h1>
 
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="inline-flex items-center border border-ink px-2 py-0.5 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              {KIND_LABEL[entity.kind]}
+            </span>
+            {entity.city && (
+              <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                ZONA · {entity.city.toUpperCase()}
+              </span>
+            )}
+          </div>
+
           {entity.bio && (
-            <p className="mt-2 max-w-prose font-grotesk text-sm leading-relaxed text-secondary">
+            <p className="max-w-[58ch] font-grotesk text-d15 leading-relaxed text-ink-soft">
               {entity.bio}
             </p>
           )}
 
           {entity.links && entity.links.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {entity.links.map((l) => (
                 <a
                   key={l.url}
                   href={l.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="border border-border px-2 py-px font-mono text-[10px] tracking-widest text-sys-orange transition-colors hover:bg-white/[0.04]"
+                  className={`inline-flex min-h-11 items-center border border-ink px-2.5 font-mono text-d11 font-bold uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
                 >
                   {l.label} ↗
                 </a>
               ))}
             </div>
           )}
-        </div>
-      </header>
+        </header>
 
-      <section className="flex flex-col gap-3">
-        <div className="nge-divider mb-1">
-          <span className="font-mono text-xs tracking-widest text-primary">
-            APARICIONES
-          </span>
-        </div>
-        <p className="sys-label">
-          {items.length === 0
-            ? 'SIN APARICIONES TODAVÍA'
-            : `${items.length} ${items.length === 1 ? 'PIEZA' : 'PIEZAS'}`}
-        </p>
-        {items.length > 0 && (
-          <ContentGrid
-            items={items}
-            mode="category"
-            emptyLabel="// SIN APARICIONES"
-          />
-        )}
-      </section>
-    </div>
+        {/* ── APARICIONES ───────────────────────────────────────────────── */}
+        <section aria-labelledby="apariciones-head" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-ink pb-2">
+            <h2
+              id="apariciones-head"
+              className="font-syne text-d28 font-extrabold text-ink"
+            >
+              Apariciones
+            </h2>
+            <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+              {items.length === 0
+                ? 'SIN APARICIONES TODAVÍA'
+                : `${items.length} ${items.length === 1 ? 'PIEZA' : 'PIEZAS'}`}
+            </p>
+          </div>
+          {items.length > 0 && (
+            <ContentGrid
+              items={items}
+              mode="category"
+              emptyLabel="SIN APARICIONES EN ESTE RANGO DE VIBE"
+            />
+          )}
+        </section>
+      </div>
+    </>
   )
 }

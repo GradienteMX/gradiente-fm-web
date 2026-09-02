@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuth } from '@/components/auth/useAuth'
@@ -11,6 +12,13 @@ import {
 } from '@/lib/dashboard/localState'
 import type { ActivityRow } from '@/lib/dashboard/activity'
 import type { WidgetId } from '@/lib/dashboard/layout'
+import {
+  DEFAULT_ESPACIO,
+  ESPACIO_PARAM,
+  espacioHref,
+  isEspacioId,
+  type EspacioId,
+} from '@/lib/dashboard/espacios'
 
 // ── StatusStrip — aggregated true counts, first viewport (FINAL_SPEC §3.0) ──
 //
@@ -67,17 +75,49 @@ export function countUnreadActivity(
 // only actions that LEAVE the panel — route pushes, external tabs — carry the
 // ↗ mark. Every strip segment scrolls in-page to its widget, so segments
 // NEVER render ↗; if a future segment navigates away, it must.
+// FASE D: a segment now names the SPACE it lives in as well as its widget.
+//
+// Both are kept, deliberately. /lab/dashboard mounts the real grid WITHOUT the
+// space router, and the lab's standing rule is that it never ejects to prod —
+// so off /dashboard a segment falls back to scrolling its widget in the grid
+// instead of navigating. `widget` is the in-grid anchor; `espacio` is where
+// the segment's material actually lives on the real panel.
+// The panel is four spaces, so a below-fold badge can be behind a tab rather
+// than merely below the fold — the click switches the tab first, then scrolls.
+// `widget` is optional because two spaces (PUBLICAR, MERCADO) are bespoke
+// sheets, not grids, and have no widget anchor to scroll to.
 interface Segment {
   key: string
   label: string
-  widget: WidgetId
+  espacio: EspacioId
+  widget?: WidgetId
   withAcidDot?: boolean
 }
 
 export function StatusStrip() {
   const { currentUser } = useAuth()
   const { activity, drafts, franja, saves } = useDashboardData()
+  const router = useRouter()
+  const search = useSearchParams()
   const uid = currentUser?.id ?? null
+
+  const pathname = usePathname()
+  const onDashboard = pathname === '/dashboard'
+  const rawEspacio = search?.get(ESPACIO_PARAM) ?? null
+  const currentEspacio: EspacioId = isEspacioId(rawEspacio) ? rawEspacio : DEFAULT_ESPACIO
+
+  // On the real panel: switch space first (if needed), then scroll.
+  // scrollToDashWidget already retries on rAF for 4s, which covers the space's
+  // render, so the two steps need no coordination beyond ordering.
+  // On /lab/dashboard there is no space router and ejecting to prod is
+  // forbidden, so the segment just scrolls its widget in the grid.
+  const goTo = (segment: Segment) => {
+    if (onDashboard && segment.espacio !== currentEspacio) {
+      router.push(espacioHref(segment.espacio))
+    }
+    if (segment.widget) scrollToDashWidget(segment.widget)
+    else if (onDashboard) window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const [watermark, setWatermark] = useState<string | null>(null)
   useEffect(() => {
@@ -120,24 +160,34 @@ export function StatusStrip() {
     segments.push({
       key: 'senales',
       label: `${unread} ${unread === 1 ? 'NUEVA SEÑAL' : 'NUEVAS SEÑALES'}`,
+      espacio: 'panel',
       widget: 'actividad',
       withAcidDot: true,
     })
   }
   if (ofertas > 0) {
+    // Offers live in the MERCADO space now; the panel keeps only the door.
     segments.push({
       key: 'ofertas',
       label: `${ofertas} ${ofertas === 1 ? 'OFERTA' : 'OFERTAS'}`,
+      espacio: 'mercado',
       widget: 'mercado',
     })
   }
   if (nextEventLabel) {
-    segments.push({ key: 'proximo', label: `PRÓXIMO: ${nextEventLabel}`, widget: 'agenda' })
+    segments.push({
+      key: 'proximo',
+      label: `PRÓXIMO: ${nextEventLabel}`,
+      espacio: 'panel',
+      widget: 'agenda',
+    })
   }
   if (borradores > 0) {
+    // Drafts are the PUBLICAR space's material — the EN CURSO table.
     segments.push({
       key: 'borradores',
       label: `${borradores} ${borradores === 1 ? 'BORRADOR' : 'BORRADORES'}`,
+      espacio: 'publicar',
       widget: 'crear',
     })
   }
@@ -157,7 +207,7 @@ export function StatusStrip() {
           {/* 44px min-height — interactive element floor (§1.4/§10.13). */}
           <button
             type="button"
-            onClick={() => scrollToDashWidget(segment.widget)}
+            onClick={() => goTo(segment)}
             className="flex min-h-[44px] items-center gap-1.5 font-mono text-d13 tracking-widest text-ink tabular-nums hover:underline hover:underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             data-cue="tick"
           >

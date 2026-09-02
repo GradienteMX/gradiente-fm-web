@@ -20,6 +20,16 @@ import {
 // timestamp, and a CITAR action. Used at the top of both the OP and each
 // reply. The raw post UUID is no longer shown — it was noise; the citing
 // action it used to back is now a labeled button.
+//
+// Fase F chrome: the paper spine pattern shared with the comments column —
+// every chip is ink-bordered with an ink label, and the role/rank/flag hue
+// from lib/mockUsers (tuned for the dark ground: #22D3EE, #C084FC, #FBBF24…)
+// survives ONLY as a small ink-outlined swatch square. The word carries the
+// meaning; the hue never has to pass contrast as type on #EDEBE3.
+
+// House focus grammar — 2px ink outline, offset 2.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface PostHeaderProps {
   authorId: string
@@ -42,19 +52,25 @@ export function PostHeader({ authorId, createdAt, onIdClick }: PostHeaderProps) 
   const created = parseISO(createdAt)
 
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-[10px] tracking-widest">
-      <span
-        className="border px-1.5 py-0.5 text-[9px]"
-        style={{ borderColor: primary.color, color: primary.color }}
-      >
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] tracking-widest text-ink">
+      <span className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] text-ink">
+        <span
+          aria-hidden
+          className="h-2 w-2 shrink-0 border border-ink"
+          style={{ backgroundColor: primary.color }}
+        />
         {primary.label}
       </span>
       {flags.map((flag) => (
         <span
           key={flag}
-          className="border px-1.5 py-0.5 text-[9px]"
-          style={{ borderColor: FLAG_COLOR[flag], color: FLAG_COLOR[flag] }}
+          className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] text-ink"
         >
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 border border-ink"
+            style={{ backgroundColor: FLAG_COLOR[flag] }}
+          />
           {FLAG_LABEL[flag]}
         </span>
       ))}
@@ -65,22 +81,27 @@ export function PostHeader({ authorId, createdAt, onIdClick }: PostHeaderProps) 
         <Link
           href={`/u/${author.username}`}
           onClick={(e) => e.stopPropagation()}
-          className="text-primary transition-colors hover:text-sys-orange"
+          className={`font-bold text-ink underline-offset-2 transition-colors hover:text-sys-red-paper hover:underline ${FOCUS_RING}`}
         >
           @{author.username}
         </Link>
       ) : (
-        <span className="text-primary">@{author?.username ?? 'desconocido'}</span>
+        <span className="font-bold text-ink">@{author?.username ?? 'desconocido'}</span>
       )}
-      {isMe && <span style={{ color: '#F97316' }}>[TÚ]</span>}
-      <span className="tabular-nums text-muted">
+      {isMe && (
+        <span className="inline-flex items-center gap-1 border border-ink px-1.5 py-px text-[9px] font-bold text-ink">
+          <span aria-hidden className="h-2 w-2 shrink-0 border border-ink bg-acid" />
+          TÚ
+        </span>
+      )}
+      <span className="tabular-nums text-ink-faint">
         {format(created, "dd MMM yyyy · HH:mm", { locale: es })}
       </span>
       {onIdClick && (
         <button
           type="button"
           onClick={onIdClick}
-          className="ml-auto flex items-center gap-1 text-muted transition-colors hover:text-sys-orange"
+          className={`ml-auto flex min-h-11 shrink-0 items-center gap-1 border border-ink px-2 text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           aria-label="Citar este post"
           title="Citar"
         >

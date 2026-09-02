@@ -17,9 +17,12 @@ import type { FranjaCluster } from '@/lib/mapa/layout'
 import { KIND_LABEL } from '@/components/overlay/FranjaOverlay'
 import { fmtDateShort } from '@/lib/utils'
 
-const PAPER = '#EDE6D4'
+// House «PLIEGO» values (fase F) — the obi was already paper but off-palette;
+// these now mirror tailwind paper / ink / sys-red-paper exactly. Hex strings
+// because the seal + sheet are painted through inline style on a dark ground.
+const PAPER = '#EDEBE3'
 const INK = '#111111'
-const SEAL = '#C41E1E'
+const SEAL = '#C42B20'
 
 // Franja-customizable ornament within the controlled Gradiente template
 // (spec allows per-franja skinning). Presentation-only strings — not
@@ -320,7 +323,7 @@ export function FranjaObi({
               href={p.franjaUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-fit font-mono text-[13px] font-bold tracking-[0.12em] underline decoration-[#11111133] underline-offset-4 transition-colors hover:text-[#C41E1E]"
+              className="w-fit font-mono text-[13px] font-bold tracking-[0.12em] underline decoration-[#11111133] underline-offset-4 transition-colors hover:text-[#C42B20]"
             >
               {contactLabel(p.franjaUrl)}
             </a>
@@ -389,7 +392,7 @@ export function FranjaObi({
         <div className="flex shrink-0 flex-col justify-end gap-2 lg:mt-auto">
           <Link
             href={`/f/${p.slug}`}
-            className="border border-[#111111] px-3 py-2 text-center font-mono text-[10px] tracking-[0.16em] text-[#111111] transition-colors hover:bg-[#111111] hover:text-[#EDE6D4]"
+            className="border border-[#111111] px-3 py-2 text-center font-mono text-[10px] tracking-[0.16em] text-[#111111] transition-colors hover:bg-[#111111] hover:text-[#EDEBE3]"
           >
             ENTRAR AL DOSSIER →
           </Link>

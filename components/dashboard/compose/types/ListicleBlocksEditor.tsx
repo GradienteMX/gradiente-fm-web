@@ -3,7 +3,7 @@
 // ── ListicleBlocksEditor — pliego port of ListicleForm's BlocksEditor ───────
 //
 // Logic VERBATIM from components/dashboard/forms/ListicleForm.tsx (:256-949 —
-// untouched, /admin depends): the 4-kind block editor (lede / p / divider /
+// DELETED in fase F — this fork is the only copy): the 4-kind block editor (lede / p / divider /
 // track), the collapse index-shifting on insert/remove/move, the InsertRow
 // between-blocks picker, the freshBlock factory with inferNextRank
 // (countdown-aware), justAddedIndex auto-focus. Only the chrome is rebuilt in

@@ -99,9 +99,11 @@ export async function PATCH(
   }
   if (body.marketplace_enabled !== undefined) {
     // Marketplace activation flips visibility on /marketplace + the home
-    // rail. Site admins typically own this lever; franja team can also
-    // toggle it for self-service activation/deactivation. If we ever want
-    // to lock activation to admins only, narrow the gate here.
+    // rail. GOVERNANCE (2026-09, fase D): this is SELF-SERVICE — the franja
+    // team owns its own storefront switch, in the dashboard's MERCADO space
+    // under AJUSTES. The old admin approval queue is retired; site admins
+    // keep only an abuse kill-switch, on /admin, through the admin route.
+    // Do not narrow this gate without moving that UI too.
     patch.marketplace_enabled = !!body.marketplace_enabled
   }
   if (body.marketplace_description !== undefined) {

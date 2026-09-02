@@ -3,7 +3,7 @@
 // ── MixTracklistEditor — pliego port of MixForm's TrackListEditor ───────────
 //
 // Logic VERBATIM from components/dashboard/forms/MixForm.tsx (:579-877 —
-// untouched, /admin depends): parseTracklistLine, row splice/update/remove,
+// DELETED in fase F — this fork is the only copy): parseTracklistLine, row splice/update/remove,
 // bulk-paste panel with live «N pistas detectadas» count, smart multi-line
 // row paste, Enter-on-last-row appends. Only the chrome is rebuilt in the
 // pliego register (cream ground, ink borders, d-scale mono).

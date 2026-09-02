@@ -6,6 +6,7 @@ import { Navigation } from '@/components/Navigation'
 import { VibeSlider } from '@/components/VibeSlider'
 import { GlobalPlayerBar } from '@/components/audio/GlobalPlayerBar'
 import { ChromeFrame } from '@/components/ChromeFrame'
+import { PaperGround } from '@/components/chrome/PaperGround'
 import { VibeProvider } from '@/context/VibeContext'
 import { OverlayProvider } from '@/components/overlay/useOverlay'
 import { OverlayRouter } from '@/components/overlay/OverlayRouter'
@@ -64,6 +65,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SearchProvider>
           <AudioPlayerProvider>
               <Suspense fallback={null}>
+                {/* Ground flip — ONE mount, self-driving off PAPER_ROUTES. */}
+                <PaperGround />
                 <ChromeFrame>
                   <Navigation />
                   <VibeSlider />

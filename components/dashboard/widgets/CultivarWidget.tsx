@@ -373,7 +373,7 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
 
 // ── 409/staleness reconcile (read-only; see onModalClose) ───────────────────
 
-async function reconcileHarvestState(itemId: string): Promise<void> {
+export async function reconcileHarvestState(itemId: string): Promise<void> {
   try {
     const supabase = createClient()
     const { data, error } = await supabase

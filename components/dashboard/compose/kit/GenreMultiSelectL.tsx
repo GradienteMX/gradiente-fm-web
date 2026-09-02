@@ -7,7 +7,7 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── GenreMultiSelectL — pliego fork of forms/shared/Fields.tsx GenreMultiSelect
 //
-// The dark original stays byte-untouched. Logic is verbatim (same `!g.legacy`
+// The dark original was DELETED in fase F; this fork is the only copy. Logic is verbatim (same `!g.legacy`
 // taxonomy filter, same toggle semantics); the chrome follows the pliego
 // compose spec: selected genres render as ink chips ≥30px with a × remove
 // affordance, and AÑADIR opens the picker (filter input + taxonomy chip

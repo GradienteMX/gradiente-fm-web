@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Briefcase, Lock, Search, Shield, ShieldCheck, Star, RotateCcw, Save } from 'lucide-react'
+import { Briefcase, Search, Shield, ShieldCheck, Star, RotateCcw } from 'lucide-react'
 import type { Database } from '@/lib/supabase/database.types'
 import type { FranjaOption } from '@/app/admin/page'
 
@@ -17,20 +17,10 @@ const ROLE_LABEL: Record<Role, string> = {
   admin: 'ADMIN',
 }
 
-const ROLE_COLOR: Record<Role, string> = {
-  user: '#888888',
-  curator: '#22D3EE',  // cyan — list/poll authoring
-  guide: '#A78BFA',    // violet — staff editorial
-  insider: '#FB923C',  // orange — scene-side
-  admin: '#F97316',    // sys-orange — full perms
-}
-
 const ROLE_OPTIONS: Role[] = ['user', 'curator', 'guide', 'insider', 'admin']
 
-const FLAG_COLOR = {
-  mod: '#EF4444',
-  og: '#FACC15',
-} as const
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 // AdminUsersEditor (v3) — two-pane panel editor backed by the real DB.
 //
@@ -42,14 +32,20 @@ const FLAG_COLOR = {
 // Layout:
 //   - Top: stats strip + search + filter chips
 //   - Grid (md+): list pane left, editor panel right (360px)
-//   - List pane shows two sections when no search/filter: //RECIENTES
-//     (last 25 by joined_at, deduped against elevated) and //ELEVADOS
+//   - List pane shows two sections when no search/filter: RECIENTES
+//     (last 25 by joined_at, deduped against elevated) and ELEVADOS
 //     (anyone with a non-default role/flag)
 //   - Editor panel: IdentityBlock + RoleEditor (button row) + MOD/OG
 //     full toggles + FranjaEditor + Save/Reset/Cancel
 //
 // Save button submits all changes in one PATCH, then router.refresh()
 // so the list reflects the change.
+//
+// «EL PLIEGO» chrome (fase F): the per-role hue map is gone — on paper a
+// permission tier is carried by chip WEIGHT (hairline vs ink fill), never by
+// colour, so the pane stays readable and the ink discipline holds. The only
+// coloured register left is sys-red-paper, and it means exactly one thing:
+// consequence (the MOD tombstone power, the self-demotion warning).
 export function AdminUsersEditor({
   elevatedUsers,
   recentUsers,
@@ -159,18 +155,15 @@ export function AdminUsersEditor({
     : `${elevatedUsers.length} con permisos elevados`
 
   return (
-    <section className="flex flex-col gap-4 border border-border p-4">
+    <section className="flex flex-col gap-4 border border-ink bg-paper-raised p-5">
       <header className="flex flex-col gap-1">
-        <span
-          className="font-mono text-[10px] tracking-widest"
-          style={{ color: '#A78BFA' }}
-        >
-          //ROLES + FLAGS
+        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          ROLES + BANDERAS
         </span>
-        <h2 className="font-syne text-xl font-bold leading-tight text-primary">
+        <h2 className="font-syne text-d28 font-extrabold uppercase text-ink">
           Usuarios
         </h2>
-        <p className="font-mono text-[10px] leading-relaxed text-muted">
+        <p className="font-grotesk text-d13 leading-snug text-ink-soft">
           Por defecto se muestran usuarios con permisos elevados + los registros
           más nuevos. Para encontrar a alguien específico, buscá por @username
           o nombre.
@@ -181,53 +174,55 @@ export function AdminUsersEditor({
           (LECTOR → CURATOR → GUIDE / INSIDER → ADMIN), then MOD flag.
           LECTOR has its own prefetched bucket of the 50 most recent
           role='user' rows; chip count is the global lector total from
-          roleCounts. */}
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 border-y border-border/50 px-1 py-2 font-mono text-[10px] tracking-widest">
-        <StatChip label="TODOS" value={totalUsers} color="#888888" active={statFilter === null} onClick={() => setStatFilter(null)} />
-        <StatChip label="LECTOR" value={lectorTotal} color={ROLE_COLOR.user} active={statFilter === 'user'} onClick={() => setStatFilter((s) => (s === 'user' ? null : 'user'))} />
-        <StatChip label="CURATOR" value={roleCounts.curator ?? 0} color={ROLE_COLOR.curator} active={statFilter === 'curator'} onClick={() => setStatFilter((s) => (s === 'curator' ? null : 'curator'))} />
-        <StatChip label="GUIDE" value={roleCounts.guide ?? 0} color={ROLE_COLOR.guide} active={statFilter === 'guide'} onClick={() => setStatFilter((s) => (s === 'guide' ? null : 'guide'))} />
-        <StatChip label="INSIDER" value={roleCounts.insider ?? 0} color={ROLE_COLOR.insider} active={statFilter === 'insider'} onClick={() => setStatFilter((s) => (s === 'insider' ? null : 'insider'))} />
-        <StatChip label="ADMIN" value={roleCounts.admin ?? 0} color={ROLE_COLOR.admin} active={statFilter === 'admin'} onClick={() => setStatFilter((s) => (s === 'admin' ? null : 'admin'))} />
-        <StatChip label="MOD" value={modCount} color="#EF4444" active={statFilter === 'mod'} onClick={() => setStatFilter((s) => (s === 'mod' ? null : 'mod'))} />
+          roleCounts. An active chip is an ink fill — the same latch mark
+          the tab strip uses. */}
+      <div className="flex flex-wrap items-center gap-1.5 border-y border-ink py-2">
+        <StatChip label="TODOS" value={totalUsers} active={statFilter === null} onClick={() => setStatFilter(null)} />
+        <StatChip label="LECTOR" value={lectorTotal} active={statFilter === 'user'} onClick={() => setStatFilter((s) => (s === 'user' ? null : 'user'))} />
+        <StatChip label="CURATOR" value={roleCounts.curator ?? 0} active={statFilter === 'curator'} onClick={() => setStatFilter((s) => (s === 'curator' ? null : 'curator'))} />
+        <StatChip label="GUIDE" value={roleCounts.guide ?? 0} active={statFilter === 'guide'} onClick={() => setStatFilter((s) => (s === 'guide' ? null : 'guide'))} />
+        <StatChip label="INSIDER" value={roleCounts.insider ?? 0} active={statFilter === 'insider'} onClick={() => setStatFilter((s) => (s === 'insider' ? null : 'insider'))} />
+        <StatChip label="ADMIN" value={roleCounts.admin ?? 0} active={statFilter === 'admin'} onClick={() => setStatFilter((s) => (s === 'admin' ? null : 'admin'))} />
+        <StatChip label="MOD" value={modCount} active={statFilter === 'mod'} onClick={() => setStatFilter((s) => (s === 'mod' ? null : 'mod'))} />
       </div>
 
       {lectorOverflow && (
-        <p className="font-mono text-[9px] tracking-widest text-muted">
-          // mostrando los {lectorUsers.length} más recientes de {lectorTotal} — buscá por @username para encontrar a alguien anterior
+        <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          MOSTRANDO LOS {lectorUsers.length} MÁS RECIENTES DE {lectorTotal} — BUSCÁ POR @USERNAME PARA ENCONTRAR A ALGUIEN ANTERIOR
         </p>
       )}
 
       {searchResults && statFilter && (
-        <p className="font-mono text-[9px] tracking-widest text-muted">
-          // búsqueda activa — el filtro de chip está en pausa
+        <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          BÚSQUEDA ACTIVA — EL FILTRO DE CHIP ESTÁ EN PAUSA
         </p>
       )}
 
-      <div className="flex items-center gap-2 border border-border bg-elevated/30 px-2 py-1.5">
-        <Search size={12} strokeWidth={1.5} className="text-muted" />
+      <div className="flex min-h-11 items-center gap-2 border border-ink bg-paper px-3">
+        <Search size={13} strokeWidth={1.5} className="shrink-0 text-ink-faint" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="buscar @username o nombre (mín. 2 caracteres)..."
-          className="flex-1 bg-transparent font-mono text-[11px] text-primary placeholder:text-muted focus:outline-none"
+          placeholder="buscar @username o nombre (mín. 2 caracteres)…"
+          aria-label="Buscar usuarios"
+          className={`min-h-11 flex-1 bg-transparent font-mono text-d13 text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery('')}
             aria-label="Limpiar búsqueda"
-            className="font-mono text-[10px] tracking-widest text-muted hover:text-primary"
+            className={`shrink-0 border border-ink px-2 py-0.5 font-mono text-d13 text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           >
             ×
           </button>
         )}
       </div>
 
-      <div className="flex items-center justify-between font-mono text-[9px] tracking-widest text-muted">
-        <span>// {listLabel}</span>
-        {searching && <span className="text-sys-green">// BUSCANDO...</span>}
+      <div className="flex items-center justify-between font-mono text-d11 uppercase tracking-widest text-ink-faint">
+        <span>{listLabel}</span>
+        {searching && <span className="text-ink">BUSCANDO…</span>}
       </div>
 
       {/* Two-pane layout — list left, editor right. Side-by-side at lg+;
@@ -239,10 +234,10 @@ export function AdminUsersEditor({
         <div className="flex min-w-0 flex-col gap-3">
           {showRecentSection && (
             <>
-              <p className="font-mono text-[9px] tracking-widest text-muted">
-                // recientes ({recentOnlyUsers.length}) — registros más nuevos sin rol elevado
+              <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                RECIENTES ({recentOnlyUsers.length}) — REGISTROS MÁS NUEVOS SIN ROL ELEVADO
               </p>
-              <ul className="flex flex-col divide-y divide-border/50 border border-border/50">
+              <ul className="flex flex-col border border-ink bg-paper">
                 {recentOnlyUsers.map((u) => (
                   <UserListRow
                     key={u.id}
@@ -253,16 +248,16 @@ export function AdminUsersEditor({
                   />
                 ))}
               </ul>
-              <p className="-mb-1 font-mono text-[9px] tracking-widest text-muted">
-                // elevados ({elevatedUsers.length})
+              <p className="-mb-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                ELEVADOS ({elevatedUsers.length})
               </p>
             </>
           )}
 
-          <ul className="flex flex-col divide-y divide-border/50 border border-border/50">
+          <ul className="flex flex-col border border-ink bg-paper">
             {(searchResults ?? filteredElevated).length === 0 && (
-              <li className="px-3 py-4 font-mono text-[11px] text-muted">
-                // sin resultados
+              <li className="px-3 py-4 font-mono text-d13 uppercase tracking-widest text-ink-faint">
+                SIN RESULTADOS
               </li>
             )}
             {(searchResults ?? filteredElevated).map((u) => (
@@ -302,13 +297,11 @@ export function AdminUsersEditor({
 function StatChip({
   label,
   value,
-  color,
   active,
   onClick,
 }: {
   label: string
   value: number
-  color: string
   active: boolean
   onClick: () => void
 }) {
@@ -317,14 +310,13 @@ function StatChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="flex items-center gap-1 border px-2 py-0.5 transition-colors"
-      style={{
-        borderColor: active ? color : 'transparent',
-        backgroundColor: active ? `${color}14` : 'transparent',
-      }}
+      data-cue="latch"
+      className={`inline-flex min-h-11 items-center gap-2 border border-ink px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${FOCUS_RING} ${
+        active ? 'bg-ink text-paper' : 'text-ink-soft hover:bg-ink hover:text-paper'
+      }`}
     >
-      <span style={{ color: active ? color : '#888888' }}>{label}</span>
-      <span style={{ color }} className="tabular-nums">{value}</span>
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
     </button>
   )
 }
@@ -344,52 +336,76 @@ function UserListRow({
 }) {
   const role = user.role as Role
   return (
-    <li>
+    <li className="border-b border-ink/15 last:border-b-0">
       <button
         type="button"
         onClick={onSelect}
-        className={[
-          'flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors',
-          selected ? 'bg-sys-orange/10' : 'hover:bg-white/[0.02]',
-        ].join(' ')}
+        aria-pressed={selected}
+        className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors ${FOCUS_RING} ${
+          selected ? 'bg-ink text-paper' : 'text-ink hover:bg-paper-raised'
+        }`}
       >
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-mono text-[12px] text-primary">
-            @{user.username}
-          </span>
-          <span className="hidden truncate font-mono text-[10px] text-muted sm:inline">
+          <span className="truncate font-mono text-d13">@{user.username}</span>
+          <span className="hidden truncate font-mono text-d11 opacity-70 sm:inline">
             · {user.display_name}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span
-            className="border px-1.5 py-0.5 font-mono text-[9px] tracking-widest"
-            style={{ borderColor: ROLE_COLOR[role], color: ROLE_COLOR[role] }}
-          >
+          {/* Tier by weight: ADMIN is the only fill, so it reads first in a
+              long list without borrowing a hue. Inside a selected (ink) row
+              the chips invert with the row. */}
+          <RowChip inverted={selected} filled={role === 'admin'}>
             {ROLE_LABEL[role]}
-          </span>
+          </RowChip>
+          {/* MOD is the tombstone power — the one consequence register. */}
           {user.is_mod && (
-            <span className="border px-1.5 py-0.5 font-mono text-[9px] tracking-widest" style={{ borderColor: FLAG_COLOR.mod, color: FLAG_COLOR.mod }}>
+            <RowChip inverted={selected} tone="red">
               MOD
-            </span>
+            </RowChip>
           )}
-          {user.is_og && (
-            <span className="border px-1.5 py-0.5 font-mono text-[9px] tracking-widest" style={{ borderColor: FLAG_COLOR.og, color: FLAG_COLOR.og }}>
-              OG
-            </span>
-          )}
+          {user.is_og && <RowChip inverted={selected}>OG</RowChip>}
           {franjaTitle && (
             <span
-              className="hidden max-w-[140px] truncate border border-border px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-muted md:inline"
+              className={`hidden max-w-[140px] truncate border px-1.5 py-0.5 font-mono text-d11 uppercase tracking-widest md:inline ${
+                selected ? 'border-paper/50 text-paper' : 'border-ink/25 text-ink-faint'
+              }`}
               title={franjaTitle}
             >
               {user.franja_admin ? '★ ' : ''}{franjaTitle}
             </span>
           )}
-          <span aria-hidden className="font-mono text-[10px] text-muted">›</span>
+          <span aria-hidden className="font-mono text-d11 opacity-60">›</span>
         </div>
       </button>
     </li>
+  )
+}
+
+function RowChip({
+  children,
+  filled,
+  tone = 'ink',
+  inverted,
+}: {
+  children: React.ReactNode
+  filled?: boolean
+  tone?: 'ink' | 'red'
+  inverted?: boolean
+}) {
+  const cls = inverted
+    ? 'border-paper text-paper'
+    : tone === 'red'
+    ? 'border-sys-red-paper text-sys-red-paper'
+    : filled
+    ? 'border-ink bg-ink text-paper'
+    : 'border-ink text-ink'
+  return (
+    <span
+      className={`whitespace-nowrap border px-1.5 py-0.5 font-mono text-d11 font-bold uppercase tracking-widest ${cls}`}
+    >
+      {children}
+    </span>
   )
 }
 
@@ -397,11 +413,11 @@ function UserListRow({
 
 function EmptyEditor({ count }: { count: number }) {
   return (
-    <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 px-4 py-8 font-mono text-[11px] leading-relaxed text-muted">
-      <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
-        //SIN·SELECCIÓN
+    <div className="flex flex-col items-start gap-2 border border-dashed border-ink/45 bg-paper px-4 py-8">
+      <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+        SIN SELECCIÓN
       </span>
-      <p>
+      <p className="font-grotesk text-d13 leading-snug text-ink-soft">
         Elegí un usuario de la lista para editar su rol y banderas. Hay {count}{' '}
         usuarios registrados.
       </p>
@@ -484,32 +500,30 @@ function UserEditorPanel({
   }
 
   return (
-    <div className="flex flex-col border border-border bg-elevated/30">
-      <header className="flex items-center justify-between border-b border-border bg-elevated/60 px-3 py-2 font-mono text-[10px] tracking-widest text-secondary">
-        <span className="flex items-center gap-2">
-          <Lock size={12} strokeWidth={1.5} className="text-sys-orange" />
-          EDITOR · @{user.username}
-        </span>
-        <div className="flex items-center gap-2">
-          {dirty && !submitting && (
-            <button
-              type="button"
-              onClick={reset}
-              className="flex items-center gap-1 border border-border px-2 py-0.5 text-[9px] text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
-              title="Descartar cambios"
-            >
-              <RotateCcw size={10} strokeWidth={1.5} /> RESETEAR
-            </button>
-          )}
+    <div className="flex flex-col border border-ink bg-paper">
+      {/* Head — Syne title + chips (the DashPopup anatomy). */}
+      <header className="flex flex-wrap items-center gap-2 border-b border-ink px-3 py-2">
+        <h3 className="min-w-0 flex-1 truncate font-syne text-d18 font-extrabold uppercase text-ink">
+          @{user.username}
+        </h3>
+        {dirty && !submitting && (
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Cerrar editor"
-            className="border border-border px-2 py-0.5 text-[10px] text-muted transition-colors hover:border-white/40 hover:text-primary"
+            onClick={reset}
+            title="Descartar cambios"
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 border border-ink px-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           >
-            ×
+            <RotateCcw size={11} strokeWidth={1.5} /> RESETEAR
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar editor"
+          className={`inline-flex min-h-11 shrink-0 items-center border border-ink px-3 font-mono text-d13 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
+        >
+          CERRAR
+        </button>
       </header>
 
       <div className="flex flex-col gap-4 p-4">
@@ -525,7 +539,6 @@ function UserEditorPanel({
         <FlagToggle
           label="MOD"
           description="Capacidad de borrar comentarios y hilos del foro. Independiente del rol."
-          color={FLAG_COLOR.mod}
           icon={<Shield size={12} strokeWidth={1.5} />}
           checked={isMod}
           onChange={setIsMod}
@@ -534,7 +547,6 @@ function UserEditorPanel({
         <FlagToggle
           label="OG"
           description="Insignia cosmética para registros de la primera oleada. Sin capacidad asociada."
-          color={FLAG_COLOR.og}
           icon={<Star size={12} strokeWidth={1.5} />}
           checked={isOg}
           onChange={setIsOg}
@@ -553,34 +565,34 @@ function UserEditorPanel({
         />
 
         {wouldDemoteSelf && (
-          <p
-            className="border border-dashed px-3 py-2 font-mono text-[10px] leading-relaxed"
-            style={{ borderColor: '#E63329', color: '#9CA3AF' }}
-          >
-            //AUTOEDICIÓN — te estás quitando el rol{' '}
-            <span style={{ color: '#F87171' }}>admin</span>. Perderás acceso a{' '}
-            /admin tras guardar. Solo otro admin (o un cambio en Studio) puede
-            revertirlo.
+          <p className="border border-sys-red-paper px-3 py-2 font-grotesk text-d13 leading-relaxed text-ink">
+            <span className="font-mono font-bold uppercase tracking-widest text-sys-red-paper">
+              AUTOEDICIÓN ·{' '}
+            </span>
+            te estás quitando el rol admin. Perderás acceso a /admin tras
+            guardar. Solo otro admin (o un cambio en Studio) puede revertirlo.
           </p>
         )}
 
         {error && (
-          <p className="font-mono text-[10px] text-sys-red">// {error}</p>
+          <p className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper">
+            ⚠ {error}
+          </p>
         )}
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {/* Primary own-action — the one acid fill-block of the pane. */}
           <button
             type="button"
             onClick={submit}
             disabled={submitting || !dirty}
-            className="flex items-center gap-1.5 border border-sys-green px-3 py-1.5 font-mono text-[10px] tracking-widest text-sys-green transition-colors hover:bg-sys-green/10 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`inline-flex min-h-11 items-center gap-2 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 ${FOCUS_RING}`}
           >
-            <Save size={10} strokeWidth={1.5} />
-            {submitting ? 'GUARDANDO...' : 'GUARDAR'}
+            {submitting ? 'GUARDANDO…' : 'GUARDAR'}
           </button>
           {savedFlash && (
-            <span className="font-mono text-[10px] tracking-widest text-sys-green">
-              ◉ GUARDADO
+            <span className="font-mono text-d13 font-bold uppercase tracking-widest text-ink">
+              ✓ GUARDADO
             </span>
           )}
         </div>
@@ -593,7 +605,7 @@ function UserEditorPanel({
 
 function IdentityBlock({ user }: { user: UserRow }) {
   return (
-    <div className="flex flex-col gap-1 border border-border/60 bg-black/30 p-3 font-mono text-[10px] leading-relaxed text-muted">
+    <div className="flex flex-col border border-ink bg-paper-raised px-3 py-2">
       <Row label="DISPLAY" value={user.display_name} />
       <Row label="USERNAME" value={`@${user.username}`} />
       <Row label="ID" value={user.id} mono />
@@ -604,10 +616,12 @@ function IdentityBlock({ user }: { user: UserRow }) {
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex min-w-0 items-baseline gap-2">
-      <span className="w-20 shrink-0 tracking-widest text-secondary/60">{label}</span>
+    <div className="flex min-w-0 items-baseline gap-2 border-b border-ink/15 py-1 last:border-b-0">
+      <span className="w-20 shrink-0 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+        {label}
+      </span>
       <span
-        className={`min-w-0 flex-1 text-secondary ${mono ? 'truncate' : ''}`}
+        className={`min-w-0 flex-1 font-mono text-d13 text-ink ${mono ? 'truncate' : ''}`}
         title={mono ? value : undefined}
       >
         {value}
@@ -634,40 +648,37 @@ function RoleEditor({
   // intent: warn loudly, don't lock.
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 font-mono text-[10px] tracking-widest text-secondary">
+      <legend className="mb-1 font-mono text-d11 uppercase tracking-widest text-ink-soft">
         ROL · CREATION TIER
       </legend>
       <div className="flex flex-wrap gap-1.5">
         {ROLE_OPTIONS.map((role) => {
           const active = value === role
-          const color = ROLE_COLOR[role]
           return (
             <button
               key={role}
               type="button"
               onClick={() => onChange(role)}
-              className="flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] tracking-widest transition-colors"
-              style={{
-                borderColor: active ? color : '#3a3a3a',
-                color: active ? color : '#9CA3AF',
-                backgroundColor: active ? `${color}1a` : 'transparent',
-              }}
+              aria-pressed={active}
+              data-cue="latch"
               title={ROLE_LABEL[role]}
+              className={`inline-flex min-h-11 items-center border border-ink px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${FOCUS_RING} ${
+                active ? 'bg-ink text-paper' : 'text-ink-soft hover:bg-ink hover:text-paper'
+              }`}
             >
-              <Save size={10} strokeWidth={1.5} className={active ? '' : 'opacity-0'} />
               {ROLE_LABEL[role]}
             </button>
           )
         })}
       </div>
-      <p className="font-mono text-[10px] leading-relaxed text-muted">
-        Capacidad de creación. <span style={{ color: ROLE_COLOR.guide }}>guide</span> y{' '}
-        <span style={{ color: ROLE_COLOR.insider }}>insider</span> son hermanos
-        (mismo poder, distinto framing editorial).
+      <p className="font-grotesk text-d13 leading-snug text-ink-soft">
+        Capacidad de creación. <span className="text-ink">guide</span> e{' '}
+        <span className="text-ink">insider</span> son hermanos (mismo poder,
+        distinto framing editorial).
       </p>
       {isSelf && initialRole === 'admin' && value === 'admin' && (
-        <p className="font-mono text-[10px] leading-relaxed text-muted">
-          // editando tu propio rol — puedes auto-degradarte pero te avisaremos antes de guardar
+        <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          EDITANDO TU PROPIO ROL — PUEDES AUTO-DEGRADARTE PERO TE AVISAREMOS ANTES DE GUARDAR
         </p>
       )}
     </fieldset>
@@ -679,22 +690,20 @@ function RoleEditor({
 function FlagToggle({
   label,
   description,
-  color,
   icon,
   checked,
   onChange,
 }: {
   label: string
   description: string
-  color: string
   icon: React.ReactNode
   checked: boolean
   onChange: (next: boolean) => void
 }) {
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="mb-1 flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-secondary">
-        <span style={{ color }}>{icon}</span>
+      <legend className="mb-1 flex items-center gap-1.5 font-mono text-d11 uppercase tracking-widest text-ink-soft">
+        <span aria-hidden>{icon}</span>
         BANDERA · {label}
       </legend>
       <button
@@ -703,29 +712,22 @@ function FlagToggle({
         aria-checked={checked}
         aria-label={`Activar bandera ${label}`}
         onClick={() => onChange(!checked)}
-        className="flex items-center gap-2 border px-3 py-2 font-mono text-[11px] transition-colors"
-        style={{
-          borderColor: checked ? color : '#3a3a3a',
-          color: checked ? color : '#9CA3AF',
-          backgroundColor: checked ? `${color}14` : 'transparent',
-        }}
+        data-cue="latch"
+        className={`flex min-h-11 items-center gap-2 border border-ink px-3 font-mono text-d13 font-bold uppercase tracking-widest transition-colors ${FOCUS_RING} ${
+          checked ? 'bg-ink text-paper' : 'text-ink-soft hover:bg-paper-raised hover:text-ink'
+        }`}
       >
         <span
           aria-hidden
-          className="grid h-4 w-4 place-items-center border"
-          style={{
-            borderColor: checked ? color : '#3a3a3a',
-            backgroundColor: checked ? color : 'transparent',
-            color: '#0a0a0a',
-          }}
+          className={`grid h-4 w-4 place-items-center border ${
+            checked ? 'border-paper bg-paper text-ink' : 'border-ink'
+          }`}
         >
           {checked ? '✓' : ''}
         </span>
-        <span className="tracking-widest">
-          {checked ? 'ACTIVADA' : 'DESACTIVADA'}
-        </span>
+        <span>{checked ? 'ACTIVADA' : 'DESACTIVADA'}</span>
       </button>
-      <p className="font-mono text-[10px] leading-relaxed text-muted">{description}</p>
+      <p className="font-grotesk text-d13 leading-snug text-ink-soft">{description}</p>
     </fieldset>
   )
 }
@@ -747,18 +749,18 @@ function FranjaEditor({
 }) {
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-secondary">
-        <Briefcase size={12} strokeWidth={1.5} className="text-sys-orange" />
+      <legend className="mb-1 flex items-center gap-1.5 font-mono text-d11 uppercase tracking-widest text-ink-soft">
+        <Briefcase size={12} strokeWidth={1.5} aria-hidden />
         FRANJA · TEAM
       </legend>
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-[9px] tracking-widest text-muted">
+        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
           PERTENECE A
         </span>
         <select
           value={franjaId}
           onChange={(e) => onFranjaChange(e.target.value)}
-          className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-sys-orange focus:outline-none"
+          className={`min-h-11 border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors focus:bg-white ${FOCUS_RING}`}
         >
           <option value="">— ninguno —</option>
           {franjas.map((p) => (
@@ -769,24 +771,23 @@ function FranjaEditor({
         </select>
       </label>
 
-      <label className="flex items-center gap-2 font-mono text-[10px] tracking-widest">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-d13 uppercase tracking-widest">
         <input
           type="checkbox"
           disabled={!franjaId}
           checked={franjaAdmin}
           onChange={(e) => onFranjaAdminChange(e.target.checked)}
-          className="accent-sys-orange disabled:opacity-30"
+          className={`h-4 w-4 accent-ink disabled:opacity-30 ${FOCUS_RING}`}
         />
         <ShieldCheck
-          size={12}
+          size={13}
           strokeWidth={1.5}
-          className={franjaAdmin ? 'text-sys-orange' : 'text-muted'}
+          aria-hidden
+          className={franjaAdmin ? 'text-ink' : 'text-ink-faint'}
         />
-        <span className={franjaId ? 'text-secondary' : 'text-muted/50'}>
-          FRANJA · ADMIN
-        </span>
+        <span className={franjaId ? 'text-ink' : 'text-ink-faint'}>FRANJA · ADMIN</span>
       </label>
-      <p className="font-mono text-[10px] leading-relaxed text-muted">
+      <p className="font-grotesk text-d13 leading-snug text-ink-soft">
         El franja-admin puede agregar y quitar miembros de su propio equipo
         desde la sección del franja. No afecta otros franjas.
       </p>

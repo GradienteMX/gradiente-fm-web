@@ -10,6 +10,59 @@ import type { ListingComment } from '@/lib/types'
 // Lightweight comment thread for a marketplace listing — buyers ask, the
 // seller replies. Flat with one level of replies; seller comments are badged.
 // No reactions / no rank effects (see migration 0033).
+//
+// «EL PLIEGO» fase F. Rendered only inside [[MarketplaceListingDetail]], so it
+// takes the same `variant` its host does: `paper` (default) is the house
+// sheet; `dark` is the inverted ink panel for a host whose ground stays dark
+// (/mapa). Same anatomy either way — hairlines, mono labels, no glow.
+
+type SkinName = 'paper' | 'dark'
+
+interface Skin {
+  rule: string
+  label: string
+  author: string
+  body: string
+  sellerBadge: string
+  destructive: string
+  field: string
+  cta: string
+  ghost: string
+  focus: string
+}
+
+const SKINS: Record<SkinName, Skin> = {
+  paper: {
+    rule: 'border-ink',
+    label: 'text-ink-faint',
+    author: 'text-ink',
+    body: 'text-ink-soft',
+    sellerBadge: 'bg-ink text-paper',
+    destructive: 'text-ink-faint hover:text-sys-red-paper',
+    field:
+      'border border-ink bg-paper-raised text-ink placeholder:text-ink-faint focus:border-ink',
+    cta: 'border border-ink bg-ink text-paper hover:bg-paper hover:text-ink',
+    ghost: 'border border-ink text-ink hover:bg-ink hover:text-paper',
+    focus: 'focus-visible:outline-ink',
+  },
+  dark: {
+    rule: 'border-panel-text/40',
+    label: 'text-panel-text/60',
+    author: 'text-panel-text',
+    body: 'text-panel-text/80',
+    sellerBadge: 'bg-panel-text text-ink',
+    destructive: 'text-panel-text/60 hover:text-sys-red-paper',
+    field:
+      'border border-panel-text/40 bg-ink text-panel-text placeholder:text-panel-text/50 focus:border-panel-text',
+    cta: 'border border-panel-text bg-panel-text text-ink hover:bg-panel hover:text-panel-text',
+    ghost:
+      'border border-panel-text/50 text-panel-text hover:bg-panel-text hover:text-ink',
+    focus: 'focus-visible:outline-panel-text',
+  },
+}
+
+const FOCUS_BASE =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2'
 
 function ago(iso: string): string {
   try {
@@ -19,7 +72,14 @@ function ago(iso: string): string {
   }
 }
 
-export function ListingComments({ listingId }: { listingId: string }) {
+export function ListingComments({
+  listingId,
+  variant = 'paper',
+}: {
+  listingId: string
+  variant?: SkinName
+}) {
+  const skin = SKINS[variant]
   const { isAuthed, currentUser, openLogin } = useAuth()
   const [comments, setComments] = useState<ListingComment[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,21 +136,20 @@ export function ListingComments({ listingId }: { listingId: string }) {
   const repliesOf = (id: string) => comments.filter((c) => c.parentId === id)
 
   const Row = ({ c, reply }: { c: ListingComment; reply?: boolean }) => (
-    <div className={reply ? 'ml-4 border-l border-border pl-3' : ''}>
+    <div className={reply ? `ml-4 border-l pl-3 ${skin.rule}` : ''}>
       <div className="flex items-baseline justify-between gap-2">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] tracking-widest text-primary">
+          <span className={`font-mono text-d11 font-bold tracking-widest ${skin.author}`}>
             @{c.author.username}
           </span>
           {c.isSeller && (
             <span
-              className="border px-1 py-px font-mono text-[8px] tracking-widest"
-              style={{ borderColor: '#FBBF24', color: '#FBBF24' }}
+              className={`px-1 py-px font-mono text-d11 font-bold uppercase tracking-widest ${skin.sellerBadge}`}
             >
               VENDEDOR
             </span>
           )}
-          <span className="font-mono text-[8px] tracking-widest text-muted">
+          <span className={`font-mono text-d11 uppercase tracking-widest ${skin.label}`}>
             {ago(c.createdAt)}
           </span>
         </div>
@@ -99,20 +158,22 @@ export function ListingComments({ listingId }: { listingId: string }) {
             type="button"
             onClick={() => remove(c.id)}
             aria-label="Borrar comentario"
-            className="text-muted transition-colors hover:text-sys-red"
+            // 44px target on phones, compact on desktop — same concession
+            // CommentsColumn makes for inline controls inside dense text.
+            className={`flex min-h-11 shrink-0 items-center px-1 transition-colors sm:min-h-0 ${skin.destructive} ${FOCUS_BASE} ${skin.focus}`}
           >
             <Trash2 size={11} />
           </button>
         )}
       </div>
-      <p className="mt-0.5 whitespace-pre-line font-mono text-[11px] leading-relaxed text-secondary">
+      <p className={`mt-0.5 whitespace-pre-line font-grotesk text-d13 leading-relaxed ${skin.body}`}>
         {c.body}
       </p>
       {!reply && isAuthed && (
         <button
           type="button"
           onClick={() => setReplyTo(c)}
-          className="mt-1 font-mono text-[9px] tracking-widest text-muted transition-colors hover:text-sys-orange"
+          className={`mt-1 flex min-h-11 w-fit items-center px-2 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${skin.ghost} ${FOCUS_BASE} ${skin.focus}`}
         >
           RESPONDER
         </button>
@@ -121,15 +182,15 @@ export function ListingComments({ listingId }: { listingId: string }) {
   )
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border/40 pt-3">
-      <span className="font-mono text-[9px] tracking-widest text-muted">
+    <div className={`flex flex-col gap-3 border-t pt-3 ${skin.rule}`}>
+      <span className={`font-mono text-d11 font-bold uppercase tracking-widest ${skin.label}`}>
         PREGUNTAS · COMENTARIOS{comments.length > 0 ? ` (${comments.length})` : ''}
       </span>
 
       {loading ? (
-        <span className="font-mono text-[10px] text-muted">Cargando…</span>
+        <span className={`font-grotesk text-d13 ${skin.label}`}>Cargando…</span>
       ) : tops.length === 0 ? (
-        <span className="font-mono text-[10px] text-muted">
+        <span className={`font-grotesk text-d13 ${skin.label}`}>
           Sé el primero en preguntar.
         </span>
       ) : (
@@ -149,12 +210,15 @@ export function ListingComments({ listingId }: { listingId: string }) {
       {isAuthed ? (
         <div className="flex flex-col gap-1.5">
           {replyTo && (
-            <span className="flex items-center gap-2 font-mono text-[9px] tracking-widest text-muted">
+            <span
+              className={`flex items-center gap-2 font-mono text-d11 uppercase tracking-widest ${skin.label}`}
+            >
               RESPONDIENDO A @{replyTo.author.username}
               <button
                 type="button"
                 onClick={() => setReplyTo(null)}
-                className="text-muted hover:text-sys-red"
+                aria-label="Cancelar respuesta"
+                className={`flex min-h-11 items-center px-1 transition-colors sm:min-h-0 ${skin.destructive} ${FOCUS_BASE} ${skin.focus}`}
               >
                 ×
               </button>
@@ -165,14 +229,13 @@ export function ListingComments({ listingId }: { listingId: string }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Pregunta por la condición, el envío, regatea…"
-            className="w-full resize-none border bg-base px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted/60 focus:border-sys-orange focus:outline-none"
-            style={{ borderColor: '#242424' }}
+            className={`w-full resize-none px-2 py-1.5 font-grotesk text-d13 focus:outline-none ${skin.field}`}
           />
           <button
             type="button"
             onClick={post}
             disabled={!body.trim() || posting}
-            className="self-end border border-sys-orange bg-sys-orange/10 px-3 py-1 font-mono text-[10px] tracking-widest text-sys-orange transition-colors hover:bg-sys-orange/20 disabled:opacity-40"
+            className={`flex min-h-11 items-center self-end px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors disabled:opacity-40 ${skin.cta} ${FOCUS_BASE} ${skin.focus}`}
           >
             {posting ? 'ENVIANDO…' : 'ENVIAR'}
           </button>
@@ -181,9 +244,9 @@ export function ListingComments({ listingId }: { listingId: string }) {
         <button
           type="button"
           onClick={() => openLogin()}
-          className="self-start font-mono text-[10px] tracking-widest text-sys-orange transition-colors hover:text-primary"
+          className={`flex min-h-11 items-center self-start px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${skin.ghost} ${FOCUS_BASE} ${skin.focus}`}
         >
-          ▶ Inicia sesión para comentar
+          INICIA SESIÓN PARA COMENTAR
         </button>
       )}
     </div>

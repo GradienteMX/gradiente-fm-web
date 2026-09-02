@@ -6,7 +6,8 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── VibeFieldL — pliego fork of forms/shared/Fields.tsx VibeField ───────────
 //
-// The dark original stays byte-untouched for /admin. This fork copies the
+// The dark original was DELETED in fase F; this fork is the only copy.
+// It copies the
 // two-thumb drag machine VERBATIM — the commitment gestures are deliberate
 // (vibe-check friction is intentional; never simplify to a plain slider) —
 // and restyles only the chrome: thermal ramp ticks on paper, ink thumbs,

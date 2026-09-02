@@ -3,7 +3,7 @@
 // ── NoticiaCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for noticia ───
 //
 // State preamble copied VERBATIM from the dark NoticiaForm
-// (components/dashboard/forms/NoticiaForm.tsx — untouched, /admin depends):
+// (components/dashboard/forms/NoticiaForm.tsx — DELETED in fase F; this fork is now the only copy):
 // same emptyDraft, same DRAFT_KEY, same slug effect, same workbench wiring,
 // same publish recipe (requestPublish → setCategoryFilter(null) → openConfirm).
 // Only the JSX is pliego: numbered PliegoSection cards inside ComposeLayout

@@ -23,6 +23,9 @@ const FEED_LIMIT = 20
 // sessionStorage-backed mock layer that couldn't see admin-created rows.
 //
 // Same idiom as the foro catalog (`?thread=` URL-driven overlay).
+//
+// «EL PLIEGO» fase F: paper ground. Section headers are ink-ruled mono
+// bands; the tiles below carry their own frames. No EVA chrome, no amber.
 
 export function MarketplaceCatalog({ franjas }: { franjas: ContentItem[] }) {
   const search = useSearchParams()
@@ -108,9 +111,9 @@ export function MarketplaceCatalog({ franjas }: { franjas: ContentItem[] }) {
       {/* ── Item feed — buyers see products first ── */}
       {feed.length > 0 && (
         <section className="flex flex-col gap-4">
-          <header className="flex items-baseline justify-between gap-3 border-b border-border pb-3 font-mono text-[10px] tracking-widest text-muted">
-            <span style={{ color: '#FBBF24' }}>MERCADO · GRADIENTE</span>
-            <span className="tabular-nums">
+          <header className="flex items-baseline justify-between gap-3 border-b border-ink pb-2 font-mono text-d11 font-bold uppercase tracking-widest">
+            <span className="text-ink">PIEZAS</span>
+            <span className="tabular-nums text-ink-soft">
               {feed.length} ITEM{feed.length === 1 ? '' : 'S'}
             </span>
           </header>
@@ -130,22 +133,22 @@ export function MarketplaceCatalog({ franjas }: { franjas: ContentItem[] }) {
 
       {/* ── Stores ── */}
       <section className="flex flex-col gap-4">
-        <header className="flex items-baseline justify-between gap-3 border-b border-border pb-3 font-mono text-[10px] tracking-widest text-muted">
-          <span style={{ color: '#FBBF24' }}>TIENDAS</span>
-          <span className="tabular-nums">
+        <header className="flex items-baseline justify-between gap-3 border-b border-ink pb-2 font-mono text-d11 font-bold uppercase tracking-widest">
+          <span className="text-ink">TIENDAS</span>
+          <span className="tabular-nums text-ink-soft">
             {sorted.length} FRANJA{sorted.length === 1 ? '' : 'S'}
           </span>
         </header>
 
         {sorted.length === 0 ? (
-          <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 p-6 font-mono text-[11px] text-muted">
-            <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
-              //SIN·FRANJAS·ACTIVOS
+          <div className="flex flex-col items-start gap-2 border border-dashed border-ink bg-paper-raised p-6">
+            <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              SIN FRANJAS ACTIVAS
             </span>
-            <p>
-              Aún ningún franja tiene marketplace habilitado. Vuelve cuando los
+            <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+              Aún ninguna franja tiene marketplace habilitado. Vuelve cuando los
               primeros catálogos aparezcan — o si eres admin, activa uno desde{' '}
-              <span className="text-secondary">Marketplace · Aprobaciones</span>{' '}
+              <span className="font-bold text-ink">Marketplace · Aprobaciones</span>{' '}
               en el dashboard.
             </p>
           </div>

@@ -2,8 +2,17 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PliegoSection } from '@/components/dashboard/compose/kit/PliegoSection'
 import type { Database } from '@/lib/supabase/database.types'
 import type { FranjaOption } from '@/app/admin/page'
+
+// ── AdminInviteCodes — the code book, in «EL PLIEGO» chrome ─────────────────
+//
+// Fase F re-chrome, logic byte-identical: same POST /api/admin/invite-codes
+// body, same clipboard copy, same router.refresh(). The generator is now the
+// compose pliego's numbered-section register (01 DESTINATARIO · 02 PERMISOS ·
+// 03 VIGENCIA) so a long form reads as a printed sheet, and the code book is
+// a hairline-ruled paper table with mono uppercase heads.
 
 type InviteCodeRow = Database['public']['Tables']['invite_codes']['Row']
 type Role = 'user' | 'curator' | 'guide' | 'insider' | 'admin'
@@ -15,6 +24,11 @@ const ROLE_LABEL: Record<Role, string> = {
   insider: 'INSIDER · escena',
   admin: 'ADMIN · todo',
 }
+
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+const INPUT_CLS = `min-h-11 w-full border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`
 
 export function AdminInviteCodes({
   initialCodes,
@@ -87,131 +101,115 @@ export function AdminInviteCodes({
     <>
       {/* Generator */}
       <section className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-syne text-xl font-bold text-primary">GENERAR CÓDIGO</h2>
-          <span className="sys-label">INVITE·NEW</span>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink pb-2">
+          <h2 className="font-syne text-d18 font-extrabold uppercase text-ink">
+            Generar código
+          </h2>
+          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            INVITE · NEW
+          </span>
         </div>
 
-        <form
-          onSubmit={submit}
-          className="flex flex-col gap-4 border bg-base p-4"
-          style={{ borderColor: '#242424' }}
-        >
-          <Field label="NOMBRE DEL INVITADO (impreso en la tarjeta)">
-            <input
-              type="text"
-              value={cardName}
-              onChange={(e) => setCardName(e.target.value)}
-              placeholder="p. ej. Allan · Club Japan · DJ Támara"
-              className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
-              style={{ borderColor: '#242424' }}
-            />
-          </Field>
-
-          <Field label="ROL">
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
-              style={{ borderColor: '#242424' }}
-            >
-              {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABEL[r]}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isMod}
-              onChange={(e) => setIsMod(e.target.checked)}
-            />
-            <span className="font-mono text-[11px] text-secondary">
-              Marcar como <span className="text-primary">MOD</span> (puede tombstonear comentarios y threads)
-            </span>
-          </label>
-
-          <Field label="FRANJA (opcional)">
-            <select
-              value={franjaId}
-              onChange={(e) => {
-                setFranjaId(e.target.value)
-                // Clear franja_admin when no franja is selected — UI hides
-                // the checkbox in that state but keep state coherent too.
-                if (!e.target.value) setFranjaAdmin(false)
-              }}
-              className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
-              style={{ borderColor: '#242424' }}
-            >
-              <option value="">— ninguno (cuenta individual) —</option>
-              {franjas.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                  {p.franja_kind ? `  ·  ${p.franja_kind}` : ''}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          {franjaId.trim() && (
-            <label className="flex items-center gap-2">
+        <form onSubmit={submit} className="grid gap-4">
+          <PliegoSection number="01" label="DESTINATARIO" required>
+            <Field label="NOMBRE DEL INVITADO" hint="impreso en la tarjeta">
               <input
-                type="checkbox"
-                checked={franjaAdmin}
-                onChange={(e) => setFranjaAdmin(e.target.checked)}
+                type="text"
+                value={cardName}
+                onChange={(e) => setCardName(e.target.value)}
+                placeholder="p. ej. Allan · Club Japan · DJ Támara"
+                className={INPUT_CLS}
               />
-              <span className="font-mono text-[11px] text-secondary">
-                <span className="text-primary">FRANJA_ADMIN</span> (puede invitar/expulsar miembros del equipo)
-              </span>
-            </label>
-          )}
+            </Field>
+          </PliegoSection>
 
-          <Field label="EXPIRA EN (días, vacío = nunca)">
-            <input
-              type="number"
-              min={1}
-              value={expiresInDays}
-              onChange={(e) =>
-                setExpiresInDays(e.target.value === '' ? '' : Number(e.target.value))
-              }
-              className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
-              style={{ borderColor: '#242424' }}
+          <PliegoSection number="02" label="PERMISOS" required>
+            <Field label="ROL">
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                className={INPUT_CLS}
+              >
+                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <CheckRow
+              checked={isMod}
+              onChange={setIsMod}
+              label="MOD"
+              description="puede tombstonear comentarios y threads"
             />
-          </Field>
+
+            <Field label="FRANJA" hint="opcional">
+              <select
+                value={franjaId}
+                onChange={(e) => {
+                  setFranjaId(e.target.value)
+                  // Clear franja_admin when no franja is selected — UI hides
+                  // the checkbox in that state but keep state coherent too.
+                  if (!e.target.value) setFranjaAdmin(false)
+                }}
+                className={INPUT_CLS}
+              >
+                <option value="">— ninguno (cuenta individual) —</option>
+                {franjas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                    {p.franja_kind ? `  ·  ${p.franja_kind}` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {franjaId.trim() && (
+              <CheckRow
+                checked={franjaAdmin}
+                onChange={setFranjaAdmin}
+                label="FRANJA_ADMIN"
+                description="puede invitar/expulsar miembros del equipo"
+              />
+            )}
+          </PliegoSection>
+
+          <PliegoSection number="03" label="VIGENCIA">
+            <Field label="EXPIRA EN (DÍAS)" hint="vacío = nunca">
+              <input
+                type="number"
+                min={1}
+                value={expiresInDays}
+                onChange={(e) =>
+                  setExpiresInDays(e.target.value === '' ? '' : Number(e.target.value))
+                }
+                className={INPUT_CLS}
+              />
+            </Field>
+          </PliegoSection>
 
           {error && (
-            <div
-              className="border px-3 py-2 font-mono text-[10px] tracking-widest"
-              style={{ borderColor: '#E63329', color: '#E63329' }}
-            >
-              {error}
-            </div>
+            <p className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper">
+              ⚠ {error}
+            </p>
           )}
 
           {latestCode && (
-            <div
-              className="flex flex-col gap-2 border px-4 py-3"
-              style={{
-                borderColor: '#4ADE80',
-                backgroundColor: '#4ADE8010',
-              }}
-            >
-              <span className="font-mono text-[10px] tracking-widest" style={{ color: '#4ADE80' }}>
+            <div className="border border-ink">
+              {/* Positive stamp — the acid block with ink on top. */}
+              <p className="border-b border-ink bg-acid px-3 py-2 font-mono text-d13 font-bold uppercase tracking-widest text-ink">
                 ✓ CÓDIGO GENERADO · CÓPIALO AHORA
-              </span>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 truncate border bg-black px-3 py-2 font-mono text-sm text-primary"
-                  style={{ borderColor: '#242424' }}>
+              </p>
+              <div className="flex flex-wrap items-center gap-2 bg-paper-raised p-3">
+                <code className="min-w-0 flex-1 truncate border border-ink bg-paper px-3 py-2 font-mono text-d15 text-ink">
                   {latestCode}
                 </code>
                 <button
                   type="button"
                   onClick={() => copy(latestCode)}
-                  className="border px-3 py-2 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:text-primary"
-                  style={{ borderColor: '#242424' }}
+                  className={`min-h-11 shrink-0 border border-ink px-3 font-mono text-d13 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
                 >
                   {copied ? '✓ COPIADO' : 'COPIAR'}
                 </button>
@@ -219,40 +217,38 @@ export function AdminInviteCodes({
             </div>
           )}
 
+          {/* Primary own-action — acid fill-block, ink on top. */}
           <button
             type="submit"
             disabled={submitting}
-            className="border px-4 py-2.5 font-mono text-[11px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              borderColor: '#F97316',
-              color: '#F97316',
-              backgroundColor: 'rgba(249,115,22,0.08)',
-            }}
+            className={`flex min-h-11 items-center justify-between gap-3 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 ${FOCUS_RING}`}
           >
-            {submitting ? '▶ GENERANDO…' : '▶ GENERAR'}
+            <span>{submitting ? 'GENERANDO…' : 'GENERAR CÓDIGO'}</span>
+            <span aria-hidden>→</span>
           </button>
         </form>
       </section>
 
       {/* Existing codes table */}
       <section className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-syne text-xl font-bold text-primary">
-            CÓDIGOS EXISTENTES
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink pb-2">
+          <h2 className="font-syne text-d18 font-extrabold uppercase text-ink">
+            Códigos existentes
           </h2>
-          <span className="sys-label">{initialCodes.length} ENTRADAS</span>
+          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            {initialCodes.length} ENTRADAS
+          </span>
         </div>
 
         {initialCodes.length === 0 ? (
-          <p className="border bg-base px-4 py-6 text-center font-mono text-[11px] text-muted"
-             style={{ borderColor: '#242424' }}>
-            // SIN CÓDIGOS GENERADOS TODAVÍA
+          <p className="border border-ink bg-paper-raised px-4 py-6 text-center font-mono text-d13 uppercase tracking-widest text-ink-faint">
+            SIN CÓDIGOS GENERADOS TODAVÍA
           </p>
         ) : (
-          <div className="overflow-x-auto border" style={{ borderColor: '#242424' }}>
-            <table className="w-full font-mono text-[11px]">
+          <div className="overflow-x-auto border border-ink bg-paper-raised">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b" style={{ borderColor: '#242424' }}>
+                <tr className="border-b border-ink">
                   <Th>CÓDIGO</Th>
                   <Th>NOMBRE</Th>
                   <Th>ROL</Th>
@@ -268,36 +264,30 @@ export function AdminInviteCodes({
                   const expired =
                     c.expires_at !== null && new Date(c.expires_at) < new Date()
                   return (
-                    <tr
-                      key={c.code}
-                      className="border-b"
-                      style={{ borderColor: '#1a1a1a' }}
-                    >
+                    <tr key={c.code}>
                       <Td>
                         <button
                           type="button"
                           onClick={() => copy(c.code)}
-                          className="truncate text-left text-primary transition-colors hover:text-sys-orange"
+                          className={`block min-h-11 max-w-full truncate text-left text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
                           title="Copiar"
                         >
                           {c.code}
                         </button>
                       </Td>
+                      <Td>{c.card_name ?? '—'}</Td>
                       <Td>
-                        <span className="text-secondary">{c.card_name ?? '—'}</span>
+                        <span className="uppercase">{c.intended_role}</span>
                       </Td>
                       <Td>
-                        <span className="text-secondary uppercase">{c.intended_role}</span>
-                      </Td>
-                      <Td>
-                        <span className="text-muted tabular-nums">
+                        <span className="tabular-nums text-ink-soft">
                           {c.folio
                             ? `${String(c.folio).padStart(3, '0')}/${c.folio_denominator}`
                             : '—'}
                         </span>
                       </Td>
                       <Td>
-                        <span className="text-muted">
+                        <span className="text-ink-soft">
                           {[
                             c.intended_is_mod ? 'MOD' : null,
                             c.intended_franja_admin ? 'PA-ADMIN' : null,
@@ -314,15 +304,15 @@ export function AdminInviteCodes({
                       </Td>
                       <Td>
                         {used ? (
-                          <span style={{ color: '#9CA3AF' }}>USADO</span>
+                          <StateChip tone="spent">USADO</StateChip>
                         ) : expired ? (
-                          <span style={{ color: '#E63329' }}>EXPIRADO</span>
+                          <StateChip tone="red">EXPIRADO</StateChip>
                         ) : (
-                          <span style={{ color: '#4ADE80' }}>ACTIVO</span>
+                          <StateChip tone="ink">ACTIVO</StateChip>
                         )}
                       </Td>
                       <Td>
-                        <span className="text-muted">
+                        <span className="tabular-nums text-ink-soft">
                           {c.expires_at
                             ? new Date(c.expires_at).toISOString().slice(0, 10)
                             : 'nunca'}
@@ -342,27 +332,94 @@ export function AdminInviteCodes({
 
 function Field({
   label,
+  hint,
   children,
 }: {
   label: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="sys-label">{label}</span>
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="font-mono text-d11 uppercase tracking-widest text-ink-soft">
+        {label}
+        {hint && <span className="ml-2 normal-case tracking-normal text-ink-faint">— {hint}</span>}
+      </span>
       {children}
     </label>
   )
 }
 
+// A checkbox row sized to the 44px floor, with the flag name in the mono
+// register and the capability spelled out in grotesk underneath.
+function CheckRow({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean
+  onChange: (next: boolean) => void
+  label: string
+  description: string
+}) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-start gap-3 border border-ink bg-paper px-3 py-2">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className={`mt-0.5 h-4 w-4 shrink-0 accent-ink ${FOCUS_RING}`}
+      />
+      <span className="min-w-0">
+        <span className="block font-mono text-d13 font-bold uppercase tracking-widest text-ink">
+          {label}
+        </span>
+        <span className="block font-grotesk text-d13 leading-snug text-ink-soft">
+          {description}
+        </span>
+      </span>
+    </label>
+  )
+}
+
+function StateChip({
+  children,
+  tone,
+}: {
+  children: React.ReactNode
+  tone: 'ink' | 'red' | 'spent'
+}) {
+  const cls =
+    tone === 'red'
+      ? 'border-sys-red-paper text-sys-red-paper'
+      : tone === 'spent'
+      ? 'border-ink/25 text-ink-faint'
+      : 'border-ink text-ink'
+  return (
+    <span
+      className={`inline-block whitespace-nowrap border px-2 py-1 font-mono text-d11 font-bold uppercase tracking-widest ${cls}`}
+    >
+      {children}
+    </span>
+  )
+}
+
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-muted">
+    <th
+      scope="col"
+      className="px-3 py-2 text-left font-mono text-d11 font-bold uppercase tracking-widest text-ink-faint"
+    >
       {children}
     </th>
   )
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2">{children}</td>
+  return (
+    <td className="border-b border-ink/15 px-3 py-2 align-middle font-mono text-d13 text-ink">
+      {children}
+    </td>
+  )
 }

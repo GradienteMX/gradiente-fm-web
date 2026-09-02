@@ -11,13 +11,34 @@
 // the kill-switches it hides nothing — activating it lets the terrain's
 // affinity structure breathe: high-affinity regions ring up as continents
 // and ocean opens between the masses (see lib/mapa/continents.ts).
+//
+// Fase F — chrome only. Geometry, every toggle behaviour and every URL param
+// (?ocultar= / ?afinidad=1) are untouched; the hardcoded charcoal hex cores
+// and the EVA-orange AFINIDAD accent moved onto the house bezel tokens:
+// panel-dark cores, acid latch for ON, ink-faint for OFF, and the ONE focus
+// grammar (outline-2/offset-2) in its panel-text variant for dark ground.
 
 import { memo } from 'react'
 import type { ContentType } from '@/lib/types'
 import { categoryColor, clsx } from '@/lib/utils'
+import {
+  DASH_ACID,
+  DASH_INK_FAINT,
+  DASH_PANEL_TEXT,
+} from '@/lib/dashboard/palette'
 
 const ARCHIVE_COLOR = '#9C8F7F'
 const HEX_CLIP = 'polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)'
+
+// Bezel cores — panel (#111111) at two opacities. Hex strings rather than
+// classes because the clip-path fill can't take a Tailwind background.
+const BEZEL_CORE = '#111111D6'
+const BEZEL_CORE_OFF = '#111111F0'
+
+// One focus grammar, panel variant: the column sits on the map's dark void,
+// where an ink outline would be invisible.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
 
 const TYPE_SHORT: Record<string, string> = {
   evento: 'EVENTO',
@@ -56,7 +77,7 @@ function ToggleHex({
       onClick={onToggle}
       aria-label={ariaLabel}
       aria-pressed={visible}
-      className="group/hextg relative block h-[50px] w-[56px] outline-none transition-opacity"
+      className={`group/hextg relative block h-[50px] w-[56px] transition-opacity ${FOCUS_RING}`}
       style={{ opacity: visible ? 1 : 0.38 }}
     >
       <span
@@ -64,7 +85,7 @@ function ToggleHex({
         className="absolute inset-0"
         style={{
           clipPath: HEX_CLIP,
-          backgroundColor: visible ? color : '#5A5A5A',
+          backgroundColor: visible ? color : DASH_INK_FAINT,
           opacity: visible ? 0.9 : 0.5,
         }}
       />
@@ -74,12 +95,12 @@ function ToggleHex({
         style={{
           inset: 1.5,
           clipPath: HEX_CLIP,
-          backgroundColor: visible ? '#0D0D0DD6' : '#0D0D0DF0',
+          backgroundColor: visible ? BEZEL_CORE : BEZEL_CORE_OFF,
         }}
       />
       <span
         className="relative z-10 flex h-full w-full flex-col items-center justify-center font-mono leading-none tracking-[0.06em]"
-        style={{ color: visible ? color : '#6A6A6A', fontSize: 8.5 }}
+        style={{ color: visible ? color : DASH_INK_FAINT, fontSize: 8.5 }}
       >
         <span
           className={clsx(
@@ -91,10 +112,6 @@ function ToggleHex({
         </span>
         {sub && <span className="mt-0.5 text-[7px] opacity-60">{sub}</span>}
       </span>
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -inset-0.5 hidden border border-primary group-focus-visible/hextg:block"
-      />
     </button>
   )
 }
@@ -161,10 +178,10 @@ export const MapaFilterColumn = memo(function MapaFilterColumn({
           } artículos de mercado (${mercadoCount})`}
         />
       )}
-      <div aria-hidden className="my-1 h-px w-8 bg-border" />
+      <div aria-hidden className="my-1 h-px w-8 bg-panel-text/25" />
       {(
         [
-          ['era:ahora', 'AHORA', '#F0F0F0', eraCounts[0]],
+          ['era:ahora', 'AHORA', DASH_PANEL_TEXT, eraCounts[0]],
           ['era:archivo', 'ARCHIVO', ARCHIVE_COLOR, eraCounts[1]],
         ] as const
       ).map(([key, label, color, n]) => {
@@ -181,11 +198,13 @@ export const MapaFilterColumn = memo(function MapaFilterColumn({
           />
         )
       })}
-      <div aria-hidden className="my-1 h-px w-8 bg-border" />
+      <div aria-hidden className="my-1 h-px w-8 bg-panel-text/25" />
+      {/* AFINIDAD — the column's one opt-in. Acid latch when engaged (a
+          fill-block on dark, never acid text on paper), ink-faint at rest. */}
       <ToggleHex
         label="AFINIDAD"
         sub={affinityOn && affinityCount !== null ? String(affinityCount) : '◈'}
-        color="#F97316"
+        color={affinityOn ? DASH_ACID : DASH_INK_FAINT}
         visible={affinityOn}
         strike={false}
         onToggle={onToggleAffinity}

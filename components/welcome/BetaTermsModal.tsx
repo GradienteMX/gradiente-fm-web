@@ -129,6 +129,14 @@ interface BetaTermsModalProps {
   onClose: () => void
 }
 
+// «EL PLIEGO» chrome, matching LoginOverlay / RegistroCard: paper sheet on an
+// ink scrim, Syne d28 head over a 1px hairline, grotesk d15 clause bodies, mono
+// d11/d13 for the clause numbers and controls. ACEPTO is the user's own action
+// (acid fill-block, ink on top); CANCELAR is the plain ink chip. The EVA
+// terminal skin — orange chip, corner brackets, green accept — is retired.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
 export function BetaTermsModal({ open, onAccept, onClose }: BetaTermsModalProps) {
   const acceptRef = useRef<HTMLButtonElement>(null)
 
@@ -160,60 +168,50 @@ export function BetaTermsModal({ open, onAccept, onClose }: BetaTermsModalProps)
       aria-modal="true"
       aria-labelledby="beta-terms-title"
     >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
+      {/* Ink scrim — the DashPopup ground. */}
+      <div className="absolute inset-0 bg-ink/60" onClick={onClose} aria-hidden />
 
-      {/* Panel */}
-      <div
-        className="eva-box relative z-10 flex max-h-[85dvh] w-full max-w-lg flex-col bg-base"
-        style={{ borderColor: '#242424' }}
-      >
-        {/* Header */}
-        <div
-          className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5"
-          style={{ borderColor: '#242424' }}
-        >
-          <span className="font-mono text-[10px] tracking-widest" style={{ color: '#F97316' }}>
-            //ACUERDO · BETA CERRADA
-          </span>
-          <span className="sys-label uppercase text-muted">
-            actualizado · {BETA_TERMS.lastUpdated}
+      {/* Paper sheet */}
+      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden border border-ink bg-paper text-ink">
+        {/* ── Head — Syne title + //ACUERDO marker (DashPopup anatomy) ───── */}
+        <div className="flex shrink-0 items-baseline gap-3 border-b border-ink px-5 py-1.5">
+          {/* Wraps rather than truncates — a clipped legal title ("TÉRMINOS Y
+              CON…") is worse than a two-line head. The marker yields first. */}
+          <h2
+            id="beta-terms-title"
+            className="min-w-0 font-syne text-d28 font-bold uppercase leading-8 text-ink"
+          >
+            Términos y condiciones
+          </h2>
+          <div className="flex-1" />
+          <span className="hidden shrink-0 font-mono text-d11 uppercase tracking-widest text-ink-soft sm:inline">
+            //ACUERDO
           </span>
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <h2
-            id="beta-terms-title"
-            className="font-syne text-xl font-black leading-tight text-primary"
-          >
-            TÉRMINOS Y CONDICIONES
-          </h2>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <p className="font-mono text-d11 uppercase tracking-widest text-ink-soft">
             {BETA_TERMS.subtitle}
           </p>
-          <p className="mt-3 font-grotesk text-[12.5px] leading-relaxed text-secondary">
+          <p className="mt-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            actualizado · {BETA_TERMS.lastUpdated}
+          </p>
+          <p className="mt-3 font-grotesk text-d15 leading-relaxed text-ink-soft">
             {BETA_TERMS.preamble}
           </p>
 
           <div className="mt-4 flex flex-col gap-4">
             {BETA_TERMS.sections.map((s) => (
               <section key={s.n} className="flex flex-col gap-1.5">
-                <h3 className="font-mono text-[11px] tracking-widest text-sys-orange">
+                <h3 className="font-mono text-d13 font-bold uppercase tracking-widest text-ink">
                   {s.n} · {s.title}
                 </h3>
-                <p className="font-mono text-[10.5px] italic leading-relaxed text-muted">
+                <p className="font-grotesk text-d13 italic leading-relaxed text-ink-faint">
                   En claro: {s.enClaro}
                 </p>
                 {s.body.map((para, i) => (
-                  <p
-                    key={i}
-                    className="font-grotesk text-[12.5px] leading-relaxed text-secondary"
-                  >
+                  <p key={i} className="font-grotesk text-d15 leading-relaxed text-ink-soft">
                     {para}
                   </p>
                 ))}
@@ -221,24 +219,17 @@ export function BetaTermsModal({ open, onAccept, onClose }: BetaTermsModalProps)
             ))}
           </div>
 
-          <p
-            className="mt-5 border-t pt-3 font-mono text-[10px] leading-relaxed tracking-wide text-muted"
-            style={{ borderColor: '#242424' }}
-          >
+          <p className="mt-5 border-t border-ink pt-3 font-grotesk text-d13 leading-relaxed text-ink-soft">
             {BETA_TERMS.closing}
           </p>
         </div>
 
-        {/* Footer */}
-        <div
-          className="flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3"
-          style={{ borderColor: '#242424' }}
-        >
+        {/* Footer — CANCELAR chip + the acid ACEPTO fill-block, both 44px. */}
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-ink bg-paper-raised px-4 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="border px-4 py-2.5 font-mono text-[11px] tracking-widest text-muted transition-colors hover:text-secondary"
-            style={{ borderColor: '#242424' }}
+            className={`flex min-h-11 items-center justify-center border border-ink px-4 font-mono text-d13 uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           >
             CANCELAR
           </button>
@@ -246,10 +237,10 @@ export function BetaTermsModal({ open, onAccept, onClose }: BetaTermsModalProps)
             ref={acceptRef}
             type="button"
             onClick={onAccept}
-            className="border px-4 py-2.5 font-mono text-[11px] tracking-widest transition-colors"
-            style={{ borderColor: '#4ADE80', color: '#4ADE80', backgroundColor: '#4ADE8012' }}
+            className={`flex min-h-11 items-center justify-center gap-3 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-acid ${FOCUS_RING}`}
           >
-            ▶ ACEPTO Y CONTINÚO
+            <span>Acepto y continúo</span>
+            <span aria-hidden>→</span>
           </button>
         </div>
       </div>

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { ContentGrid } from '@/components/ContentGrid'
-import { PaperGround } from '@/components/chrome/PaperGround'
 import { getItems } from '@/lib/data/items'
 import { filterForCategory } from '@/lib/utils'
 
@@ -11,7 +10,6 @@ export default async function OpinionPage() {
   const items = filterForCategory(await getItems(), 'opinion')
   return (
     <>
-      <PaperGround />
       <header className="mb-6 border-b border-ink pb-3">
         <h1 className="font-syne text-d28 font-extrabold text-ink">OPINIÓN</h1>
         <p className="mt-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">

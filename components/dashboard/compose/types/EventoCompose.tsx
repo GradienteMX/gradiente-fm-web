@@ -3,8 +3,8 @@
 // ── EventoCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for evento ─────
 //
 // State preamble + ISO↔datetime-local helpers copied VERBATIM from the dark
-// EventoForm (components/dashboard/forms/EventoForm.tsx:30-74 — untouched,
-// /admin depends): same emptyDraft (INCLUDING `attributeFranja: true` — the
+// EventoForm (components/dashboard/forms/EventoForm.tsx:30-74 — DELETED in
+// fase F; this fork is the only copy): same emptyDraft (INCLUDING `attributeFranja: true` — the
 // unique opt-out default for franja-team event publishing), same DRAFT_KEY,
 // same slug effect, same workbench wiring, same publish recipe. Only the JSX
 // is pliego.

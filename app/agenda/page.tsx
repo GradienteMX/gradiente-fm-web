@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { AgendaBrowser } from '@/components/AgendaBrowser'
-import { PaperGround } from '@/components/chrome/PaperGround'
 import { getItems } from '@/lib/data/items'
 import { filterForCategory, isUpcoming } from '@/lib/utils'
 
@@ -14,7 +13,6 @@ export default async function AgendaPage() {
 
   return (
     <>
-      <PaperGround />
       <header className="mb-6 border-b border-ink pb-3">
         <h1 className="font-syne text-d28 font-extrabold text-ink">AGENDA</h1>
         <p className="mt-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">

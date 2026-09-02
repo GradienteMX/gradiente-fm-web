@@ -93,55 +93,7 @@ body {
   background: #555;
 }
 
-/* Path B CRT — inner scroll container inside the canvas "tube". The scroll
-   itself is real overflow on this element (preserves native sticky refs +
-   fixed containing-block behavior). Scrollbar hidden because it would
-   render visibly inside the tube and break the aesthetic. */
-.crt-pathb-scroll {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.crt-pathb-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* ── NGE corner bracket utility ──────────────────────────── */
 @layer components {
-  .nge-bracket {
-    position: relative;
-  }
-  .nge-bracket::before,
-  .nge-bracket::after {
-    content: '';
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    border-color: #E63329;
-    border-style: solid;
-  }
-  .nge-bracket::before {
-    top: -1px;
-    left: -1px;
-    border-width: 1px 0 0 1px;
-  }
-  .nge-bracket::after {
-    top: -1px;
-    right: -1px;
-    border-width: 1px 1px 0 0;
-  }
-
-  .nge-bracket-full {
-    position: relative;
-  }
-  .nge-bracket-full::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border: 1px solid transparent;
-    border-image: linear-gradient(135deg, #E63329 0 20%, transparent 20% 80%, #E63329 80% 100%) 1;
-    pointer-events: none;
-  }
-
   /* Warning stripe (hazard tape) */
   .hazard-stripe {
     background: repeating-linear-gradient(
@@ -158,13 +110,6 @@ body {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #444;
-  }
-
-  /* Blinking cursor */
-  .cursor-blink::after {
-    content: '▋';
-    animation: blink 1.2s step-end infinite;
-    margin-left: 1px;
   }
 
   /* Section divider NGE style */
@@ -202,39 +147,11 @@ body {
    auto-scroll + edge fades carry the affordance without a stray gutter. */
 .evento-rail-track::-webkit-scrollbar { display: none; }
 
-/* ── EVA scan-line overlay ───────────────────────────────── */
-.eva-scanlines::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 2px,
-    rgba(0,0,0,0.18) 2px,
-    rgba(0,0,0,0.18) 4px
-  );
-  z-index: 5;
-}
-
-/* ── EVA bordered box ────────────────────────────────────── */
-.eva-box {
-  border: 1px solid #FF660066;
-  box-shadow: 0 0 6px #FF440022, inset 0 0 6px #FF220011;
-  position: relative;
-}
-.eva-box::before,
-.eva-box::after {
-  content: '';
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-color: #FF9900;
-  border-style: solid;
-}
-.eva-box::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
-.eva-box::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+/* The EVA kit (.eva-box, .eva-scanlines) is GONE as of fase F — orange glow
+   borders, corner ticks and the scan-line overlay were the last of the NGE
+   chrome, and their final holdouts (the two /welcome modals and MobileNotice's
+   dark branch) now speak paper and ink-bezel respectively. Nothing renders
+   them; do not reintroduce. The house draws full 1px ink hairlines. */
 
 /* ── Content cascade animation ───────────────────────────── */
 @keyframes fadeUp {
@@ -363,14 +280,13 @@ body {
    animations that aren't already branched in JS. Targets named classes ONLY:
    a blanket `* { animation: none }` would fight the CRTShader / VibeFader /
    SignalTransition / VibeSlider JS reduced-motion paths and kill the one-shot
-   overlay reveals. The CRT static scanline is a shader step(), not a CSS
-   animation, so it is unaffected. (cursor-blink / animate-scanline are
-   currently unused but neutralized here for safety.) */
+   overlay reveals. (.cursor-blink and .animate-scanline were listed here as
+   unused-but-neutralized; both are DELETED as of fase F, along with
+   .nge-bracket(-full) and .crt-pathb-scroll — the CRT layer they served has
+   not existed since fase A.) */
 @media (prefers-reduced-motion: reduce) {
-  .animate-scanline,
   .animate-pulse,
-  .hud-marquee,
-  .cursor-blink::after {
+  .hud-marquee {
     animation: none !important;
   }
 }

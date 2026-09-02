@@ -8,7 +8,7 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── PollFieldsetL — pliego fork of forms/shared/PollFieldset ────────────────
 //
-// The dark original stays byte-untouched. Shared poll-authoring section for
+// The dark original was DELETED in fase F; this fork is the only copy. Shared poll-authoring section for
 // the light compose forms: `<PollFieldsetL type={draft.type} poll=…
 // onChange=… />`. Logic verbatim; chrome pliego.
 //

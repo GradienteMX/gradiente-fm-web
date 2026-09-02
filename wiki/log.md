@@ -8,6 +8,50 @@
 
 ---
 
+## 2026-09-02 · INGEST · «PLIEGO TOTAL» fases D + F — los espacios del panel y el fin de la piel oscura · rama `pliego/fase-d-f` (sin merge)
+
+Las dos fases que faltaban del rediseño site-wide, en una sesión. **101 archivos, +9.341 / −10.524 — el sitio quedó 1.183 líneas MÁS PEQUEÑO habiendo ganado cuatro espacios.** Verificado: `tsc` limpio · 82/82 dashboard (16 tests nuevos) · 64/64 mapa · `next build` limpio · lint sin warnings nuevos.
+
+### Fase D — el panel se vuelve cuatro espacios
+
+**La llamada estructural que abarató todo: sólo PANEL es una retícula de widgets.** PUBLICAR, FRANJA y MERCADO son hojas a medida. De ahí se sigue que el esquema de layout NO sube de versión (sigue `v: 4`), el empaquetador no se toca, y el modo edición sigue operando sobre la única retícula que existe — un arrastre nunca puede re-empaquetar en silencio widgets que el usuario no ve, que era el bug que el recon predijo para esta fase.
+
+- **`lib/dashboard/espacios.ts`** — el modelo: `EspacioId`, etiquetas, `visibleEspacios`, `resolveEspacio`, `espacioHref`. Estado en la URL (`?espacio=`) para que cada espacio sea enlace profundo y sobreviva al botón atrás. **Regla dura: sin permiso, sin pestaña** — nunca una pestaña deshabilitada con cuerpo vacío. Un valor desconocido o sin permiso cae a PANEL, jamás a un error.
+- **`DashTabBar`** — gramática de pestillo en dos niveles a propósito: la pestaña de ESPACIO es un relleno de tinta (cambia el documento entero), las sub-pestañas dentro de un espacio son una línea base. Dos niveles, dos marcas. Son `<Link>` reales (click medio, marcador) que interceptan el click plano para cambiar en sitio.
+- **PUBLICAR** — CREAR (chips 1-clic, ácido) + tabla EN CURSO (borradores + publicados, dos estados REALES y ningún inventado) + tira CULTIVAR con COSECHAR. La receta de cosecha se reutiliza, no se reimplementa: `HarvestConfirmModal` byte-intacto, el re-upsert síncrono de sello roto, `ECHO_FACTOR = 0.4`. **`reconcileHarvestState` quedó exportado de `CultivarWidget` y ahora tiene UNA sola copia** — dos copias de un camino que toca HP de verdad se habrían separado.
+- **FRANJA** — RESUMEN / PUBLICACIONES / ARCHIVO / EQUIPO. **Conecta las cuatro APIs amputadas**: `GET/POST/PATCH/DELETE /api/franjas/[id]/team` (los RPC de la 0033, renombrados en la 0048) tenían CERO consumidores; `PATCH /api/franjas/[id]` (perfil) tampoco. Los permisos de escritura replican el predicado `isWriter` de la propia ruta y los controles sin permiso se **ocultan, no se deshabilitan**. Las acciones sobre la propia fila no se dibujan: retirarte o degradarte a ti mismo te deja fuera del escritorio en el que estás parado.
+- **MERCADO** — CATÁLOGO / OFERTAS / AJUSTES. **Conecta `PATCH`/`DELETE` de listings**: hasta hoy un vendedor literalmente NO podía cambiar un precio, marcar algo vendido ni borrar una pieza. El ESTADO es un select que hace PATCH al vuelo — «marcarlo vendido» es un gesto.
+- **El widget MERCADO se encoge a PUERTA.** Muere su mecánica de auto-resize `{6,2}↔{12,2}`: leer una oferta ya no reescribe el layout guardado del usuario. Y muere la variante admin APROBACIONES del panel.
+- **`?section=` legacy no se rompe, se extiende**: `nuevo`/`drafts`→PUBLICAR, `mi-franja`→FRANJA, `publicados`→PANEL+cultivar. `aprobaciones-mkt` ya no cae al vacío: redirige a `/admin?tab=franjas`, donde vive de verdad el interruptor.
+- **EDITAR PANEL desaparece fuera de PANEL** — edita la retícula, y sobre una hoja sería una palanca atada a nada.
+- **`closeCompose` vuelve al espacio del que saliste** (ref que sobrevive al cambio de search-param, sin storage ni parámetro extra viajando en cada URL de composición).
+
+**GOBERNANZA DE `marketplace_enabled` — DECIDIDA: SELF-SERVICE.** El equipo franja enciende y apaga su propia tienda en MERCADO › AJUSTES. La cola de aprobación admin se retira; el admin conserva sólo un **kill-switch de abuso** en `/admin` (reencuadrado ahí como override, no como cola). El código implementaba las dos historias contradictorias; ahora implementa una. Comentario de la ruta PATCH corregido.
+
+### Fase F — se apaga la piel oscura
+
+- **/foro** en papel (catálogo, tiles, los dos overlays, composer, lightbox). Los colores de rol/rango venían de `lib/mockUsers.ts` con tonos de suelo OSCURO que fallan contraste sobre papel: en vez de retocar la constante compartida (la usan `/u`, comentarios y el spine), el badge pasa a **chip de tinta con el tono como swatch** — la palabra en tinta, el color sobrevive como cuadrito. Se extendió a los chips de género y al marcador `[TÚ]`.
+- **/marketplace** en papel + **raw `<img>` → `SmartImage`** con `sizes` por sitio (era de las últimas superficies crudas alimentando el egress de Supabase). `MarketplaceListingDetail` gana `variant` porque **/mapa sí lo monta sobre el vacío oscuro** — ese es el único sitio dark, y es diseño, no piel sin convertir.
+- **[[FranjaOverlay]] + `/f/[slug]`** en papel; el bypass de `OverlayRouter` (franja NO pasa por OverlayShell) se conserva a propósito — plegarlo perdería el dossier ancho a dos paneles. `ShareButton` pierde su rama 'dark' y el default se voltea a 'paper'. **SEÑALES sobrevive sólo con marco PRÓXIMAMENTE estructural** (banda + prosa + marco punteado, precios como «TENTATIVO», nada clicable); `UNIRME AL CLUB` deja de ser botón y pasa a línea impresa: no hacía nada.
+- **/mapa: sólo el cromo.** El vacío oscuro, las celdas y el motor de colocación no se tocan (0 diff en `lib/mapa/**`). Chip de salida, selector de franja, zoom y leyenda pasan al bisel de tinta; muere el `vE-01` naranja. `FranjaObi` alinea sus hexes a los de la casa (`#EDE6D4`→`#EDEBE3`, `#C41E1E`→`#C42B20`).
+- **/admin** (2.836 líneas) y **/espera** (999) en papel. /espera era el último portador del idioma terminal-cabina; `WaveAscii` y `EyeAscii` se conservan **reasentados en bisel** con leyenda honesta («Dibujo procedural. No mide nada»). Se cortó el teatro: latencia, cifrado AES-256, nodo MX-0F, el log de sistema con IPs falsas y el feed de actividad inventado. Se conservó lo real: las estadísticas de `/api/waitlist`, la posición en cola.
+- **/about, el fósil** — reescrito, no re-pintado: fuera `QE_STYLES` (su sistema de tokens privado), la fuente Rajdhani, scanlines, glitch, el fader con el ramp arcoíris pre-2026. **Y fuera la password `'centro'`**: era una constante de cliente enviada en el bundle, así que no protegía nada — exactamente la «cosa que parece real y no hace nada» que el proyecto prohíbe. La prosa real (§01–§08 completo) se conserva verbatim.
+- **/e/[slug]**, **/manifesto**, **/equipo** y `BrandPageShell` en papel.
+
+### Trampa de mantenimiento ELIMINADA (no documentada: borrada)
+
+`PAPER_ROUTES` y los montajes de `<PaperGround/>` tenían que moverse JUNTOS — la fase F habría llevado esa lista de 9 a 17 sitios. **`PaperGround` ahora se monta UNA vez en `app/layout.tsx` y se maneja solo leyendo `isPaperRoute(pathname)`.** La lista es la única fuente de verdad; añadir una ruta es una línea.
+
+Y al hacerlo apareció una trampa real: **`'/foro'.startsWith('/f')` es `true`**, así que listar el dossier de franja como `'/f'` habría volteado el foro de rebote. El matcher pasa a **frontera de segmento** (`path === r || path.startsWith(r + '/')`), lo que mata la clase entera de bug, no esta instancia. Está clavado en `tests/dashboard/espacios.test.ts` como test de regresión, incluida la forma de propiedad sobre TODAS las entradas de la lista.
+
+### Código muerto retirado — 4.681 líneas
+
+Los 8 `forms/*Form.tsx` oscuros + `LivePreview` + 4 campos compartidos: **cero consumidores, verificado dos veces** (las únicas referencias externas eran COMENTARIOS). El recon se equivocaba en un punto que importaba: `forms/shared/Fields.tsx` está MUY vivo (`useDraftWorkbench`, `slugify`, `CommitFlash`) y se queda. `/admin` migró a los forks pliego (`EntityMultiSelectL`, `VibeFieldL`) — necesario, no cosmético, porque el original ya no existe. Todos los comentarios que juraban «untouched, /admin depends» quedaban FALSOS y se corrigieron: esa clase de comentario es la que manda a una sesión futura a buscar archivos que no están. También murieron `.nge-bracket(-full)`, `.cursor-blink`, `.crt-pathb-scroll` y el keyframe `scanline` (cero usos desde que el CRT se borró en fase A).
+
+**Y `forms/shared/Fields.tsx` pasó de 1.400 a 295 líneas.** Sus 12 widgets de campo (`Section`, `TextField`, `TextArea`, `Toggle`, `VibeField`, `GenreMultiSelect`, `LinkListField`, `StringListField`, `EmbedList`, `ImageUrlField`, `SubmitFooter`, `commitItem`) más sus 4 helpers privados no tenían un solo consumidor: el árbol compose pliego ya los había bifurcado uno por uno y `/admin` migró a esos forks. **Esto era lo que hacía FALSOS los comentarios «the dark original stays byte-untouched» de los siete forks** — ahora son ciertos. Sobrevive lo que nunca fue cromo: `slugify` (27 sitios), `CommitFlash`, `SaveIndicator`, `newItemId` y **`useDraftWorkbench`** con sus tres fixes de pérdida de datos. Regla nueva en la cabecera: un campo nuevo va a `compose/kit/`, no aquí.
+
+---
+
 ## 2026-08-30 · INGEST · [[ContentCard]] dos caras — póster en reposo, ficha densa al hover · `895aa6b` (pushed to `main`, Vercel desplegando)
 
 Corrección de Iker sobre fase B antes de arrancar D/F: las cards del feed quedaron texto-adelante (imagen chica, leyenda sobrecargada), invirtiendo la ley imagen-adelante — la imagen es lo que atrae al lector y lo que incentiva a quien publica a buscar buen arte. El fix conserva AMBAS lecturas:

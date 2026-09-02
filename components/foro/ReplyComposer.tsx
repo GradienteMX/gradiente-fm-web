@@ -11,6 +11,15 @@ import { compressAndUploadImage } from '@/lib/imageUpload'
 // Pinned at the bottom of the thread overlay. Login-gated. Supports an
 // optional image attachment (replies aren't required to have one).
 // Posts via Enter; shift+Enter inserts a newline. ESC clears.
+//
+// Fase F chrome: paper field with an ink hairline, ink-chip secondary
+// actions, and an acid fill-block ENVIAR — the submit is the reader's OWN
+// action, the one whitelisted acid use on this surface. Disabled, it drops
+// back to a plain ink-faint hairline chip (acid never states "not yet").
+
+// House focus grammar — 2px ink outline, offset 2.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface ReplyComposerProps {
   threadId: string
@@ -39,10 +48,9 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
       <button
         type="button"
         onClick={() => openLogin()}
-        className="w-full border border-dashed px-3 py-3 text-left font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary"
-        style={{ borderColor: '#242424' }}
+        className={`min-h-11 w-full border border-dashed border-ink px-3 py-3 text-left font-mono text-d11 font-bold uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
       >
-        <span style={{ color: '#F97316' }}>[+]</span> INICIA SESIÓN PARA RESPONDER
+        INICIA SESIÓN PARA RESPONDER
       </button>
     )
   }
@@ -110,13 +118,15 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
     }
   }
 
+  const canSend = body.trim().length > 0 && !submitting
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between font-mono text-[10px] tracking-widest text-muted">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">
         <span>
-          COMO <span className="text-primary">@{currentUser?.username}</span>
+          COMO <span className="font-bold text-ink">@{currentUser?.username}</span>
         </span>
-        <span className="text-[9px]">ENTER ENVÍA · SHIFT+ENTER SALTO · ESC LIMPIA</span>
+        <span>ENTER ENVÍA · SHIFT+ENTER SALTO · ESC LIMPIA</span>
       </div>
 
       <textarea
@@ -126,40 +136,42 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
         aria-label="Responder al hilo"
         placeholder="responder al hilo · usa >>id para citar"
         rows={3}
-        className="resize-y border bg-black px-3 py-2 font-mono text-[12px] leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange"
-        style={{ borderColor: '#242424' }}
+        className={`resize-y border border-ink bg-paper-raised px-3 py-2 font-grotesk text-d15 leading-relaxed text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
       />
 
       {imageDataUrl && (
-        <div className="relative w-fit">
+        <div className="flex w-fit flex-col border border-ink bg-paper-raised">
           <img
             src={imageDataUrl}
             alt="adjunto"
-            className="max-h-32 max-w-[200px] border border-border object-cover"
+            className="max-h-32 max-w-[200px] object-cover"
           />
           <button
             type="button"
             onClick={() => setImageDataUrl(null)}
             aria-label="Quitar adjunto"
-            className="absolute right-1 top-1 flex items-center justify-center border border-sys-red bg-black/85 p-1 text-sys-red transition-colors hover:bg-sys-red hover:text-black"
+            className={`flex min-h-11 items-center justify-center gap-1.5 border-t border-sys-red-paper font-mono text-d11 font-bold tracking-widest text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper ${FOCUS_RING}`}
           >
-            <X size={10} />
+            <X size={11} />
+            QUITAR
           </button>
         </div>
       )}
 
       {readError && (
-        <p className="font-mono text-[10px] tracking-widest text-sys-red">⚠ {readError}</p>
+        <p className="border border-sys-red-paper px-2 py-1 font-mono text-d11 tracking-widest text-sys-red-paper">
+          {readError}
+        </p>
       )}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:cursor-default disabled:opacity-60"
+          className={`flex min-h-11 items-center gap-1.5 border border-ink px-3 font-mono text-d11 font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper disabled:cursor-default disabled:opacity-60 ${FOCUS_RING}`}
         >
-          <ImagePlus size={11} /> {uploading ? 'SUBIENDO…' : 'ADJUNTAR'}
+          <ImagePlus size={12} /> {uploading ? 'SUBIENDO…' : 'ADJUNTAR'}
         </button>
         <input
           ref={fileInputRef}
@@ -172,12 +184,11 @@ export function ReplyComposer({ threadId, initialQuotedIds = [], onPosted }: Rep
           type="button"
           onClick={submit}
           disabled={body.trim().length === 0 || submitting}
-          className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          style={{
-            borderColor: '#F97316',
-            color: '#F97316',
-            backgroundColor: 'rgba(249,115,22,0.08)',
-          }}
+          className={`min-h-11 border px-4 font-mono text-d11 font-bold tracking-widest transition-colors disabled:cursor-not-allowed ${
+            canSend
+              ? 'border-ink bg-acid text-ink hover:bg-ink hover:text-acid'
+              : 'border-ink-faint bg-paper-raised text-ink-faint'
+          } ${FOCUS_RING}`}
         >
           {submitting ? '◌ ENVIANDO…' : '▶ ENVIAR'}
         </button>

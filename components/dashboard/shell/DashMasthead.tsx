@@ -32,12 +32,18 @@ const FOCUS_ON_PANEL =
 export function DashMasthead({
   editing,
   onEditPanel,
+  canEdit = true,
   userOverride,
 }: {
   // Edit mode is page state (§2.3 — a mode, not a widget). Stage 3 wires the
   // same pair into WidgetGrid/EditModeBar; the masthead only toggles it.
   editing: boolean
   onEditPanel: () => void
+  // FASE D: EDITAR PANEL edits the widget grid, and the grid is the PANEL
+  // space. On the bespoke sheets (PUBLICAR/FRANJA/MERCADO) there is nothing
+  // to arrange, so the control is ABSENT rather than disabled — a dead lever
+  // is exactly the affordance this project bans.
+  canEdit?: boolean
   // Lab-boundary injection (initialSlices door-discipline) — production never
   // sets it; only app/lab/dashboard does, so the avatar block renders unauth.
   userOverride?: User
@@ -99,20 +105,22 @@ export function DashMasthead({
         </button>
 
         {/* Settings gear = EDITAR PANEL — the same action, nothing else (§3.0). */}
-        <button
-          type="button"
-          onClick={onEditPanel}
-          className={`flex h-full shrink-0 items-center ${FOCUS_ON_PANEL}`}
-          data-cue="latch"
-        >
-          <span
-            className={`border border-panel-text px-2 py-1 font-mono text-d13 tracking-widest ${
-              editing ? 'bg-paper text-ink' : 'text-panel-text'
-            }`}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onEditPanel}
+            className={`flex h-full shrink-0 items-center ${FOCUS_ON_PANEL}`}
+            data-cue="latch"
           >
-            {editing ? 'LISTO' : 'EDITAR PANEL'}
-          </span>
-        </button>
+            <span
+              className={`border border-panel-text px-2 py-1 font-mono text-d13 tracking-widest ${
+                editing ? 'bg-paper text-ink' : 'text-panel-text'
+              }`}
+            >
+              {editing ? 'LISTO' : 'EDITAR PANEL'}
+            </span>
+          </button>
+        )}
 
         {currentUser && (
           <button

@@ -6,7 +6,9 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { usePrompt } from '@/components/prompt/usePrompt'
 import { compressAndUploadImage } from '@/lib/imageUpload'
-import { slugify, VibeField } from '@/components/dashboard/forms/shared/Fields'
+import { slugify } from '@/components/dashboard/forms/shared/Fields'
+import { VibeFieldL } from '@/components/dashboard/compose/kit/VibeFieldL'
+import { PliegoSection } from '@/components/dashboard/compose/kit/PliegoSection'
 import type { Database } from '@/lib/supabase/database.types'
 
 type FranjaKind = Database['public']['Enums']['franja_kind']
@@ -22,19 +24,6 @@ const FRANJA_KIND_LABEL: Record<FranjaKind, string> = {
   club: 'CLUB · club nocturno',
   medios: 'MEDIOS · medio / prensa',
   'mix-series': 'MIX-SERIES · serie de mixes',
-}
-
-const FRANJA_KIND_COLOR: Record<FranjaKind, string> = {
-  label: '#A78BFA',
-  promoter: '#F97316',
-  venue: '#FB923C',
-  plataforma: '#EAB308',
-  dealer: '#10B981',
-  colectivo: '#F472B6',
-  festival: '#34D399',
-  club: '#60A5FA',
-  medios: '#FBBF24',
-  'mix-series': '#C084FC',
 }
 
 interface ExistingFranja {
@@ -65,10 +54,15 @@ interface FranjaDetail {
 }
 
 function isFranjaKind(v: string | null): v is FranjaKind {
-  return v != null && v in FRANJA_KIND_COLOR
+  return v != null && v in FRANJA_KIND_LABEL
 }
 
 type Mode = { kind: 'create' } | { kind: 'edit'; franjaId: string }
+
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+const INPUT_CLS = `min-h-11 w-full border border-ink bg-paper px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white read-only:bg-paper-raised read-only:text-ink-faint ${FOCUS_RING}`
 
 // AdminFranjasComposer — admin-only form for onboarding a new franja OR
 // editing / deleting an existing one. Tabbed by mode:
@@ -82,6 +76,17 @@ type Mode = { kind: 'create' } | { kind: 'edit'; franjaId: string }
 //   CASCADE deleted; users.franja_id + invite_codes.intended_franja_id
 //   pointing here go to NULL (team members + pending invites lose the
 //   link but their accounts / codes survive).
+//
+// MARKETPLACE GOVERNANCE — activation is SELF-SERVICE for the franja team
+// (they switch their own storefront on from their space). Admin keeps ONE
+// power over it: the abuse kill-switch in section 04, which hides a
+// storefront regardless of what its team set. This surface is therefore not
+// an approval queue, and the create form does not offer activation at all.
+//
+// «EL PLIEGO» chrome (fase F): the composer is the compose pliego's numbered
+// section register; the kind hue map is retired (a kind is a word, not a
+// colour) and the two shared field machines moved to their pliego forks
+// (VibeFieldL / the paper inputs) — identical props, identical payloads.
 export function AdminFranjasComposer({
   existing,
 }: {
@@ -320,36 +325,32 @@ export function AdminFranjasComposer({
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Existing franjas — clickable cards. Click loads the franja into
+      {/* Existing franjas — clickable chips. Click loads the franja into
           edit mode below. */}
-      <div className="flex flex-col gap-3 border border-border p-4">
-        <header className="flex items-center justify-between gap-3">
-          <span
-            className="font-mono text-[10px] tracking-widest"
-            style={{ color: '#FB923C' }}
-          >
-            //FRANJAS EXISTENTES · {existing.length}
+      <div className="flex flex-col gap-3 border border-ink bg-paper-raised p-4">
+        <header className="flex flex-wrap items-baseline justify-between gap-3">
+          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            FRANJAS EXISTENTES · {existing.length}
           </span>
           {mode.kind === 'edit' && (
             <button
               type="button"
               onClick={enterCreateMode}
-              className="flex items-center gap-1 border border-border px-2 py-0.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-sys-orange"
+              className={`inline-flex min-h-11 items-center gap-1.5 border border-ink px-3 font-mono text-d11 font-bold uppercase tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
             >
-              <Plus size={11} strokeWidth={1.5} />
+              <Plus size={12} strokeWidth={1.5} aria-hidden />
               NUEVO
             </button>
           )}
         </header>
         {existing.length === 0 ? (
-          <p className="font-mono text-[11px] text-muted">
-            // ningún franja aún — el primero abajo
+          <p className="font-mono text-d13 uppercase tracking-widest text-ink-faint">
+            NINGUNA FRANJA AÚN — LA PRIMERA SE CREA ABAJO
           </p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {existing.map((p) => {
               const kind = isFranjaKind(p.franja_kind) ? p.franja_kind : null
-              const color = kind ? FRANJA_KIND_COLOR[kind] : '#888888'
               const isSelected = mode.kind === 'edit' && mode.franjaId === p.id
               return (
                 <li key={p.id}>
@@ -358,19 +359,16 @@ export function AdminFranjasComposer({
                     onClick={() => enterEditMode(p.id)}
                     disabled={loadingDetail || isSelected}
                     aria-pressed={isSelected}
-                    className="flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] transition-colors hover:bg-white/[0.03] disabled:cursor-default"
-                    style={{
-                      borderColor: color,
-                      backgroundColor: isSelected ? `${color}1a` : 'transparent',
-                    }}
+                    data-cue="latch"
+                    className={`inline-flex min-h-11 items-center gap-2 border border-ink px-3 font-mono text-d13 uppercase tracking-widest transition-colors disabled:cursor-default ${FOCUS_RING} ${
+                      isSelected
+                        ? 'bg-ink font-bold text-paper'
+                        : 'text-ink hover:bg-ink hover:text-paper'
+                    }`}
                   >
-                    <Pencil size={9} strokeWidth={1.5} className="opacity-50" />
-                    <span className="text-primary">{p.title}</span>
-                    {kind && (
-                      <span style={{ color }} className="tracking-widest">
-                        · {kind.toUpperCase()}
-                      </span>
-                    )}
+                    <Pencil size={11} strokeWidth={1.5} aria-hidden />
+                    <span>{p.title}</span>
+                    {kind && <span className="opacity-60">· {kind.toUpperCase()}</span>}
                   </button>
                 </li>
               )
@@ -378,32 +376,30 @@ export function AdminFranjasComposer({
           </ul>
         )}
         {loadingDetail && (
-          <p className="font-mono text-[10px] text-muted">// cargando detalles…</p>
+          <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            CARGANDO DETALLES…
+          </p>
         )}
       </div>
 
       {/* Composer — same form for create + edit. The mode flag swaps the
           header copy + the action buttons. */}
-      <form
-        onSubmit={submit}
-        className="flex flex-col gap-4 border border-border p-4"
-      >
-        <header className="flex flex-col gap-1">
-          <span
-            className="font-mono text-[10px] tracking-widest"
-            style={{ color: '#FB923C' }}
-          >
-            //{mode.kind === 'create' ? 'NUEVO FRANJA' : `EDITANDO · ${title || '(sin título)'}`}
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <header className="flex flex-col gap-1 border-b border-ink pb-2">
+          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            {mode.kind === 'create'
+              ? 'NUEVA FRANJA'
+              : `EDITANDO · ${title || '(sin título)'}`}
           </span>
-          <h2 className="font-syne text-xl font-bold leading-tight text-primary">
+          <h2 className="font-syne text-d28 font-extrabold uppercase text-ink">
             {mode.kind === 'create' ? 'Onboarding' : 'Editar franja'}
           </h2>
-          <p className="font-mono text-[10px] leading-relaxed text-muted">
+          <p className="font-grotesk text-d13 leading-snug text-ink-soft">
             {mode.kind === 'create' ? (
               <>
-                Crea la entrada base. Después podés enlazar usuarios a este
-                franja desde //USUARIOS y publicar listados de marketplace
-                desde el dashboard del propio franja-admin.
+                Crea la entrada base. Después podés enlazar usuarios a esta
+                franja desde USUARIOS; los listados de mercado los publica el
+                propio equipo desde su panel.
               </>
             ) : (
               <>
@@ -417,88 +413,87 @@ export function AdminFranjasComposer({
 
         {flash && (
           <p
-            className="border px-3 py-2 font-mono text-[10px]"
-            style={{
-              borderColor: flash.kind === 'deleted' ? '#E63329' : '#22c55e',
-              color: flash.kind === 'deleted' ? '#E63329' : '#22c55e',
-              backgroundColor:
-                flash.kind === 'deleted' ? 'rgba(230,51,41,0.08)' : 'rgba(34,197,94,0.08)',
-            }}
+            className={`border px-3 py-2 font-mono text-d13 font-bold uppercase tracking-widest ${
+              flash.kind === 'deleted'
+                ? 'border-sys-red-paper text-sys-red-paper'
+                : 'border-ink bg-acid text-ink'
+            }`}
           >
-            {flash.kind === 'created' && (
-              <>✓ CREADO — <span className="text-primary">{flash.title}</span></>
-            )}
-            {flash.kind === 'updated' && (
-              <>✓ ACTUALIZADO — <span className="text-primary">{flash.title}</span></>
-            )}
-            {flash.kind === 'deleted' && (
-              <>⌫ BORRADO — <span className="text-primary">{flash.title}</span></>
-            )}
+            {flash.kind === 'created' && <>✓ CREADA — {flash.title}</>}
+            {flash.kind === 'updated' && <>✓ ACTUALIZADA — {flash.title}</>}
+            {flash.kind === 'deleted' && <>⌫ BORRADA — {flash.title}</>}
           </p>
         )}
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field label="TITLE" required>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="N.A.A.F.I."
-              required
-              className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
-            />
-          </Field>
+        <PliegoSection number="01" label="IDENTIDAD" required>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="TITLE" required>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="N.A.A.F.I."
+                required
+                className={INPUT_CLS}
+              />
+            </Field>
 
-          <Field
-            label="SLUG"
-            required
-            hint={
-              mode.kind === 'create'
-                ? 'auto desde el title — editable'
-                : 'solo lectura — el slug fija el URL'
-            }
-          >
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => {
-                if (mode.kind === 'edit') return
-                setSlugManuallyEdited(true)
-                setSlug(slugify(e.target.value))
-              }}
-              placeholder="naafi"
+            <Field
+              label="SLUG"
               required
-              readOnly={mode.kind === 'edit'}
-              className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none read-only:opacity-60"
-            />
-          </Field>
-
-          <Field label="FRANJA KIND" required>
-            <select
-              value={franjaKind}
-              onChange={(e) => setFranjaKind(e.target.value as FranjaKind)}
-              className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
+              hint={
+                mode.kind === 'create'
+                  ? 'auto desde el title — editable'
+                  : 'solo lectura — el slug fija el URL'
+              }
             >
-              {(Object.keys(FRANJA_KIND_LABEL) as FranjaKind[]).map((k) => (
-                <option key={k} value={k}>
-                  {FRANJA_KIND_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </Field>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => {
+                  if (mode.kind === 'edit') return
+                  setSlugManuallyEdited(true)
+                  setSlug(slugify(e.target.value))
+                }}
+                placeholder="naafi"
+                required
+                readOnly={mode.kind === 'edit'}
+                className={INPUT_CLS}
+              />
+            </Field>
 
-          <Field label="FRANJA URL" hint="opcional — sitio externo">
-            <input
-              type="url"
-              value={franjaUrl}
-              onChange={(e) => setFranjaUrl(e.target.value)}
-              placeholder="https://naafi.bandcamp.com"
-              className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
-            />
-          </Field>
+            <Field label="FRANJA KIND" required>
+              <select
+                value={franjaKind}
+                onChange={(e) => setFranjaKind(e.target.value as FranjaKind)}
+                className={INPUT_CLS}
+              >
+                {(Object.keys(FRANJA_KIND_LABEL) as FranjaKind[]).map((k) => (
+                  <option key={k} value={k}>
+                    {FRANJA_KIND_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-          <Field label="" hint="0 glacial → 10 volcán · franjas suelen ocupar un rango ancho">
-            <VibeField
+            <Field label="FRANJA URL" hint="opcional — sitio externo">
+              <input
+                type="url"
+                value={franjaUrl}
+                onChange={(e) => setFranjaUrl(e.target.value)}
+                placeholder="https://naafi.bandcamp.com"
+                className={INPUT_CLS}
+              />
+            </Field>
+          </div>
+        </PliegoSection>
+
+        <PliegoSection number="02" label="ESPECTRO" required>
+          <Field
+            label="RANGO DE VIBE"
+            hint="0 glacial → 10 volcán · las franjas suelen ocupar un rango ancho"
+          >
+            <VibeFieldL
               valueMin={vibeMin}
               valueMax={vibeMax}
               onChange={(min, max) => {
@@ -507,109 +502,160 @@ export function AdminFranjasComposer({
               }}
             />
           </Field>
+        </PliegoSection>
 
-          <Field label="IMAGEN" required hint="logo / portada (≤1MB tras compresión)">
-            <div className="flex items-center gap-2">
+        <PliegoSection number="03" label="IMAGEN" required>
+          <Field label="LOGO / PORTADA" hint="≤1MB tras compresión">
+            <div className="flex flex-wrap items-center gap-3">
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={onPickFile}
                 disabled={imageUploading}
-                className="font-mono text-[10px] text-secondary"
+                aria-label="Subir logo o portada"
+                className={`min-h-11 font-mono text-d11 text-ink-soft file:mr-3 file:min-h-11 file:border file:border-ink file:bg-paper file:px-3 file:font-mono file:text-d11 file:font-bold file:uppercase file:tracking-widest file:text-ink hover:file:bg-ink hover:file:text-paper ${FOCUS_RING}`}
               />
               {imageUploading && (
-                <span className="font-mono text-[9px] tracking-widest text-sys-green">
-                  SUBIENDO...
+                <span className="font-mono text-d11 uppercase tracking-widest text-ink">
+                  SUBIENDO…
                 </span>
               )}
             </div>
             {imageUrl && !imageUploading && (
-              <div className="mt-1 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
                   alt=""
-                  className="h-12 w-12 border border-border bg-elevated object-cover"
+                  className="h-12 w-12 border border-ink bg-paper object-cover"
                 />
-                <span className="truncate font-mono text-[9px] text-muted" title={imageUrl}>
+                <span
+                  className="min-w-0 truncate font-mono text-d11 text-ink-faint"
+                  title={imageUrl}
+                >
                   {imageUrl.split('/').pop()}
                 </span>
               </div>
             )}
             {imageError && (
-              <p className="mt-1 font-mono text-[9px] text-sys-red">// {imageError.toUpperCase()}</p>
+              <p className="mt-2 font-mono text-d11 font-bold uppercase tracking-widest text-sys-red-paper">
+                ⚠ {imageError.toUpperCase()}
+              </p>
             )}
           </Field>
-        </div>
+        </PliegoSection>
 
-        {/* Marketplace toggle + conditional fields */}
-        <div className="flex flex-col gap-3 border-t border-border/50 pt-3">
-          <label className="flex items-center gap-2 font-mono text-[11px] text-secondary">
-            <input
-              type="checkbox"
-              checked={marketplaceEnabled}
-              onChange={(e) => setMarketplaceEnabled(e.target.checked)}
-              className="accent-cyan-400"
-            />
-            Habilitar MARKETPLACE para este franja
-          </label>
+        {/* ── 04 · MERCADO — the abuse kill-switch, NOT an approval queue ──
+            Activation belongs to the franja team (self-service from their
+            own space). The only admin power here is hiding a storefront. */}
+        <PliegoSection number="04" label="MERCADO">
+          {mode.kind === 'create' ? (
+            <p className="border border-dashed border-ink/45 p-4 font-grotesk text-d13 leading-relaxed text-ink-soft">
+              El escaparate de mercado no se activa desde aquí: lo enciende el
+              propio equipo de la franja desde su panel. Una franja nueva nace
+              sin escaparate. Cuando exista, este bloque se convierte en el
+              interruptor de abuso.
+            </p>
+          ) : (
+            <>
+              <p className="border border-dashed border-ink/45 p-4 font-grotesk text-d13 leading-relaxed text-ink-soft">
+                <span className="font-mono font-bold uppercase tracking-widest text-ink">
+                  ANULACIÓN ADMIN ·{' '}
+                </span>
+                la activación del mercado es autoservicio del equipo de la
+                franja. Aquí sólo vive el interruptor de abuso: apagarlo oculta
+                el escaparate de esta franja aunque su equipo lo tenga
+                encendido.
+              </p>
 
-          {marketplaceEnabled && (
-            <div className="grid gap-3 md:grid-cols-3">
-              <Field label="UBICACIÓN">
-                <input
-                  type="text"
-                  value={marketplaceLocation}
-                  onChange={(e) => setMarketplaceLocation(e.target.value)}
-                  placeholder="Roma Norte, CDMX"
-                  className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
-                />
-              </Field>
-              <Field label="MONEDA">
-                <input
-                  type="text"
-                  value={marketplaceCurrency}
-                  onChange={(e) => setMarketplaceCurrency(e.target.value.toUpperCase())}
-                  placeholder="MXN"
-                  maxLength={4}
-                  className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
-                />
-              </Field>
-              <Field label="DESCRIPCIÓN" className="md:col-span-3">
-                <textarea
-                  value={marketplaceDescription}
-                  onChange={(e) => setMarketplaceDescription(e.target.value)}
-                  placeholder="Sello + colectivo de música electrónica con base en CDMX..."
-                  rows={2}
-                  className="border border-border bg-base px-2 py-1.5 font-mono text-[11px] text-primary focus:border-white/40 focus:outline-none"
-                />
-              </Field>
-            </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={marketplaceEnabled}
+                aria-label="Escaparate de mercado visible"
+                onClick={() => setMarketplaceEnabled(!marketplaceEnabled)}
+                data-cue="latch"
+                className={`flex min-h-11 items-center gap-3 border px-3 font-mono text-d13 font-bold uppercase tracking-widest transition-colors ${FOCUS_RING} ${
+                  marketplaceEnabled
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-sys-red-paper bg-sys-red-paper text-paper'
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className="grid h-4 w-4 place-items-center border border-paper"
+                >
+                  {marketplaceEnabled ? '✓' : '×'}
+                </span>
+                <span>
+                  {marketplaceEnabled
+                    ? 'ESCAPARATE VISIBLE'
+                    : 'ESCAPARATE OCULTO POR ADMIN'}
+                </span>
+              </button>
+
+              {marketplaceEnabled && (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="UBICACIÓN">
+                    <input
+                      type="text"
+                      value={marketplaceLocation}
+                      onChange={(e) => setMarketplaceLocation(e.target.value)}
+                      placeholder="Roma Norte, CDMX"
+                      className={INPUT_CLS}
+                    />
+                  </Field>
+                  <Field label="MONEDA">
+                    <input
+                      type="text"
+                      value={marketplaceCurrency}
+                      onChange={(e) => setMarketplaceCurrency(e.target.value.toUpperCase())}
+                      placeholder="MXN"
+                      maxLength={4}
+                      className={INPUT_CLS}
+                    />
+                  </Field>
+                  <Field label="DESCRIPCIÓN" className="md:col-span-3">
+                    <textarea
+                      value={marketplaceDescription}
+                      onChange={(e) => setMarketplaceDescription(e.target.value)}
+                      placeholder="Sello + colectivo de música electrónica con base en CDMX..."
+                      rows={2}
+                      className={`${INPUT_CLS} leading-relaxed`}
+                    />
+                  </Field>
+                </div>
+              )}
+            </>
           )}
-        </div>
+        </PliegoSection>
 
         {error && (
-          <p className="font-mono text-[10px] text-sys-red">// {error}</p>
+          <p className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper">
+            ⚠ {error}
+          </p>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Primary own-action — the one acid fill-block of the composer. */}
             <button
               type="submit"
               disabled={submitting || imageUploading || !imageUrl || deleting}
-              className="border border-sys-green px-3 py-1.5 font-mono text-[10px] tracking-widest text-sys-green transition-colors hover:bg-sys-green/10 disabled:opacity-40"
+              className={`inline-flex min-h-11 items-center gap-3 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 ${FOCUS_RING}`}
             >
               {submitting
-                ? mode.kind === 'create' ? 'CREANDO...' : 'GUARDANDO...'
+                ? mode.kind === 'create' ? 'CREANDO…' : 'GUARDANDO…'
                 : mode.kind === 'create' ? 'CREAR FRANJA' : 'GUARDAR CAMBIOS'}
+              <span aria-hidden>→</span>
             </button>
             {mode.kind === 'create' ? (
               <button
                 type="button"
                 onClick={resetForm}
                 disabled={submitting}
-                className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:opacity-40"
+                className={`inline-flex min-h-11 items-center border border-ink px-4 font-mono text-d13 uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
               >
                 LIMPIAR
               </button>
@@ -618,7 +664,7 @@ export function AdminFranjasComposer({
                 type="button"
                 onClick={enterCreateMode}
                 disabled={submitting || deleting}
-                className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-muted transition-colors hover:border-white/40 hover:text-primary disabled:opacity-40"
+                className={`inline-flex min-h-11 items-center border border-ink px-4 font-mono text-d13 uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
               >
                 CANCELAR EDICIÓN
               </button>
@@ -630,15 +676,10 @@ export function AdminFranjasComposer({
               type="button"
               onClick={onDelete}
               disabled={submitting || deleting}
-              className="flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:opacity-40"
-              style={{
-                borderColor: '#E63329',
-                color: '#E63329',
-                backgroundColor: 'rgba(230,51,41,0.06)',
-              }}
+              className={`inline-flex min-h-11 items-center gap-2 border border-sys-red-paper px-4 font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
             >
-              <Trash2 size={11} strokeWidth={1.5} />
-              {deleting ? 'BORRANDO...' : 'BORRAR FRANJA'}
+              <Trash2 size={12} strokeWidth={1.5} aria-hidden />
+              {deleting ? 'BORRANDO…' : 'BORRAR FRANJA'}
             </button>
           )}
         </div>
@@ -661,11 +702,13 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <label className={`flex flex-col gap-1 font-mono text-[10px] tracking-widest text-muted ${className}`}>
-      <span>
+    <label className={`flex min-w-0 flex-col gap-1 ${className}`}>
+      <span className="font-mono text-d11 uppercase tracking-widest text-ink-soft">
         {label}
-        {required && <span className="text-sys-red"> *</span>}
-        {hint && <span className="ml-2 text-muted/60 normal-case tracking-normal">— {hint}</span>}
+        {required && <span className="text-sys-red-paper"> *</span>}
+        {hint && (
+          <span className="ml-2 normal-case tracking-normal text-ink-faint">— {hint}</span>
+        )}
       </span>
       {children}
     </label>

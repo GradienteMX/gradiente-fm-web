@@ -3,7 +3,7 @@
 // ── ArticuloBlocksEditor — pliego port of ArticuloForm's block suite ────────
 //
 // Logic VERBATIM from components/dashboard/forms/ArticuloForm.tsx (:284-822 —
-// untouched, /admin depends): insertAt / update / remove / move pure logic,
+// DELETED in fase F — this fork is the only copy): insertAt / update / remove / move pure logic,
 // the freshBlock factory for all 10 kinds, the 10 BlockBody kind-cases, the
 // ListItemsEditor, and the FootnotesEditor (id + [^id] reference contract).
 // Only the chrome is rebuilt in the pliego register; the IMAGEN block's

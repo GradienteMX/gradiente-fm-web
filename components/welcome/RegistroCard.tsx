@@ -14,16 +14,27 @@ const ROLE_LABEL: Record<InviteRole, string> = {
   admin: 'ADMIN',
 }
 
-// Inline terminal-styled registration for invited (coded) users — replaces the
-// LoginOverlay signup modal on /welcome. The invite code is pre-bound (the user
-// only supplies email / username / password) and submit calls the same
+// Inline registration for invited (coded) users — replaces the LoginOverlay
+// signup modal on /welcome. The invite code is pre-bound (the user only
+// supplies email / username / password) and submit calls the same
 // useAuth().signup() the modal used, so the auth/trust path is unchanged.
 //
-// This component is intentionally self-contained and 3D-agnostic: it becomes the
-// DOM form inside the invitación-3d REGISTRO card (and the no-WebGL fallback)
-// once the experience is ported. Success needs no manual redirect — the /welcome
-// auth effect (authResolved && isAuthed → replace('/')) fires when signup()
-// refreshes the session.
+// Chrome speaks «EL PLIEGO», same as the /welcome door and LoginOverlay: paper
+// sheet on a 1px ink hairline, Syne d28 head + //REGISTRO marker (the DashPopup
+// anatomy), mono d11/d13 labels, grotesk d15 fields, red #C42B20 for errors and
+// acid reserved for the user's own action (the submit fill-block, the 8px
+// ink-outlined dot on the invitation strip). The EVA terminal skin is retired.
+//
+// This component is intentionally self-contained and 3D-agnostic: it is the DOM
+// form inside the invitación-3d REGISTRO card AND the no-WebGL fallback.
+// Success needs no manual redirect — the /welcome auth effect (authResolved &&
+// isAuthed → replace('/')) fires when signup() refreshes the session.
+
+// The page-wide focus grammar — inlined so welcome stays free of dashboard
+// imports (same rationale as LoginOverlay).
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
 export function RegistroCard({ invite }: { invite: InviteCard }) {
   const { signup, openLogin } = useAuth()
 
@@ -91,41 +102,35 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
   const locked = submitting || justAuthed
 
   return (
-    <div
-      className="eva-box eva-scanlines w-full max-w-md overflow-hidden bg-base"
-      style={{ borderColor: '#242424' }}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
-        style={{ borderColor: '#242424' }}
-      >
-        <span className="font-mono text-[10px] tracking-widest" style={{ color: '#F97316' }}>
+    <div className="w-full max-w-md overflow-hidden border border-ink bg-paper text-ink">
+      {/* ── Head — Syne title + //REGISTRO marker (DashPopup anatomy) ────── */}
+      <div className="flex items-baseline gap-3 border-b border-ink px-5 py-1.5">
+        {/* Wraps rather than truncates: at 375px the head has ~200px of room
+            and a clipped title reads as breakage. The marker yields first. */}
+        <h2 className="min-w-0 font-syne text-d28 font-bold uppercase leading-8 text-ink">
+          Nueva identidad
+        </h2>
+        <div className="flex-1" />
+        <span className="hidden shrink-0 font-mono text-d11 uppercase tracking-widest text-ink-soft sm:inline">
           //REGISTRO
         </span>
-        <span className="sys-label uppercase text-muted">identidad·nueva</span>
       </div>
 
       <div className="flex flex-col gap-4 p-5">
-        <header className="flex flex-col gap-2">
-          <h2 className="font-syne text-2xl font-black leading-tight text-primary">
-            NUEVA IDENTIDAD
-          </h2>
-
-          {/* Resolved invitation (from the code) */}
-          <div
-            className="flex flex-col gap-0.5 border px-3 py-2 font-mono text-[10px] tracking-widest"
-            style={{ borderColor: '#4ADE8055', backgroundColor: '#4ADE8008' }}
-          >
-            <span style={{ color: '#4ADE80' }}>✓ INVITACIÓN VÁLIDA</span>
-            <span className="text-secondary">
-              {invite.name || '—'} · {ROLE_LABEL[invite.role]}
-              {invite.folio ? ` · FOLIO ${invite.folio}` : ''}
-              {invite.franja ? ` · ${invite.franja.title}` : ''}
-            </span>
-            <span className="truncate text-muted">CÓDIGO · {invite.code}</span>
-          </div>
-        </header>
+        {/* Resolved invitation (from the code). The acid dot is the
+            whitelisted dot-badge use: 8px, 1px ink outline, on paper. */}
+        <div className="flex flex-col gap-1 border border-ink bg-paper-raised px-3 py-2 font-mono text-d11 tracking-widest">
+          <span className="flex items-center gap-2 font-bold text-ink">
+            <span aria-hidden className="h-2 w-2 shrink-0 border border-ink bg-acid" />
+            INVITACIÓN VÁLIDA
+          </span>
+          <span className="text-ink-soft">
+            {invite.name || '—'} · {ROLE_LABEL[invite.role]}
+            {invite.folio ? ` · FOLIO ${invite.folio}` : ''}
+            {invite.franja ? ` · ${invite.franja.title}` : ''}
+          </span>
+          <span className="truncate text-ink-faint">CÓDIGO · {invite.code}</span>
+        </div>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="EMAIL" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={locked} />
@@ -144,40 +149,37 @@ export function RegistroCard({ invite }: { invite: InviteCard }) {
           <Field label="PASSWORD" type="password" value={password} onChange={setPassword} autoComplete="new-password" disabled={locked} />
           <Field label="CONFIRMAR PASSWORD" type="password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" disabled={locked} />
 
+          {/* Consequence copy — full red register, never a soft tint. */}
           {error && (
-            <div
-              className="border px-3 py-2 font-mono text-[10px] leading-relaxed tracking-widest"
-              style={{ borderColor: '#E63329', color: '#E63329', backgroundColor: '#E6332910' }}
-            >
-              {error}
+            <div className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold leading-relaxed tracking-widest text-sys-red-paper">
+              ⚠ {error}
             </div>
           )}
 
+          {/* Positive stamp — the acid block with ink on top. */}
           {justAuthed && (
-            <div
-              className="border px-3 py-2 font-mono text-[10px] tracking-widest"
-              style={{ borderColor: '#4ADE80', color: '#4ADE80', backgroundColor: '#4ADE8015' }}
-            >
+            <div className="border border-ink bg-acid px-3 py-2 font-mono text-d13 font-bold tracking-widest text-ink">
               ACCESO CONCEDIDO · REDIRIGIENDO…
             </div>
           )}
 
+          {/* Primary submit — acid fill-block, arrow glyph, 44px. */}
           <button
             type="submit"
             disabled={locked}
-            className="mt-1 border px-4 py-2.5 font-mono text-[11px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ borderColor: '#F97316', color: '#F97316', backgroundColor: 'rgba(249,115,22,0.08)' }}
+            className={`mt-1 flex min-h-11 items-center justify-between gap-3 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 ${FOCUS_RING}`}
           >
-            {submitting ? '▶ CREANDO…' : justAuthed ? '▶ LISTO' : '▶ CREAR IDENTIDAD'}
+            <span>{submitting ? 'CREANDO…' : justAuthed ? 'LISTO' : 'CREAR IDENTIDAD'}</span>
+            <span aria-hidden>→</span>
           </button>
         </form>
 
-        <p className="font-mono text-[10px] leading-relaxed text-muted">
+        <p className="font-grotesk text-d13 leading-snug text-ink-soft">
           ¿Ya tienes cuenta?{' '}
           <button
             type="button"
             onClick={() => openLogin('login')}
-            className="text-secondary underline transition-colors hover:text-primary"
+            className={`text-ink underline underline-offset-4 hover:no-underline ${FOCUS_RING}`}
           >
             Inicia sesión.
           </button>
@@ -211,8 +213,8 @@ function Field({
   hint?: string
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="sys-label">{label}</span>
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="font-mono text-d11 uppercase tracking-widest text-ink-soft">{label}</span>
       <input
         type={type}
         value={value}
@@ -224,10 +226,9 @@ function Field({
         autoCorrect="off"
         spellCheck={false}
         disabled={disabled}
-        className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none transition-colors focus:border-sys-orange disabled:opacity-60"
-        style={{ borderColor: '#242424' }}
+        className={`min-h-11 border border-ink bg-paper-raised px-3 py-2 font-grotesk text-d15 text-ink transition-colors focus:bg-white disabled:opacity-60 ${FOCUS_RING}`}
       />
-      {hint && <span className="font-mono text-[9.5px] tracking-widest text-muted">{hint}</span>}
+      {hint && <span className="font-grotesk text-d13 leading-snug text-ink-faint">{hint}</span>}
     </label>
   )
 }

@@ -6,7 +6,7 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── LinkListFieldL — pliego fork of forms/shared/Fields.tsx LinkListField ───
 //
-// The dark original stays byte-untouched. Labeled outbound-link editor for
+// The dark original was DELETED in fase F; this fork is the only copy. Labeled outbound-link editor for
 // the CONTEXTO block — "where to buy / listen / read more" (Bandcamp,
 // Discogs, official site, news source…). Edits an EntityLink[] { label, url }
 // in place. Preset chips pre-fill the label so the common destinations are

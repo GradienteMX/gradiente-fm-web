@@ -1,7 +1,7 @@
 // ── requiredFields — the ONE source of required-field truth for the light
 //    composer («EL PLIEGO DE COMPOSICIÓN v2») ────────────────────────────────
 //
-// The dark forms (components/dashboard/forms/** — untouched, /admin depends)
+// The dark forms (components/dashboard/forms/** — DELETED in fase F; this fork is now the only copy)
 // each carry an inline `errors: string[]` block with 2-4 FALTA rules. This
 // module lifts those EXACT rules into one per-type map so the light composer
 // derives BOTH the rail checklist (✓/○ rows + completeness bar) and the
