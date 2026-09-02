@@ -20,7 +20,7 @@ Visual-prototype-only credential gate. **`admin / admin`** is the test login. Se
 - [[AuthBadge]] in [[Navigation]] is the entry point — `LOGIN` button next to MAGI cluster.
 - Successful auth → badge swaps to `DASHBOARD` link + `⏻` logout. SessionStorage-backed (`gradiente:auth`).
 - `/dashboard` itself is auth-guarded client-side: unauthed users get prompted to log in via the overlay.
-- When real auth lands (Supabase per [[Admin Dashboard]]), `useAuth.login()` is the only swap point — every consumer of `useAuth()` is provider-agnostic.
+- When real auth lands (Supabase per [[Backend Plan]]), `useAuth.login()` is the only swap point — every consumer of `useAuth()` is provider-agnostic.
 
 ## Type picker
 
@@ -110,7 +110,7 @@ The dashboard chrome is now a file-explorer wrapper — see [[Dashboard Explorer
 - [[useAuth]] · [[LoginOverlay]] · [[AuthBadge]]
 - [[LivePreview]] · [[Dashboard Forms]] · [[Dashboard Drafts]]
 - [[Publish Confirmation Flow]] · [[PublishConfirmOverlay]] · [[drafts]]
-- [[Admin Dashboard]] — the real-backend version this prototype anticipates
+- [[Admin]] — the admin-role surface at `/admin`; this page is the insider-role one
 - [[Content Types]] — the data contract every form populates
 - [[Embed Primitive]] — shared platform detection
 - [[Supabase Migration]] — what unlocks "real" submit + persistence

@@ -71,12 +71,48 @@ export async function POST(request: NextRequest) {
 
   const row = contentItemToRow({ ...event, id, slug })
 
+  // ── Server-authoritative columns ──────────────────────────────────────────
+  // contentItemToRow emits the full CREATE shape — hp / hp_last_updated_at
+  // taken from the payload, published=true, seed=false — and this route was
+  // sending all of it, so one GUARDAR on a live row did three things nobody
+  // asked for:
+  //
+  //   · hp + hp_last_updated_at — the editor's ContentItem carries the HL
+  //     snapshot taken when /admin was server-rendered. Writing it back
+  //     rewinds items.hp to page-load time and erases every gain the rollup
+  //     landed while the tab sat open. 128 of 450 evento rows carry a
+  //     non-null hp, so this was silent data loss on a fix-a-typo save.
+  //   · published — defaulting to true PUBLISHES an unpublished draft
+  //     (4 evento rows are published=false).
+  //   · seed — defaulting to false launders a seeded row into a real one,
+  //     which also takes it out of scripts/seed.ts's wipe set (145 evento
+  //     rows are seed=true).
+  //
+  // Strip all four unconditionally rather than branching on isNew: on UPDATE
+  // PostgREST builds the ON CONFLICT DO UPDATE SET list from the payload's
+  // keys, so an absent column keeps its stored value; on INSERT the column
+  // defaults are exactly what the create path wants (published=true,
+  // seed=false, hp=null → curation's spawn default). Same columns, same
+  // reasoning as the edit path in app/api/items/route.ts — one convention,
+  // not two. published_at is deliberately NOT stripped: it is NOT NULL with
+  // no default, and the editor exposes no control for it, so it round-trips
+  // the loaded value unchanged and an insert still gets a timestamp.
+  const {
+    hp: _hp,
+    hp_last_updated_at: _hpTs,
+    published: _published,
+    seed: _seed,
+    ...rowSansAuthority
+  } = row
+
   // Preserve the original author on edits — only stamp created_by on insert.
   const insertExtras = isNew ? { created_by: user.id } : {}
 
   const { error: itemError } = await admin
     .from('items')
-    .upsert({ ...row, ...insertExtras } as never, { onConflict: 'id' })
+    .upsert({ ...rowSansAuthority, ...insertExtras } as never, {
+      onConflict: 'id',
+    })
   if (itemError) {
     console.error('[POST /api/admin/events] upsert failed', {
       code: itemError.code,

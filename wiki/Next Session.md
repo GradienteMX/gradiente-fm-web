@@ -2,6 +2,80 @@
 
 > Brief for picking up where the previous session ended.
 >
+> **Latest: 2026-09-02 — «CENTRAL DE ADMINISTRACIÓN» CONSTRUIDA, rama `admin/central-2026` (SIN MERGE). ⛔ LA MIGRACIÓN `0049` NO ESTÁ APLICADA Y NADA DE HL EN EL PANEL MUESTRA DATO HASTA QUE LO ESTÉ.**
+>
+> Sin la 0049 aplicada: RESUMEN pinta sus estados «SIN HISTORIAL», el desglose por tipo de interacción sale vacío, el expediente de CONTENIDO no tiene libro mayor que leer, la palanca HL devuelve error de función inexistente, y el conteo de MODERACIÓN degrada a *undefined* (sin conteo, sin punto) porque la tabla `reports` no existe. Todo eso es **degradación correcta, no un bug** — pero es indistinguible de «el panel está roto» si nadie sabe por qué. Aplícala antes de juzgar nada.
+>
+> **CÓMO APLICARLA — pegar `supabase/migrations/0049_admin_central.sql` completo en el SQL editor de Supabase y ejecutar. NUNCA `supabase db push`.** El `schema_migrations` de prod se detiene en 0016 mientras la base carga objetos hasta la 0048 (aplicadas fuera de banda): un `db push` intentaría re-aplicar 32 migraciones sobre una base que ya las tiene. Las siete secciones son seguras como una sola transacción y son idempotentes (`if not exists`, `create or replace`, el `unschedule` condicional del cron). **Si la aplicas en una fecha distinta al 2026-09-02, edita `LEDGER_EPOCH` en [lib/hp/kinds.ts](../lib/hp/kinds.ts) para que coincida** — una época equivocada o esconde dato real o reclama cobertura que no existe.
+>
+> **VERIFICACIÓN — en este orden.**
+>
+> **(1) Login y recorrer las siete pestañas.** `npm run dev` → login con cuenta `role='admin'` → `/admin`. RESUMEN · CONTENIDO · EVENTOS · FRANJAS · USUARIOS · ACCESO · MODERACIÓN. Prueba además los alias viejos (`?tab=invites`, `?tab=espera`, `?tab=users`, `?tab=events`) y un `?tab=bogus`: los cuatro primeros aterrizan donde toca, el último cae a RESUMEN **con la pestaña RESUMEN pestillada** — el bug que se arregló era justo que la página y la barra no se ponían de acuerdo. Ninguna pestaña se pudo ver autenticada en la sesión de construcción.
+>
+> **(2) Ejercitar la palanca HL sobre un item desechable y confirmar la fila de auditoría.** Elige un borrador o un item semilla, **nunca una pieza real de portada**. En CONTENIDO expande la fila → aplica un delta pequeño (p. ej. +5) con una razón escrita. Después, en el SQL editor:
+>
+> ```sql
+> select actor_id, action, target_id, payload, created_at
+> from audit_log where action = 'hp_adjust'
+> order by created_at desc limit 5;
+>
+> select item_id, kind, weight, base_weight, processed_at
+> from hp_events where kind = 'admin_adjust'
+> order by created_at desc limit 5;
+> ```
+>
+> Tienen que salir **las dos** filas: la de auditoría con `before`/`after`/`applied`/`reason`, y la del libro mayor con `base_weight` NULL y `processed_at` YA sellado (si sale NULL, el siguiente tick la aplicaría por segunda vez). Luego revierte aplicando el delta inverso y comprueba que la reversión **también** deja su par de filas. Y comprueba la puerta trasera cerrada (§6): desde una sesión de navegador con cuenta elevada, `supabase.from('items').update({ hp: 999 }).eq('id', ...)` debe fallar por permisos.
+>
+> **(3) Presentar un reporte de prueba y resolverlo.** No hay todavía gesto de reporte del lado lector, así que se presenta a mano contra `POST /api/reports` desde la consola del navegador **con una sesión de usuario normal** (la RLS `reports_insert_self` exige que `reporter_id` sea el propio `auth.uid()`, así que hacerlo como admin no prueba la política):
+>
+> ```js
+> await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+>   body: JSON.stringify({ target_type: 'comment', target_id: '<id real>', reason: 'spam', note: 'prueba' }) })
+> ```
+>
+> Luego en `/admin?tab=moderacion`: la fila aparece, el pestillo MODERACIÓN muestra el conteo **en todas las pestañas**, resuélvela como `resuelto` con una resolución escrita, y confirma que sale de la cola abierta pero **sigue existiendo** (no hay DELETE en ninguna parte, a propósito). Prueba también el índice único: presentar el mismo reporte dos veces desde la misma cuenta debe rebotar.
+>
+> **(4) ⚠ CONFIRMAR QUE EL ROLLUP DE CRON SIGUE FUNCIONANDO — ESTA ES LA QUE PUEDE CORROMPER HP EN SILENCIO.** La 0049 §3 reemplaza el cuerpo de `apply_hp_rollup()`. Si el `where processed_at is null` del cursor de apertura se perdiera, la función **relee el libro mayor entero cada cinco minutos y lo vuelve a plegar** en `items.hp`: el HP compone sin límite, el orden del feed se corrompe en horas, y **no falla nada** — sin excepción, sin log, sin ejecución de cron marcada como error. No hay síntoma. Hay que ir a buscarlo.
+>
+> **4a — el cron corre y termina bien:**
+>
+> ```sql
+> select j.jobname, d.status, d.return_message, d.start_time, d.end_time
+> from cron.job_run_details d join cron.job j using (jobid)
+> where j.command ilike '%apply_hp_rollup%' or j.jobname = 'hp-events-sweep'
+> order by d.start_time desc limit 20;
+> ```
+>
+> Todo `status` debe ser `succeeded`. Un `failed` con mensaje de cast a `content_type` significa que se aplicó un cuerpo ramificado de un archivo viejo en vez del vivo — es la trampa de la 0048.
+>
+> **4b — la prueba decisiva de que NO recompone. Ejecuta esto dos veces separadas por ≥10 minutos (dos ticks):**
+>
+> ```sql
+> select count(*) filter (where processed_at is null)     as pendientes,
+>        count(*) filter (where processed_at is not null)  as procesados,
+>        min(processed_at) as primer_sello,
+>        max(processed_at) as ultimo_sello
+> from hp_events;
+> ```
+>
+> **`primer_sello` NO puede moverse entre las dos lecturas.** Si avanza —o si `count(distinct processed_at)` colapsa a uno solo cerca de `now()`— el rollup está re-sellando todas las filas cada tick, o sea que el predicado no está y `items.hp` lleva componiendo desde que se aplicó. **Para el cron inmediatamente** (`select cron.unschedule(<jobid>)`) antes de seguir investigando: cada tick empeora el daño. `procesados` sólo debe crecer al ritmo de las interacciones nuevas, y `pendientes` debe volver a 0 en cada tick.
+>
+> **4c — comprobación puntual de que `items.hp` no engorda.** Anota `hp` y `hp_last_updated_at` de dos o tres items que NO estés tocando, espera tres ticks (~15 min) y vuelve a leerlos: sin eventos nuevos, `hp` sólo puede **bajar** (decaimiento) o quedarse igual. Un `hp` que sube sin fila de `hp_events` que lo justifique es exactamente la firma de la corrupción.
+>
+> ```sql
+> select id, title, hp, hp_last_updated_at from items
+> where published and type <> 'franja'
+> order by hp desc nulls last limit 5;
+> ```
+>
+> **Y de paso**: `sweep_old_hp_events` está programada a las 04:20 diarias y no borrará nada durante 180 días, así que sólo hay que verla `succeeded` en 4a.
+>
+> **DECISIONES QUE QUEDAN ESCRITAS Y PUEDES VETAR** (las cuatro, con su razonamiento, en [[Admin Instrument Exemption]] · [[HL Ledger]] · [[Admin]] y en la entrada 2026-09-02 del [[log]]): que `/admin` muestre HL en crudo bajo exención estrecha; que `hp_events` pase a libro mayor perdiendo para siempre los ~2.110 eventos anteriores; que exista una palanca HL auditada que **nunca** toca `users.engagement_hp`; y que un reporte sea una señal sin consecuencia automática y sin borrado posible. Si alguna no te convence, el sitio para discutirlo es la nota de decisión, no el código.
+>
+> **CERRADO EN LA INTEGRACIÓN** (esta lista se escribió mientras los constructores corrían en paralelo y quedó desfasada; se corrige aquí en vez de borrarse, para que se vea qué se verificó): **el gesto de reporte SÍ existe** — `ReportButton` + `ReportOverlay` cableados en [[CommentList]] y en el hilo del foro (OP y respuestas), ocultos en lo propio, en lo ya tombstoneado y para quien no ha iniciado sesión; **falta a propósito** en ítems y en piezas de mercado (superficies densas, merecen su propio pase de diseño). **Los tres defectos de EVENTOS están corregidos**: la ruta ahora quita `hp`, `hp_last_updated_at`, `published` y `seed` del upsert (verificado contra el esquema vivo: `published` es NOT NULL DEFAULT true y `seed` NOT NULL DEFAULT false, así que el alta sigue funcionando; `published_at` NO se quita porque es NOT NULL sin default), la banda de vibe ya no se colapsa al editar, y la dirección tecleada sobrevive al guardado. **`?filtro=proximos` ya se lee**: `AdminEventsEditor` acepta `initialFilter` y trae un pestillo PRÓXIMOS 48H con el mismo predicado que `buildAttention()` usa para contar. **`tsc`, `next lint`, `next build` y las tres suites corridos en la integración**: tsc limpio, build limpio (`/admin` 33.3 kB / 239 kB), 251/251 tests, lint sin warnings nuevos (21 antes y después).
+>
+> **PENDIENTES REALES:** (a) **el eyeball autenticado sigue sin hacerse** — `/admin` es server-gated a `role='admin'` y no hay sesión de admin en dev, así que ninguna de las siete pestañas se ha visto renderizada con datos; lo único verificado en vivo es que la ruta compila, responde 200 y redirige a `/` sin sesión; (b) `listAdminItems` topa en 50 filas sin paginación (la nota lo dice en pantalla, pero si CONTENIDO se usa de verdad hay que pasar `desde`→`offset` desde `page.tsx`); (c) `GET /api/admin/reports` topa en 200 sin cursor; (d) `AdminEventsEditor` sigue montando las 450 filas con sus ~1.350 selectores de entidad en el primer pintado — medido y documentado en la cabecera del archivo, no arreglado; (e) abrir un ítem desde CONTENIDO con VER EN PÚBLICO dispara `recordHpEvent(id,'open')`, así que **inspeccionar suma HL al ítem que se está midiendo** — hay una nota visible junto al enlace, pero merece decisión propia (¿bypass del evento `open` para admins?); (f) la rama `admin/central-2026` no está mergeada ni pusheada.
+>
 > **Latest: 2026-09-02 — «PLIEGO TOTAL» FASES D + F CONSTRUIDAS, rama `pliego/fase-d-f` (SIN MERGE, sin push).** El rediseño site-wide queda completo: el panel es cuatro espacios (PANEL · PUBLICAR · FRANJA · MERCADO) y no queda superficie en la piel oscura vieja. 101 archivos, **+9.341 / −10.524 — el sitio es 1.183 líneas más pequeño con cuatro espacios más**. Verificado: `tsc` · 82/82 dashboard (16 tests nuevos) · 64/64 mapa · `next build` limpio · lint sin warnings nuevos · en vivo /espera y /mapa. Fase D conecta por fin el backend amputado: equipo de franja (4 métodos, RPCs 0033/0048), PATCH de perfil de franja, y PATCH/DELETE de listings — hasta hoy un vendedor no podía cambiar un precio ni marcar algo vendido. Fase F convierte /foro, /marketplace, [[FranjaOverlay]] + /f, el cromo de /mapa, /admin, /espera, /about, /e, /manifesto y /equipo. Detalle completo en la entrada 2026-09-02 del [[log]].
 >
 > **DECISIÓN TOMADA ESTA SESIÓN — `marketplace_enabled` es SELF-SERVICE.** El equipo franja enciende/apaga su tienda en MERCADO › AJUSTES; la cola de aprobación admin se retira y el admin conserva sólo un kill-switch de abuso en `/admin`. Era la ÚNICA cosa que bloqueaba fase D. Si prefieres la otra historia (aprobación admin), dilo: es un cambio acotado a `visibleEspacios` + la sub-pestaña AJUSTES + el reencuadre en /admin.

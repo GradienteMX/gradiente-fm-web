@@ -49,7 +49,7 @@ Prerequisite: in-page mix playback. See [[Open Questions]].
 
 ### 4. HP decay visualizer (admin-side)
 
-A diagnostic 3D widget on the [[Admin Dashboard]] showing items as spheres with size = HP, decay rate visible as a shrinking radius. Lets editors see the ranking at a glance.
+A diagnostic 3D widget on [[Admin]] showing items as spheres with size = HP, decay rate visible as a shrinking radius. Lets editors see the ranking at a glance. (Not built — the panel answers the same question with `LineChart` + `Sparkline` in flat ink.)
 
 ## Libraries
 
@@ -107,7 +107,7 @@ Home page without `<VibeSpectrum>` in viewport → doesn't load three.js. Good C
 
 ## Open questions
 
-- Does the [[Admin Dashboard]] ASCII-renderer diagnostic actually help editors or is it indulgent?
+- Does the [[Admin]] ASCII-renderer diagnostic actually help editors or is it indulgent?
 - Accessibility: 3D scenes + ASCII are not screen-reader-friendly. Need an `aria-label` + possibly a DOM fallback in each island.
 - Loading states: "carga de tres.js" feels heavy for a filter-forward site. Can we pre-warm the bundle on hover-of-link-to-island?
 
@@ -117,4 +117,4 @@ Home page without `<VibeSpectrum>` in viewport → doesn't load three.js. Good C
 - [[CRT Shader Layer]]
 - [[HTML-on-Canvas]]
 - [[VibeSlider]]
-- [[Admin Dashboard]]
+- [[Admin]]

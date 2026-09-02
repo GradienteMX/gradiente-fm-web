@@ -104,5 +104,5 @@ In an earlier iteration the explorer mirrored a Windows-style file manager more 
 - [[Dashboard Drafts]] — drafts data model (now reachable as `?section=drafts`)
 - [[drafts]] — sessionStorage-backed store
 - [[useAuth]] — auth gate
-- [[Admin Dashboard]] — what this prototype anticipates when Supabase lands
+- [[Admin]] — the admin-role panel; same backend, different gate
 - [[Supabase Migration]] — backend swap that turns Guardados into real saves

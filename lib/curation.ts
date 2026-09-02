@@ -42,7 +42,31 @@ const FRESHNESS_HALF_LIFE_HOURS: Record<ContentType, number> = {
 
 // ── Basics ───────────────────────────────────────────────────────────────────
 
-export function spawnHp(item: ContentItem): number {
+/**
+ * The seven fields the decay math actually reads. ContentItem satisfies this
+ * structurally, so every existing caller is unaffected — this only WIDENS what
+ * spawnHp/decayLambda/currentHp accept.
+ *
+ * It exists because /admin reads HP straight off `items` rows for hundreds of
+ * pieces at once and never needs a full ContentItem (no entities, no listings,
+ * no image resolution). Without it the admin data layer would either hydrate
+ * every row into a ContentItem it throws away, or cast — and a cast is how a
+ * fourth copy of the decay ladder eventually appears. The type half-life table
+ * already lives in three places (here, apply_hp_rollup, harvest_item); a
+ * fourth would be one too many.
+ */
+export interface HpDecayParts {
+  type: ContentType
+  hp?: number | null
+  hpLastUpdatedAt?: string | null
+  publishedAt: string
+  editorial?: boolean
+  hpDecayMultiplier?: number | null
+  date?: string | null
+  endDate?: string | null
+}
+
+export function spawnHp(item: HpDecayParts): number {
   return item.editorial ? SPAWN_HP_EDITORIAL : SPAWN_HP_DEFAULT
 }
 
@@ -56,7 +80,7 @@ function lambdaFromHalfLife(halfLifeHours: number): number {
 
 // ── Decay λ, with event imminence modulation ─────────────────────────────────
 
-function decayLambda(item: ContentItem, now: Date): number {
+function decayLambda(item: HpDecayParts, now: Date): number {
   const base = lambdaFromHalfLife(ATTENTION_HALF_LIFE_HOURS[item.type])
   if (item.type !== 'evento' || !item.date) return base
 
@@ -82,7 +106,7 @@ function decayLambda(item: ContentItem, now: Date): number {
 
 // ── Current HP (lazy decay from stored snapshot) ─────────────────────────────
 
-export function currentHp(item: ContentItem, now: Date = new Date()): number {
+export function currentHp(item: HpDecayParts, now: Date = new Date()): number {
   const hp0 = item.hp ?? spawnHp(item)
   const lastUpdated = parseISO(item.hpLastUpdatedAt ?? item.publishedAt)
   const Δt = Math.max(0, hoursBetween(lastUpdated, now))

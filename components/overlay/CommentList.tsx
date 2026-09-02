@@ -26,6 +26,7 @@ import { useResolvedUser } from '@/lib/userOverrides'
 import { canModerate } from '@/lib/permissions'
 import { useAuth } from '@/components/auth/useAuth'
 import { usePrompt } from '@/components/prompt/usePrompt'
+import { ReportButton } from '@/components/report/ReportButton'
 import { CommentComposer } from './CommentComposer'
 
 // Visual indent cap. Replies at depth > MAX_VISUAL_DEPTH collapse into a
@@ -331,6 +332,11 @@ function CommentNodeView({ node, all, depth, focusedCommentId }: CommentNodeProp
               </span>
             </span>
           )}
+          {/* Safety valve, far right so it's the quietest thing in the strip.
+              Hidden on your own comments (you delete those, you don't report
+              them) and unreachable on a tombstone — this whole footer is
+              already gated on !isTombstone. */}
+          {!isOwn && <ReportButton targetType="comment" targetId={node.id} />}
         </footer>
       )}
 

@@ -83,7 +83,7 @@ Items decay over time via type-specific half-lives. `editorial: true` raises spa
 - Never use `git push --force` without team discussion
 - Every new `ContentItem` needs a real vibe score (not just 0)
 - Don't personalize the feed per user (see [`wiki/90-Decisions/No Algorithm.md`](./wiki/90-Decisions/No Algorithm.md))
-- Don't introduce visible engagement metrics (likes, play counts, trending badges) — see [`wiki/90-Decisions/Size and Position as Only Signals.md`](./wiki/90-Decisions/Size and Position as Only Signals.md)
+- Don't introduce visible engagement metrics (likes, play counts, trending badges) — see [`wiki/90-Decisions/Size and Position as Only Signals.md`](./wiki/90-Decisions/Size and Position as Only Signals.md); the one exemption is the server-gated `role=admin` surface at `/admin`, which shows raw HL numbers by decision — see [`wiki/90-Decisions/Admin Instrument Exemption.md`](./wiki/90-Decisions/Admin Instrument Exemption.md)
 
 ## Running locally
 

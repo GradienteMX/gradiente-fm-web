@@ -67,4 +67,4 @@ Every consumer of `useAuth()` reads `currentUser` / `isAuthed` and won't change.
 - [[mockUsers]] — credential resolution still hits the seed (overrides can't change identity fields)
 - [[userOverrides]] — the live-resolution layer
 - [[PermisosSection]] · [[Roles and Ranks]]
-- [[Admin Dashboard]] · [[Supabase Migration]]
+- [[Admin]] · [[Backend Plan]] · [[Supabase Migration]]

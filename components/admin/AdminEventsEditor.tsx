@@ -6,6 +6,7 @@ import type { ContentItem, EntityRef } from '@/lib/types'
 import { useAuth } from '@/components/auth/useAuth'
 import { compressAndUploadImage } from '@/lib/imageUpload'
 import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMultiSelectL'
+import { FOCUS_RING } from '@/components/admin/kit'
 
 // Admin events editor — a dense, spreadsheet-style listing where admins edit
 // existing events and create new ones inline. Each row is one event; rich
@@ -17,6 +18,26 @@ import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMul
 // fill-strip head so it can never be confused with a live one. The entity
 // pickers moved to the pliego fork (EntityMultiSelectL) — identical props,
 // identical /api/entities contract, paper chrome.
+//
+// ── KNOWN DEBT: this list is not windowed ───────────────────────────────────
+// Every event gets a fully-mounted form, unconditionally, on first paint.
+// Production holds 450 type='evento' rows, so /admin?tab=eventos mounts 450
+// forms × 3 EntityMultiSelectL = 1,350 picker instances, each with its own
+// useState pair and debounce effect, plus ~15 form controls per row (≈6,750
+// interactive elements). No network cost — the pickers only fetch on a typed
+// query — but the mount, the React tree and the keystroke-time reconciliation
+// all scale linearly, and the FILTRAR box narrows the list only AFTER the
+// full mount has already happened.
+//
+// Shape of the fix, when it is worth doing: the row is already two things
+// glued together — a one-line identity (fecha · nombre · venue) and an edit
+// form. Split them, render the identity line for all 450, and mount the form
+// for at most one row at a time via the admin kit's ExpandableRow +
+// useSingleOpen (components/admin/kit.tsx), which is the disclosure grammar
+// the rest of /admin already uses. That collapses the steady state to 3
+// pickers. Paginating or virtualising the identity list is the follow-up if
+// 450 plain rows ever stops being cheap. Deliberately NOT done in this pass:
+// it is a rewrite of the component, and this pass is defect fixes only.
 
 // <input type="datetime-local"> wants "YYYY-MM-DDTHH:MM" (no seconds/TZ).
 function isoToLocal(iso: string | undefined): string {
@@ -29,6 +50,15 @@ function localToIso(local: string): string {
 function venueAddressOf(event: ContentItem): string {
   const venue = event.entities?.find((e) => e.kind === 'venue')
   return venue?.address ?? ''
+}
+
+// A cleared <input type="number"> reports '' and a rejected keystroke reports
+// NaN; both land on 0 rather than writing NaN into vibeMin/vibeMax (which
+// serialises to JSON null and fails the NOT NULL column).
+function clampVibe(raw: string): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.min(10, Math.round(n)))
 }
 
 interface RowState {
@@ -72,13 +102,19 @@ function toRow(event: ContentItem): RowState {
   }
 }
 
-const FOCUS_RING =
-  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
-
 export function AdminEventsEditor({
   initialEvents,
+  initialFilter,
 }: {
   initialEvents: ContentItem[]
+  /**
+   * ?filtro= from the URL. 'proximos' opens the list already narrowed to
+   * doors inside 48 hours — the destination of the ATENCIÓN row «EVENTOS EN
+   * <48H» on RESUMEN. Without this the row linked to a param nothing read and
+   * dropped the operator into 450 unfiltered rows, which is the kind of
+   * affordance that looks like it works and does not.
+   */
+  initialFilter?: string
 }) {
   const { currentUser } = useAuth()
   const [rows, setRows] = useState<RowState[]>(() =>
@@ -86,11 +122,22 @@ export function AdminEventsEditor({
   )
   const [draft, setDraft] = useState<RowState>(() => toRow(emptyEvent()))
   const [query, setQuery] = useState('')
+  const [proximos, setProximos] = useState(initialFilter === 'proximos')
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
+    // The 48h window is computed once per evaluation, not per row, and it is
+    // deliberately the SAME predicate buildAttention() counts with in
+    // lib/data/adminStats.ts — if the two drift, the row promises a count the
+    // destination cannot show.
+    const now = Date.now()
+    const horizon = now + 48 * 3_600_000
     return rows.filter((r) => {
+      if (proximos) {
+        const d = r.event.date ? new Date(r.event.date).getTime() : NaN
+        if (!Number.isFinite(d) || d <= now || d >= horizon) return false
+      }
+      if (!q) return true
       const hay = [
         r.event.title,
         ...(r.event.entities ?? []).map((e) => e.name),
@@ -100,7 +147,7 @@ export function AdminEventsEditor({
         .toLowerCase()
       return hay.includes(q)
     })
-  }, [rows, query])
+  }, [rows, query, proximos])
 
   return (
     <div className="flex flex-col gap-4">
@@ -109,15 +156,30 @@ export function AdminEventsEditor({
           Eventos
         </h2>
         <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-          {rows.length} EN EL LIBRO · EDICIÓN DIRECTA
+          {rows.length} EN EL LIBRO
+          {proximos && ` · ${filtered.length} EN <48H`} · EDICIÓN DIRECTA
         </span>
+        {/* Latch, not a link: the operator arrives here already filtered from
+            the ATENCIÓN queue and needs one obvious way back to the full book
+            without losing the page. */}
+        <button
+          type="button"
+          onClick={() => setProximos((v) => !v)}
+          aria-pressed={proximos}
+          data-cue="latch"
+          className={`ml-auto min-h-11 border border-ink px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${FOCUS_RING} ${
+            proximos ? 'bg-ink text-paper' : 'text-ink-soft hover:bg-ink hover:text-paper'
+          }`}
+        >
+          PRÓXIMOS 48H
+        </button>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filtrar…"
           aria-label="Filtrar eventos"
-          className={`ml-auto min-h-11 w-48 border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
+          className={`min-h-11 w-48 border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
         />
       </div>
 
@@ -224,8 +286,31 @@ function EventRow({
         onChange({ ...row, saving: false, status: 'error', message: data.error })
         return
       }
-      // Reflect the server-resolved id/slug back onto the event.
-      onSaved({ ...event, id: data.id, slug: data.slug })
+      // Reflect the server-resolved id/slug back onto the event — AND the
+      // address just written to the venue entity. DIRECCIÓN is not an item
+      // column: it persists onto entities.address (migration 0039), so the
+      // only copy the row holds is the one inside event.entities, captured
+      // when the page was rendered. The parent rebuilds the row with
+      // toRow(saved), which re-derives the field from that entity ref, so
+      // without this patch the input visibly reverts to the pre-save address
+      // the instant the save succeeds. Only the FIRST linked venue is
+      // updated, mirroring what the route treats as canonical; with no venue
+      // linked there is nowhere to store an address and reverting to '' is
+      // the honest outcome.
+      const address = row.venueAddress.trim()
+      const entities = event.entities ?? []
+      const venueIdx = entities.findIndex((e) => e.kind === 'venue')
+      onSaved({
+        ...event,
+        id: data.id,
+        slug: data.slug,
+        entities:
+          venueIdx === -1
+            ? entities
+            : entities.map((e, i) =>
+                i === venueIdx ? { ...e, address: address || undefined } : e,
+              ),
+      })
     } catch (e) {
       onChange({
         ...row,
@@ -379,15 +464,38 @@ function EventRow({
               className={inputCls}
             />
           </Field>
-          <Field label="VIBE 0–10">
+          {/* Vibe is a BAND (vibeMin ≤ vibeMax), not a point — 131 of the 450
+              events carry a genuine range. This used to be one number input
+              writing { vibeMin: v, vibeMax: v }, so editing ANY field on a
+              banded event (a price, a ticket link) collapsed its grading to a
+              point on save. Two bounds, each clamping the other, keep the band
+              alive; an ungraded 5/5 event still reads and saves as 5/5. The
+              two-thumb VibeFieldL is the richer control but registers window
+              pointermove/pointerup listeners per instance — at 450 mounted
+              rows that is 900 window listeners firing on every mouse move, so
+              this surface takes the numeric register instead. */}
+          <Field label="VIBE MÍN">
             <input
               type="number"
               min={0}
               max={10}
               value={event.vibeMin}
               onChange={(e) => {
-                const v = Math.max(0, Math.min(10, Number(e.target.value)))
-                patch({ vibeMin: v, vibeMax: v })
+                const v = clampVibe(e.target.value)
+                patch({ vibeMin: v, vibeMax: Math.max(v, event.vibeMax) })
+              }}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="VIBE MÁX">
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={event.vibeMax}
+              onChange={(e) => {
+                const v = clampVibe(e.target.value)
+                patch({ vibeMin: Math.min(v, event.vibeMin), vibeMax: v })
               }}
               className={inputCls}
             />

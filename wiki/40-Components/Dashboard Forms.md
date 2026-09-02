@@ -111,4 +111,4 @@ Every form now exposes a context-appropriate **CONTEXTO** block. Two mechanisms,
 
 - [[Dashboard]] · [[LivePreview]] · [[useAuth]]
 - [[Embed Primitive]] · [[Content Types]]
-- [[Admin Dashboard]] — what this anticipates with a real backend
+- [[Admin]] — the admin-side editors that outlived these forms

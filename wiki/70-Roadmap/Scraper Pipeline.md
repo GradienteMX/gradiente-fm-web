@@ -123,7 +123,7 @@ The **Phase 3** (automated, scheduled) version doesn't ship without [[Supabase M
 
 ## Links
 
-- [[Admin Dashboard]]
+- [[Admin]] — the EVENTOS tab this pipeline fills
 - [[Supabase Migration]]
 - [[mockData]]
 - [[Content Types]]

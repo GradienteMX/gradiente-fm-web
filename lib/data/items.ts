@@ -109,6 +109,24 @@ function rowToPollAttachment(p: PollRow): PollAttachment {
 // seeded mocks). Caller controls `published` (defaults to true — the publish
 // flow always lands rows in the visible state).
 //
+// THIS EMITS THE CREATE SHAPE, NOT AN EDIT PATCH. Four of the columns below
+// are server-authoritative and must be STRIPPED by any write path that can
+// hit an existing row:
+//
+//   hp, hp_last_updated_at — echoed straight back from the payload. A client
+//     ContentItem only ever holds the HL snapshot it was rendered with, so
+//     writing these on an edit rewinds items.hp to page-load and erases every
+//     hp_events gain the rollup landed since.
+//   published — defaults to true, so an unrelated edit publishes a draft.
+//   seed — hardcoded false, so an edit launders a seeded row into a real one.
+//
+// rowToContentItem does NOT map `published` or `seed` back, so a round-trip
+// through ContentItem cannot preserve them; only omitting the columns can
+// (an absent key stays out of PostgREST's ON CONFLICT DO UPDATE SET list).
+// Both write paths do this — app/api/items/route.ts (rowSansAuthority, which
+// also strips published_at / pinned / elevated) and
+// app/api/admin/events/route.ts. A third one must do it too.
+//
 // Polls are NOT mapped here — they live in their own table. The route
 // handler upserts the polls row separately after the item lands.
 

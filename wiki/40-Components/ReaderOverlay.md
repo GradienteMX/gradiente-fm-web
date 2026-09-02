@@ -90,7 +90,7 @@ Three default blocks:
 | Context: venue/city | `item.venue`, `item.venueCity` | rows hidden if absent |
 | Tags / genres | [`getGenreNames`, `getTagNames`](../../lib/genres.ts) | blocks hidden if both empty |
 
-Does not yet consume a `body` field — [[Admin Dashboard]] and [[Supabase Migration]] proposes adding it. For MVP, `bodyPreview` is enough for visual validation.
+Does not consume a `body` field. That proposal (a markdown `body` plus `externalUrl`) was never built as written — longform arrived instead as `article_body` + `footnotes`, consumed by [[ArticuloOverlay]] and [[ListicleOverlay]]. This overlay still renders `bodyPreview`.
 
 ## What it deliberately does NOT do
 

@@ -9,7 +9,7 @@ updated: 2026-05-03
 
 > Consolidated plan to take Gradiente FM off `sessionStorage` + mock data onto a real backend. Beta-launch target: ~50 invited people (mods, franjas, readers, insiders). Loose timeline — getting this right beats getting it fast. Decided 2026-05-02.
 >
-> Replaces the older [[Supabase Migration]] sketch and absorbs Phase 3 of [[Scraper Pipeline]]. [[Admin Dashboard]] is still current and complementary.
+> Replaces the older [[Supabase Migration]] sketch and absorbs Phase 3 of [[Scraper Pipeline]]. The admin UI it anticipated is built — see [[Admin]].
 
 > **STATUS 2026-05-03**: Chunks 1 + 1.5 + 2 SHIPPED + half of chunk 3 in one mega-session. 11 migrations, seed (214 items + 9 users + 25 comments + 51 reactions + 8 threads + 16 replies + 1 real admin), 7 type-page swaps, full auth + bootstrap admin `@iker`, `/admin` invite generator. Comment overlay end-to-end on real DB with optimistic UX (read, post, react `!`/`?`, save `★`). See top three entries in [[log]] for the play-by-play. Next pickup: **item saves** as a 20-min warm-up, then drafts/publishing/foro/storage round out chunk 3 (~6-7 hours of focused work to fully migrate the visual prototype off sessionStorage).
 
@@ -316,7 +316,7 @@ Five independently-shippable chunks plus the beta-open milestone. Loose timeline
 ## Links
 
 - [[Supabase Migration]] — older, narrower draft this plan replaces
-- [[Admin Dashboard]] — admin UI shape, still current and complementary
+- [[Admin]] — the admin UI as built
 - [[Scraper Pipeline]] — Phases 1+2 already shipped; Phase 3 absorbed here
 - [[types]] — data shape that informs the schema
 - [[curation]] — HP math (preserved on read; written via pg_cron rollup)

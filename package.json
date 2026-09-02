@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
-    "test:mapa": "tsx --test tests/mapa/engine.test.ts tests/mapa/focus.test.ts tests/mapa/archive.test.ts tests/mapa/continents.test.ts"
+    "test": "npm run test:mapa && npm run test:dashboard && npm run test:admin",
+    "test:mapa": "tsx --test tests/mapa/engine.test.ts tests/mapa/focus.test.ts tests/mapa/archive.test.ts tests/mapa/continents.test.ts",
+    "test:dashboard": "tsx --test tests/dashboard/contrast.test.ts tests/dashboard/espacios.test.ts tests/dashboard/layout.test.ts tests/dashboard/scale.test.ts",
+    "test:admin": "tsx --test tests/admin/tabs.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

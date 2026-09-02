@@ -1,60 +1,44 @@
 'use client'
 
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { LatchBar, type Latch } from '@/components/admin/kit'
+import {
+  ADMIN_TABS,
+  ADMIN_TAB_LABELS,
+  adminTabHref,
+  resolveAdminTab,
+} from '@/lib/admin/tabs'
 
-export type AdminTab = 'invites' | 'espera' | 'users' | 'franjas' | 'events'
-
-const TABS: { id: AdminTab; label: string }[] = [
-  { id: 'invites', label: 'INVITACIONES' },
-  { id: 'espera', label: 'ESPERA' },
-  { id: 'users', label: 'USUARIOS' },
-  { id: 'franjas', label: 'FRANJAS' },
-  { id: 'events', label: 'EVENTOS' },
-]
-
-const FOCUS_RING =
-  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
-
-// Tab strip for /admin. Driven by ?tab= search param so navigation is
-// browser-back-friendly + bookmarkable, mirroring the dashboard's
-// ?section= pattern. The page (server component) reads searchParams to
-// decide which section to render.
+// Tab strip for /admin — now seven latches, driven by the shared LatchBar so
+// the ink-fill grammar has one implementation instead of the two that existed
+// (this file and DashTabBar, which is hard-bound to EspacioId).
 //
-// «EL PLIEGO» chrome (fase F): ink-filled latch tabs — the LoginOverlay
-// mode-switch register. The active tab is a solid ink fill (bg-ink
-// text-paper), the rest are ink hairline cells that invert on hover. The
-// per-tab accent colours of the terminal version are gone: on paper a latch
-// is a fill, never a hue. Hrefs and ?tab= values are untouched.
-export function AdminTabNav() {
-  const searchParams = useSearchParams()
-  const active: AdminTab =
-    (searchParams?.get('tab') as AdminTab | null) ?? 'invites'
+// The active tab is resolved through resolveAdminTab(), the SAME function the
+// server page uses. They used to disagree: the page fell back to 'invites' for
+// an unknown ?tab= while this component cast the raw param to its union, so
+// `?tab=bogus` rendered content with no tab latched at all.
+//
+// Counts are real or absent. A latch showing «MODERACIÓN · 3» must mean three
+// open reports; there is no placeholder number here and none should be added.
 
-  return (
-    <nav
-      aria-label="Secciones del panel de administración"
-      className="flex flex-wrap items-stretch border border-ink bg-paper-raised"
-    >
-      {TABS.map((t) => {
-        const isActive = t.id === active
-        return (
-          <Link
-            key={t.id}
-            href={t.id === 'invites' ? '/admin' : `/admin?tab=${t.id}`}
-            scroll={false}
-            aria-current={isActive ? 'page' : undefined}
-            data-cue="latch"
-            className={`flex min-h-11 flex-1 items-center justify-center whitespace-nowrap border-l border-ink px-4 font-mono text-d13 uppercase tracking-widest transition-colors first:border-l-0 ${FOCUS_RING} ${
-              isActive
-                ? 'bg-ink font-bold text-paper'
-                : 'text-ink-soft hover:bg-ink hover:text-paper'
-            }`}
-          >
-            {t.label}
-          </Link>
-        )
-      })}
-    </nav>
-  )
+export function AdminTabNav({
+  counts,
+}: {
+  /** Live counts per tab. Omit a key entirely rather than passing 0. */
+  counts?: Partial<Record<string, number>>
+}) {
+  const searchParams = useSearchParams()
+  const active = resolveAdminTab(searchParams?.get('tab'))
+
+  const tabs: Latch[] = ADMIN_TABS.map((id) => ({
+    id,
+    label: ADMIN_TAB_LABELS[id],
+    href: adminTabHref(id),
+    count: counts?.[id],
+    // The acid dot is spent on one thing only: work that is waiting for a
+    // person. Open reports qualify; a content count does not.
+    dot: id === 'moderacion' && (counts?.moderacion ?? 0) > 0,
+  }))
+
+  return <LatchBar tabs={tabs} active={active} ariaLabel="Secciones del panel de administración" />
 }

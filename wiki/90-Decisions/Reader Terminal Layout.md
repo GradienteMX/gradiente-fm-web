@@ -79,7 +79,7 @@ That opposite stance between [[ReaderOverlay]] and [[EventoOverlay]] is intentio
 - Reading mode "minimap" showing scroll position + section headings
 - Copy-link button with feedback
 - `C` hotkey for copy link, `R` for reading mode variants
-- Article `body` field (full markdown) rendered in-overlay. Currently we render `bodyPreview`. See [[Admin Dashboard]] and [[Supabase Migration]].
+- Article `body` field (full markdown) rendered in-overlay. Answered differently: structured `article_body` + `footnotes` in [[ArticuloOverlay]] / [[ListicleOverlay]]. This overlay still renders `bodyPreview`.
 
 ## Links
 
@@ -91,4 +91,4 @@ That opposite stance between [[ReaderOverlay]] and [[EventoOverlay]] is intentio
 - [[OverlayShell]]
 - [[NGE Aesthetic]]
 - [[Typography]]
-- [[Admin Dashboard]]
+- [[Admin]]

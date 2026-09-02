@@ -16,6 +16,7 @@ import { canModerate } from '@/lib/permissions'
 import { vibeToColor } from '@/lib/utils'
 import { getResolvedUserById, useResolvedUser } from '@/lib/userOverrides'
 import { usePrompt } from '@/components/prompt/usePrompt'
+import { ReportButton } from '@/components/report/ReportButton'
 import { ForoLightbox } from './ForoLightbox'
 import { PostHeader } from './PostHeader'
 import { ReplyComposer } from './ReplyComposer'
@@ -268,6 +269,17 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                     onIdClick={() => quotePost(thread.id)}
                   />
                 </div>
+                {/* Reader's report vs. staff's delete: the two live side by
+                    side, but the report chip stays hairline-quiet against the
+                    red BORRAR. Hidden on your own OP and on a tombstone —
+                    there is nothing left to report once the body is gone. */}
+                {!threadDeleted && thread.authorId !== currentUser?.id && (
+                  <ReportButton
+                    targetType="foro_thread"
+                    targetId={thread.id}
+                    className="min-h-11"
+                  />
+                )}
                 {isMod && !threadDeleted && (
                   <ModDeleteButton onClick={onTombstoneThread} label="BORRAR HILO" />
                 )}
@@ -344,6 +356,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                 pulsed={pulsedId === reply.id}
                 inboundIds={inboundIndex.get(reply.id) ?? []}
                 isMod={isMod}
+                isOwn={reply.authorId === currentUser?.id}
                 onIdClick={() => quotePost(reply.id)}
                 onQuoteClick={focusPost}
                 isQuoteToMe={isQuoteToMe}
@@ -386,6 +399,7 @@ function ReplyArticle({
   pulsed,
   inboundIds,
   isMod,
+  isOwn,
   onIdClick,
   onQuoteClick,
   isQuoteToMe,
@@ -396,6 +410,7 @@ function ReplyArticle({
   pulsed: boolean
   inboundIds: string[]
   isMod: boolean
+  isOwn: boolean
   onIdClick: () => void
   onQuoteClick: (id: string) => void
   isQuoteToMe: (id: string) => boolean
@@ -419,6 +434,9 @@ function ReplyArticle({
             onIdClick={onIdClick}
           />
         </div>
+        {!deleted && !isOwn && (
+          <ReportButton targetType="foro_reply" targetId={reply.id} className="min-h-11" />
+        )}
         {isMod && !deleted && (
           <ModDeleteButton onClick={() => onTombstone(reply)} label="BORRAR" />
         )}

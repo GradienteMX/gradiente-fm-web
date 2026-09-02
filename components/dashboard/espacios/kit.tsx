@@ -31,11 +31,20 @@ export function SpaceHead({
   eyebrow,
   chips,
   right,
+  as: Heading = 'h1',
 }: {
   title: ReactNode
   eyebrow?: string
   chips?: ReactNode
   right?: ReactNode
+  /**
+   * Heading level. In a dashboard space this banner IS the page heading, so
+   * h1 is the default and the three existing spaces are unaffected. /admin is
+   * different: the route already prints «CENTRAL DE ADMINISTRACIÓN» as its h1
+   * and a tab's SpaceHead sits underneath it, so those pass 'h2'. Two h1s on
+   * one document give a screen-reader user two competing titles for the page.
+   */
+  as?: 'h1' | 'h2'
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink py-4">
@@ -45,7 +54,9 @@ export function SpaceHead({
             {eyebrow}
           </span>
         )}
-        <h1 className="font-syne text-d28 font-extrabold uppercase text-ink">{title}</h1>
+        <Heading className="font-syne text-d28 font-extrabold uppercase text-ink">
+          {title}
+        </Heading>
       </div>
       {chips && <div className="flex flex-wrap items-center gap-2">{chips}</div>}
       {right && <div className="ml-auto flex items-center gap-2">{right}</div>}

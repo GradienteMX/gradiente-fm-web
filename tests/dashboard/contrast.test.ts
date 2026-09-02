@@ -1,6 +1,11 @@
 // «EL PLIEGO» visual-system gates — WCAG contrast for the light-surface
 // palette, token-collision guard, and hlBracket boundary parity with the
 // two legacy copies. Run: npx tsx --test tests/dashboard/contrast.test.ts
+//
+// Covers three palettes, all of which render as TEXT on the two paper grounds:
+// CATEGORY_ON_LIGHT (content types), KIND_ON_LIGHT (HL ledger kinds) and
+// SERIES_ON_LIGHT (the FLUJO DE VIDA lines). The first two share a table row
+// in /admin's CONTENIDO tab, so they are also checked for aliasing.
 
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
@@ -21,6 +26,13 @@ import {
   DASH_SYS_RED,
 } from '@/lib/dashboard/palette'
 import { hlBracket } from '@/lib/dashboard/hl'
+import {
+  KIND_CODES,
+  KIND_LABELS,
+  KIND_ON_LIGHT,
+  SERIES_LABELS,
+  SERIES_ON_LIGHT,
+} from '@/lib/hp/kinds'
 
 // ── WCAG 2.1 relative luminance + contrast ratio ──────────────────────────
 
@@ -79,6 +91,98 @@ describe('categoryColorOnLight — §1.5 map', () => {
         'review',
       ],
     )
+  })
+})
+
+// ── HL ledger kind swatches on both light grounds ─────────────────────────
+
+describe('KIND_ON_LIGHT — the six ledger kinds', () => {
+  for (const [kind, hex] of Object.entries(KIND_ON_LIGHT)) {
+    it(`${kind} ${hex} ≥4.5:1 on paper and paper-raised`, () => {
+      const onPaper = contrast(hex, DASH_PAPER)
+      const onRaised = contrast(hex, DASH_PAPER_RAISED)
+      assert.ok(onPaper >= 4.5, `${kind} on paper: ${onPaper.toFixed(2)}:1 < 4.5:1`)
+      assert.ok(
+        onRaised >= 4.5,
+        `${kind} on paper-raised: ${onRaised.toFixed(2)}:1 < 4.5:1`,
+      )
+    })
+  }
+
+  it('all six ledger kinds are covered, no extras', () => {
+    // Same exhaustiveness shape as CATEGORY_ON_LIGHT: a seventh kind added to
+    // lib/hp/kinds.ts fails here before it can ship an unmeasured swatch.
+    assert.deepEqual(Object.keys(KIND_ON_LIGHT).sort(), [
+      'admin_adjust',
+      'click',
+      'comment',
+      'decay',
+      'open',
+      'save',
+    ])
+  })
+
+  it('every swatch travels with a label and a 2-letter code (§1.5)', () => {
+    // Hue is never the only channel. GUARDADO (#9A3412) and AJUSTE ADMIN
+    // (#8A5300) are two browns; the code is what separates them.
+    for (const kind of Object.keys(KIND_ON_LIGHT)) {
+      assert.ok(KIND_LABELS[kind as keyof typeof KIND_LABELS], `${kind} has no label`)
+      const code = KIND_CODES[kind as keyof typeof KIND_CODES]
+      assert.ok(code, `${kind} has no code`)
+      assert.equal(code.length, 2, `${kind} code '${code}' is not 2 letters`)
+    }
+    assert.equal(new Set(Object.values(KIND_CODES)).size, Object.keys(KIND_CODES).length)
+  })
+})
+
+// ── Cross-palette aliasing ────────────────────────────────────────────────
+
+describe('KIND_ON_LIGHT × CATEGORY_ON_LIGHT', () => {
+  it('shares no hex with the content-type palette', () => {
+    // A CONTENIDO row carries a content-type swatch and a kind breakdown side
+    // by side. If the two palettes alias, the row reads as one legend and the
+    // colour stops meaning anything.
+    const categories = new Map(
+      Object.entries(CATEGORY_ON_LIGHT).map(([t, hex]) => [hex.toUpperCase(), t]),
+    )
+    for (const [kind, hex] of Object.entries(KIND_ON_LIGHT)) {
+      const clash = categories.get(hex.toUpperCase())
+      assert.equal(clash, undefined, `kind '${kind}' aliases content type '${clash}' at ${hex}`)
+    }
+  })
+})
+
+// ── FLUJO DE VIDA series lines ────────────────────────────────────────────
+
+describe('SERIES_ON_LIGHT — the three chart lines', () => {
+  for (const [series, hex] of Object.entries(SERIES_ON_LIGHT)) {
+    it(`${series} ${hex} ≥4.5:1 on paper and paper-raised`, () => {
+      // These are stroked lines AND their legend text, so the text threshold
+      // is the one that governs — a 1px stroke is thinner than any glyph.
+      const onPaper = contrast(hex, DASH_PAPER)
+      const onRaised = contrast(hex, DASH_PAPER_RAISED)
+      assert.ok(onPaper >= 4.5, `${series} on paper: ${onPaper.toFixed(2)}:1 < 4.5:1`)
+      assert.ok(
+        onRaised >= 4.5,
+        `${series} on paper-raised: ${onRaised.toFixed(2)}:1 < 4.5:1`,
+      )
+    })
+  }
+
+  it('all three series are covered, no extras, each labelled', () => {
+    assert.deepEqual(Object.keys(SERIES_ON_LIGHT).sort(), [
+      'decaimiento',
+      'hlNeto',
+      'hpCreadores',
+    ])
+    assert.deepEqual(Object.keys(SERIES_LABELS).sort(), Object.keys(SERIES_ON_LIGHT).sort())
+  })
+
+  it('the three lines are mutually distinguishable', () => {
+    // Three overlaid strokes on one chart. Identical hexes would make two of
+    // them one line, and the legend would claim otherwise.
+    const hexes = Object.values(SERIES_ON_LIGHT).map((h) => h.toUpperCase())
+    assert.equal(new Set(hexes).size, hexes.length)
   })
 })
 
