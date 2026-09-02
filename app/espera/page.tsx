@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, Mail, UserSquare2 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import {
   WAITLIST_ALIAS_MAX,
   WAITLIST_CITIES,
@@ -14,17 +14,37 @@ import {
 
 // /espera — public waitlist for the viral campaign. Anonymous visitors who
 // arrive without an invite code land here from /welcome ("UNIRME A LA LISTA
-// DE ESPERA") or straight from campaign links. Same terminal-cockpit language
-// as /welcome (same chrome, same tokens) with the reference mockup's layout:
-// side panels of telemetry, an ASCII transmission eye in the center, and the
-// MÓDULO DE ESPERA form. Successful signups persist to localStorage so a
-// returning visitor sees their queue position instead of an empty form.
+// DE ESPERA") or straight from campaign links. Successful signups persist to
+// localStorage so a returning visitor sees their queue position instead of an
+// empty form.
 //
-// Stats in ESTADÍSTICAS DE INVITACIÓN are REAL (GET /api/waitlist) — house
-// rule: every readout true data. Everything else labeled as atmosphere
-// follows the /welcome precedent (fake logs, node meters).
+// CHROME — «EL PLIEGO» (fase F). This page held the last copy of the EVA
+// terminal-cockpit idiom; /welcome was re-chromed out of that exact idiom, so
+// this is its translation: paper ground #EDEBE3, ink hairlines, Syne titles,
+// grotesk body, mono labels, ONE acid fill-block (the submit), sys-red-paper
+// for errors, one 2px-ink focus grammar, ≥44px targets. No bracket corners,
+// no glow, no scanlines.
+//
+// HONESTY — every readout on this page is now true or declared:
+//   · ESTADÍSTICAS DE INVITACIÓN is real (GET /api/waitlist).
+//   · The queue position + alias in the success panel are real.
+//   · The ASCII eye and the wave are procedural DRAWINGS, framed in dark
+//     bezels and captioned as such — they measure nothing.
+//   · Everything that used to fake it is gone: the node network, latency,
+//     AES-256 banner, MHz + stability readouts, signal-intensity meter, the
+//     "descifrando" theatre, the system log and the invented activity feed
+//     ("nuevo registro desde Bogotá"). The manifesto line the decoder used to
+//     type out survives as what it always was — a printed quote.
+//
+// The API surface is untouched: GET/POST /api/waitlist, the lib/waitlist
+// constants, and the `gradiente:espera` localStorage contract.
 
 const LS_KEY = 'gradiente:espera'
+
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+const INPUT_CLS = `min-h-11 w-full border border-ink bg-paper px-3 py-2 font-mono text-d15 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`
 
 interface StoredSignup {
   alias: string
@@ -33,19 +53,6 @@ interface StoredSignup {
 }
 
 export default function EsperaPage() {
-  // ── Live UTC clock (same cue as /welcome) ─────────────────────────────
-  const [clock, setClock] = useState('--:--:--')
-  useEffect(() => {
-    const tick = () => {
-      const d = new Date()
-      const pad = (n: number) => n.toString().padStart(2, '0')
-      setClock(`${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`)
-    }
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [])
-
   // ── Real waitlist stats ───────────────────────────────────────────────
   const [stats, setStats] = useState<WaitlistStats | null>(null)
   useEffect(() => {
@@ -160,188 +167,153 @@ export default function EsperaPage() {
       : '—'
 
   return (
-    <div
-      className="welcome-cockpit fixed inset-0 z-50 flex flex-col overflow-auto bg-base text-primary"
-      style={{
-        backgroundImage:
-          'repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px)',
-      }}
-    >
-      {/* ── Top strip ──────────────────────────────────────────────── */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-sys-orange/30 bg-base/80 px-4 py-2 font-mono text-[10px] tracking-widest backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-orange" />
-          <span className="text-sys-orange">// SISTEMA_GRADIENTE v3.1.7</span>
-        </div>
-        <span className="hidden text-muted lg:inline">
-          ENLACE ESTABLECIDO <span className="text-sys-orange/60">---</span>{' '}
-          ENCRIPTACIÓN AES-256{' '}
-          <span className="ml-2 text-sys-green">◆ SEÑAL: FUERTE</span>
-        </span>
-        <span className="tabular-nums text-muted">
-          UTC {clock} <span className="ml-2 text-sys-orange">NODO: MX-0F</span>
-        </span>
-      </header>
+    <div className="fixed inset-0 z-50 overflow-auto bg-paper text-ink">
+      <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
+        {/* ── Masthead ─────────────────────────────────────────────── */}
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink pb-3">
+          <span className="font-syne text-d18 font-extrabold tracking-tight text-ink">
+            GRADIENTE
+          </span>
+          <span className="border border-ink px-2 py-1 font-mono text-d11 uppercase tracking-widest text-ink-soft">
+            ACCESO · SOLO INVITACIÓN
+          </span>
+        </header>
 
-      {/* ── Body — telemetry | eye + form | telemetry ─────────────── */}
-      <div className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[clamp(200px,15vw,250px)_1fr_clamp(210px,16vw,264px)]">
-        {/* ── LEFT COLUMN ─────────────────────────────────────────── */}
-        <aside className="hidden flex-col gap-4 font-mono text-[10px] tracking-widest lg:flex">
-          <Panel label={null}>
-            <div className="font-syne text-2xl font-black tracking-tight text-primary">
-              GRADIENTE
+        <div className="grid flex-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,470px)]">
+          {/* ── Left column — the drawing + the printed word ────────── */}
+          <div className="order-2 flex flex-col gap-6 lg:order-1">
+            {/* The eye is a 104-column canvas: below md it would have to be
+                clipped, so it stays off small screens (same gate the cockpit
+                version used) and the phone never pays for its rAF loop. */}
+            <Bezel
+              label="FIGURA"
+              caption="Dibujo procedural. No mide nada: es una figura viva, no un indicador."
+              className="hidden md:flex"
+            >
+              <EyeAscii />
+            </Bezel>
+
+            {/* The manifesto line the old decoder used to type out, printed
+                as what it is: a quote. */}
+            <figure className="border border-ink bg-paper-raised p-5">
+              <blockquote className="font-syne text-d28 font-extrabold uppercase leading-8 text-ink">
+                No buscamos a muchos. Solo a los que escuchan cuando nadie más
+                lo hace.
+              </blockquote>
+            </figure>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <Panel title="Nota del operador">
+                <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
+                  Si estás viendo esto, es porque la red te reconoció. No
+                  hacemos ruido: construimos lo que el sistema no entiende.
+                  Gracias por mantener la frecuencia.
+                </p>
+                <p className="mt-3 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                  — 0F
+                </p>
+              </Panel>
+
+              <Bezel
+                label="ONDA"
+                caption="Atmósfera, no telemetría: la onda se dibuja sola."
+              >
+                <WaveAscii
+                  cols={44}
+                  rows={5}
+                  className="text-[10px] leading-[1] text-panel-text/70"
+                />
+              </Bezel>
             </div>
-            <div className="text-[9px] tracking-[0.3em] text-sys-orange/80">
-              TRANSMISIÓN PRIVADA
-            </div>
-          </Panel>
-
-          <Panel label="NODO ACTIVO">
-            <div className="text-sys-orange">&gt; MX-0F</div>
-            <div className="text-muted">
-              &gt; ESTADO: <span className="text-sys-green">EN LÍNEA</span>
-            </div>
-            <div className="text-muted">&gt; ENCRIPTACIÓN: AES-256</div>
-            <div className="text-muted">
-              &gt; LATENCIA: <span className="text-sys-orange">23ms</span>
-            </div>
-          </Panel>
-
-          <Panel label="RED DE NODOS">
-            <NodeRow name="MX-0F" fill={9} active />
-            <NodeRow name="NL-7B" fill={6} />
-            <NodeRow name="CL-1C" fill={5} />
-            <NodeRow name="ES-3E" fill={4} />
-            <NodeRow name="US-2A" fill={3} />
-            <NodeRow name="JP-9D" fill={3} />
-          </Panel>
-
-          <Panel label="ESTADÍSTICAS DE INVITACIÓN">
-            <StatBig label="SEÑALES ENCONTRADAS" value={stats ? fmt(stats.senales) : '—'} />
-            <StatBig label="EN LISTA DE ESPERA" value={stats ? fmt(stats.espera) : '—'} />
-            <StatBig label="ACCESOS CONCEDIDOS" value={stats ? fmt(stats.accesos) : '—'} />
-            <StatBig label="TASA DE ACEPTACIÓN" value={tasa} />
-          </Panel>
-
-          <Panel label="FRECUENCIA DE TRANSMISIÓN">
-            <div className="tabular-nums text-sys-orange">&gt;&gt; 27.122 MHz ± 0.033</div>
-            <WaveAscii cols={26} rows={3} className="text-[9px] leading-[1] text-sys-orange/70" />
-            <div className="text-muted">
-              ESTABILIDAD: <span className="text-sys-green">87.3%</span>
-            </div>
-          </Panel>
-        </aside>
-
-        {/* ── CENTER — eye + módulo de espera ─────────────────────── */}
-        <main className="flex min-h-0 flex-col items-center justify-center gap-6 xl:flex-row xl:gap-10">
-          <div className="hidden min-h-0 flex-1 flex-col items-center justify-center md:flex">
-            <EyeAscii />
-            <p className="mt-2 font-mono text-[10px] tracking-[0.3em] text-sys-orange/70">
-              TRANSMISIÓN EN CURSO<span className="animate-pulse">...</span>
-            </p>
           </div>
 
-          {/* MÓDULO DE ESPERA */}
-          <section className="relative w-full max-w-[560px] shrink-0 px-5 py-6 sm:px-7">
-            <Brackets />
-            <div className="mb-4 flex items-center gap-2 font-mono text-[10px] tracking-widest text-sys-orange/80">
-              <span aria-hidden>◆</span> .// MÓDULO DE ESPERA
-            </div>
-
-            {done ? (
-              <div className="flex flex-col gap-5">
-                <div>
-                  <h1 className="font-mono text-[26px] font-bold leading-tight tracking-[0.14em] text-sys-green sm:text-[30px]">
-                    SEÑAL REGISTRADA
-                  </h1>
-                  <div className="mt-2 h-px w-full bg-sys-green/40" />
-                </div>
-
-                <div className="flex flex-col gap-1.5 font-mono text-[12px] tracking-widest text-secondary">
-                  <span>
-                    &gt; ALIAS:{' '}
-                    <span className="text-primary">{alias.trim().toUpperCase() || '—'}</span>
-                  </span>
-                  <span>
-                    &gt; POSICIÓN EN LA LISTA:{' '}
-                    <span className="text-[17px] tabular-nums text-sys-orange">
-                      {done.position != null ? `#${String(done.position).padStart(3, '0')}` : '#—'}
-                    </span>
-                  </span>
-                  <span>
-                    &gt; ESTADO: <span className="text-sys-amber">EN ESPERA</span>
-                  </span>
-                </div>
-
-                {done.already && (
-                  <p className="font-mono text-[11px] tracking-widest text-sys-amber">
-                    ⚠ ESTE CORREO YA ESTABA EN LA LISTA — TU POSICIÓN NO CAMBIÓ.
-                  </p>
-                )}
-                {done.restored && (
-                  <p className="font-mono text-[11px] tracking-widest text-muted">
-                    &gt; ESTA TERMINAL YA TRANSMITIÓ SU SEÑAL.
-                  </p>
-                )}
-
-                <p className="font-grotesk text-[13px] leading-relaxed text-secondary">
-                  Te avisaremos por correo cuando la puerta se abra. La señal
-                  sabe dónde encontrarte.
-                </p>
-
-                <Link
-                  href="/welcome"
-                  className="block w-full border border-sys-orange/40 px-4 py-3 text-center font-mono text-[12px] tracking-[0.18em] text-sys-orange/80 transition-colors hover:border-sys-orange hover:bg-sys-orange/10 hover:text-sys-orange"
-                >
-                  &lt; REGRESAR AL ACCESO
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="self-start font-mono text-[10px] tracking-widest text-muted underline-offset-4 transition-colors hover:text-secondary hover:underline"
-                >
-                  &gt; registrar otro correo
-                </button>
+          {/* ── Right column — the door + the real numbers ──────────── */}
+          <div className="order-1 flex flex-col gap-6 lg:order-2">
+            <section className="border border-ink bg-paper-raised">
+              <div className="border-b border-ink px-5 py-3">
+                <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                  MÓDULO DE ESPERA
+                </span>
+                <h1 className="font-syne text-d28 font-extrabold uppercase leading-8 text-ink">
+                  {done ? 'Señal registrada' : 'Señal encontrada'}
+                </h1>
               </div>
-            ) : (
-              <form onSubmit={submit} className="flex flex-col gap-4">
-                <div>
-                  <h1 className="font-mono text-[28px] font-bold leading-tight tracking-[0.14em] text-sys-orange sm:text-[34px]">
-                    SEÑAL ENCONTRADA
-                  </h1>
-                  <p className="mt-3 font-mono text-[11px] leading-relaxed tracking-wider text-secondary">
-                    Has encontrado una frecuencia que no es para todos. ⚡
-                    <br />
-                    Deja tus datos y te avisaremos cuando la puerta se abra.
-                    <br />
-                    <span className="text-muted">
-                      Nada es casualidad. Estás en la lista correcta.
-                    </span>
-                  </p>
-                </div>
 
-                {/* Honeypot — visually removed, still in the DOM for bots. */}
-                <div
-                  aria-hidden="true"
-                  className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden"
-                >
-                  <label>
-                    Teléfono
-                    <input
-                      type="text"
-                      name="tel"
-                      tabIndex={-1}
-                      autoComplete="off"
-                      value={tel}
-                      onChange={(e) => setTel(e.target.value)}
-                    />
-                  </label>
-                </div>
+              <div className="p-5">
+                {done ? (
+                  <div className="flex flex-col gap-4">
+                    <dl className="flex flex-col divide-y divide-ink/15 border-y border-ink">
+                      <DoneRow label="ALIAS">
+                        {alias.trim().toUpperCase() || '—'}
+                      </DoneRow>
+                      <DoneRow label="POSICIÓN">
+                        <span className="tabular-nums">
+                          {done.position != null
+                            ? `#${String(done.position).padStart(3, '0')}`
+                            : '#—'}
+                        </span>
+                      </DoneRow>
+                      <DoneRow label="ESTADO">EN ESPERA</DoneRow>
+                    </dl>
 
-                <Field label="01_ ALIAS / IDENTIFICADOR" htmlFor="espera-alias">
-                  <div className="flex items-center gap-2">
-                    <div className="relative min-w-0 flex-1">
+                    {done.already && (
+                      <p className="border border-ink px-3 py-2 font-mono text-d13 uppercase tracking-widest text-ink">
+                        ESTE CORREO YA ESTABA EN LA LISTA — TU POSICIÓN NO CAMBIÓ.
+                      </p>
+                    )}
+                    {done.restored && (
+                      <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                        ESTA TERMINAL YA TRANSMITIÓ SU SEÑAL.
+                      </p>
+                    )}
+
+                    <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
+                      Te avisaremos por correo cuando la puerta se abra. La
+                      señal sabe dónde encontrarte.
+                    </p>
+
+                    <BackLink />
+
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className={`self-start font-mono text-d11 uppercase tracking-widest text-ink-soft underline underline-offset-4 hover:no-underline ${FOCUS_RING}`}
+                    >
+                      REGISTRAR OTRO CORREO
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={submit} className="relative flex flex-col gap-4" noValidate>
+                    <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
+                      Has encontrado una frecuencia que no es para todos. Deja
+                      tus datos y te avisaremos cuando la puerta se abra.
+                    </p>
+
+                    {/* Honeypot — visually removed, still in the DOM for bots.
+                        The form's `relative` is load-bearing: it is the
+                        containing block this is positioned against. */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden"
+                    >
+                      <label>
+                        Teléfono
+                        <input
+                          type="text"
+                          name="tel"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          value={tel}
+                          onChange={(e) => setTel(e.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <Field
+                      label="ALIAS / IDENTIFICADOR"
+                      htmlFor="espera-alias"
+                      aside={`${alias.length}/${WAITLIST_ALIAS_MAX}`}
+                    >
                       <input
                         id="espera-alias"
                         value={alias}
@@ -352,23 +324,15 @@ export default function EsperaPage() {
                         autoCapitalize="characters"
                         autoCorrect="off"
                         spellCheck={false}
-                        className="w-full border bg-black px-3 py-2.5 pr-9 font-mono text-sm tracking-widest text-primary outline-none transition-colors focus:border-sys-orange"
-                        style={{ borderColor: '#242424' }}
+                        className={INPUT_CLS}
                       />
-                      <UserSquare2
-                        size={15}
-                        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sys-orange/50"
-                      />
-                    </div>
-                    <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums tracking-widest text-muted">
-                      {alias.length}/{WAITLIST_ALIAS_MAX}
-                    </span>
-                  </div>
-                </Field>
+                    </Field>
 
-                <Field label="02_ CORREO ELECTRÓNICO" htmlFor="espera-email">
-                  <div className="flex items-center gap-2">
-                    <div className="relative min-w-0 flex-1">
+                    <Field
+                      label="CORREO ELECTRÓNICO"
+                      htmlFor="espera-email"
+                      aside={emailValid ? 'FORMATO OK' : undefined}
+                    >
                       <input
                         id="espera-email"
                         type="email"
@@ -377,182 +341,203 @@ export default function EsperaPage() {
                         placeholder="tu@señal.net"
                         autoComplete="email"
                         inputMode="email"
-                        className="w-full border bg-black px-3 py-2.5 pr-9 font-mono text-sm tracking-wider text-primary outline-none transition-colors focus:border-sys-orange"
-                        style={{ borderColor: '#242424' }}
+                        className={INPUT_CLS}
                       />
-                      <Mail
-                        size={15}
-                        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sys-orange/50"
-                      />
-                    </div>
-                    <span
-                      className={`w-12 shrink-0 text-right font-mono text-[9px] tracking-widest ${
-                        emailValid ? 'text-sys-green' : 'text-muted/60'
-                      }`}
+                    </Field>
+
+                    <SelectField
+                      label="CIUDAD / ZONA"
+                      id="espera-city"
+                      value={city}
+                      onChange={setCity}
+                      options={WAITLIST_CITIES}
+                    />
+
+                    <SelectField
+                      label="¿CÓMO NOS ENCONTRASTE?"
+                      id="espera-source"
+                      value={source}
+                      onChange={setSource}
+                      options={WAITLIST_SOURCES}
+                    />
+
+                    {error && (
+                      <p className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold leading-relaxed tracking-widest text-sys-red-paper">
+                        ⚠ {error}
+                      </p>
+                    )}
+
+                    {/* The page's ONE acid moment: a fill-block with ink on
+                        top — the same weight /welcome's waitlist bar carries. */}
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className={`flex min-h-11 items-center justify-between gap-3 border border-ink bg-acid px-4 py-3 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-wait disabled:opacity-45 ${FOCUS_RING}`}
                     >
-                      {emailValid ? 'FORMATO OK' : '· · ·'}
-                    </span>
-                  </div>
-                </Field>
+                      <span>
+                        {submitting ? 'TRANSMITIENDO SEÑAL…' : 'UNIRME A LA LISTA DE ESPERA'}
+                      </span>
+                      <span aria-hidden>→</span>
+                    </button>
 
-                <SelectField
-                  label="03_ CIUDAD / ZONA"
-                  id="espera-city"
-                  value={city}
-                  onChange={setCity}
-                  options={WAITLIST_CITIES}
-                />
+                    <BackLink />
 
-                <SelectField
-                  label="04_ ¿CÓMO NOS ENCONTRASTE?"
-                  id="espera-source"
-                  value={source}
-                  onChange={setSource}
-                  options={WAITLIST_SOURCES}
-                />
-
-                {error && (
-                  <p
-                    className="border px-3 py-2 font-mono text-[11px] tracking-widest"
-                    style={{ borderColor: '#E63329', color: '#E63329' }}
-                  >
-                    ⚠ {error}
-                  </p>
+                    <p className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink-faint">
+                      SOLO USAREMOS TU CORREO PARA AVISARTE DEL ACCESO. NADA MÁS.
+                    </p>
+                  </form>
                 )}
+              </div>
+            </section>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="mt-1 w-full border border-sys-orange bg-sys-orange px-4 py-3.5 font-mono text-[13px] font-bold tracking-[0.16em] text-[#0D0D0D] transition-all hover:bg-[#FB923C] hover:shadow-[0_0_28px_rgba(249,115,22,0.35)] disabled:cursor-wait disabled:opacity-60"
-                >
-                  {submitting ? '>> TRANSMITIENDO SEÑAL...' : '>> UNIRME A LA LISTA DE ESPERA <<'}
-                </button>
-
-                <Link
-                  href="/welcome"
-                  className="block w-full border border-sys-orange/40 px-4 py-3 text-center font-mono text-[12px] tracking-[0.18em] text-sys-orange/80 transition-colors hover:border-sys-orange hover:bg-sys-orange/10 hover:text-sys-orange"
-                >
-                  &lt; REGRESAR AL ACCESO
-                </Link>
-
-                <p className="font-mono text-[9px] leading-relaxed tracking-widest text-muted">
-                  &gt; SOLO USAREMOS TU CORREO PARA AVISARTE DEL ACCESO. NADA MÁS.
-                </p>
-              </form>
-            )}
-          </section>
-        </main>
-
-        {/* ── RIGHT COLUMN ────────────────────────────────────────── */}
-        <aside className="hidden flex-col gap-4 font-mono text-[10px] tracking-widest lg:flex">
-          <Panel label="INTENSIDAD DE SEÑAL">
-            <SignalIntensity />
-          </Panel>
-
-          <Panel label="DESCIFRANDO MENSAJE...">
-            <Decoder />
-          </Panel>
-
-          <Panel label="NOTA DEL OPERADOR">
-            <p className="font-grotesk text-[11px] leading-snug tracking-normal text-secondary">
-              Si estás viendo esto,
-              <br />
-              es porque la red te reconoció.
-              <br />
-              <br />
-              No hacemos ruido.
-              <br />
-              Construimos lo que el
-              <br />
-              sistema no entiende.
-              <br />
-              <br />
-              Gracias por mantener
-              <br />
-              la frecuencia.
-            </p>
-            <p className="mt-1 text-muted">
-              — 0F<span className="ml-1 animate-pulse">_</span>
-            </p>
-          </Panel>
-        </aside>
-      </div>
-
-      {/* ── Bottom strip ───────────────────────────────────────────── */}
-      <footer className="pointer-events-none grid shrink-0 grid-cols-1 gap-4 border-t border-sys-orange/30 bg-base/80 px-4 py-3 font-mono text-[10px] tracking-widest backdrop-blur-sm md:grid-cols-4">
-        <div>
-          <div className="mb-1 text-sys-orange">// LOGS DEL SISTEMA</div>
-          {LOG_LINES.map((l) => (
-            <div key={l} className="text-muted">
-              {l}
-            </div>
-          ))}
-          <div className="mt-1 text-sys-green">
-            &gt;&gt; SEÑAL RECIBIDA. BIENVENIDO.<span className="animate-pulse">_</span>
+            {/* Real numbers — GET /api/waitlist, nothing invented. */}
+            <Panel title="Estadísticas de invitación" note="DATOS EN VIVO">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <Stat label="SEÑALES ENCONTRADAS" value={stats ? fmt(stats.senales) : '—'} />
+                <Stat label="EN LISTA DE ESPERA" value={stats ? fmt(stats.espera) : '—'} />
+                <Stat label="ACCESOS CONCEDIDOS" value={stats ? fmt(stats.accesos) : '—'} />
+                <Stat label="TASA DE ACEPTACIÓN" value={tasa} />
+              </dl>
+            </Panel>
           </div>
         </div>
-
-        <div className="relative px-3 py-2">
-          <Brackets />
-          <div className="mb-1 text-sys-orange/70">ÚLTIMA ACTIVIDAD</div>
-          {ACTIVITY_LINES.map((l) => (
-            <div key={l} className="truncate text-muted">
-              {l}
-            </div>
-          ))}
-        </div>
-
-        <div className="hidden md:block" aria-hidden>
-          <div className="mb-1 text-sys-orange/70">ANÁLISIS DE FRECUENCIA</div>
-          <WaveAscii cols={90} rows={4} className="text-[9px] leading-[1] text-sys-orange/55" />
-        </div>
-
-        <div className="text-right">
-          <div className="mb-1 text-sys-orange">CANAL DE SALIDA</div>
-          <div className="text-sys-green">&gt;&gt; ENCRIPTADO</div>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }
 
-// ── Static atmosphere (follows the /welcome precedent) ──────────────────────
+// ── Chrome primitives ───────────────────────────────────────────────────────
 
-const LOG_LINES = [
-  '[13:20:11] CONEXIÓN ENTRANTE: 187.94.xxx.xx',
-  '[13:20:12] VERIFICANDO PAQUETES..._',
-  '[13:20:14] RUTA ALTERNATIVA ESTABLECIDA',
-  '[13:20:16] ACCESO A MATRIZ: CONCEDIDO',
-  '[13:20:21] ENLACE SINCRONIZADO',
-]
+/** Paper panel: hairline head with a Syne sub-title, body below. */
+function Panel({
+  title,
+  note,
+  children,
+}: {
+  title: string
+  note?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="border border-ink bg-paper-raised">
+      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink px-5 py-3">
+        <h2 className="font-syne text-d18 font-extrabold uppercase text-ink">{title}</h2>
+        {note && (
+          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            {note}
+          </span>
+        )}
+      </header>
+      <div className="p-5">{children}</div>
+    </section>
+  )
+}
 
-const ACTIVITY_LINES = [
-  '> 13:21 › Señal encontrada en foro privado',
-  '> 13:21 › Nuevo registro desde Bogotá, CO',
-  '> 13:21 › Conexión desde Japón',
-  '> 13:21 › Acceso concedido a archivo',
-  '> 13:21 › Pico de actividad detectado',
-]
+/**
+ * Bezel — the dark instrument frame. Everything on this site that GLOWS or
+ * moves lives inside one of these: an ink-bordered panel of #111 with the
+ * paper ground stopping at its edge. The caption is not decoration — it is
+ * the honesty label that lets a generative drawing sit on an editorial page
+ * without pretending to be a readout.
+ */
+function Bezel({
+  label,
+  caption,
+  className = '',
+  children,
+}: {
+  label: string
+  caption: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <figure className={`flex flex-col border border-ink bg-panel ${className}`}>
+      <figcaption className="flex items-baseline justify-between gap-3 border-b border-ink/40 px-4 py-2">
+        <span className="font-mono text-d11 font-bold uppercase tracking-widest text-panel-text">
+          {label}
+        </span>
+        <span className="font-mono text-d11 uppercase tracking-widest text-panel-text/50">
+          ATMÓSFERA
+        </span>
+      </figcaption>
+      <div className="flex min-h-0 items-center justify-center overflow-hidden p-3">
+        {children}
+      </div>
+      <p className="border-t border-ink/40 px-4 py-2 font-grotesk text-d13 leading-snug text-panel-text/60">
+        {caption}
+      </p>
+    </figure>
+  )
+}
+
+function BackLink() {
+  return (
+    <Link
+      href="/welcome"
+      className={`flex min-h-11 items-center justify-between gap-3 border border-ink px-4 font-mono text-d13 uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
+    >
+      <span aria-hidden>←</span>
+      <span className="flex-1">REGRESAR AL ACCESO</span>
+    </Link>
+  )
+}
+
+function DoneRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-2">
+      <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">{label}</dt>
+      <dd className="font-mono text-d15 font-bold uppercase tracking-widest text-ink">
+        {children}
+      </dd>
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">{label}</dt>
+      <dd className="font-syne text-d28 font-extrabold tabular-nums leading-8 text-ink">
+        {value}
+      </dd>
+    </div>
+  )
+}
+
+function fmt(n: number) {
+  return n.toLocaleString('es-MX')
+}
 
 // ── Field wrappers ──────────────────────────────────────────────────────────
 
 function Field({
   label,
   htmlFor,
+  aside,
   children,
 }: {
   label: string
   htmlFor: string
+  /** Right-hand micro-readout: the alias counter, the email format check. */
+  aside?: string
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label
-        htmlFor={htmlFor}
-        className="font-mono text-[10px] tracking-widest text-sys-orange"
-      >
-        {label}
-      </label>
+    <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <label
+          htmlFor={htmlFor}
+          className="font-mono text-d11 uppercase tracking-widest text-ink-soft"
+        >
+          {label}
+        </label>
+        {aside && (
+          <span className="shrink-0 font-mono text-d11 tabular-nums uppercase tracking-widest text-ink-faint">
+            {aside}
+          </span>
+        )}
+      </div>
       {children}
     </div>
   )
@@ -578,8 +563,7 @@ function SelectField({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none border bg-black px-3 py-2.5 pr-9 font-mono text-sm tracking-wider text-primary outline-none transition-colors focus:border-sys-orange"
-          style={{ borderColor: '#242424' }}
+          className={`${INPUT_CLS} appearance-none pr-10`}
         >
           {options.map((o) => (
             <option key={o} value={o}>
@@ -588,181 +572,21 @@ function SelectField({
           ))}
         </select>
         <ChevronDown
-          size={14}
-          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sys-orange/60"
+          size={15}
+          aria-hidden
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink"
         />
       </div>
     </Field>
   )
 }
 
-// ── Panel + Brackets (same floating-annotation language as /welcome) ────────
-
-function Panel({ label, children }: { label: string | null; children: React.ReactNode }) {
-  return (
-    <div className="relative flex flex-col gap-1 px-3 py-2">
-      <Brackets />
-      {label && <div className="text-sys-orange/70">{label}</div>}
-      {children}
-    </div>
-  )
-}
-
-function Brackets() {
-  return (
-    <>
-      <span className="pointer-events-none absolute left-0 top-0 h-3 w-3 border-l border-t border-sys-orange/80" />
-      <span className="pointer-events-none absolute right-0 top-0 h-3 w-3 border-r border-t border-sys-orange/80" />
-      <span className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 border-b border-l border-sys-orange/80" />
-      <span className="pointer-events-none absolute bottom-0 right-0 h-3 w-3 border-b border-r border-sys-orange/80" />
-    </>
-  )
-}
-
-// ── Left-column widgets ─────────────────────────────────────────────────────
-
-function NodeRow({ name, fill, active = false }: { name: string; fill: number; active?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className={active ? 'text-sys-green' : 'text-muted'}>&gt; {name}</span>
-      <span className="inline-flex items-end gap-[2px]">
-        {Array.from({ length: 10 }, (_, i) => (
-          <span
-            key={i}
-            className={
-              i < fill
-                ? active
-                  ? 'bg-sys-green'
-                  : 'bg-sys-orange'
-                : 'bg-sys-orange/20'
-            }
-            style={{ width: 3, height: 7 }}
-          />
-        ))}
-      </span>
-    </div>
-  )
-}
-
-function StatBig({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="mb-1.5">
-      <div className="text-[9px] text-muted">{label}</div>
-      <div className="text-lg font-bold tabular-nums leading-tight text-sys-orange">{value}</div>
-    </div>
-  )
-}
-
-function fmt(n: number) {
-  return n.toLocaleString('es-MX')
-}
-
-// ── Right-column widgets ────────────────────────────────────────────────────
-
-// Ascending bar meter + big percentage. The percentage breathes ±1 every few
-// seconds so the panel reads live; static under reduced-motion.
-function SignalIntensity() {
-  const [pct, setPct] = useState(87)
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const id = window.setInterval(() => {
-      setPct(86 + Math.floor(Math.random() * 3)) // 86–88
-    }, 2600)
-    return () => window.clearInterval(id)
-  }, [])
-
-  const BARS = 12
-  const lit = Math.round((pct / 100) * BARS)
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-end gap-[3px]" aria-hidden>
-        {Array.from({ length: BARS }, (_, i) => (
-          <span
-            key={i}
-            className={i < lit ? 'bg-sys-orange' : 'bg-sys-orange/20'}
-            style={{ width: 6, height: 6 + i * 2 }}
-          />
-        ))}
-      </div>
-      <div className="flex items-baseline justify-between">
-        <span className="text-2xl font-bold tabular-nums text-sys-orange">{pct}%</span>
-        <span className="text-sys-green">ESTABLE</span>
-      </div>
-    </div>
-  )
-}
-
-// Typewriter reveal of the decoded transmission. One pass on mount, full text
-// immediately under reduced-motion.
-const DECODE_LINES: { text: string; tone: 'dim' | 'quote' | 'sys' }[] = [
-  { text: '"Iniciando protocolo de', tone: 'dim' },
-  { text: 'descifrado..."', tone: 'dim' },
-  { text: '> verificando integridad...', tone: 'sys' },
-  { text: '> frecuencias conocidas...', tone: 'sys' },
-  { text: 'mensaje recuperado:', tone: 'dim' },
-  { text: '', tone: 'dim' },
-  { text: '"NO BUSCAMOS A MUCHOS.', tone: 'quote' },
-  { text: 'SOLO A LOS QUE ESCUCHAN', tone: 'quote' },
-  { text: 'CUANDO NADIE MÁS LO HACE."', tone: 'quote' },
-  { text: '', tone: 'dim' },
-  { text: '> Fin de transmisión.', tone: 'sys' },
-]
-
-function Decoder() {
-  const total = DECODE_LINES.reduce((n, l) => n + l.text.length + 1, 0)
-  const [n, setN] = useState(0)
-
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setN(total)
-      return
-    }
-    const id = window.setInterval(() => {
-      setN((v) => {
-        if (v >= total) {
-          window.clearInterval(id)
-          return v
-        }
-        return v + 2
-      })
-    }, 50)
-    return () => window.clearInterval(id)
-  }, [total])
-
-  let budget = n
-  return (
-    <div className="flex min-h-[150px] flex-col gap-0.5">
-      {DECODE_LINES.map((l, i) => {
-        const take = Math.max(0, Math.min(l.text.length, budget))
-        budget -= l.text.length + 1
-        const shown = l.text.slice(0, take)
-        const activeCursor = take > 0 && take < l.text.length
-        if (take <= 0 && l.text !== '') return null
-        return (
-          <div
-            key={i}
-            className={
-              l.tone === 'quote'
-                ? 'text-[10.5px] leading-snug text-primary'
-                : l.tone === 'sys'
-                  ? 'text-muted'
-                  : 'text-secondary'
-            }
-          >
-            {shown}
-            {activeCursor && <span className="animate-pulse text-sys-orange">█</span>}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── ASCII waveform (shared by the frequency panels) ─────────────────────────
+// ── ASCII waveform (the bezel instrument) ───────────────────────────────────
 //
-// Same block-glyph histogram idea as /welcome's SpectrumAscii, parameterized
-// so one component serves both the mini left-column meter and the wide footer
-// band. Static under reduced-motion; 24fps cap otherwise.
+// A real generative element, not chrome: a block-glyph histogram driven by two
+// summed sines. Kept from the cockpit version verbatim — only its seat
+// changed (it now lives inside a dark Bezel, captioned as atmosphere).
+// Static under reduced-motion; 24fps cap otherwise.
 function WaveAscii({
   cols,
   rows,
@@ -822,12 +646,13 @@ function WaveAscii({
 
 // ── ASCII transmission eye ──────────────────────────────────────────────────
 //
-// The mockup's centerpiece: an all-seeing eye drawn as dotted ASCII, radiating
+// The page's centerpiece drawing: an all-seeing eye in dotted ASCII, radiating
 // spokes, iris rings, a beam descending to a pedestal. Procedural per-cell
-// brightness → character palette, same pattern as /welcome's VinylAscii.
-// Subtle animation only (ray shimmer, iris drift, a blink every ~7s); static
-// frame under reduced-motion. ~104×56 cells at 24fps — same budget class as
-// the vinyl.
+// brightness → character palette. Subtle animation only (ray shimmer, iris
+// drift, a blink every ~7s); static frame under reduced-motion. ~104×56 cells
+// at 24fps. Like the wave, it survived the re-chrome as a real generative
+// element — reseated in a dark bezel, drawn in paper ink on panel black with
+// the orange glow filter removed.
 function EyeAscii() {
   const ref = useRef<HTMLPreElement>(null)
 
@@ -983,17 +808,14 @@ function EyeAscii() {
   }, [])
 
   return (
-    // pointer-events-none for the same reason as /welcome's vinyl: the filter
-    // creates a stacking context that could otherwise swallow clicks when the
-    // grid overflows on short viewports.
+    // pointer-events-none for the same reason the cockpit version had it: a
+    // full-bleed <pre> could otherwise swallow clicks when the grid overflows
+    // on short viewports.
     <pre
       ref={ref}
       aria-hidden
-      className="pointer-events-none select-none font-mono leading-[1.02] text-sys-orange/90"
-      style={{
-        fontSize: 'clamp(5px, 0.62vw, 9px)',
-        filter: 'drop-shadow(0 0 14px rgba(249,115,22,0.28))',
-      }}
+      className="pointer-events-none select-none font-mono leading-[1.02] text-panel-text"
+      style={{ fontSize: 'clamp(5px, 0.62vw, 9px)' }}
     />
   )
 }

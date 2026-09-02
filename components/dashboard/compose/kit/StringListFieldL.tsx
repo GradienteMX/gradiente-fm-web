@@ -6,7 +6,7 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── StringListFieldL — pliego fork of forms/shared/Fields.tsx StringListField
 //
-// The dark original stays byte-untouched. Row-based string list editor
+// The dark original was DELETED in fase F; this fork is the only copy. Row-based string list editor
 // (tags / artists / etc.) with three input paths, all verbatim:
 //   - Add row → auto-focused input; Enter adds the next row
 //   - Multi-line paste on a row splits across rows

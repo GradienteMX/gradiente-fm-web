@@ -47,6 +47,7 @@ import {
   computeContinentArrangement,
   type ContinentArrangement,
 } from '@/lib/mapa/continents'
+import { DASH_ACID } from '@/lib/dashboard/palette'
 import { recordItems } from '@/lib/itemsCache'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
@@ -56,6 +57,12 @@ import { MapaCell } from './MapaCell'
 import { MapaFilterColumn } from './MapaFilterColumn'
 import { MapaListingCell } from './MapaListingCell'
 import { FranjaObi } from './FranjaObi'
+
+// ONE focus grammar, panel variant (fase F). The map's chrome floats on the
+// dark void, where an ink outline would be invisible — same 2px/offset-2 ring
+// as everywhere else on paper, drawn in panel-text instead.
+const FOCUS_ON_PANEL =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
 
 const ZMIN = 0.22
 const ZMAX = 1.6
@@ -1053,7 +1060,9 @@ export function MapaCanvas({
         ))}
 
         {/* Continent rings — the identified major affinity areas. They fade
-            in behind the 700ms drift so the water opens first. */}
+            in behind the 700ms drift so the water opens first. Fase F: the
+            ring is the terrain half of the AFINIDAD latch, so it carries the
+            same acid the toggle does (was EVA orange). Geometry untouched. */}
         {continentArrangement && (
           <svg
             aria-hidden
@@ -1067,7 +1076,7 @@ export function MapaCanvas({
                 key={c.itemIds[0]}
                 d={c.perimeter}
                 fill="none"
-                stroke="#F97316"
+                stroke={DASH_ACID}
                 strokeOpacity="0.35"
                 strokeWidth="2"
                 strokeDasharray="4 10"
@@ -1209,7 +1218,13 @@ export function MapaCanvas({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_58%,rgba(0,0,0,0.55)_100%)]"
       />
 
-      {/* ── Chrome (non-terrain UI) ── */}
+      {/* ── Chrome (non-terrain UI) ────────────────────────────────────────
+          Fase F: the TERRAIN stays dark on purpose — /mapa is an instrument,
+          and instruments are dark hardware. Only the chrome ON it was
+          converted: out of EVA orange, into the house bezel register — panel
+          plates with panel-text hairlines, flat (no blur, no glow), acid
+          reserved for the one latched own-action, ONE focus grammar in its
+          panel variant, ≥44px targets. */}
 
       {/* Top-left: exit + surface id */}
       <div
@@ -1218,12 +1233,12 @@ export function MapaCanvas({
       >
         <Link
           href="/"
-          className="border border-border bg-base/80 px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-secondary backdrop-blur-sm transition-colors hover:border-sys-orange hover:text-sys-orange"
+          className={`flex min-h-11 items-center border border-panel-text/40 bg-panel/90 px-3 font-mono text-d11 font-bold uppercase tracking-widest text-panel-text transition-colors hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
         >
           ← GRADIENTE//FM
         </Link>
-        <span className="hidden font-mono text-[10px] tracking-[0.2em] text-muted sm:inline">
-          MAPA·GLOBAL <span className="text-sys-orange">vE-01</span>
+        <span className="hidden border border-panel-text/25 px-2 py-1 font-mono text-d11 uppercase tracking-widest text-panel-text/55 sm:inline">
+          MAPA · GLOBAL
         </span>
       </div>
 
@@ -1236,23 +1251,28 @@ export function MapaCanvas({
         className="pointer-events-auto absolute right-4 top-4 z-20 flex items-start gap-2"
       >
         <div className="relative">
+          {/* Latched on a focused franja: an acid fill-block with panel-ink
+              text — the whitelisted acid use, and the only acid on the map.
+              Merely open (no focus yet) brightens the bezel instead. */}
           <button
             type="button"
             onClick={() => setFranjasOpen((o) => !o)}
             aria-expanded={franjasOpen}
             aria-haspopup="listbox"
-            className={`border px-3 py-1.5 font-mono text-[10px] tracking-[0.14em] backdrop-blur-sm transition-colors ${
-              focusSlug || franjasOpen
-                ? 'border-sys-orange bg-sys-orange/15 text-sys-orange'
-                : 'border-border bg-base/80 text-secondary hover:border-primary/50 hover:text-primary'
+            className={`flex min-h-11 items-center border px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${FOCUS_ON_PANEL} ${
+              focusSlug
+                ? 'border-acid bg-acid text-panel'
+                : franjasOpen
+                  ? 'border-panel-text bg-panel text-panel-text'
+                  : 'border-panel-text/40 bg-panel/90 text-panel-text hover:bg-panel-text hover:text-panel'
             }`}
           >
             ◎ FRANJAS{focusSlug ? ` · ${focusSlug.toUpperCase()}` : ''}
           </button>
           {franjasOpen && (
-            <div className="absolute right-0 top-full mt-2 max-h-[62dvh] w-72 overflow-y-auto border border-border bg-base/95 backdrop-blur-sm">
-              <p className="border-b border-border/60 px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-muted">
-                {'//'}CON TERRENO
+            <div className="absolute right-0 top-full mt-2 max-h-[62dvh] w-72 overflow-y-auto border border-panel-text/40 bg-panel">
+              <p className="border-b border-panel-text/25 px-3 py-2 font-mono text-d11 uppercase tracking-widest text-panel-text/55">
+                CON TERRENO
               </p>
               {clusters.map((c) => (
                 <button
@@ -1264,10 +1284,10 @@ export function MapaCanvas({
                     else focusFranja(c.franja.slug)
                   }}
                   aria-pressed={focusSlug === c.franja.slug}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                  className={`flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${FOCUS_ON_PANEL} ${
                     focusSlug === c.franja.slug
-                      ? 'bg-sys-orange/10 text-sys-orange'
-                      : 'text-secondary hover:bg-elevated hover:text-primary'
+                      ? 'bg-panel-text text-panel'
+                      : 'text-panel-text/75 hover:bg-panel-text hover:text-panel'
                   }`}
                 >
                   {c.franja.imageUrl && (
@@ -1276,21 +1296,21 @@ export function MapaCanvas({
                       src={c.franja.imageUrl}
                       alt=""
                       loading="lazy"
-                      className="h-6 w-6 shrink-0 border border-border object-cover"
+                      className="h-6 w-6 shrink-0 border border-panel-text/40 object-cover"
                     />
                   )}
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] tracking-wide">
+                  <span className="min-w-0 flex-1 truncate font-mono text-d11 tracking-widest">
                     {c.franja.title}
                   </span>
-                  <span className="shrink-0 font-mono text-[9px] text-muted">
+                  <span className="shrink-0 font-mono text-d11 tabular-nums opacity-60">
                     {c.itemIds.length}
                   </span>
                 </button>
               ))}
               {inertFranjas.length > 0 && (
                 <>
-                  <p className="border-y border-border/60 px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-muted">
-                    {'//'}SIN CONTENIDO EN EL MAPA
+                  <p className="border-y border-panel-text/25 px-3 py-2 font-mono text-d11 uppercase tracking-widest text-panel-text/55">
+                    SIN CONTENIDO EN EL MAPA
                   </p>
                   {inertFranjas.map((p) => (
                     <div
@@ -1303,10 +1323,10 @@ export function MapaCanvas({
                           src={p.imageUrl}
                           alt=""
                           loading="lazy"
-                          className="h-5 w-5 shrink-0 border border-border object-cover"
+                          className="h-5 w-5 shrink-0 border border-panel-text/40 object-cover"
                         />
                       )}
-                      <span className="min-w-0 flex-1 truncate font-mono text-[10px] tracking-wide text-secondary">
+                      <span className="min-w-0 flex-1 truncate font-mono text-d11 tracking-widest text-panel-text">
                         {p.title}
                       </span>
                     </div>
@@ -1316,12 +1336,12 @@ export function MapaCanvas({
             </div>
           )}
         </div>
-        <div className="flex border border-border bg-base/80 backdrop-blur-sm">
+        <div className="flex border border-panel-text/40 bg-panel/90">
           <button
             type="button"
             onClick={() => zoomStep(1 / 1.35)}
             aria-label="Alejar"
-            className="px-2.5 py-1.5 font-mono text-xs text-secondary transition-colors hover:text-primary"
+            className={`flex min-h-11 min-w-11 items-center justify-center font-mono text-d13 text-panel-text transition-colors hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
           >
             −
           </button>
@@ -1329,7 +1349,7 @@ export function MapaCanvas({
             type="button"
             onClick={() => zoomStep(1.35)}
             aria-label="Acercar"
-            className="border-l border-border px-2.5 py-1.5 font-mono text-xs text-secondary transition-colors hover:text-primary"
+            className={`flex min-h-11 min-w-11 items-center justify-center border-l border-panel-text/40 font-mono text-d13 text-panel-text transition-colors hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
           >
             +
           </button>
@@ -1340,7 +1360,7 @@ export function MapaCanvas({
           belongs to the radial filter. */}
       <div
         data-mapa-ui
-        className="pointer-events-none absolute bottom-4 left-4 z-20 hidden font-mono text-[9px] tracking-[0.14em] text-muted lg:block"
+        className="pointer-events-none absolute bottom-4 left-4 z-20 hidden font-mono text-d11 uppercase tracking-widest text-panel-text/55 lg:block"
       >
         ↑↓←→ NAVEGAR · ⌥ DIAGONAL · ENTER ABRIR
         {focusSlug ? ' · ESC GLOBAL' : ''}
@@ -1384,6 +1404,11 @@ export function MapaCanvas({
           franja={openListingEntry.franja}
           index={openListingEntry.index}
           onClose={closeListing}
+          // The ONE dark call site: every other host of this sheet is a paper
+          // surface, but here it floats over the terrain void, which is design
+          // rather than un-converted chrome. 'dark' is the pliego sheet in
+          // negative, not the retired EVA skin.
+          variant="dark"
         />
       )}
     </div>

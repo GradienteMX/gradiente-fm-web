@@ -74,8 +74,7 @@
 - [[useAuth]] — visual-prototype auth context (sessionStorage-backed `admin/admin`)
 - [[LoginOverlay]] — terminal-aesthetic login modal triggered from the header
 - [[AuthBadge]] — header slot showing LOGIN ↔ DASHBOARD + LOGOUT
-- [[LivePreview]] — dashboard right-pane preview that renders the draft through its real overlay
-- [[Dashboard Forms]] — eight per-type compose forms + shared field primitives + workbench autosave + edit hydration
+- [[Dashboard Forms]] — historical note: the eight dark per-type forms + LivePreview were DELETED in fase F (2026-09-02) after the pliego compose tree replaced them; only `forms/shared/Fields.tsx` survives (`useDraftWorkbench`, `slugify`)
 - [[PublishConfirmOverlay]] — globally-mounted confirmation modal for the [[Publish Confirmation Flow]]
 - [[ShareButton]] — click-to-copy deep-link affordance in [[OverlayShell]] header
 - [[SearchOverlay]] — `/`-invoked terminal command-bar; pure substring search across mocked + drafts
@@ -90,8 +89,13 @@
 - [[PollCardCanvas]] — card-level poll affordance; chip when closed, replaces card image with vote/results canvas when open
 - [[PollSection]] — overlay-level poll surface; permanent section inside the parent's content overlay
 - [[PollFieldset]] — shared poll-authoring section dropped into every dashboard compose form
-- [[FranjaApprovalsSection]] — admin-only marketplace approval table; toggles `marketplaceEnabled` per franja
-- [[MiFranjaSection]] — franja-team-only dashboard surface (Equipo + Marketplace tabs)
+- [[FranjaApprovalsSection]] — RETIRED: deleted in the dashboard rebuild, and the approval story itself ended 2026-09-02 — `marketplace_enabled` is self-service for the franja team; admins keep an abuse kill-switch on /admin
+- [[MiFranjaSection]] — RETIRED: deleted in the dashboard rebuild; its Equipo + Marketplace surfaces returned as the FRANJA and MERCADO spaces (fase D)
+- [[DashTabBar]] — the ESPACIOS row: PANEL · PUBLICAR · FRANJA · MERCADO, ink-fill latch, `?espacio=` deep links
+- [[Espacios Kit]] — shared anatomy of the three bespoke spaces (SpaceHead / SubTabs / Sheet / AcidBlock / SheetTable / honest states)
+- [[PublicarSpace]] — authoring hub: CREAR chips + EN CURSO table + CULTIVAR/COSECHAR
+- [[FranjaSpace]] — the franja team's desk; wires the orphaned team + profile APIs (RESUMEN/PUBLICACIONES/ARCHIVO/EQUIPO)
+- [[MercadoSpace]] — the storefront desk; wires the orphaned listing PATCH/DELETE (CATÁLOGO/OFERTAS/AJUSTES)
 - [[MarketplaceOverlay]] — per-franja full-screen overlay matching the reference screenshot
 - [[MarketplaceListingDetail]] — sub-overlay (z-60) opened from MarketplaceOverlay; gallery + embeds + meta; URL `?franja=&listing=`
 - [[MarketplaceCatalog]] · [[MarketplaceCard]] · [[MarketplaceListingCard]] · [[MarketplaceRail]] — public-side surfaces
@@ -109,6 +113,7 @@
 
 ## 50 — Modules
 
+- [[espacios]] — the /dashboard spaces model: ids, per-viewer gating, `?espacio=` resolution (only PANEL is a widget grid)
 - [[types]] — `ContentItem`, `ContentType`, `VibeScore`, `Genre`, `Tag` (+ frontend-only `_draftState` / `_pendingConfirm`)
 - [[mockData]] — seed dataset for all content (+ `getItemBySlug` lookup)
 - [[curation]] — spawn HP, decay, freshness, prominence, layout tiers

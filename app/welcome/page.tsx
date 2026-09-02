@@ -120,11 +120,13 @@ export default function WelcomePage() {
   }
 
   // No-WebGL fallback for a valid code. The prism needs the same WebGL2 the 3D
-  // unbox does, so there's no point dressing this in the landing skin — the
-  // RegistroCard keeps its own chrome on the dark ground.
+  // unbox does, so there is no landing skin to dress this in — the card sits
+  // on a plain ink scrim, the same paper-sheet-over-ink relationship
+  // LoginOverlay uses. (RegistroCard stopped carrying its own dark chrome in
+  // fase F; it is a paper sheet now.)
   if (inviteState === 'ready' && invite) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-base p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-ink p-4">
         <RegistroCard invite={invite} />
       </div>
     )

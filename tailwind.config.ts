@@ -98,7 +98,6 @@ const config: Config = {
         blink: 'blink 1.2s step-end infinite',
         'slide-in': 'slideIn 0.2s ease-out',
         'fade-in': 'fadeIn 0.3s ease-out',
-        scanline: 'scanline 4s linear infinite',
       },
       keyframes: {
         blink: {
@@ -112,10 +111,6 @@ const config: Config = {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
-        },
-        scanline: {
-          '0%': { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(100vh)' },
         },
       },
     },

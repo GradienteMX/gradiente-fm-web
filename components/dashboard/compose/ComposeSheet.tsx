@@ -4,7 +4,8 @@
 //
 // The full-viewport compose surface: the pliego light editor ON paper — no
 // press bed, no LivePreview, no dark forms on this path (the dark originals
-// under components/dashboard/forms/** keep serving /admin, byte-untouched).
+// under components/dashboard/forms/** were DELETED in fase F — they had no
+// mount left; /admin uses the pliego forks now).
 // The body is a typed switch over the 8 light composers in ./types/*, each of
 // which owns its workbench (useDraftWorkbench — the reuse seam) and renders
 // itself inside ComposeLayout (breadcrumb / H1 / autosave head / CERRAR /

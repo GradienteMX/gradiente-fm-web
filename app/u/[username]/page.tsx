@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ContentGrid } from '@/components/ContentGrid'
-import { PaperGround } from '@/components/chrome/PaperGround'
 import { TrophyGrid, trophyCountLine } from '@/components/profile/TrophyGrid'
 import { VibeMeterLight } from '@/components/dashboard/widgets/shared/VibeMeterLight'
 import { getUserByUsername, getUserRankServer, getTrophyKeysByUserId } from '@/lib/data/users'
@@ -108,7 +107,6 @@ export default async function UserProfilePage({ params }: PageProps) {
 
   return (
     <>
-      <PaperGround />
       <div className="flex flex-col gap-8">
         {/* ── CABECERA — the document head ─────────────────────────────── */}
         <header className="grid grid-cols-1 gap-6 border-b border-ink pb-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-0">

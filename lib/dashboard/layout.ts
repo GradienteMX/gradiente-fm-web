@@ -107,9 +107,15 @@ export const WIDGET_DEFS: Record<WidgetId, WidgetDef> = {
       { w: 4, h: 3 }, { w: 3, h: 3 }, { w: 4, h: 2 }, { w: 6, h: 3 }, { w: 8, h: 4 },
     ],
   },
+  // MERCADO — a DOOR into the ?espacio=mercado space (fase D). The old
+  // {6,2}↔{12,2} self-resize depth state is retired: the storefront moved to
+  // its own space, so reading an offer no longer rewrites the saved layout.
+  // Default stays {6,2} so no existing layout shifts; the taller variants are
+  // gone because a door has one row of content. Saved {6,3}/{12,3} entries
+  // snap down through snapToAllowedSize — never a layout reset.
   mercado: {
     allowedSizes: [
-      { w: 6, h: 2 }, { w: 12, h: 2 }, { w: 6, h: 3 }, { w: 12, h: 3 },
+      { w: 6, h: 2 }, { w: 4, h: 2 }, { w: 12, h: 2 }, { w: 3, h: 2 },
     ],
   },
 }

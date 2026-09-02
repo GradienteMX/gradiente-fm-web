@@ -3,7 +3,7 @@
 // ── EditorialCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for editorial
 //
 // State preamble copied VERBATIM from the dark EditorialForm
-// (components/dashboard/forms/EditorialForm.tsx — untouched, /admin depends):
+// (components/dashboard/forms/EditorialForm.tsx — DELETED in fase F; this fork is now the only copy):
 // same emptyDraft (editorial defaults TRUE — editorials are editorial-flagged),
 // same DRAFT_KEY, same slug effect, same workbench wiring, same publish
 // recipe. Only the JSX is pliego.

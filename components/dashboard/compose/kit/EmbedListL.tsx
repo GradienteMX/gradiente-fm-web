@@ -13,7 +13,7 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 // ── EmbedListL — pliego fork of forms/shared/Fields.tsx EmbedList ───────────
 //
-// The dark original stays byte-untouched. Logic is verbatim, including the
+// The dark original was DELETED in fase F; this fork is the only copy. Logic is verbatim, including the
 // multi-URL smart paste (whitespace/newline-separated URLs split into rows
 // with auto-detected platforms) and the live platform sync while typing.
 // Only the chrome is pliego.

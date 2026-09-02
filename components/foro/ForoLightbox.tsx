@@ -11,6 +11,15 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 // Key handling runs in the CAPTURE phase and stops propagation so ESC/arrows
 // are swallowed here and never reach the ThreadOverlay's own window-level ESC
 // handler (which would otherwise close the whole thread underneath).
+//
+// Fase F chrome: flat ink scrim (no blur), paper controls with ink hairlines,
+// and the plate itself framed as paper — the image reads as a print laid on
+// the sheet rather than a lightbox on black.
+
+// House focus grammar — 2px ink outline, offset 2. Rendered against the ink
+// scrim here, where the paper chips give it a light ground to sit on.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface ForoLightboxProps {
   images: string[]
@@ -57,14 +66,14 @@ export function ForoLightbox({ images, index, onIndex, onClose }: ForoLightboxPr
       aria-modal="true"
       aria-label="Imagen ampliada"
     >
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" aria-hidden />
+      <div className="absolute inset-0 bg-ink/90" aria-hidden />
 
       {/* Close */}
       <button
         type="button"
         onClick={onClose}
         aria-label="Cerrar"
-        className="absolute right-3 top-3 z-10 flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary"
+        className={`absolute right-3 top-3 z-10 flex min-h-11 items-center gap-1.5 border border-ink bg-paper px-3 font-mono text-d11 font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
       >
         <X size={14} />
         <span className="hidden sm:inline">CERRAR</span>
@@ -72,7 +81,7 @@ export function ForoLightbox({ images, index, onIndex, onClose }: ForoLightboxPr
 
       {/* Counter */}
       {count > 1 && (
-        <span className="absolute left-3 top-3 z-10 border border-border/70 bg-black/85 px-2 py-1 font-mono text-[10px] tabular-nums tracking-widest text-muted">
+        <span className="absolute left-3 top-3 z-10 border border-ink bg-paper px-2 py-1 font-mono text-d11 font-bold tabular-nums tracking-widest text-ink">
           {index + 1}/{count}
         </span>
       )}
@@ -87,7 +96,7 @@ export function ForoLightbox({ images, index, onIndex, onClose }: ForoLightboxPr
               go(-1)
             }}
             aria-label="Anterior"
-            className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center border border-border/70 bg-black/85 text-secondary transition-colors hover:border-white/60 hover:text-primary sm:left-4"
+            className={`absolute left-2 z-10 flex h-11 w-11 items-center justify-center border border-ink bg-paper text-ink transition-colors hover:bg-ink hover:text-paper sm:left-4 ${FOCUS_RING}`}
           >
             <ChevronLeft size={18} />
           </button>
@@ -98,7 +107,7 @@ export function ForoLightbox({ images, index, onIndex, onClose }: ForoLightboxPr
               go(1)
             }}
             aria-label="Siguiente"
-            className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center border border-border/70 bg-black/85 text-secondary transition-colors hover:border-white/60 hover:text-primary sm:right-4"
+            className={`absolute right-2 z-10 flex h-11 w-11 items-center justify-center border border-ink bg-paper text-ink transition-colors hover:bg-ink hover:text-paper sm:right-4 ${FOCUS_RING}`}
           >
             <ChevronRight size={18} />
           </button>
@@ -109,7 +118,7 @@ export function ForoLightbox({ images, index, onIndex, onClose }: ForoLightboxPr
         src={src}
         alt={`imagen ${index + 1}`}
         onClick={(e) => e.stopPropagation()}
-        className="relative z-[1] max-h-full max-w-full object-contain"
+        className="relative z-[1] max-h-full max-w-full border border-ink bg-paper object-contain p-1.5"
       />
     </div>
   )

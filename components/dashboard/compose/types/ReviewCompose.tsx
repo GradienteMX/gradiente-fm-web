@@ -3,8 +3,8 @@
 // ── ReviewCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for reseña ─────
 //
 // State preamble + subject/format constants copied VERBATIM from the dark
-// ReviewForm (components/dashboard/forms/ReviewForm.tsx:30-60 — untouched,
-// /admin depends): same SUBJECTS / FORMATS_BY_SUBJECT / isHappening, same
+// ReviewForm (components/dashboard/forms/ReviewForm.tsx:30-60 — DELETED in
+// fase F; this fork is the only copy): same SUBJECTS / FORMATS_BY_SUBJECT / isHappening, same
 // emptyDraft, same DRAFT_KEY, same slug effect, same workbench wiring, same
 // publish recipe. Only the JSX is pliego.
 //

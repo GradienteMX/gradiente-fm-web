@@ -31,6 +31,22 @@ import {
 //     Up to FORO_THREAD_IMAGES_MAX may be attached; the first is the cover.
 //   - 1–5 genres required so the catalog vibe-slider can filter the thread.
 //   - No anonymity: the author is the current user.
+//
+// Fase F chrome: a paper sheet over a flat ink scrim (same anatomy as
+// components/overlay/OverlayShell), paper form fields with ink hairlines,
+// and selection expressed as an ink FILL rather than a hue — a genre's vibe
+// color survives only as an ink-outlined swatch square on its chip. Acid is
+// reserved for the two actions that are the author's own: CREAR (a new tag)
+// and PUBLICAR HILO, both as fill-blocks with ink type; when PUBLICAR is not
+// yet armed it falls back to a plain ink-faint hairline chip.
+
+// House focus grammar — 2px ink outline, offset 2.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+// Field label — the paper register for the retired terminal label class:
+// mono d11, uppercase, widest tracking, ink.
+const FIELD_LABEL = 'font-mono text-d11 font-bold uppercase tracking-widest text-ink'
 
 interface NewThreadOverlayProps {
   onClose: () => void
@@ -288,31 +304,32 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
       className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-6 overlay-backdrop-in"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" aria-hidden />
+      {/* Ink scrim — flat, no blur (fase C anatomy). */}
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines relative z-10 flex w-full max-w-2xl flex-col overflow-hidden bg-base overlay-panel-in"
+        className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden border border-ink bg-paper text-ink"
         style={{ maxHeight: 'min(92vh, 800px)' }}
       >
-        {/* Chrome */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
+        {/* Chrome / header — raised paper band. */}
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ink bg-paper-raised px-4 py-2">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="shrink-0 font-mono text-[10px] tracking-widest" style={{ color: '#F97316' }}>
-              //FORO·NUEVO·HILO
+            <span className="shrink-0 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              FORO · NUEVO HILO
             </span>
-            <span className="sys-label hidden truncate uppercase text-muted sm:inline">
+            <span className="hidden truncate font-mono text-d11 uppercase tracking-widest text-ink-faint sm:inline">
               como @{currentUser?.username}
             </span>
           </div>
           <button
             onClick={onClose}
             aria-label="Cerrar"
-            className="flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-muted"
+            className={`flex min-h-11 shrink-0 items-center gap-2 border border-ink bg-ink px-3 font-mono text-d11 font-bold tracking-widest text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
           >
-            <span className="hidden sm:inline">[ESC]</span>
-            <X size={14} className="sm:hidden" />
+            <X size={12} className="sm:hidden" />
             <span>CERRAR</span>
+            <span className="hidden sm:inline">ESC</span>
           </button>
         </div>
 
@@ -331,8 +348,8 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
           <div className="flex flex-col gap-4">
             {/* Subject */}
             <label className="flex flex-col gap-1.5">
-              <span className="sys-label text-muted">
-                ASUNTO <span className="text-sys-orange">*</span>
+              <span className={FIELD_LABEL}>
+                ASUNTO <span className="text-sys-red-paper">*</span>
               </span>
               <input
                 type="text"
@@ -340,43 +357,37 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="el titular del hilo"
                 maxLength={140}
-                className="border bg-black px-3 py-2 font-syne text-base font-bold text-primary outline-none transition-colors focus:border-sys-orange"
-                style={{ borderColor: '#242424' }}
+                className={`min-h-11 border border-ink bg-paper-raised px-3 py-2 font-syne text-d18 font-extrabold text-ink transition-colors placeholder:font-syne placeholder:font-normal placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
               />
-              <span className="font-mono text-[9px] tracking-widest text-muted">
+              <span className="font-mono text-[9px] tabular-nums tracking-widest text-ink-faint">
                 {subject.length}/140
               </span>
             </label>
 
             {/* Body */}
             <label className="flex flex-col gap-1.5">
-              <span className="sys-label text-muted">
-                CUERPO <span className="text-sys-orange">*</span>
+              <span className={FIELD_LABEL}>
+                CUERPO <span className="text-sys-red-paper">*</span>
               </span>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="el contenido del primer post — el resto puede responder"
                 rows={6}
-                className="resize-y border bg-black px-3 py-2 font-mono text-[12px] leading-relaxed text-primary outline-none transition-colors focus:border-sys-orange"
-                style={{ borderColor: '#242424' }}
+                className={`resize-y border border-ink bg-paper-raised px-3 py-2 font-grotesk text-d15 leading-relaxed text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
               />
             </label>
 
             {/* Genre picker — 1 to 5 required, drives the catalog vibe filter */}
             <div className="flex flex-col gap-1.5">
-              <span className="sys-label text-muted">
-                GÉNEROS <span className="text-sys-orange">*</span>
+              <span className={FIELD_LABEL}>
+                GÉNEROS <span className="text-sys-red-paper">*</span>
                 <span
-                  className="ml-2 normal-case text-[9px]"
-                  style={{
-                    color:
-                      genres.length > FORO_THREAD_GENRES_MAX
-                        ? '#E63329'
-                        : genres.length >= FORO_THREAD_GENRES_MIN
-                        ? '#9CA3AF'
-                        : '#9CA3AF',
-                  }}
+                  className={`ml-2 normal-case ${
+                    genres.length > FORO_THREAD_GENRES_MAX
+                      ? 'text-sys-red-paper'
+                      : 'text-ink-faint'
+                  }`}
                 >
                   {genres.length}/{FORO_THREAD_GENRES_MAX} · mín {FORO_THREAD_GENRES_MIN}
                 </span>
@@ -389,21 +400,23 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                     const g = selectableGenres.find((x) => x.id === id)
                     if (!g) return null
                     const v = vibeForGenre(id)
-                    const accent = v !== null ? vibeToColor(v) : '#F97316'
                     return (
                       <button
                         key={id}
                         type="button"
                         onClick={() => toggleGenre(id)}
-                        className="flex items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
-                        style={{
-                          borderColor: accent,
-                          color: accent,
-                          backgroundColor: `${accent}15`,
-                        }}
+                        aria-label={`Quitar ${g.name}`}
+                        className={`flex min-h-11 items-center gap-1.5 border border-ink bg-ink px-2.5 font-mono text-d11 tracking-wide text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
                       >
+                        {v !== null && (
+                          <span
+                            aria-hidden
+                            className="h-2 w-2 shrink-0 border border-ink"
+                            style={{ backgroundColor: vibeToColor(v) }}
+                          />
+                        )}
                         {g.name}
-                        <X size={9} aria-hidden />
+                        <X size={10} aria-hidden />
                       </button>
                     )
                   })}
@@ -416,26 +429,32 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                 value={genreFilter}
                 onChange={(e) => setGenreFilter(e.target.value)}
                 placeholder="filtrar géneros…"
-                className="border bg-black px-3 py-1.5 font-mono text-xs text-primary outline-none transition-colors focus:border-sys-orange"
-                style={{ borderColor: '#242424' }}
+                aria-label="Filtrar géneros"
+                className={`min-h-11 border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
               />
-              <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-border p-2">
+              <div className="flex max-h-56 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-ink p-2">
                 {filteredGenres.map((g) => {
                   const isOn = genreSet.has(g.id)
                   const v = vibeForGenre(g.id)
-                  const accent = v !== null ? vibeToColor(v) : '#888'
                   return (
                     <button
                       key={g.id}
                       type="button"
                       onClick={() => toggleGenre(g.id)}
-                      className="border px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
-                      style={{
-                        borderColor: isOn ? accent : '#242424',
-                        color: isOn ? accent : '#888',
-                        backgroundColor: isOn ? `${accent}15` : 'transparent',
-                      }}
+                      aria-pressed={isOn}
+                      className={`flex min-h-11 items-center gap-1.5 border px-2.5 font-mono text-d11 tracking-wide transition-colors ${
+                        isOn
+                          ? 'border-ink bg-ink text-paper hover:bg-paper hover:text-ink'
+                          : 'border-ink-faint bg-paper text-ink hover:bg-ink hover:text-paper'
+                      } ${FOCUS_RING}`}
                     >
+                      {v !== null && (
+                        <span
+                          aria-hidden
+                          className="h-2 w-2 shrink-0 border border-ink"
+                          style={{ backgroundColor: vibeToColor(v) }}
+                        />
+                      )}
                       {g.name}
                     </button>
                   )
@@ -444,11 +463,14 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
             </div>
 
             {/* Tag picker — metadata keywords (lib/genres TAGS), min 1.
-                Transversal qualities, separate from the genre/vibe axis. */}
+                Transversal qualities, separate from the genre/vibe axis.
+                Shipped tags wear a dashed hairline, user-created ones a
+                solid ink hairline — the distinction the old orange carried,
+                restated without a hue. */}
             <div className="flex flex-col gap-1.5">
-              <span className="sys-label text-muted">
-                TAGS <span className="text-sys-orange">*</span>
-                <span className="ml-2 normal-case text-[9px] text-muted">
+              <span className={FIELD_LABEL}>
+                TAGS <span className="text-sys-red-paper">*</span>
+                <span className="ml-2 normal-case text-ink-faint">
                   {tags.length}/{FORO_THREAD_TAGS_MAX} · mín {FORO_THREAD_TAGS_MIN} · ¿no está en la lista? escríbelo y dale CREAR
                 </span>
               </span>
@@ -463,11 +485,13 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                         key={id}
                         type="button"
                         onClick={() => toggleTag(id)}
-                        className="flex items-center gap-1 border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide text-secondary transition-colors hover:text-primary"
-                        style={{ borderColor: custom ? '#F97316' : '#3a3a3a' }}
+                        aria-label={`Quitar ${custom?.name ?? tagLabel(id)}`}
+                        className={`flex min-h-11 items-center gap-1.5 border ${
+                          custom ? 'border-solid' : 'border-dashed'
+                        } border-ink bg-ink px-2.5 font-mono text-d11 tracking-wide text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
                       >
                         #{custom?.name ?? tagLabel(id)}
-                        <X size={9} aria-hidden />
+                        <X size={10} aria-hidden />
                       </button>
                     )
                   })}
@@ -488,8 +512,8 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                   }}
                   maxLength={TAG_NAME_MAX}
                   placeholder="filtrar tags · o escribe uno nuevo…"
-                  className="min-w-0 flex-1 border bg-black px-3 py-1.5 font-mono text-xs text-primary outline-none transition-colors focus:border-sys-orange"
-                  style={{ borderColor: '#242424' }}
+                  aria-label="Filtrar o crear tags"
+                  className={`min-h-11 min-w-0 flex-1 border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
                 />
                 {newTagId.length > 0 && (
                   <button
@@ -501,21 +525,20 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                         ? 'Ese tag ya existe'
                         : `Crear #${newTagId}`
                     }
-                    className="flex shrink-0 items-center gap-1 border px-2.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-35"
-                    style={{
-                      borderColor: '#F97316',
-                      color: '#F97316',
-                      backgroundColor: 'rgba(249,115,22,0.08)',
-                    }}
+                    className={`flex min-h-11 shrink-0 items-center gap-1 border px-3 font-mono text-d11 font-bold tracking-widest transition-colors disabled:cursor-not-allowed ${
+                      canCreateTag && !creatingTag
+                        ? 'border-ink bg-acid text-ink hover:bg-ink hover:text-acid'
+                        : 'border-ink-faint bg-paper-raised text-ink-faint'
+                    } ${FOCUS_RING}`}
                   >
-                    <Plus size={11} />
+                    <Plus size={12} />
                     <span>{creatingTag ? 'CREANDO…' : 'CREAR'}</span>
                   </button>
                 )}
               </div>
-              <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-border p-2">
+              <div className="flex max-h-56 flex-wrap gap-1.5 overflow-y-auto border border-dashed border-ink p-2">
                 {filteredTags.length === 0 && (
-                  <span className="font-mono text-[10px] tracking-widest text-muted">
+                  <span className="font-mono text-d11 tracking-widest text-ink-faint">
                     sin coincidencias — usa CREAR para agregar #{newTagId || '…'}
                   </span>
                 )}
@@ -526,16 +549,14 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                       key={t.id}
                       type="button"
                       onClick={() => toggleTag(t.id)}
-                      className="border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wide transition-colors"
-                      style={{
-                        borderColor: isOn ? (t.custom ? '#F97316' : '#9CA3AF') : '#242424',
-                        color: isOn ? (t.custom ? '#F97316' : '#E5E7EB') : '#888',
-                        backgroundColor: isOn
-                          ? t.custom
-                            ? 'rgba(249,115,22,0.12)'
-                            : 'rgba(156,163,175,0.12)'
-                          : 'transparent',
-                      }}
+                      aria-pressed={isOn}
+                      className={`flex min-h-11 items-center border px-2.5 font-mono text-d11 tracking-wide transition-colors ${
+                        t.custom ? 'border-solid' : 'border-dashed'
+                      } ${
+                        isOn
+                          ? 'border-ink bg-ink text-paper hover:bg-paper hover:text-ink'
+                          : 'border-ink-faint bg-paper text-ink hover:bg-ink hover:text-paper'
+                      } ${FOCUS_RING}`}
                     >
                       #{t.name}
                     </button>
@@ -545,11 +566,13 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
             </div>
 
             {/* Image upload — at least one mandatory, up to the cap. The
-                first image (cover) is badged; any other can be promoted. */}
+                first image (cover) is badged; any other can be promoted.
+                Controls sit in a hairline-separated strip UNDER each plate
+                (never floating over the art) so both hit ≥44px. */}
             <div className="flex flex-col gap-1.5">
-              <span className="sys-label text-muted">
-                IMÁGENES <span className="text-sys-orange">*</span>
-                <span className="ml-2 normal-case text-[9px] text-muted/80">
+              <span className={FIELD_LABEL}>
+                IMÁGENES <span className="text-sys-red-paper">*</span>
+                <span className="ml-2 normal-case text-ink-faint">
                   {imageUrls.length}/{FORO_THREAD_IMAGES_MAX} · la 1ª es la portada
                 </span>
               </span>
@@ -559,37 +582,45 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                   {imageUrls.map((url, i) => (
                     <div
                       key={url}
-                      className="relative h-24 w-24 border"
-                      style={{ borderColor: i === 0 ? '#F97316' : '#242424' }}
+                      className={`flex w-24 flex-col border ${
+                        i === 0 ? 'border-ink' : 'border-ink-faint'
+                      } bg-paper-raised`}
                     >
                       <img
                         src={url}
                         alt={i === 0 ? 'portada' : `imagen ${i + 1}`}
-                        className="h-full w-full object-cover"
+                        className="h-24 w-full object-cover"
                       />
-                      {i === 0 ? (
-                        <span className="absolute left-0 top-0 flex items-center gap-0.5 bg-sys-orange px-1 py-px font-mono text-[8px] tracking-widest text-black">
-                          <Star size={8} fill="black" /> PORTADA
-                        </span>
-                      ) : (
+                      <div className="flex border-t border-ink-faint">
+                        {i === 0 ? (
+                          <span
+                            className="flex min-h-11 flex-1 items-center justify-center border-r border-ink-faint bg-ink text-paper"
+                            title="Portada"
+                          >
+                            <Star size={12} fill="currentColor" aria-hidden />
+                            <span className="sr-only">Portada</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => makeCover(url)}
+                            title="Hacer portada"
+                            aria-label="Hacer portada"
+                            className={`flex min-h-11 flex-1 items-center justify-center border-r border-ink-faint text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
+                          >
+                            <Star size={12} aria-hidden />
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => makeCover(url)}
-                          title="Hacer portada"
-                          aria-label="Hacer portada"
-                          className="absolute left-0 top-0 flex items-center gap-0.5 bg-black/80 px-1 py-px font-mono text-[8px] tracking-widest text-muted transition-colors hover:text-sys-orange"
+                          onClick={() => removeImage(url)}
+                          aria-label="Quitar imagen"
+                          title="Quitar imagen"
+                          className={`flex min-h-11 flex-1 items-center justify-center text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper ${FOCUS_RING}`}
                         >
-                          <Star size={8} /> PORTADA
+                          <X size={12} aria-hidden />
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(url)}
-                        aria-label="Quitar imagen"
-                        className="absolute right-0 top-0 flex items-center justify-center border border-sys-red bg-black/85 p-0.5 text-sys-red transition-colors hover:bg-sys-red hover:text-black"
-                      >
-                        <X size={10} />
-                      </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -600,11 +631,9 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="flex items-center justify-center gap-2 border border-dashed py-6 font-mono text-[11px] tracking-widest text-muted transition-colors hover:border-sys-orange hover:text-primary disabled:cursor-default disabled:opacity-60"
-                  style={{
-                    borderColor: dragOver ? '#F97316' : '#242424',
-                    backgroundColor: dragOver ? 'rgba(249,115,22,0.05)' : 'transparent',
-                  }}
+                  className={`flex min-h-11 items-center justify-center gap-2 border border-dashed border-ink py-6 font-mono text-d11 font-bold uppercase tracking-widest text-ink transition-colors disabled:cursor-default disabled:opacity-60 ${
+                    dragOver ? 'bg-acid' : 'bg-paper-raised hover:bg-ink hover:text-paper'
+                  } ${FOCUS_RING}`}
                 >
                   <ImagePlus size={14} />
                   <span>
@@ -625,37 +654,40 @@ export function NewThreadOverlay({ onClose, onPosted }: NewThreadOverlayProps) {
                 className="hidden"
               />
               {readError && (
-                <p className="font-mono text-[10px] tracking-widest text-sys-red">⚠ {readError}</p>
+                <p className="border border-sys-red-paper px-2 py-1 font-mono text-d11 tracking-widest text-sys-red-paper">
+                  {readError}
+                </p>
               )}
             </div>
 
             {submitError && (
-              <p className="border border-sys-red bg-sys-red/10 px-3 py-2 font-mono text-[11px] tracking-widest text-sys-red">
-                ⚠ FALTA: {submitError.replace(/^Falta:\s*/, '')}
+              <p className="border border-sys-red-paper bg-paper-raised px-3 py-2 font-mono text-d11 font-bold uppercase tracking-widest text-sys-red-paper">
+                FALTA: {submitError.replace(/^Falta:\s*/, '')}
               </p>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-base/95 px-4 py-3 backdrop-blur-sm">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-ink bg-paper-raised px-4 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary"
+            className={`min-h-11 border border-ink px-3 font-mono text-d11 font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           >
             CANCELAR
           </button>
+          {/* Acid fill-block — the author's own action. Falls back to a
+              plain ink-faint chip while the OP is incomplete. */}
           <button
             type="button"
             onClick={submit}
             disabled={!canSubmit || submitting}
-            className="border px-3 py-1.5 font-mono text-[10px] tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            style={{
-              borderColor: '#F97316',
-              color: '#F97316',
-              backgroundColor: 'rgba(249,115,22,0.08)',
-            }}
+            className={`min-h-11 border px-4 font-mono text-d11 font-bold tracking-widest transition-colors disabled:cursor-not-allowed ${
+              canSubmit && !submitting
+                ? 'border-ink bg-acid text-ink hover:bg-ink hover:text-acid'
+                : 'border-ink-faint bg-paper-raised text-ink-faint'
+            } ${FOCUS_RING}`}
           >
             {submitting ? '◌ PUBLICANDO…' : '▶ PUBLICAR HILO'}
           </button>

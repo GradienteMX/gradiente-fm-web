@@ -85,7 +85,6 @@ import {
   type WidgetId,
 } from '@/lib/dashboard/layout'
 import { resolveVenueGeo } from '@/lib/dashboard/venueGeo'
-import { canAssignRoles } from '@/lib/permissions'
 import type { ContentItem, MarketplaceListing } from '@/lib/types'
 
 // ── Cadence constants ───────────────────────────────────────────────────────
@@ -421,7 +420,12 @@ export function DashboardDataProvider({
   }, [])
 
   // ── Registry (§3.9) ───────────────────────────────────────────────────────
-  const isMercadoUser = !!currentUser?.franjaId || canAssignRoles(currentUser)
+  // FASE D: the MERCADO widget shrank to a compact DOOR into the MERCADO
+  // space, and the space is franja-team-only — marketplace activation became
+  // self-service for the team, so the admin approval queue retired from the
+  // panel (site admins keep an abuse kill-switch on /admin instead). Admins
+  // therefore no longer carry a mercado widget they cannot act on.
+  const isMercadoUser = !!currentUser?.franjaId
   const registry = useMemo<readonly WidgetId[]>(() => {
     if (fixtureMode) {
       return (

@@ -3,7 +3,7 @@
 // ── ArticuloCompose — «EL PLIEGO DE COMPOSICIÓN v2» light editor for ARTÍCULO
 //
 // State/logic preamble copied VERBATIM from the dark ArticuloForm
-// (components/dashboard/forms/ArticuloForm.tsx — untouched, /admin depends):
+// (components/dashboard/forms/ArticuloForm.tsx — DELETED in fase F; this fork is now the only copy):
 // draft useState + patch + slugManuallyEdited effect + useDraftWorkbench with
 // the EXACT draftKey 'gradiente:dashboard:articulo-draft' + editItemId from
 // ?edit= + the publish recipe (requestPublish → setCategoryFilter(null) →

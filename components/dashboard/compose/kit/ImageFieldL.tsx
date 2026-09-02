@@ -3,7 +3,7 @@
 // ── ImageFieldL — the PORTADA dropzone (light) ──────────────────────────────
 //
 // Upload/URL logic ported VERBATIM from the dark ImageUrlField
-// (components/dashboard/forms/shared/Fields.tsx:993-1170 — untouched, /admin
+// (components/dashboard/forms/shared/Fields.tsx:993-1170 — still live
 // keeps importing it): compressAndUploadImage into the `uploads` bucket,
 // auth-gated via useAuth/openLogin, drag-drop + file-picker, legacy data-URL
 // truncated display. Only the chrome is the pliego mockup's:

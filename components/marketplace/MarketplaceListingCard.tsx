@@ -2,6 +2,7 @@
 
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { SmartImage } from '@/components/SmartImage'
 import type {
   ContentItem,
   MarketplaceListing,
@@ -10,10 +11,26 @@ import type {
 
 // ── MarketplaceListingCard ─────────────────────────────────────────────────
 //
-// Single listing tile inside the [[MarketplaceOverlay]] grid. Mirrors the
-// reference screenshot: numbered top corner, image, title + category line,
-// price in vibe-color, meta rows (condition / vendor / published-ago) and
-// a colored status pill at the bottom.
+// Single listing tile: numbered corner stamp, art plate, title + category,
+// price, meta rows (condition / vendor / published-ago) and a status band.
+//
+// «EL PLIEGO» fase F. Four hosts render this card — MarketplaceCatalog,
+// MarketplaceOverlay, FranjaOverlay and FranjaProfile — so the ground is a
+//
+//   paper (default) — the house sheet: paper-raised frame, ink hairlines.
+//   dark            — the same anatomy inverted onto an ink panel, for a
+//                     host whose ground is deliberately dark (/mapa's
+//                     terrain void). NOT the retired EVA chrome: same
+//                     hairlines, same type scale, no glow, no scanlines.
+//
+// Precedent: components/overlay/ShareButton.tsx. Every current call site
+// is a paper surface (the public catalog, the marketplace overlay, and both
+// franja dossiers), so this card carries ONE skin. Only the listing DETAIL
+// keeps a dark variant, because /mapa really does render it over the dark
+// terrain void.
+//
+// Art goes through SmartImage — this grid was one of the last raw-<img>
+// surfaces feeding Supabase egress.
 
 const CATEGORY_LABEL: Record<string, string> = {
   vinyl: '12" VINYL',
@@ -28,16 +45,54 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: 'OTRO',
 }
 
+// The DB enum is exactly available | reserved | sold — nothing else exists.
 const STATUS_LABEL: Record<MarketplaceListingStatus, string> = {
-  available: 'AVAILABLE',
-  reserved: 'RESERVED',
-  sold: 'SOLD',
+  available: 'DISPONIBLE',
+  reserved: 'RESERVADO',
+  sold: 'VENDIDO',
 }
 
-const STATUS_COLOR: Record<MarketplaceListingStatus, string> = {
-  available: '#4ADE80',
-  reserved: '#FBBF24',
-  sold: '#9CA3AF',
+// Widest render is the catalog feed's lg:grid-cols-4 inside max-w-screen-2xl
+// (~340px); the overlay/profile grids are narrower. One hint per image.
+const ART_SIZES = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 340px'
+
+interface Skin {
+  frame: string
+  hover: string
+  focus: string
+  art: string
+  artFallback: string
+  indexStamp: string
+  title: string
+  category: string
+  price: string
+  metaLabel: string
+  metaValue: string
+  // Status is never hue-only: the word carries the state, the band's weight
+  // and the dot's fill are the second and third channels.
+  statusBand: Record<MarketplaceListingStatus, string>
+}
+
+const SKINS: Record<'paper', Skin> = {
+  paper: {
+    frame: 'border border-ink bg-paper-raised',
+    hover: 'hover:bg-paper',
+    focus: 'focus-visible:outline-ink',
+    art: 'border-b border-ink bg-panel',
+    artFallback: 'text-panel-text',
+    indexStamp: 'bg-ink text-paper',
+    title: 'text-ink',
+    category: 'text-ink-faint',
+    price: 'text-ink',
+    metaLabel: 'text-ink-faint',
+    metaValue: 'text-ink',
+    statusBand: {
+      available: 'border-ink text-ink',
+      reserved: 'border-ink text-ink-soft',
+      sold: 'border-ink bg-sys-red-paper text-paper',
+    },
+  },
+
 }
 
 interface Props {
@@ -49,6 +104,7 @@ interface Props {
   // sub-overlay. Omitted in non-clickable contexts (e.g. the dashboard
   // composer's GRID preview pane).
   onClick?: () => void
+  // Ground the card sits on. Defaults to the house paper sheet.
 }
 
 export function MarketplaceListingCard({
@@ -57,8 +113,8 @@ export function MarketplaceListingCard({
   index,
   onClick,
 }: Props) {
+  const skin = SKINS.paper
   const status = listing.status
-  const statusColor = STATUS_COLOR[status]
   const currency = franja.marketplaceCurrency ?? ''
   const ago = (() => {
     try {
@@ -71,9 +127,9 @@ export function MarketplaceListingCard({
     }
   })()
   const interactiveClass = onClick
-    ? 'cursor-pointer text-left transition-colors hover:border-sys-orange focus:border-sys-orange focus:outline-none'
+    ? `cursor-pointer text-left transition-colors ${skin.hover} focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${skin.focus}`
     : ''
-  const wrapperClassName = `flex flex-col border border-border bg-elevated/30 ${interactiveClass}`
+  const wrapperClassName = `flex flex-col ${skin.frame} ${interactiveClass}`
   // SWC won't take a string-literal-union JSX tag, so we render two branches.
   // The body is identical between them; differs only in element type.
   if (onClick) {
@@ -90,7 +146,7 @@ export function MarketplaceListingCard({
           franja={franja}
           index={index}
           status={status}
-          statusColor={statusColor}
+          skin={skin}
           currency={currency}
           ago={ago}
         />
@@ -107,7 +163,7 @@ export function MarketplaceListingCard({
         franja={franja}
         index={index}
         status={status}
-        statusColor={statusColor}
+        skin={skin}
         currency={currency}
         ago={ago}
       />
@@ -120,7 +176,7 @@ function CardBody({
   franja,
   index,
   status,
-  statusColor,
+  skin,
   currency,
   ago,
 }: {
@@ -128,69 +184,73 @@ function CardBody({
   franja: ContentItem
   index: number
   status: MarketplaceListingStatus
-  statusColor: string
+  skin: Skin
   currency: string
   ago: string
 }) {
   return (
     <>
-      {/* Top: number + image */}
-      <div className="relative aspect-[4/3] overflow-hidden border-b border-border/60 bg-base">
+      {/* Top: numbered stamp + art plate */}
+      <div className={`relative aspect-[4/3] overflow-hidden ${skin.art}`}>
         <span
-          className="absolute left-2 top-2 z-10 bg-black/75 px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-secondary backdrop-blur-sm"
+          className={`absolute left-0 top-0 z-10 px-1.5 py-0.5 font-mono text-d11 font-bold tabular-nums tracking-widest ${skin.indexStamp}`}
           aria-hidden
         >
           {String(index).padStart(2, '0')}
         </span>
         {listing.images[0] ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
+          <SmartImage
             src={listing.images[0]}
-            alt={listing.title}
-            className="h-full w-full object-cover object-top"
-            loading="lazy"
+            alt=""
+            sizes={ART_SIZES}
+            className="object-cover object-top"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[10px] tracking-widest text-muted">
-            //{CATEGORY_LABEL[listing.category] ?? listing.category.toUpperCase()}
-          </div>
+          <span
+            className={`flex h-full w-full items-center justify-center px-2 text-center font-mono text-d11 uppercase tracking-widest ${skin.artFallback}`}
+          >
+            {CATEGORY_LABEL[listing.category] ?? listing.category.toUpperCase()}
+          </span>
         )}
       </div>
 
       {/* Middle: title + category */}
       <div className="flex flex-col gap-0.5 px-3 pt-2">
-        <h3 className="font-syne text-sm font-bold leading-tight text-primary line-clamp-2">
+        <h3
+          className={`font-syne text-d15 font-extrabold leading-tight line-clamp-2 ${skin.title}`}
+        >
           {listing.title || '[sin título]'}
         </h3>
         <span
-          className="font-mono text-[9px] tracking-widest"
-          style={{ color: '#F97316' }}
+          className={`font-mono text-d11 uppercase tracking-widest ${skin.category}`}
         >
           {CATEGORY_LABEL[listing.category] ?? listing.category.toUpperCase()}
         </span>
       </div>
 
       {/* Price */}
-      <div className="px-3 pt-1.5 font-syne text-base font-bold text-primary">
+      <div
+        className={`px-3 pt-1.5 font-syne text-d18 font-extrabold tabular-nums ${skin.price}`}
+      >
         ${listing.price.toLocaleString('es-MX')} {currency}
       </div>
 
-      {/* Meta rows */}
-      <dl className="flex flex-col gap-0.5 px-3 pt-2 pb-2 font-mono text-[9px] leading-relaxed">
-        <Meta label="CONDICIÓN" value={listing.condition} />
-        <Meta label="VENDEDOR" value={franja.title} />
-        <Meta label="PUBLICADO" value={ago} />
+      {/* Meta rows — mt-auto keeps the status bands aligned across a grid row */}
+      <dl className="mt-auto flex flex-col gap-0.5 px-3 pb-2 pt-2 font-mono text-d11">
+        <Meta label="CONDICIÓN" value={listing.condition} skin={skin} />
+        <Meta label="VENDEDOR" value={franja.title} skin={skin} />
+        <Meta label="PUBLICADO" value={ago} skin={skin} />
       </dl>
 
-      {/* Status pill */}
+      {/* Status band — word first, dot second (solid = settled, hollow = held) */}
       <div
-        className="flex items-center justify-between border-t border-border/60 px-3 py-1.5 font-mono text-[10px] tracking-widest"
-        style={{ color: statusColor }}
+        className={`flex items-center justify-between border-t px-3 py-1.5 font-mono text-d11 font-bold uppercase tracking-widest ${skin.statusBand[status]}`}
       >
         <span>{STATUS_LABEL[status]}</span>
         <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: statusColor }}
+          className={`h-2 w-2 shrink-0 border border-current ${
+            status === 'reserved' ? '' : 'bg-current'
+          }`}
           aria-hidden
         />
       </div>
@@ -198,11 +258,19 @@ function CardBody({
   )
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+function Meta({
+  label,
+  value,
+  skin,
+}: {
+  label: string
+  value: string
+  skin: Skin
+}) {
   return (
-    <div className="grid grid-cols-[80px_1fr] items-baseline gap-2">
-      <dt className="tracking-widest text-muted">{label}</dt>
-      <dd className="truncate text-secondary">{value}</dd>
+    <div className="grid grid-cols-[84px_1fr] items-baseline gap-2">
+      <dt className={`uppercase tracking-widest ${skin.metaLabel}`}>{label}</dt>
+      <dd className={`truncate ${skin.metaValue}`}>{value}</dd>
     </div>
   )
 }

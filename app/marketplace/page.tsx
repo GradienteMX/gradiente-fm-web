@@ -17,6 +17,14 @@ export const dynamic = 'force-dynamic'
 // the next request without waiting for client-side sync. MarketplaceCatalog
 // reads `?franja=` via useSearchParams — wrap in Suspense so the static
 // build doesn't bail.
+//
+// «EL PLIEGO» fase F — the body below is paper (ink hairlines, cream panels).
+// The GROUND flip is still owed: '/marketplace' has to land in
+// lib/chrome/paperRoutes.ts (Navigation reads that list to pick the paper
+// the ground itself flips from lib/chrome/paperRoutes: <PaperGround /> is
+// mounted ONCE in app/layout.tsx and drives itself off PAPER_ROUTES, so a
+// route needs no mount of its own.
+// the sheet. Until both are wired this page draws paper panels on charcoal.
 
 export default async function MarketplacePage() {
   const items = await getItems()
@@ -25,8 +33,16 @@ export default async function MarketplacePage() {
   )
 
   return (
-    <Suspense fallback={null}>
-      <MarketplaceCatalog franjas={franjas} />
-    </Suspense>
+    <>
+      <header className="mb-6 border-b border-ink pb-3">
+        <h1 className="font-syne text-d28 font-extrabold text-ink">MERCADO</h1>
+        <p className="mt-1 font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          CATÁLOGOS DE FRANJA · TRATO DIRECTO CON EL VENDEDOR
+        </p>
+      </header>
+      <Suspense fallback={null}>
+        <MarketplaceCatalog franjas={franjas} />
+      </Suspense>
+    </>
   )
 }

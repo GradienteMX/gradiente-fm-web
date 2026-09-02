@@ -13,7 +13,12 @@ import {
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ContentItem, ContentType, FranjaKind } from '@/lib/types'
-import { categoryColor, fmtDateFull } from '@/lib/utils'
+import { fmtDateFull } from '@/lib/utils'
+import {
+  categoryColorOnLight,
+  TYPE_CODES,
+  TYPE_DISPLAY_LABELS,
+} from '@/lib/dashboard/palette'
 import { getAllItemsSync, subscribeItems } from '@/lib/itemsCache'
 import { useOverlay } from './useOverlay'
 import { SmartImage } from '@/components/SmartImage'
@@ -22,20 +27,28 @@ import { ShareButton } from './ShareButton'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
 
-// ── FranjaOverlay ─────────────────────────────────────────────────────────
+// ── FranjaOverlay — the wide dossier sheet (fase F, «EL PLIEGO») ───────────
 //
 // Franja profile shown when a card in [[FranjasRail]] is clicked. Same
 // overlay grammar as every other ContentItem — opens via useOverlay().open()
-// on `?item=<slug>`. Three sections stack vertically:
+// on `?item=<slug>`.
 //
-//   1. Dossier — cover (object-contain so logo franjas aren't cropped),
-//      kind badge, title, subtitle, excerpt (bio).
-//   2. Body slot — kind-specific. Surfaces items where `franjaId === item.id`
-//      (the //PRESENTA self-FK) as FranjaLinkedPeek cards that expand in
-//      place to show a preview. Only the CTA inside the preview opens the
-//      full item overlay — clicks on the card chrome stay on the franja.
-//   3. CTA row — VISITAR SITIO (franjaUrl) + VER MARKETPLACE (only when
-//      marketplaceEnabled).
+// CHASSIS NOTE — OverlayRouter special-cases `type === 'franja'` and returns
+// this component BARE, deliberately bypassing OverlayShell so the dossier can
+// be a WIDE two-pane sheet instead of the shell's 1024px single panel. That
+// bypass is intentional and stays; fase F re-chromes the sheet IN PLACE so it
+// reads as a sibling of an OverlayShell sheet — paper sheet on an ink scrim,
+// raised header band, ink hairlines, Syne title, CERRAR·ESC chip, mobile
+// dismiss bar — without inheriting the shell's width or comments column.
+//
+// Three zones:
+//   1. Identity pane (left) — logo plate (object-contain so logo franjas
+//      aren't cropped), kind chip, title, catalog facts, bio, CTAs.
+//   2. Content pane (right) — //HISTORIA DESTACADA, the kind slot's linked
+//      work as FranjaLinkedPeek cards that expand in place, //ARCHIVO,
+//      //MERCADO.
+//   3. Listing sub-overlay — z-[60] over the dossier, driven by LOCAL state
+//      (never a URL param, so it can't collide with useOverlay's ?item=).
 
 interface Props {
   item: ContentItem
@@ -44,6 +57,14 @@ interface Props {
   /** Called once the close animation finishes so the router can unmount. */
   onExited: () => void
 }
+
+// House focus ring on paper grounds (fase C/F) — one grammar everywhere.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+// The mono label register — the paper replacement for the old dark
+// terminal label class (removed here in fase F).
+const LABEL = 'font-mono text-d11 font-bold uppercase tracking-widest'
 
 export const KIND_LABEL: Record<FranjaKind, string> = {
   label: 'SELLO',
@@ -216,9 +237,11 @@ export function useFranjaCounts(franjaId: string) {
 
 export function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="sys-label">{label}</span>
-      <span className="tabular-nums text-secondary">{value}</span>
+    <div className="flex items-baseline gap-2">
+      <span className={`${LABEL} text-ink-soft`}>{label}</span>
+      <span className="font-mono text-d13 font-bold tabular-nums text-ink">
+        {value}
+      </span>
     </div>
   )
 }
@@ -235,6 +258,51 @@ export function useFeaturedItem(
     return getAllItemsSync().find((i) => i.id === featuredItemId) ?? null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [featuredItemId, tick])
+}
+
+// Section head — mono kicker on an ink hairline. `accent` puts the kicker in
+// sys-red-paper (the editorial/public register: //HISTORIA DESTACADA,
+// //MERCADO); everything else stays ink.
+function ZoneHead({
+  label,
+  count,
+  accent = false,
+}: {
+  label: string
+  count?: number
+  accent?: boolean
+}) {
+  return (
+    <h2
+      className={`flex items-baseline gap-2 border-b border-ink pb-1.5 ${LABEL} ${
+        accent ? 'text-sys-red-paper' : 'text-ink'
+      }`}
+    >
+      <span>{label}</span>
+      {typeof count === 'number' && (
+        <span className="font-mono text-d11 font-normal tracking-widest text-ink-faint">
+          ({count})
+        </span>
+      )}
+    </h2>
+  )
+}
+
+// Type chip — 2-letter code + display label beside the category swatch. Hue
+// is never the sole signal (same anatomy as OverlayShell's header chip).
+function TypeChip({ type }: { type: ContentType }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 border border-ink bg-paper-raised px-1.5 py-0.5 ${LABEL} text-ink`}
+    >
+      <span
+        aria-hidden
+        className="h-[9px] w-[9px] shrink-0"
+        style={{ backgroundColor: categoryColorOnLight(type) }}
+      />
+      {TYPE_LABEL[type]}
+    </span>
+  )
 }
 
 export function FranjaOverlay({ item, exiting, onExited }: Props) {
@@ -313,53 +381,54 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
         if (!activeListingId) close()
       }}
     >
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
-        aria-hidden
-      />
+      {/* Ink scrim — flat, no blur (fase C law). */}
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
         className={
-          'eva-box eva-scanlines relative z-10 flex w-full max-w-6xl flex-col overflow-hidden bg-base ' +
+          'relative z-10 flex w-full max-w-6xl flex-col overflow-hidden border border-ink bg-paper text-ink ' +
           (exiting ? 'overlay-panel-out' : 'overlay-panel-in')
         }
-        style={{ maxHeight: 'min(94vh, 1000px)' }}
+        style={{ maxHeight: 'min(94dvh, 1000px)' }}
       >
-        {/* Chrome */}
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
-          <div className="flex min-w-0 items-center gap-3 font-mono text-[10px] tracking-widest">
-            <span style={{ color: categoryColor('franja') }}>//FRANJA</span>
-            <span className="hidden truncate text-muted sm:inline">
+        {/* Chrome / header — raised paper band, same anatomy as OverlayShell */}
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ink bg-paper-raised px-4 py-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={`flex shrink-0 items-center gap-1.5 ${LABEL} text-ink`}>
+              <span
+                aria-hidden
+                className="h-[9px] w-[9px] shrink-0"
+                style={{ backgroundColor: categoryColorOnLight('franja') }}
+              />
+              {TYPE_CODES.franja} · {TYPE_DISPLAY_LABELS.franja}
+            </span>
+            <span className="hidden truncate font-mono text-d11 uppercase tracking-widest text-ink-faint sm:inline">
               {item.slug}
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-3 font-mono text-[10px] tracking-widest text-muted">
+          <div className="flex shrink-0 items-center gap-2">
             <ShareButton item={item} />
-            <span className="hidden items-center gap-1.5 text-sys-green sm:flex">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-              ONLINE
-            </span>
             <button
               type="button"
               onClick={close}
               aria-label="Cerrar"
-              className="flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 text-secondary transition-colors hover:border-white/60 hover:text-primary sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-muted"
+              className={`flex min-h-11 shrink-0 items-center gap-2 border border-ink bg-ink px-3 ${LABEL} text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
             >
-              <span className="hidden sm:inline">[ESC]</span>
-              <X size={14} className="sm:hidden" />
+              <X size={12} className="sm:hidden" />
               <span>CERRAR</span>
+              <span className="hidden sm:inline">ESC</span>
             </button>
           </div>
         </header>
 
         {/* Scrollable dossier body — two-pane: identity left, content right */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-contain md:flex-row">
           {/* IDENTITY PANEL — left */}
-          <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-border bg-elevated/20 p-4 md:w-[340px] md:border-b-0 md:border-r md:p-5">
-            {/* Logo — object-contain so logo franjas (Club Japan, labels)
-                aren't cropped. */}
-            <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-black">
+          <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-ink bg-paper-raised p-4 md:w-[340px] md:border-b-0 md:border-r md:p-5">
+            {/* Logo plate — object-contain so logo franjas (Club Japan,
+                labels) aren't cropped. */}
+            <div className="relative aspect-[4/3] w-full overflow-hidden border border-ink bg-paper">
               {item.imageUrl ? (
                 <SmartImage
                   src={item.imageUrl}
@@ -369,67 +438,63 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
-                  <span className="font-mono text-xs text-muted">
+                  <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
                     SIN IMAGEN
                   </span>
                 </div>
               )}
               <span
-                className="absolute left-3 top-3 border bg-black/70 px-2 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
-                style={{ color: '#6B7280', borderColor: '#6B7280' }}
+                className={`absolute left-2 top-2 border border-ink bg-paper-raised px-1.5 py-0.5 ${LABEL} text-ink`}
               >
-                //{KIND_LABEL[kind]}
+                {KIND_LABEL[kind]}
               </span>
             </div>
-            {/* Header */}
+
+            {/* Head */}
             <header className="flex flex-col gap-2">
-              <h1 className="font-syne text-3xl font-black leading-[1.05] text-white md:text-4xl">
+              <h1 className="font-syne text-d28 font-extrabold leading-none text-ink">
                 {item.title}
               </h1>
               {item.verified && (
                 <span
-                  className="inline-flex w-fit items-center gap-1.5 border px-2 py-0.5 font-mono text-[9px] tracking-widest"
-                  style={{ borderColor: '#4ADE80', color: '#4ADE80' }}
+                  className={`inline-flex w-fit items-center gap-1.5 border border-ink bg-ink px-2 py-0.5 ${LABEL} text-paper`}
+                  title="Franja verificada"
                 >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-sys-green"
-                    aria-hidden
-                  />
-                  VERIFICADO
+                  ✓ VERIFICADA
                 </span>
               )}
               {item.subtitle && (
-                <p className="font-grotesk text-sm text-secondary md:text-base">
+                <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
                   {item.subtitle}
                 </p>
               )}
             </header>
 
-            {/* Meta — actualizado / ubicación / web */}
-            <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-3 font-mono text-xs">
-              <div className="flex items-center gap-2">
-                <span className="sys-label">ACTUALIZADO</span>
-                <span className="text-secondary">
+            {/* Ficha — actualizado / ubicación / web, on hairline rules */}
+            <dl className="flex flex-col border-t border-ink">
+              <div className="flex items-baseline justify-between gap-3 border-b border-ink py-2">
+                <dt className={`${LABEL} text-ink-faint`}>ACTUALIZADO</dt>
+                <dd className="font-mono text-d13 font-bold text-ink">
                   {fmtDateFull(lastUpdated)}
-                </span>
+                </dd>
               </div>
               {item.marketplaceLocation && (
-                <div className="flex items-center gap-2">
-                  <span className="sys-label flex items-center gap-1.5">
+                <div className="flex items-baseline justify-between gap-3 border-b border-ink py-2">
+                  <dt className={`flex items-center gap-1.5 ${LABEL} text-ink-faint`}>
                     <MapPin size={11} />
                     UBICACIÓN
-                  </span>
-                  <span className="text-secondary">
+                  </dt>
+                  <dd className="min-w-0 truncate font-mono text-d13 font-bold text-ink">
                     {item.marketplaceLocation}
-                  </span>
+                  </dd>
                 </div>
               )}
               {item.franjaUrl && (
-                <div className="flex items-center gap-2">
-                  <span className="sys-label">WEB</span>
-                  <span className="text-secondary">
+                <div className="flex items-baseline justify-between gap-3 border-b border-ink py-2">
+                  <dt className={`${LABEL} text-ink-faint`}>WEB</dt>
+                  <dd className="min-w-0 truncate font-mono text-d13 font-bold text-ink">
                     {item.franjaUrl.replace(/^https?:\/\//, '')}
-                  </span>
+                  </dd>
                 </div>
               )}
             </dl>
@@ -438,7 +503,7 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
             work. These REPLACE vanity metrics (followers / sales / ratings):
             they describe the body of work, not popularity. */}
             {(counts.total > 0 || item.year) && (
-              <dl className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-border pb-3 font-mono text-xs">
+              <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-ink pb-3">
                 {item.year ? (
                   <Fact label="DESDE" value={String(item.year)} />
                 ) : null}
@@ -458,22 +523,18 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
             )}
 
             {item.excerpt && (
-              <p className="font-grotesk text-base leading-relaxed text-secondary">
+              <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
                 {item.excerpt}
               </p>
             )}
 
-            {/* CTA — ENTRAR is the primary action: the full /p/[slug] profile
-                page. VISITAR SITIO (the franja's external site) is secondary. */}
+            {/* CTA — ENTRAR is the primary action: the full /f/[slug] profile
+                page, so it takes the ink fill block. VISITAR SITIO (the
+                franja's external site) is the bordered secondary. */}
             <Link
               href={`/f/${item.slug}`}
               onClick={close}
-              className="inline-flex items-center justify-center gap-2 border px-4 py-3 font-mono text-xs font-bold tracking-widest transition-colors"
-              style={{
-                borderColor: '#F97316',
-                color: '#F97316',
-                backgroundColor: 'rgba(249,115,22,0.14)',
-              }}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 border border-ink bg-ink px-4 ${LABEL} text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
             >
               ENTRAR AL PERFIL DE FRANJA
               <ArrowUpRight size={14} />
@@ -483,7 +544,7 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
                 href={item.franjaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 border border-border bg-elevated/40 px-4 py-3 font-mono text-xs tracking-widest text-primary transition-colors hover:border-white/60 hover:bg-elevated"
+                className={`inline-flex min-h-11 items-center justify-center gap-2 border border-ink px-4 ${LABEL} text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
               >
                 <ExternalLink size={13} />
                 VISITAR SITIO
@@ -499,21 +560,16 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
                 only, keeps it No-Algorithm-safe). */}
             {featured && (
               <section className="flex flex-col gap-3">
-                <h2 className="sys-label flex items-center gap-2 text-muted">
-                  <span
-                    className="inline-block h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: '#F97316' }}
-                    aria-hidden
-                  />
-                  //HISTORIA DESTACADA
-                </h2>
+                <ZoneHead label="//HISTORIA DESTACADA" accent />
                 <button
                   type="button"
                   onClick={() => open(featured.slug)}
                   aria-label={`Abrir ${featured.title}`}
-                  className="group relative block w-full overflow-hidden border border-border text-left transition-colors hover:border-white/30"
+                  className={`group block w-full overflow-hidden border border-ink bg-paper-raised text-left ${FOCUS_RING}`}
                 >
-                  <div className="relative aspect-[16/9] w-full overflow-hidden bg-base">
+                  {/* Plate — artwork stays clean; the caption zone below
+                      carries every piece of chrome (fase B card law). */}
+                  <div className="relative aspect-[16/9] w-full overflow-hidden bg-ink/10">
                     {featured.imageUrl ? (
                       <SmartImage
                         src={featured.imageUrl}
@@ -522,25 +578,23 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
                         className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center font-mono text-[10px] tracking-widest text-muted">
+                      <div className="flex h-full w-full items-center justify-center font-mono text-d11 uppercase tracking-widest text-ink-faint">
                         SIN IMAGEN
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                    <span
-                      className="absolute left-3 top-3 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-                      style={{ color: categoryColor(featured.type) }}
-                    >
-                      //{TYPE_LABEL[featured.type]}
-                    </span>
-                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-                      <h3 className="font-syne text-lg font-black leading-tight text-white md:text-2xl">
+                  </div>
+                  <div className="flex items-end justify-between gap-3 border-t border-ink p-3">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <TypeChip type={featured.type} />
+                      <h3 className="font-syne text-d18 font-extrabold leading-tight text-ink">
                         {featured.title}
                       </h3>
-                      <span className="shrink-0 font-mono text-[10px] tracking-widest text-sys-orange">
-                        VER →
-                      </span>
                     </div>
+                    <span
+                      className={`shrink-0 ${LABEL} text-ink-soft transition-colors group-hover:text-ink`}
+                    >
+                      VER →
+                    </span>
                   </div>
                 </button>
               </section>
@@ -552,29 +606,14 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
               // header + grid for clear visual separation.
               <LayoutGroup>
                 <section className="flex flex-col gap-3">
-                  <h2 className="sys-label flex items-center gap-2 text-muted">
-                    <span
-                      className="inline-block h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: '#6B7280' }}
-                      aria-hidden
-                    />
-                    {slot.header}
-                  </h2>
+                  <ZoneHead label={slot.header} />
 
                   {kind === 'dealer' ? (
-                    <p className="font-mono text-[11px] leading-relaxed text-muted">
+                    <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
                       {slot.emptyHint}
                     </p>
                   ) : franjaItems.live.length === 0 ? (
-                    <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 p-4 font-mono text-[11px] text-muted">
-                      <span
-                        className="tracking-widest"
-                        style={{ color: '#3a3a3a' }}
-                      >
-                        //SIN·VÍNCULOS·VISIBLES
-                      </span>
-                      <p>{slot.emptyHint}</p>
-                    </div>
+                    <EmptyZone hint={slot.emptyHint} />
                   ) : (
                     <ul
                       className="grid gap-3"
@@ -601,19 +640,13 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
 
                 {/* Archive — past events for venue/promoter slots. Renders only
                 when there's anything to show; shares the peek-card layout
-                with a //PASADO ribbon to mark them as historical. */}
+                with a //PASADO stamp to mark them as historical. */}
                 {franjaItems.archive.length > 0 && (
                   <section className="flex flex-col gap-3">
-                    <h2 className="sys-label flex items-center gap-2 text-muted">
-                      <span
-                        className="inline-block h-1.5 w-1.5 rounded-full bg-muted/40"
-                        aria-hidden
-                      />
-                      ARCHIVO · EVENTOS PASADOS
-                      <span className="font-mono text-[10px] text-muted/70">
-                        ({franjaItems.archive.length})
-                      </span>
-                    </h2>
+                    <ZoneHead
+                      label="ARCHIVO · EVENTOS PASADOS"
+                      count={franjaItems.archive.length}
+                    />
                     <ul
                       className="grid gap-3"
                       style={{
@@ -645,17 +678,7 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
                 so the user stays in the dossier instead of routing away. */}
             {listings.length > 0 && (
               <section className="flex flex-col gap-3">
-                <h2 className="sys-label flex items-center gap-2 text-muted">
-                  <span
-                    className="inline-block h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: '#F97316' }}
-                    aria-hidden
-                  />
-                  //MERCADO
-                  <span className="font-mono text-[10px] text-muted/70">
-                    ({listings.length})
-                  </span>
-                </h2>
+                <ZoneHead label="//MERCADO" count={listings.length} accent />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {listings.map((l, i) => (
                     <MarketplaceListingCard
@@ -671,7 +694,7 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
             )}
 
             {!slot && listings.length === 0 && (
-              <p className="font-mono text-[11px] leading-relaxed text-muted">
+              <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
                 Este franja aún no tiene contenido vinculado ni listados.
               </p>
             )}
@@ -683,7 +706,7 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
           type="button"
           onClick={close}
           aria-label="Cerrar"
-          className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-base/95 px-4 py-3 font-mono text-[11px] tracking-widest text-primary backdrop-blur-sm transition-colors active:bg-elevated sm:hidden"
+          className={`flex min-h-[44px] shrink-0 items-center justify-center gap-2 border-t border-ink bg-paper-raised px-4 ${LABEL} text-ink transition-colors active:bg-ink active:text-paper sm:hidden ${FOCUS_RING}`}
         >
           <X size={14} />
           <span>CERRAR</span>
@@ -704,15 +727,29 @@ export function FranjaOverlay({ item, exiting, onExited }: Props) {
   )
 }
 
+// Empty zone — a ruled, dashed placeholder in the paper register. No fake
+// rows, no fake status: it says what's missing and stops.
+function EmptyZone({ hint }: { hint: string }) {
+  return (
+    <div className="flex flex-col items-start gap-1.5 border border-dashed border-ink-faint bg-paper-raised p-4">
+      <span className={`${LABEL} text-ink-faint`}>//SIN·VÍNCULOS·VISIBLES</span>
+      <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+        {hint}
+      </p>
+    </div>
+  )
+}
+
 // ── FranjaLinkedPeek ──────────────────────────────────────────────────────
 //
 // Vertical flyer-forward card (same vocabulary as EventoRailCard). Two
 // modes:
 //
-//   • Compact — single grid column, aspect-[4/5] flyer at top with type +
-//     date badges, title + venue below.
-//   • Expanded — col-span-2 with internal flex-row split: flyer stays its
-//     full aspect on the left, meta + CTA fill the right column.
+//   • Compact — single grid column, aspect-[4/5] flyer plate at top, type
+//     chip + title + venue in the caption band below.
+//   • Expanded — col-span-3 with internal flex-row split: flyer stays its
+//     full aspect on the left, meta + CTA fill the right column, and the
+//     card lifts onto paper-raised.
 //
 // Click on the flyer or the compact title toggles. Inside expanded, the X
 // button at the top-right of the right column also collapses. The only
@@ -728,12 +765,11 @@ export function FranjaLinkedPeek({
   item: ContentItem
   isExpanded: boolean
   onToggle: () => void
-  /** When true, the card is part of the archive — adds a //PASADO ribbon
+  /** When true, the card is part of the archive — adds a //PASADO stamp
    *  and dims the flyer slightly so it reads as historical. */
   isPast?: boolean
 }) {
   const { open } = useOverlay()
-  const typeColor = categoryColor(item.type)
   const d = item.date ? parseISO(item.date) : null
 
   const handleOpenFull = (e: React.MouseEvent) => {
@@ -754,9 +790,8 @@ export function FranjaLinkedPeek({
     <motion.li
       layout
       transition={layoutTransition}
-      className="border bg-elevated/40"
+      className={`border border-ink ${isExpanded ? 'bg-paper-raised' : 'bg-paper'}`}
       style={{
-        borderColor: isExpanded ? typeColor : '#2a2a2a',
         gridColumn: isExpanded ? 'span 3 / span 3' : 'span 1 / span 1',
       }}
     >
@@ -778,11 +813,11 @@ export function FranjaLinkedPeek({
           aria-label={
             isExpanded ? `Cerrar ${item.title}` : `Abrir ${item.title}`
           }
-          className={`group relative shrink-0 overflow-hidden text-left ${
+          className={`group relative shrink-0 overflow-hidden text-left ${FOCUS_RING} ${
             isExpanded ? 'w-full sm:w-[200px]' : 'w-full'
           }`}
         >
-          <div className="relative aspect-[4/5] overflow-hidden bg-base">
+          <div className="relative aspect-[4/5] overflow-hidden bg-ink/10">
             {item.imageUrl ? (
               <SmartImage
                 src={item.imageUrl}
@@ -794,47 +829,33 @@ export function FranjaLinkedPeek({
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <span className="font-mono text-[9px] tracking-widest text-muted">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-ink-faint">
                   SIN IMAGEN
                 </span>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
 
-            <span
-              className="absolute left-2 top-2 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-              style={{ color: isPast ? '#6B7280' : typeColor }}
-            >
-              //{TYPE_LABEL[item.type]}
-            </span>
-
+            {/* Printed date sticker — paper plate on an ink hairline, the
+                one piece of chrome allowed to sit on the flyer (matches the
+                EventoOverlay gig-poster sticker). */}
             {d && (
-              <div
-                className="absolute right-2 top-2 border bg-black/70 px-1.5 py-1 text-center font-mono backdrop-blur-sm"
-                style={{
-                  borderColor: isPast ? '#6B7280' : 'rgba(255,255,255,0.2)',
-                  color: isPast ? '#6B7280' : '#fff',
-                }}
-              >
-                <div className="text-[8px] font-bold tracking-widest">
+              <div className="absolute right-2 top-2 flex flex-col items-center border border-ink bg-paper-raised px-1.5 py-1 text-center">
+                <span className="font-mono text-[8px] font-bold tracking-widest text-ink">
                   {format(d, 'MMM', { locale: es }).toUpperCase()}
-                </div>
-                <div className="text-base font-bold leading-none tabular-nums">
+                </span>
+                <span className="font-syne text-base font-black leading-none tabular-nums text-ink">
                   {format(d, 'd')}
-                </div>
-                <div className="text-[7px] font-bold tracking-widest">
+                </span>
+                <span className="font-mono text-[7px] font-bold tracking-widest text-ink">
                   {format(d, 'EEE', { locale: es }).toUpperCase()}
-                </div>
+                </span>
               </div>
             )}
 
-            {/* //PASADO ribbon — only on archive cards. Sits at the bottom-
-                left so it doesn't fight the type badge or date stamp. */}
+            {/* //PASADO stamp — only on archive cards. Sits bottom-left so it
+                never fights the date sticker. */}
             {isPast && (
-              <span
-                className="absolute bottom-2 left-2 border bg-black/85 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-                style={{ color: '#9CA3AF', borderColor: '#6B7280' }}
-              >
+              <span className="absolute bottom-2 left-2 border border-ink bg-paper-raised px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-ink-faint">
                 //PASADO
               </span>
             )}
@@ -843,14 +864,14 @@ export function FranjaLinkedPeek({
 
         {/* Meta column. Expanded: title pinned top, meta in middle, CTA pinned
             bottom — `justify-between` removes the awkward gap above the title
-            we hit with `mt-auto`-only. Compact: minimal title + venue strip. */}
+            we hit with `mt-auto`-only. Compact: type chip + title + venue. */}
         <motion.div
           layout
           transition={layoutTransition}
           className={
             isExpanded
-              ? 'relative flex min-w-0 flex-1 flex-col justify-between gap-4 p-4 sm:p-5'
-              : 'p-2.5'
+              ? 'relative flex min-w-0 flex-1 flex-col justify-between gap-4 border-t border-ink p-4 sm:border-l sm:border-t-0 sm:p-5'
+              : 'flex flex-col gap-1.5 border-t border-ink p-2.5'
           }
         >
           {isExpanded ? (
@@ -860,15 +881,18 @@ export function FranjaLinkedPeek({
                   type="button"
                   onClick={onToggle}
                   aria-label="Cerrar preview"
-                  className="absolute right-2 top-2 flex items-center gap-1 border border-border bg-base/60 px-1.5 py-1 font-mono text-[9px] tracking-widest text-muted transition-colors hover:border-white/60 hover:text-primary"
+                  className={`absolute right-2 top-2 flex min-h-11 items-center gap-1 border border-ink bg-paper px-2 ${LABEL} text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
                 >
                   <X size={10} />
                   CERRAR
                 </button>
 
-                <h3 className="pr-20 font-syne text-xl font-black leading-tight text-white md:text-2xl">
-                  {item.title}
-                </h3>
+                <div className="flex flex-col gap-2 pr-24">
+                  <TypeChip type={item.type} />
+                  <h3 className="font-syne text-d18 font-extrabold leading-tight text-ink md:text-d28">
+                    {item.title}
+                  </h3>
+                </div>
 
                 <PeekBody item={item} />
               </div>
@@ -876,12 +900,7 @@ export function FranjaLinkedPeek({
               <button
                 type="button"
                 onClick={handleOpenFull}
-                className="inline-flex items-center justify-center gap-2 self-start border px-3 py-2 font-mono text-[10px] tracking-widest transition-colors"
-                style={{
-                  borderColor: typeColor,
-                  color: typeColor,
-                  backgroundColor: `${typeColor}14`,
-                }}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 self-start border border-ink bg-ink px-3 ${LABEL} text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
               >
                 VER FICHA COMPLETA
                 <ArrowUpRight size={12} />
@@ -889,11 +908,12 @@ export function FranjaLinkedPeek({
             </>
           ) : (
             <>
-              <h3 className="line-clamp-2 font-syne text-xs font-bold leading-tight text-white">
+              <TypeChip type={item.type} />
+              <h3 className="line-clamp-2 font-syne text-d13 font-extrabold leading-tight text-ink">
                 {item.title}
               </h3>
               {item.venue && (
-                <p className="mt-1 line-clamp-1 font-mono text-[9px] tracking-wide text-muted">
+                <p className="line-clamp-1 font-mono text-[9px] uppercase tracking-widest text-ink-faint">
                   {item.venue}
                 </p>
               )}
@@ -912,37 +932,41 @@ export function FranjaLinkedPeek({
 function PeekBody({ item }: { item: ContentItem }) {
   if (item.type === 'evento') {
     return (
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 font-mono text-[11px]">
+      <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
         {item.venue && (
           <>
-            <dt className="sys-label flex items-center gap-1.5">
+            <dt className={`flex items-center gap-1.5 ${LABEL} text-ink-faint`}>
               <MapPin size={11} />
               LUGAR
             </dt>
-            <dd className="text-secondary">
+            <dd className="font-mono text-d13 text-ink">
               {item.venue}
               {item.venueCity && (
-                <span className="text-muted"> · {item.venueCity}</span>
+                <span className="text-ink-faint"> · {item.venueCity}</span>
               )}
             </dd>
           </>
         )}
         {item.date && (
           <>
-            <dt className="sys-label flex items-center gap-1.5">
+            <dt className={`flex items-center gap-1.5 ${LABEL} text-ink-faint`}>
               <Calendar size={11} />
               FECHA
             </dt>
-            <dd className="text-secondary">{fmtDateFull(item.date)}</dd>
+            <dd className="font-mono text-d13 text-ink">
+              {fmtDateFull(item.date)}
+            </dd>
           </>
         )}
         {item.artists && item.artists.length > 0 && (
           <>
-            <dt className="sys-label flex items-center gap-1.5">
+            <dt className={`flex items-center gap-1.5 ${LABEL} text-ink-faint`}>
               <Users size={11} />
               LINE-UP
             </dt>
-            <dd className="text-secondary">{item.artists.join(' · ')}</dd>
+            <dd className="font-mono text-d13 text-ink">
+              {item.artists.join(' · ')}
+            </dd>
           </>
         )}
       </dl>
@@ -951,23 +975,25 @@ function PeekBody({ item }: { item: ContentItem }) {
 
   if (item.type === 'mix') {
     return (
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 font-mono text-[11px]">
+      <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
         {item.duration && (
           <>
-            <dt className="sys-label">DURACIÓN</dt>
-            <dd className="text-secondary">{item.duration}</dd>
+            <dt className={`${LABEL} text-ink-faint`}>DURACIÓN</dt>
+            <dd className="font-mono text-d13 text-ink">{item.duration}</dd>
           </>
         )}
         {item.bpmRange && (
           <>
-            <dt className="sys-label">BPM</dt>
-            <dd className="text-secondary">{item.bpmRange}</dd>
+            <dt className={`${LABEL} text-ink-faint`}>BPM</dt>
+            <dd className="font-mono text-d13 text-ink">{item.bpmRange}</dd>
           </>
         )}
         {item.tracklist && item.tracklist.length > 0 && (
           <>
-            <dt className="sys-label">TRACKS</dt>
-            <dd className="text-secondary">{item.tracklist.length}</dd>
+            <dt className={`${LABEL} text-ink-faint`}>TRACKS</dt>
+            <dd className="font-mono text-d13 tabular-nums text-ink">
+              {item.tracklist.length}
+            </dd>
           </>
         )}
       </dl>
@@ -976,20 +1002,22 @@ function PeekBody({ item }: { item: ContentItem }) {
 
   // Article / review / noticia / listicle — show date + author when available.
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 font-mono text-[11px]">
+    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
       {item.publishedAt && (
         <>
-          <dt className="sys-label flex items-center gap-1.5">
+          <dt className={`flex items-center gap-1.5 ${LABEL} text-ink-faint`}>
             <Calendar size={11} />
             PUBLICADO
           </dt>
-          <dd className="text-secondary">{fmtDateFull(item.publishedAt)}</dd>
+          <dd className="font-mono text-d13 text-ink">
+            {fmtDateFull(item.publishedAt)}
+          </dd>
         </>
       )}
       {item.author && (
         <>
-          <dt className="sys-label">AUTOR</dt>
-          <dd className="text-secondary">{item.author}</dd>
+          <dt className={`${LABEL} text-ink-faint`}>AUTOR</dt>
+          <dd className="font-mono text-d13 text-ink">{item.author}</dd>
         </>
       )}
     </dl>

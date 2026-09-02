@@ -32,6 +32,20 @@ import type { ForoDeletion, ForoReply } from '@/lib/types'
 //   - Replies are flat — no nesting. Quote-links via >>id render as buttons
 //     that scroll-and-pulse the target post.
 //   - Image is left-floated next to the body (CSS float, like 4chan)
+//
+// Fase F chrome: a paper sheet over a flat ink scrim, same anatomy as
+// components/overlay/OverlayShell — hairline-framed panel, raised header
+// band with mono chips and the ink CERRAR chip, body on paper. The OP is
+// framed in full ink; replies step back to an ink-faint hairline. The
+// scroll-and-pulse target wears a 2px sys-red-paper outline (flat, no glow)
+// so it can't be confused with the ink focus ring.
+
+// House focus grammar — 2px ink outline, offset 2.
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+// The scroll-target pulse — a flat red outline, held for the 1.6s timeout.
+const PULSE_RING = 'outline outline-2 outline-offset-2 outline-sys-red-paper'
 
 interface ThreadOverlayProps {
   threadId: string
@@ -46,7 +60,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
   const threadDeleted = !!thread?.deletion
   const { input: promptInput } = usePrompt()
 
-  // Mod actions — open the NGE-styled [[PromptOverlay]] for a reason.
+  // Mod actions — open the house [[PromptOverlay]] for a reason.
   // The storage layer doesn't re-check the role (real backend will via
   // RLS); we guard at the UI by only rendering the buttons for mods.
   const onTombstoneThread = useCallback(async () => {
@@ -175,19 +189,21 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
         className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 overlay-backdrop-in"
         onClick={onClose}
       >
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-md" aria-hidden />
+        <div className="absolute inset-0 bg-ink/60" aria-hidden />
         <div
-          className="eva-box relative z-10 flex max-w-md flex-col items-center gap-3 bg-base p-6 text-center"
+          className="relative z-10 flex max-w-md flex-col items-center gap-3 border border-ink bg-paper p-6 text-center text-ink"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="font-mono text-[11px] tracking-widest text-sys-red">// HILO NO ENCONTRADO</p>
-          <p className="font-mono text-[10px] tracking-widest text-muted">
+          <p className="font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper">
+            HILO NO ENCONTRADO
+          </p>
+          <p className="font-mono text-d11 tracking-widest text-ink-faint">
             id: {threadId}
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary"
+            className={`flex min-h-11 items-center border border-ink bg-ink px-3 font-mono text-d11 font-bold tracking-widest text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
           >
             CERRAR
           </button>
@@ -201,31 +217,32 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 overlay-backdrop-in"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" aria-hidden />
+      {/* Ink scrim — flat, no blur (fase C anatomy). */}
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines relative z-10 flex w-full max-w-3xl flex-col overflow-hidden bg-base overlay-panel-in"
+        className="relative z-10 flex w-full max-w-3xl flex-col overflow-hidden border border-ink bg-paper text-ink"
         style={{ maxHeight: 'min(92vh, 900px)' }}
       >
-        {/* Chrome */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
+        {/* Chrome / header — raised paper band. */}
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ink bg-paper-raised px-4 py-2">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="shrink-0 font-mono text-[10px] tracking-widest" style={{ color: '#F97316' }}>
-              //FORO·HILO
+            <span className="shrink-0 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              FORO · HILO
             </span>
-            <span className="sys-label tabular-nums text-muted">
+            <span className="font-mono text-d11 uppercase tabular-nums tracking-widest text-ink-faint">
               R·{String(replies.length).padStart(2, '0')}
             </span>
           </div>
           <button
             onClick={onClose}
             aria-label="Cerrar"
-            className="flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-muted"
+            className={`flex min-h-11 shrink-0 items-center gap-2 border border-ink bg-ink px-3 font-mono text-d11 font-bold tracking-widest text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
           >
-            <span className="hidden sm:inline">[ESC]</span>
-            <X size={14} className="sm:hidden" />
+            <X size={12} className="sm:hidden" />
             <span>CERRAR</span>
+            <span className="hidden sm:inline">ESC</span>
           </button>
         </div>
 
@@ -239,10 +256,9 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
             <article
               data-postid={thread.id}
               className={
-                'flex flex-col gap-2 border bg-elevated/30 p-3 transition-shadow ' +
-                (pulsedId === thread.id ? 'ring-2 ring-sys-orange ring-offset-1 ring-offset-base' : '')
+                'flex flex-col gap-2 border border-ink bg-paper-raised p-3 ' +
+                (pulsedId === thread.id ? PULSE_RING : '')
               }
-              style={{ borderColor: '#3a2200' }}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -270,7 +286,7 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                 />
               ) : (
                 <>
-                  <h1 className="font-syne text-lg font-bold leading-tight text-primary">
+                  <h1 className="font-syne text-d18 font-extrabold leading-tight text-ink">
                     {thread.subject}
                   </h1>
                   {(thread.genres.length > 0 || thread.tags.length > 0) && (
@@ -278,29 +294,29 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
                       {thread.genres.map((id) => {
                         const g = getGenreById(id)
                         const v = vibeForGenre(id)
-                        const accent = v !== null ? vibeToColor(v) : '#9CA3AF'
                         return (
                           <span
                             key={id}
-                            className="border px-1.5 py-px font-mono text-[9px] tracking-widest"
-                            style={{
-                              borderColor: accent,
-                              color: accent,
-                              backgroundColor: `${accent}12`,
-                            }}
+                            className="inline-flex items-center gap-1 border border-ink px-1.5 py-px font-mono text-[9px] tracking-widest text-ink"
                           >
+                            {v !== null && (
+                              <span
+                                aria-hidden
+                                className="h-2 w-2 shrink-0 border border-ink"
+                                style={{ backgroundColor: vibeToColor(v) }}
+                              />
+                            )}
                             {(g?.name ?? id).toUpperCase()}
                           </span>
                         )
                       })}
-                      {/* Metadata tags — neutral chrome to read as a separate
-                          axis from the vibe-colored genres. */}
+                      {/* Metadata tags — dashed hairline so they read as a
+                          separate axis from the swatch-bearing genres. */}
                       {thread.tags.map((id) => {
                         return (
                           <span
                             key={id}
-                            className="border border-dashed px-1.5 py-px font-mono text-[9px] tracking-widest text-muted"
-                            style={{ borderColor: '#3a3a3a' }}
+                            className="border border-dashed border-ink-faint px-1.5 py-px font-mono text-[9px] tracking-widest text-ink-faint"
                           >
                             #{tagLabel(id).toUpperCase()}
                           </span>
@@ -339,10 +355,10 @@ export function ThreadOverlay({ threadId, onClose }: ThreadOverlayProps) {
             {/* Composer — disabled on tombstoned threads. New replies on a
                 deleted thread don't make sense; the moderator's pruning
                 action also closes the door on continued discussion. */}
-            <div ref={composerRef} className="border border-dashed border-border/60 bg-black p-3">
+            <div ref={composerRef} className="border border-dashed border-ink bg-paper-raised p-3">
               {threadDeleted ? (
-                <p className="font-mono text-[10px] tracking-widest text-muted">
-                  //HILO·CERRADO·POR·MODERACIÓN — no se aceptan respuestas nuevas.
+                <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+                  HILO CERRADO POR MODERACIÓN — no se aceptan respuestas nuevas.
                 </p>
               ) : (
                 <ReplyComposer
@@ -391,8 +407,8 @@ function ReplyArticle({
     <article
       data-postid={reply.id}
       className={
-        'flex flex-col gap-2 border border-border/60 bg-base p-3 transition-shadow ' +
-        (pulsed ? 'ring-2 ring-sys-orange ring-offset-1 ring-offset-base' : '')
+        'flex flex-col gap-2 border border-ink-faint bg-paper-raised p-3 ' +
+        (pulsed ? PULSE_RING : '')
       }
     >
       <div className="flex items-start justify-between gap-2">
@@ -441,8 +457,7 @@ function ModDeleteButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex shrink-0 items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
-      style={{ borderColor: '#E63329', color: '#E63329' }}
+      className={`flex min-h-11 shrink-0 items-center gap-1 border border-sys-red-paper px-2 font-mono text-[9px] font-bold tracking-widest text-sys-red-paper transition-colors hover:bg-sys-red-paper hover:text-paper ${FOCUS_RING}`}
       aria-label={label}
       title={label}
     >
@@ -472,20 +487,16 @@ function Tombstone({
 }) {
   const mod = useResolvedUser(deletion.moderatorId)
   return (
-    <div
-      className="flex flex-col gap-0.5 border border-dashed px-3 py-2 font-mono text-[11px] leading-relaxed"
-      style={{ borderColor: '#3a3a3a', color: '#9CA3AF' }}
-    >
+    <div className="flex flex-col gap-0.5 border border-dashed border-ink px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-faint">
       <div className="flex items-center justify-between gap-2">
-        <span className="tracking-widest" style={{ color: '#E63329' }}>
-          //{kind === 'thread' ? 'HILO' : 'RESPUESTA'}·ELIMINADO·POR·MODERACIÓN
+        <span className="font-bold tracking-widest text-sys-red-paper">
+          {kind === 'thread' ? 'HILO ELIMINADO POR MODERACIÓN' : 'RESPUESTA ELIMINADA POR MODERACIÓN'}
         </span>
         {canRevert && (
           <button
             type="button"
             onClick={onRevert}
-            className="flex shrink-0 items-center gap-1 border px-1.5 py-px text-[9px] tracking-widest transition-colors hover:bg-white/[0.02]"
-            style={{ borderColor: '#F97316', color: '#F97316' }}
+            className={`flex min-h-11 shrink-0 items-center gap-1 border border-ink px-2 text-[9px] font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
             aria-label="Restaurar"
             title="Restaurar"
           >
@@ -496,7 +507,7 @@ function Tombstone({
       </div>
       <span>
         {mod ? `@${mod.username}` : 'moderador'} ·{' '}
-        <span className="text-secondary">RAZÓN:</span> {deletion.reason}
+        <span className="text-ink-soft">RAZÓN:</span> {deletion.reason}
       </span>
     </div>
   )
@@ -519,14 +530,14 @@ function Backlinks({
 }) {
   if (ids.length === 0) return null
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[10px] tracking-widest text-muted">
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[10px] tracking-widest text-ink-faint">
       <span>respondieron:</span>
       {ids.map((id) => (
         <button
           key={id}
           type="button"
           onClick={() => onClick(id)}
-          className="text-sys-orange transition-colors hover:text-primary hover:underline"
+          className={`font-bold text-ink underline-offset-2 transition-colors hover:text-sys-red-paper hover:underline ${FOCUS_RING}`}
         >
           {labelForPost(id)}
         </button>
@@ -556,13 +567,13 @@ function PostBody({
   // Index of the image currently open in the lightbox, or null when closed.
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   return (
-    <div className="font-mono text-[12px] leading-relaxed text-secondary">
+    <div className="font-grotesk text-d15 leading-relaxed text-ink-soft">
       {cover && (
         <img
           src={cover}
           alt={imageRequired ? 'imagen del hilo' : 'adjunto'}
           onClick={() => setLightboxIndex(0)}
-          className="float-left mb-2 mr-3 max-h-48 max-w-[200px] cursor-zoom-in border border-border object-cover sm:max-h-64 sm:max-w-[260px]"
+          className="float-left mb-2 mr-3 max-h-48 max-w-[200px] cursor-zoom-in border border-ink bg-paper object-cover sm:max-h-64 sm:max-w-[260px]"
         />
       )}
       <BodyText
@@ -582,7 +593,7 @@ function PostBody({
               src={url}
               alt={`imagen ${i + 2}`}
               onClick={() => setLightboxIndex(i + 1)}
-              className="h-20 w-20 cursor-zoom-in border border-border object-cover sm:h-24 sm:w-24"
+              className="h-20 w-20 cursor-zoom-in border border-ink bg-paper object-cover sm:h-24 sm:w-24"
             />
           ))}
         </div>
@@ -619,7 +630,7 @@ function YouTubeEmbed({ id }: { id: string }) {
   return (
     <span className="my-2 block w-full max-w-md">
       <span
-        className="relative block w-full overflow-hidden border border-border bg-black"
+        className="relative block w-full overflow-hidden border border-ink bg-panel"
         style={{ aspectRatio: '16 / 9' }}
       >
         <iframe
@@ -665,20 +676,16 @@ function BodyText({
               <button
                 type="button"
                 onClick={() => onQuoteClick(id)}
-                className="font-mono text-sys-orange transition-colors hover:text-primary hover:underline"
+                className={`font-mono font-bold text-ink underline-offset-2 transition-colors hover:text-sys-red-paper hover:underline ${FOCUS_RING}`}
               >
                 {labelForPost(id)}
               </button>
               {mine && (
                 <span
-                  className="border px-1 py-px font-mono text-[9px] tracking-widest"
-                  style={{
-                    borderColor: '#F97316',
-                    color: '#F97316',
-                    backgroundColor: 'rgba(249,115,22,0.12)',
-                  }}
+                  className="inline-flex items-center gap-1 border border-ink px-1 py-px font-mono text-[9px] font-bold tracking-widest text-ink"
                   aria-label="te están respondiendo"
                 >
+                  <span aria-hidden className="h-2 w-2 shrink-0 border border-ink bg-acid" />
                   TÚ
                 </span>
               )}
@@ -694,7 +701,7 @@ function BodyText({
               href={part}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="break-all text-sys-orange underline decoration-sys-orange/40 underline-offset-2 transition-colors hover:text-primary hover:decoration-primary"
+              className={`break-all text-sys-red-paper underline decoration-sys-red-paper/50 underline-offset-2 transition-colors hover:text-ink hover:decoration-ink ${FOCUS_RING}`}
             >
               {part}
             </a>

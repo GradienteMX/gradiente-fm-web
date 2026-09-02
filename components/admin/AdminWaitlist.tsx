@@ -14,6 +14,12 @@ import { useRouter } from 'next/navigation'
 // Status is three-state but only two are STORED: pending → invited live on
 // the row; "REGISTRADO" is derived from the joined invite code's used_at
 // (the signup trigger marks codes used — no second write path here).
+//
+// «EL PLIEGO» chrome (fase F): paper table, ink hairline rules, mono
+// uppercase heads. The queue state is carried by chip WEIGHT (faint hairline
+// → ink hairline → ink fill), not by colour; only the destructive BORRAR
+// speaks in sys-red-paper. Fetches, the two-click delete arming and the
+// clipboard deep link are untouched.
 
 export interface WaitlistAdminRow {
   id: string
@@ -36,11 +42,16 @@ function deriveState(r: WaitlistAdminRow): Derived {
   return 'pendiente'
 }
 
-const STATE_STYLE: Record<Derived, { label: string; color: string }> = {
-  pendiente: { label: 'PENDIENTE', color: '#F97316' },
-  invitado: { label: 'INVITADO', color: '#F59E0B' },
-  registrado: { label: 'REGISTRADO', color: '#4ADE80' },
+// Weight, not hue: nothing has happened yet → faint; code minted → hairline;
+// account created → the ink fill of a closed loop.
+const STATE_STYLE: Record<Derived, { label: string; cls: string }> = {
+  pendiente: { label: 'PENDIENTE', cls: 'border-ink/25 text-ink-faint' },
+  invitado: { label: 'INVITADO', cls: 'border-ink text-ink' },
+  registrado: { label: 'REGISTRADO', cls: 'border-ink bg-ink text-paper' },
 }
+
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[] }) {
   const router = useRouter()
@@ -144,17 +155,21 @@ export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[]
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-syne text-xl font-bold text-primary">LISTA DE ESPERA</h2>
-        <span className="sys-label">{counts.total} SEÑALES</span>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink pb-2">
+        <h2 className="font-syne text-d18 font-extrabold uppercase text-ink">
+          Lista de espera
+        </h2>
+        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          {counts.total} SEÑALES
+        </span>
       </div>
 
-      {/* Stats chips */}
-      <div className="flex flex-wrap gap-2 font-mono text-[10px] tracking-widest">
-        <Chip label={`TOTAL ${counts.total}`} color="#888888" />
-        <Chip label={`PENDIENTES ${counts.pendiente}`} color="#F97316" />
-        <Chip label={`INVITADOS ${counts.invitado}`} color="#F59E0B" />
-        <Chip label={`REGISTRADOS ${counts.registrado}`} color="#4ADE80" />
+      {/* Counts — real numbers derived from the loaded rows. */}
+      <div className="flex flex-wrap gap-2">
+        <Chip label="TOTAL" value={counts.total} />
+        <Chip label="PENDIENTES" value={counts.pendiente} />
+        <Chip label="INVITADOS" value={counts.invitado} />
+        <Chip label="REGISTRADOS" value={counts.registrado} />
       </div>
 
       <input
@@ -162,33 +177,27 @@ export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[]
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="FILTRAR POR EMAIL / ALIAS / CIUDAD…"
-        className="border bg-black px-3 py-2 font-mono text-sm text-primary outline-none focus:border-sys-orange"
-        style={{ borderColor: '#242424' }}
+        aria-label="Filtrar lista de espera"
+        className={`min-h-11 w-full border border-ink bg-paper-raised px-3 py-2 font-mono text-d13 text-ink transition-colors placeholder:text-ink-faint focus:bg-white ${FOCUS_RING}`}
       />
 
       {error && (
-        <div
-          className="border px-3 py-2 font-mono text-[10px] tracking-widest"
-          style={{ borderColor: '#E63329', color: '#E63329' }}
-        >
-          {error}
-        </div>
+        <p className="border border-sys-red-paper px-3 py-2 font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper">
+          ⚠ {error}
+        </p>
       )}
 
       {visible.length === 0 ? (
-        <p
-          className="border bg-base px-4 py-6 text-center font-mono text-[11px] text-muted"
-          style={{ borderColor: '#242424' }}
-        >
+        <p className="border border-ink bg-paper-raised px-4 py-6 text-center font-mono text-d13 uppercase tracking-widest text-ink-faint">
           {rows.length === 0
-            ? '// SIN SEÑALES TODAVÍA — LA LISTA DE ESPERA ESTÁ VACÍA'
-            : '// NADA COINCIDE CON EL FILTRO'}
+            ? 'SIN SEÑALES TODAVÍA — LA LISTA DE ESPERA ESTÁ VACÍA'
+            : 'NADA COINCIDE CON EL FILTRO'}
         </p>
       ) : (
-        <div className="overflow-x-auto border" style={{ borderColor: '#242424' }}>
-          <table className="w-full font-mono text-[11px]">
+        <div className="overflow-x-auto border border-ink bg-paper-raised">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b" style={{ borderColor: '#242424' }}>
+              <tr className="border-b border-ink">
                 <Th>#</Th>
                 <Th>ALIAS</Th>
                 <Th>EMAIL</Th>
@@ -206,26 +215,26 @@ export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[]
                 // Queue position within the FULL list (not the filtered view).
                 const pos = rows.indexOf(r) + 1
                 return (
-                  <tr key={r.id} className="border-b" style={{ borderColor: '#1a1a1a' }}>
+                  <tr key={r.id}>
                     <Td>
-                      <span className="tabular-nums text-muted">
+                      <span className="tabular-nums text-ink-faint">
                         {String(pos).padStart(3, '0')}
                       </span>
                     </Td>
                     <Td>
-                      <span className="text-primary">{r.alias || '—'}</span>
+                      <span className="text-ink">{r.alias || '—'}</span>
                     </Td>
                     <Td>
-                      <span className="text-secondary">{r.email}</span>
+                      <span className="text-ink-soft">{r.email}</span>
                     </Td>
                     <Td>
-                      <span className="text-muted">{r.city ?? '—'}</span>
+                      <span className="text-ink-soft">{r.city ?? '—'}</span>
                     </Td>
                     <Td>
-                      <span className="text-muted">{r.source ?? '—'}</span>
+                      <span className="text-ink-soft">{r.source ?? '—'}</span>
                     </Td>
                     <Td>
-                      <span className="tabular-nums text-muted">
+                      <span className="tabular-nums text-ink-soft">
                         {new Date(r.created_at).toLocaleDateString('es-MX', {
                           day: '2-digit',
                           month: 'short',
@@ -234,32 +243,34 @@ export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[]
                     </Td>
                     <Td>
                       <span
-                        className="border px-1.5 py-0.5 text-[9px] tracking-widest"
-                        style={{ borderColor: st.color, color: st.color }}
+                        className={`inline-block whitespace-nowrap border px-2 py-1 font-mono text-d11 font-bold uppercase tracking-widest ${st.cls}`}
                       >
                         {st.label}
                       </span>
                     </Td>
                     <Td>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {state === 'pendiente' && (
                           <ActionButton
                             onClick={() => generar(r.id)}
                             disabled={busyId === r.id}
-                            color="#F97316"
+                            tone="filled"
                           >
-                            {busyId === r.id ? '▶ GENERANDO…' : '▶ GENERAR CÓDIGO'}
+                            {busyId === r.id ? 'GENERANDO…' : 'GENERAR CÓDIGO'}
                           </ActionButton>
                         )}
                         {state !== 'pendiente' && r.invite_code && (
-                          <ActionButton onClick={() => copyLink(r)} color="#4ADE80">
+                          <ActionButton onClick={() => copyLink(r)}>
                             {copiedId === r.id ? '✓ COPIADO' : 'COPIAR ENLACE'}
                           </ActionButton>
                         )}
+                        {/* Two-state escalation: hairline while idle, a red
+                            fill once armed — the arming is visible, not
+                            just verbal. */}
                         <ActionButton
                           onClick={() => borrar(r.id)}
                           disabled={busyId === r.id}
-                          color={confirmId === r.id ? '#E63329' : '#4A4A4A'}
+                          tone={confirmId === r.id ? 'red' : 'ink'}
                         >
                           {confirmId === r.id ? '¿SEGURO?' : 'BORRAR'}
                         </ActionButton>
@@ -273,9 +284,9 @@ export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[]
         </div>
       )}
 
-      <p className="font-mono text-[10px] leading-relaxed tracking-widest text-muted">
-        &gt; GENERAR CÓDIGO crea una invitación real (folio continuo, expira en
-        30 días) y marca la entrada como INVITADO. COPIAR ENLACE entrega el
+      <p className="border border-dashed border-ink/45 p-4 font-grotesk text-d13 leading-relaxed text-ink-soft">
+        GENERAR CÓDIGO crea una invitación real (folio continuo, expira en 30
+        días) y marca la entrada como INVITADO. COPIAR ENLACE entrega el
         deep-link /welcome?codigo=… para enviarlo por el canal que sea.
         REGISTRADO se deriva del código canjeado.
       </p>
@@ -283,10 +294,11 @@ export function AdminWaitlist({ initialRows }: { initialRows: WaitlistAdminRow[]
   )
 }
 
-function Chip({ label, color }: { label: string; color: string }) {
+function Chip({ label, value }: { label: string; value: number }) {
   return (
-    <span className="border px-2 py-1" style={{ borderColor: color, color }}>
+    <span className="inline-flex items-center gap-2 border border-ink px-2 py-1 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
       {label}
+      <span className="tabular-nums text-ink-soft">{value}</span>
     </span>
   )
 }
@@ -295,20 +307,24 @@ function ActionButton({
   children,
   onClick,
   disabled = false,
-  color,
+  tone = 'ink',
 }: {
   children: React.ReactNode
   onClick: () => void
   disabled?: boolean
-  color: string
+  tone?: 'ink' | 'filled' | 'red'
 }) {
+  const tones = {
+    ink: 'border-ink text-ink hover:bg-ink hover:text-paper',
+    filled: 'border-ink bg-ink text-paper hover:bg-paper hover:text-ink',
+    red: 'border-sys-red-paper bg-sys-red-paper text-paper hover:bg-paper hover:text-sys-red-paper',
+  }
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="whitespace-nowrap border px-2 py-1 text-[9px] tracking-widest transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ borderColor: color, color }}
+      className={`inline-flex min-h-11 items-center whitespace-nowrap border px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${tones[tone]} ${FOCUS_RING}`}
     >
       {children}
     </button>
@@ -317,10 +333,19 @@ function ActionButton({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-3 py-2 text-left text-[9px] tracking-widest text-muted">{children}</th>
+    <th
+      scope="col"
+      className="whitespace-nowrap px-3 py-2 text-left font-mono text-d11 font-bold uppercase tracking-widest text-ink-faint"
+    >
+      {children}
+    </th>
   )
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2">{children}</td>
+  return (
+    <td className="border-b border-ink/15 px-3 py-2 align-middle font-mono text-d13 text-ink">
+      {children}
+    </td>
+  )
 }

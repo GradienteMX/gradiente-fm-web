@@ -6,7 +6,6 @@ import { HeroCard } from '@/components/HeroCard'
 import { FranjasRail } from '@/components/FranjasRail'
 import { FranjasDrawer } from '@/components/FranjasDrawer'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
-import { PaperGround } from '@/components/chrome/PaperGround'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
 import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
@@ -100,7 +99,6 @@ export default async function HomePage() {
           of its own. The old full-viewport VibeFluid moved into the left
           rail as EL CAMPO (components/fluid/ElCampo, mounted by
           CategoryRail). */}
-      <PaperGround />
 
       <div className="flex gap-6">
         {/* Left category rail — desktop only, sticky */}

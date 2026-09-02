@@ -9,23 +9,29 @@ import { MarketplaceListingDetail } from './MarketplaceListingDetail'
 
 // ── MarketplaceOverlay ─────────────────────────────────────────────────────
 //
-// Per-franja marketplace card — full-screen overlay matching the
-// reference screenshot. Layout:
+// Per-franja marketplace card — a paper sheet over an ink scrim, following
+// the OverlayShell anatomy («EL PLIEGO» fase C/F). Layout:
 //
 //   ┌──────────────────────────────────────────────────────────────┐
-//   │ //MKT  ·  GRADIENTE MARKETPLACE v1.0.3       [GUARDAR] [×]  │
+//   │ [MERCADO]  franja-slug  ·  NN ITEMS            [CERRAR ESC]  │
 //   ├───────────────────────┬──────────────────────────────────────┤
 //   │  IDENTITY PANEL       │  LISTINGS GRID                       │
-//   │  • franja name       │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ │
+//   │  • franja name        │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ │
 //   │  • description        │  │ 01   │ │ 02   │ │ 03   │ │ 04   │ │
-//   │  • totals row         │  │ …    │ │ …    │ │ …    │ │ …    │ │
-//   │  • quick filters      │  └──────┘ └──────┘ └──────┘ └──────┘ │
-//   │  • location / currency│  …                                   │
-//   │  • help text          │                                      │
+//   │  • totals ledger      │  │ …    │ │ …    │ │ …    │ │ …    │ │
+//   │  • location / currency│  └──────┘ └──────┘ └──────┘ └──────┘ │
+//   │  • note               │  …                                   │
 //   └───────────────────────┴──────────────────────────────────────┘
 //
 // Driven by `?franja=<slug>` URL param on `/marketplace`. ESC closes
-// (route navigates back to `/marketplace`).
+// (route navigates back to `/marketplace`). z-50 — the listing detail
+// stacks above at z-[60].
+//
+// The old chrome carried a fake version string and a green ONLINE lamp;
+// both are gone (nothing measured them). Counts are real, from the rows.
+
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 interface Props {
   franjaSlug: string
@@ -93,21 +99,21 @@ export function MarketplaceOverlay({ franjaSlug, franja, onClose }: Props) {
         className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-backdrop-in"
         onClick={onClose}
       >
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md" aria-hidden />
+        <div className="absolute inset-0 bg-ink/60" aria-hidden />
         <div
-          className="eva-box relative z-10 flex max-w-md flex-col items-start gap-2 bg-base p-6"
+          className="relative z-10 flex max-w-md flex-col items-start gap-2 border border-ink bg-paper p-6 text-ink"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="font-mono text-[11px] tracking-widest text-sys-red">
-            //FRANJA·NO·ENCONTRADO
+          <span className="font-mono text-d11 font-bold uppercase tracking-widest text-sys-red-paper">
+            FRANJA NO ENCONTRADA
           </span>
-          <p className="font-mono text-[10px] tracking-widest text-muted">
+          <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
             slug: {franjaSlug}
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="mt-2 border border-border px-3 py-1.5 font-mono text-[10px] tracking-widest text-secondary transition-colors hover:border-white/60 hover:text-primary"
+            className={`mt-2 flex min-h-11 items-center border border-ink px-3 font-mono text-d11 font-bold uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
           >
             CERRAR
           </button>
@@ -124,11 +130,12 @@ export function MarketplaceOverlay({ franjaSlug, franja, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 overlay-backdrop-in"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" aria-hidden />
+      {/* Ink scrim — flat, no blur (fase C anatomy). */}
+      <div className="absolute inset-0 bg-ink/60" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines relative z-10 flex w-full max-w-6xl flex-col overflow-hidden bg-base overlay-panel-in"
+        className="relative z-10 flex w-full max-w-6xl flex-col overflow-hidden border border-ink bg-paper text-ink overlay-panel-in"
         style={{ maxHeight: 'min(94vh, 980px)' }}
       >
         <Chrome franja={franja} listingCount={listings.length} onClose={onClose} />
@@ -158,7 +165,7 @@ export function MarketplaceOverlay({ franjaSlug, franja, onClose }: Props) {
   )
 }
 
-// ── Chrome (top status bar) ────────────────────────────────────────────────
+// ── Chrome (top band) ──────────────────────────────────────────────────────
 
 function Chrome({
   franja,
@@ -170,36 +177,26 @@ function Chrome({
   onClose: () => void
 }) {
   return (
-    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-base/95 px-4 py-2.5 backdrop-blur-sm">
-      <div className="flex min-w-0 items-center gap-3 font-mono text-[10px] tracking-widest">
-        <span style={{ color: '#F97316' }}>//MKT</span>
-        <span className="hidden sm:inline truncate text-muted">
-          GRADIENTE MARKETPLACE v1.0.3
+    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ink bg-paper-raised px-4 py-2">
+      <div className="flex min-w-0 items-center gap-3 font-mono text-d11 font-bold uppercase tracking-widest">
+        <span className="shrink-0 bg-ink px-1.5 py-0.5 text-paper">MERCADO</span>
+        <span className="hidden truncate text-ink-faint sm:inline">
+          {franja.slug}
         </span>
-        <span className="text-muted tabular-nums">
-          R·{String(listingCount).padStart(2, '0')}
+        <span className="shrink-0 tabular-nums text-ink-soft">
+          {String(listingCount).padStart(2, '0')} ITEMS
         </span>
       </div>
-      <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-widest text-muted">
-        <span className="hidden items-center gap-1 sm:flex">
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: '#4ADE80' }}
-            aria-hidden
-          />
-          ONLINE
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Cerrar"
-          className="flex items-center gap-1.5 border border-border/70 bg-black px-3 py-2 text-secondary transition-colors hover:border-white/60 hover:text-primary sm:gap-2 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-muted"
-        >
-          <span className="hidden sm:inline">[ESC]</span>
-          <X size={14} className="sm:hidden" />
-          <span>CERRAR</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Cerrar"
+        className={`flex min-h-11 shrink-0 items-center gap-2 border border-ink bg-ink px-3 font-mono text-d11 font-bold uppercase tracking-widest text-paper transition-colors hover:bg-paper hover:text-ink ${FOCUS_RING}`}
+      >
+        <X size={12} className="sm:hidden" />
+        <span>CERRAR</span>
+        <span className="hidden sm:inline">ESC</span>
+      </button>
     </header>
   )
 }
@@ -207,12 +204,12 @@ function Chrome({
 function DisabledState() {
   return (
     <div className="flex flex-1 items-center justify-center p-12 text-center">
-      <div className="flex max-w-md flex-col items-center gap-2 font-mono text-[11px] leading-relaxed text-muted">
-        <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
-          //MARKETPLACE·INACTIVO
+      <div className="flex max-w-md flex-col items-center gap-2">
+        <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+          MARKETPLACE INACTIVO
         </span>
-        <p>
-          Este franja aún no tiene marketplace activo. Pídele al equipo de
+        <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+          Esta franja aún no tiene marketplace activo. Pídele al equipo de
           GRADIENTE que lo apruebe desde el panel de admin.
         </p>
       </div>
@@ -248,35 +245,31 @@ function Body({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row">
       {/* Identity panel — left */}
-      <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-border bg-elevated/20 p-4 md:w-[320px] md:border-b-0 md:border-r md:p-5">
-        <span
-          className="self-start border px-2 py-0.5 font-mono text-[9px] tracking-widest"
-          style={{ borderColor: '#FBBF24', color: '#FBBF24' }}
-        >
-          ★ MARKET
+      <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-ink bg-paper-raised p-4 md:w-[320px] md:border-b-0 md:border-r md:p-5">
+        <span className="self-start bg-ink px-2 py-0.5 font-mono text-d11 font-bold uppercase tracking-widest text-paper">
+          MERCADO
         </span>
 
-        <h1 className="font-syne text-3xl font-black leading-none text-primary">
+        <h1 className="font-syne text-d28 font-extrabold uppercase leading-none text-ink">
           {franja.title.toUpperCase()}
         </h1>
 
         {franja.marketplaceDescription && (
-          <p className="font-mono text-[11px] leading-relaxed text-secondary">
+          <p className="font-grotesk text-d15 leading-relaxed text-ink-soft">
             {franja.marketplaceDescription}
           </p>
         )}
 
-        <dl className="flex flex-col gap-1 border border-border/60 bg-black/30 p-3 font-mono text-[10px]">
+        {/* Totals ledger — the DB status enum verbatim, nothing invented. */}
+        <dl className="flex flex-col gap-1 border border-ink bg-paper p-3 font-mono text-d11">
           <StatRow label="TOTAL ITEMS" value={String(stats.total).padStart(3, '0')} />
           <StatRow
             label="DISPONIBLES"
             value={String(stats.available).padStart(2, '0')}
-            valueColor="#4ADE80"
           />
           <StatRow
             label="RESERVADOS"
             value={String(stats.reserved).padStart(2, '0')}
-            valueColor="#FBBF24"
           />
           <StatRow
             label="VENDIDOS"
@@ -284,7 +277,7 @@ function Body({
           />
         </dl>
 
-        <dl className="flex flex-col gap-1 border border-border/60 bg-black/30 p-3 font-mono text-[10px]">
+        <dl className="flex flex-col gap-1 border border-ink bg-paper p-3 font-mono text-d11">
           {franja.marketplaceLocation && (
             <StatRow
               label="UBICACIÓN"
@@ -305,33 +298,27 @@ function Body({
           )}
         </dl>
 
-        <p className="font-mono text-[9px] leading-relaxed text-muted">
-          //CONSEJO — los precios y la disponibilidad se actualizan
-          directamente desde el equipo del franja. Si te interesa un item,
-          escríbele al franja por su web o redes; GRADIENTE no procesa
-          pagos.
+        <p className="border-t border-ink pt-3 font-grotesk text-d13 leading-relaxed text-ink-faint">
+          Los precios y la disponibilidad los actualiza el equipo de la franja.
+          Si te interesa un item, escríbeles por su web o redes; GRADIENTE no
+          procesa pagos.
         </p>
       </aside>
 
       {/* Listings grid — right */}
       <section className="flex-1 p-4 md:p-5">
-        <header className="mb-3 flex items-center justify-between gap-3 font-mono text-[10px] tracking-widest text-muted">
-          <span>LISTADOS RECIENTES</span>
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: '#4ADE80' }}
-            aria-hidden
-          />
+        <header className="mb-3 border-b border-ink pb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+          LISTADOS RECIENTES
         </header>
 
         {sortedListings.length === 0 ? (
-          <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 p-6 font-mono text-[11px] text-muted">
-            <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
-              //SIN·LISTINGS
+          <div className="flex flex-col items-start gap-2 border border-dashed border-ink bg-paper-raised p-6">
+            <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink">
+              SIN LISTADOS
             </span>
-            <p>
-              Este franja aún no agregó items al marketplace. Vuelve más
-              tarde o sigue al franja en sus redes.
+            <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+              Esta franja aún no agregó items al marketplace. Vuelve más tarde o
+              síguela en sus redes.
             </p>
           </div>
         ) : (
@@ -375,26 +362,19 @@ function deriveStats(listings: MarketplaceListing[]) {
 function StatRow({
   label,
   value,
-  valueColor,
   icon,
 }: {
   label: string
   value: string
-  valueColor?: string
   icon?: React.ReactNode
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="flex items-center gap-1.5 tracking-widest text-muted">
+      <dt className="flex items-center gap-1.5 uppercase tracking-widest text-ink-faint">
         {icon}
         <span>{label}</span>
       </dt>
-      <dd
-        className="tabular-nums text-secondary"
-        style={valueColor ? { color: valueColor } : undefined}
-      >
-        {value}
-      </dd>
+      <dd className="truncate tabular-nums text-ink">{value}</dd>
     </div>
   )
 }

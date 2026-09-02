@@ -30,6 +30,19 @@ export interface FranjaOption {
 // usuarios) so each section gets full attention without scroll fatigue.
 // Future tabs: review queue (Scraper Pipeline Phase 3), franja-marketplace
 // composer.
+//
+// «EL PLIEGO» chrome (fase F): the EVA cockpit is retired — this is a
+// working instrument panel on paper. Ink masthead line (wordmark + the acid
+// ADMIN chip the dashboard masthead carries), Syne d28 title, mono d11
+// session line, ink-latch tabs, and five editors built out of paper panels,
+// hairline-ruled tables and ink chips.
+//
+// GROUND (shared wiring, outside this file): the ground flips from
+// lib/chrome/paperRoutes — <PaperGround /> is mounted ONCE in app/layout.tsx
+// and drives itself off PAPER_ROUTES, so a route needs no mount of its own.
+// '/admin' must therefore be listed in PAPER_ROUTES: that is what paints the
+// paper ground here and makes Navigation stamp its paper masthead. Until it
+// is, this page prints paper panels over the dark site ground.
 export default async function AdminPage({
   searchParams,
 }: {
@@ -164,22 +177,25 @@ export default async function AdminPage({
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10">
-      <header className="flex flex-col gap-2 border-b border-border pb-4">
-        <span
-          className="inline-flex w-fit items-center gap-2 border px-2 py-0.5 font-mono text-[10px] tracking-widest"
-          style={{ borderColor: '#F97316', color: '#F97316' }}
-        >
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sys-green" />
-          ADMIN·SUBSISTEMA
-        </span>
-        <h1 className="font-syne text-3xl font-black leading-tight text-primary">
-          PANEL DE ADMINISTRACIÓN
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-ink">
+      <header className="flex flex-col gap-2 border-b border-ink pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-syne text-d18 font-extrabold tracking-tight text-ink">
+            GRADIENTE
+          </span>
+          {/* The one acid moment of the surface: a fill-block with ink on
+              top — the same ADMIN stamp the dashboard masthead carries. */}
+          <span className="bg-acid px-1.5 py-0.5 font-mono text-d11 font-bold tracking-widest text-ink">
+            ADMIN
+          </span>
+        </div>
+        <h1 className="font-syne text-d28 font-extrabold uppercase text-ink">
+          Panel de administración
         </h1>
-        <p className="font-mono text-[11px] leading-relaxed text-secondary">
-          Sesión activa como{' '}
-          <span className="text-primary">@{profile.username}</span> · rol{' '}
-          <span className="text-primary uppercase">{profile.role}</span>
+        <p className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+          SESIÓN ACTIVA COMO{' '}
+          <span className="text-ink">@{profile.username}</span> · ROL{' '}
+          <span className="text-ink">{profile.role}</span>
         </p>
       </header>
 

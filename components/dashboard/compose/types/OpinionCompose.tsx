@@ -3,7 +3,7 @@
 // ── OpinionCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for opinión ───
 //
 // State preamble copied VERBATIM from the dark OpinionForm
-// (components/dashboard/forms/OpinionForm.tsx — untouched, /admin depends):
+// (components/dashboard/forms/OpinionForm.tsx — DELETED in fase F; this fork is now the only copy):
 // same emptyDraft, same DRAFT_KEY, same slug effect, same workbench wiring,
 // same publish recipe. Only the JSX is pliego.
 //

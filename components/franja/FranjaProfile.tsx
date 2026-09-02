@@ -1,41 +1,52 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
-import {
-  ArrowRight,
-  ArrowUpRight,
-  ExternalLink,
-  Mail,
-  MapPin,
-} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowUpRight, ExternalLink, Mail, MapPin } from 'lucide-react'
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ContentItem } from '@/lib/types'
-import { categoryColor, fmtDateFull } from '@/lib/utils'
+import { fmtDateFull } from '@/lib/utils'
+import { categoryColorOnLight } from '@/lib/dashboard/palette'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { KIND_LABEL, TYPE_LABEL } from '@/components/overlay/FranjaOverlay'
 import { MarketplaceListingCard } from '@/components/marketplace/MarketplaceListingCard'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
 import { SmartImage } from '@/components/SmartImage'
 
-// ── FranjaProfile ──────────────────────────────────────────────────────────
+// ── FranjaProfile — the printed franja EXPEDIENTE (fase F, «EL PLIEGO») ─────
 //
-// The full /p/[slug] franja page (Concept-1 editorial dossier). Recreates the
-// reference mockup: header dossier + résumé (catalog facts only — NO vanity
-// metrics per [[Size and Position as Only Signals]]) + última actividad,
-// //PRÓXIMOS rail, //ARCHIVO with type tabs, //MERCADO (real listings), a
-// //SEÑALES mockup (digital cosmetics — no product class exists yet; rides the
-// unbuilt payments spine), and a //COMUNIDAD strip.
+// The full /f/[slug] franja page. Sibling document to /u/[username]: the same
+// printed register — red kicker, Syne section titles on ink hairlines, a
+// right-hand ficha column, ink chips — but about a BAND ON THE DIAL rather
+// than a person.
+//
+// Zones: identity head + résumé (catalog facts only — NO vanity metrics per
+// [[Size and Position as Only Signals]]) + última actividad, PRÓXIMOS rail,
+// ARCHIVO with type tabs, MERCADO (real listings), SEÑALES (a declared
+// MOCKUP — see below), and a COMUNIDAD strip.
 //
 // `attributedItems` is fetched SERVER-SIDE (getItemsByFranja) so a direct
 // visit works — the client itemsCache is only warm on grid pages. Opening a
 // linked item uses useOverlay().open() so it stacks over the page (OverlayRouter
 // lives in the layout).
 
-// SEÑALES — MOCKUP DATA. Gradiente-native digital cosmetics that alter a user's
-// presence (emoji / profile / shader / collectible). No product class exists
-// yet — these ride the separate, unbuilt payments + order_items spine and MUST
-// stay disjoint from EARNED trophies/frames/emoji. Display-only until then.
+// House focus ring on paper grounds (fase C/F).
+const FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+// The mono label register — the paper replacement for the old dark
+// terminal label class (removed here in fase F).
+const LABEL = 'font-mono text-d11 font-bold uppercase tracking-widest'
+
+// SEÑALES — MOCKUP DATA, NOT A CATALOGUE. Gradiente-native digital cosmetics
+// that would alter a user's presence (emoji / profile / shader / collectible).
+// No product class exists yet — these ride the separate, unbuilt payments +
+// order_items spine and MUST stay disjoint from EARNED trophies/frames/emoji.
+// The fase-F ruling: this block survives ONLY behind an explicit PRÓXIMAMENTE
+// declaration and with nothing in it that reads as buyable. Hence the dashed
+// mockup frame, the ink PRÓXIMAMENTE band, the «PRECIO TENTATIVO» phrasing
+// and zero interactive elements below. Cut the block outright before ever
+// letting it look like a store.
 const MOCK_SENALES = [
   {
     id: 'se-emoji',
@@ -164,71 +175,75 @@ export function FranjaProfile({
   const recent = allItems.slice(0, 3)
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ── HEADER DOSSIER ─────────────────────────────────────────────── */}
-      <header className="grid grid-cols-1 gap-5 border border-border bg-surface p-4 md:grid-cols-[260px_1fr] md:p-6 lg:grid-cols-[260px_1fr_300px]">
-        {/* Logo */}
-        <div className="relative aspect-square w-full overflow-hidden border border-border bg-black">
+    <div className="flex flex-col gap-8">
+      {/* ── CABECERA — the document head ───────────────────────────────── */}
+      <header className="grid grid-cols-1 gap-6 border-b border-ink pb-6 md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)_300px] lg:gap-0">
+        {/* Logo plate — 2px ink border, object-contain so logo franjas
+            (Club Japan, labels) aren't cropped. */}
+        <div className="relative aspect-square w-full max-w-[220px] shrink-0 overflow-hidden border-2 border-ink bg-paper-raised">
           {item.imageUrl ? (
             <SmartImage
               src={item.imageUrl}
               alt={item.title}
-              sizes="(max-width: 768px) 100vw, 320px"
+              sizes="(max-width: 768px) 100vw, 240px"
               className="object-contain"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <span className="font-mono text-xs text-muted">SIN IMAGEN</span>
+            <div className="flex h-full w-full items-center justify-center font-syne text-5xl font-extrabold text-ink">
+              {item.title.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <span
-            className="absolute left-3 top-3 border bg-black/70 px-2 py-1 font-mono text-[10px] tracking-widest backdrop-blur-sm"
-            style={{ color: '#6B7280', borderColor: '#6B7280' }}
-          >
-            //{KIND_LABEL[kind]}
-          </span>
         </div>
 
-        {/* Identity */}
-        <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-syne text-4xl font-black uppercase leading-[0.95] text-white md:text-5xl">
-              {item.title}
-            </h1>
+        {/* Identity block */}
+        <div className="flex min-w-0 flex-col gap-3 lg:pl-6 lg:pr-8">
+          <p className={`${LABEL} text-sys-red-paper`}>
+            FRANJA · /F/{item.slug.toUpperCase()}
+          </p>
+
+          <h1 className="min-w-0 break-words font-syne text-display font-extrabold uppercase leading-none text-ink">
+            {item.title}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {/* Kind chip — ink chip + category swatch, the expediente's
+                IdentityChip anatomy. */}
             <span
-              className="border px-2 py-0.5 font-mono text-[10px] tracking-widest"
-              style={{ borderColor: '#F97316', color: '#F97316' }}
+              className={`inline-flex items-center gap-1.5 border border-ink px-2 py-0.5 ${LABEL} text-ink`}
             >
-              FRANJA
+              <span
+                aria-hidden
+                className="h-2 w-2 border border-ink"
+                style={{ backgroundColor: categoryColorOnLight('franja') }}
+              />
+              {KIND_LABEL[kind]}
             </span>
             {item.verified && (
               <span
-                className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-widest"
-                style={{ color: '#4ADE80' }}
+                className={`inline-flex items-center gap-1.5 border border-ink bg-ink px-2 py-0.5 ${LABEL} text-paper`}
+                title="Franja verificada"
               >
-                <span
-                  className="h-1.5 w-1.5 rounded-full bg-sys-green"
-                  aria-hidden
-                />
-                VERIFICADO
+                ✓ VERIFICADA
+              </span>
+            )}
+            {item.year && (
+              <span className="font-mono text-d11 tracking-widest text-ink-faint">
+                DESDE · {item.year}
+              </span>
+            )}
+            {item.marketplaceLocation && (
+              <span className="font-mono text-d11 tracking-widest text-ink-faint">
+                ZONA · {item.marketplaceLocation.toUpperCase()}
               </span>
             )}
           </div>
-
-          {(item.year || item.marketplaceLocation) && (
-            <p className="font-mono text-[11px] tracking-widest text-muted">
-              {item.year ? `DESDE ${item.year}` : ''}
-              {item.year && item.marketplaceLocation ? ' · ' : ''}
-              {item.marketplaceLocation?.toUpperCase() ?? ''}
-            </p>
-          )}
 
           {item.tags && item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {item.tags.map((t) => (
                 <span
                   key={t}
-                  className="border border-border bg-elevated/50 px-2 py-0.5 font-mono text-[10px] tracking-widest text-muted"
+                  className="border border-ink-faint px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-faint"
                 >
                   {t}
                 </span>
@@ -237,18 +252,18 @@ export function FranjaProfile({
           )}
 
           {item.excerpt && (
-            <p className="max-w-prose font-grotesk text-sm leading-relaxed text-secondary">
+            <p className="max-w-[62ch] font-grotesk text-d15 leading-relaxed text-ink-soft">
               {item.excerpt}
             </p>
           )}
 
           {item.franjaUrl && (
-            <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] text-muted">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <a
                 href={item.franjaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 transition-colors hover:text-sys-orange"
+                className={`inline-flex min-h-11 items-center gap-1.5 border border-ink px-2.5 ${LABEL} text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
               >
                 <ExternalLink size={12} />
                 {item.franjaUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
@@ -257,7 +272,7 @@ export function FranjaProfile({
                 href={item.franjaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 transition-colors hover:text-sys-orange"
+                className={`inline-flex min-h-11 items-center gap-1.5 border border-ink px-2.5 ${LABEL} text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
               >
                 <Mail size={12} />
                 CONTACTO
@@ -266,34 +281,38 @@ export function FranjaProfile({
           )}
         </div>
 
-        {/* Résumé — catalog facts (NO vanity) + última actividad */}
-        <aside className="flex flex-col gap-4 border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            <StatCell label="EVENTOS" value={counts.eventos} />
-            <StatCell label="LANZAMIENTOS" value={counts.lanzamientos} />
-            <StatCell label="ARTÍCULOS" value={counts.articulos} />
-            <StatCell label="PUBLICACIONES" value={counts.total} />
-            <StatCell label="PRODUCTOS" value={listings.length} />
-            {item.year ? <StatCell label="DESDE" value={item.year} /> : null}
-          </div>
+        {/* ── Right column — the ficha ─────────────────────────────────── */}
+        <aside
+          aria-label="Ficha de la franja"
+          className="flex flex-col gap-4 border-t border-ink pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0"
+        >
+          <dl className="flex flex-col">
+            <FichaRow label="EVENTOS" value={counts.eventos} />
+            <FichaRow label="LANZAMIENTOS" value={counts.lanzamientos} />
+            <FichaRow label="ARTÍCULOS" value={counts.articulos} />
+            <FichaRow label="PUBLICACIONES" value={counts.total} />
+            <FichaRow label="PRODUCTOS" value={listings.length} />
+            {item.year ? <FichaRow label="DESDE" value={item.year} /> : null}
+          </dl>
 
           {recent.length > 0 && (
-            <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <span className="sys-label text-muted">ÚLTIMA ACTIVIDAD</span>
+            <div className="flex flex-col gap-2 border-t border-ink pt-3">
+              <h2 className={`${LABEL} text-ink-soft`}>ÚLTIMA ACTIVIDAD</h2>
               {recent.map((r) => (
                 <button
                   key={r.id}
                   type="button"
                   onClick={() => open(r.slug)}
-                  className="group flex flex-col items-start gap-0.5 text-left"
+                  aria-label={`Abrir ${r.title}`}
+                  className={`group flex min-h-11 flex-col items-start justify-center gap-0.5 border-l-2 border-ink pl-2.5 text-left transition-colors hover:bg-paper-raised ${FOCUS_RING}`}
                 >
-                  <span className="font-mono text-[10px] tracking-widest text-muted">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint">
                     NUEVO {TYPE_LABEL[r.type]}
                   </span>
-                  <span className="line-clamp-1 font-grotesk text-xs text-secondary transition-colors group-hover:text-primary">
+                  <span className="line-clamp-1 font-grotesk text-d13 text-ink-soft transition-colors group-hover:text-ink">
                     {r.title}
                   </span>
-                  <span className="font-mono text-[9px] text-muted/70">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-ink-faint">
                     {ago(r.date ?? r.publishedAt)}
                   </span>
                 </button>
@@ -308,54 +327,58 @@ export function FranjaProfile({
         <div className="flex min-w-0 flex-1 flex-col gap-8">
           {/* HISTORIA DESTACADA */}
           {featured && (
-            <section className="flex flex-col gap-3">
-              <SectionHeader>// HISTORIA DESTACADA</SectionHeader>
+            <section aria-labelledby="destacada-head" className="flex flex-col gap-3">
+              <SectionHeader id="destacada-head" title="Historia destacada" />
               <button
                 type="button"
                 onClick={() => open(featured.slug)}
                 aria-label={`Abrir ${featured.title}`}
-                className="group relative block w-full overflow-hidden border border-border text-left transition-colors hover:border-white/30"
+                className={`group block w-full overflow-hidden border border-ink bg-paper-raised text-left ${FOCUS_RING}`}
               >
-                <div className="relative aspect-[21/9] w-full overflow-hidden bg-base">
+                {/* Plate — the artwork stays clean; every piece of chrome
+                    lives in the caption band below (fase B card law). */}
+                <div className="relative aspect-[21/9] w-full overflow-hidden bg-ink/10">
                   {featured.imageUrl ? (
                     <SmartImage
                       src={featured.imageUrl}
                       alt=""
-                      sizes="(max-width: 768px) 100vw, 480px"
+                      sizes="(max-width: 1024px) 100vw, 640px"
                       className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center font-mono text-[10px] tracking-widest text-muted">
+                    <div className="flex h-full w-full items-center justify-center font-mono text-d11 uppercase tracking-widest text-ink-faint">
                       SIN IMAGEN
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                  <span
-                    className="absolute left-4 top-4 bg-black/70 px-1.5 py-0.5 font-mono text-[9px] tracking-widest backdrop-blur-sm"
-                    style={{ color: categoryColor(featured.type) }}
-                  >
-                    //{TYPE_LABEL[featured.type]}
-                  </span>
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
-                    <h3 className="font-syne text-2xl font-black leading-tight text-white md:text-3xl">
+                </div>
+                <div className="flex items-end justify-between gap-4 border-t border-ink p-4">
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <TypeChip type={featured.type} />
+                    <h3 className="font-syne text-d28 font-extrabold leading-tight text-ink">
                       {featured.title}
                     </h3>
-                    <span className="shrink-0 font-mono text-[10px] tracking-widest text-sys-orange">
-                      VER →
-                    </span>
                   </div>
+                  <span
+                    className={`shrink-0 ${LABEL} text-ink-soft transition-colors group-hover:text-ink`}
+                  >
+                    VER →
+                  </span>
                 </div>
               </button>
             </section>
           )}
 
           {/* PRÓXIMOS — horizontal rail of upcoming events */}
-          <section className="flex flex-col gap-3">
+          <section aria-labelledby="proximos-head" className="flex flex-col gap-3">
             <SectionHeader
-              action={proximos.length > 0 ? 'VER AGENDA COMPLETA' : undefined}
-            >
-              // PRÓXIMOS
-            </SectionHeader>
+              id="proximos-head"
+              title="Próximos"
+              note={
+                proximos.length > 0
+                  ? `${proximos.length} EN AGENDA`
+                  : 'SIN FECHAS ANUNCIADAS'
+              }
+            />
             {proximos.length === 0 ? (
               <EmptyZone hint="Sin eventos próximos vinculados por ahora." />
             ) : (
@@ -379,12 +402,18 @@ export function FranjaProfile({
         {/* Sidebar — MERCADO + SEÑALES */}
         <aside className="flex shrink-0 flex-col gap-8 lg:w-[340px]">
           {listings.length > 0 && (
-            <section id="mercado" className="flex scroll-mt-24 flex-col gap-3">
+            <section
+              id="mercado"
+              aria-labelledby="mercado-head"
+              className="flex scroll-mt-24 flex-col gap-3"
+            >
               <SectionHeader
+                id="mercado-head"
+                title="Mercado"
+                note={`${listings.length} LISTADOS`}
                 action={item.franjaUrl ? 'VER TIENDA' : undefined}
-              >
-                // MERCADO
-              </SectionHeader>
+                actionHref={item.franjaUrl}
+              />
               <div className="grid grid-cols-2 gap-3">
                 {listings.map((l, i) => (
                   <MarketplaceListingCard
@@ -404,39 +433,32 @@ export function FranjaProfile({
       </div>
 
       {/* ── COMUNIDAD strip ────────────────────────────────────────────── */}
-      <section className="flex flex-col gap-4 border-t border-border pt-6">
-        <SectionHeader>// COMUNIDAD {item.title.toUpperCase()}</SectionHeader>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap gap-x-8 gap-y-3">
+      <section aria-labelledby="comunidad-head" className="flex flex-col gap-4">
+        <SectionHeader id="comunidad-head" title={`Comunidad · ${item.title}`} />
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <dl className="flex flex-wrap gap-x-10 gap-y-4">
             <StatCell label="EVENTOS REALIZADOS" value={counts.eventos} />
             <StatCell label="PUBLICACIONES" value={counts.total} />
             {item.marketplaceLocation && (
               <div className="flex flex-col gap-0.5">
-                <span className="sys-label text-muted">UBICACIÓN</span>
-                <span className="inline-flex items-center gap-1.5 font-mono text-sm text-secondary">
-                  <MapPin size={12} />
+                <dt className={`${LABEL} text-ink-faint`}>UBICACIÓN</dt>
+                <dd className="inline-flex items-center gap-1.5 font-mono text-d15 font-bold text-ink">
+                  <MapPin size={13} />
                   {item.marketplaceLocation}
-                </span>
+                </dd>
               </div>
             )}
-          </div>
-          {/* Future affordance — club membership (guardados → club-perks
-              roadmap). Display-only until that flow exists. */}
-          <div className="flex flex-col items-start gap-2 md:items-end">
-            <span className="font-mono text-[11px] tracking-widest text-muted">
+          </dl>
+
+          {/* Declared future — club membership (guardados → club-perks
+              roadmap). NOT a control: the flow doesn't exist, so this is a
+              printed line stating what is coming, never a pressable chip. */}
+          <div className="flex flex-col items-start gap-1 border-l-2 border-ink pl-3 md:items-start">
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
               ¿ERES PARTE DE {item.title.toUpperCase()}?
             </span>
-            <span
-              className="inline-flex cursor-default items-center gap-2 border px-4 py-2.5 font-mono text-xs tracking-widest"
-              style={{
-                borderColor: '#F97316',
-                color: '#F97316',
-                backgroundColor: 'rgba(249,115,22,0.06)',
-              }}
-              title="Próximamente — membresía de club"
-            >
-              UNIRME AL CLUB
-              <ArrowRight size={13} />
+            <span className={`${LABEL} text-ink`}>
+              MEMBRESÍA DE CLUB · PRÓXIMAMENTE
             </span>
           </div>
         </div>
@@ -476,17 +498,27 @@ function ArchivoSection({
 
   if (items.length === 0) {
     return (
-      <section className="flex flex-col gap-3">
-        <SectionHeader>// ARCHIVO</SectionHeader>
+      <section aria-labelledby="archivo-head" className="flex flex-col gap-3">
+        <SectionHeader id="archivo-head" title="Archivo" />
         <EmptyZone hint="Sin contenido vinculado a este franja por ahora." />
       </section>
     )
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <SectionHeader>// ARCHIVO</SectionHeader>
-      <div className="flex flex-wrap gap-1 border-b border-border pb-2">
+    <section aria-labelledby="archivo-head" className="flex flex-col gap-3">
+      <SectionHeader
+        id="archivo-head"
+        title="Archivo"
+        note={`${items.length} PIEZAS`}
+      />
+      {/* Type latches — the active tab is an ink-filled block; the rest are
+          hairline chips that invert on hover. One grammar, no hue coding. */}
+      <div
+        role="group"
+        aria-label="Filtrar archivo por tipo"
+        className="flex flex-wrap gap-1.5 border-b border-ink pb-2"
+      >
         {ARCHIVE_TABS.map((t) => {
           const isActive = t.key === active.key
           return (
@@ -494,14 +526,12 @@ function ArchivoSection({
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className="border px-2.5 py-1 font-mono text-[10px] tracking-widest transition-colors"
-              style={{
-                borderColor: isActive ? '#F97316' : 'transparent',
-                color: isActive ? '#F97316' : '#888888',
-                backgroundColor: isActive
-                  ? 'rgba(249,115,22,0.08)'
-                  : 'transparent',
-              }}
+              aria-pressed={isActive}
+              className={`inline-flex min-h-11 items-center border border-ink px-2.5 ${LABEL} transition-colors ${
+                isActive
+                  ? 'bg-ink text-paper'
+                  : 'text-ink hover:bg-ink hover:text-paper'
+              } ${FOCUS_RING}`}
             >
               {t.label}
             </button>
@@ -528,67 +558,136 @@ function ArchivoSection({
   )
 }
 
-// ── Señales (mockup) ────────────────────────────────────────────────────────
+// ── Señales (DECLARED MOCKUP) ───────────────────────────────────────────────
+//
+// Kept only under an unmissable PRÓXIMAMENTE declaration: an ink band above
+// the block, a dashed MOCKUP frame around it, «PRECIO TENTATIVO» instead of
+// a price tag, and zero interactive elements — nothing here can be clicked,
+// focused, or bought. If that framing ever gets softened, delete the block.
 
 function SenalesSection() {
   return (
-    <section className="flex flex-col gap-3">
-      <SectionHeader>// SEÑALES</SectionHeader>
-      <p className="font-mono text-[10px] leading-relaxed text-muted">
-        Cosméticos digitales que extienden tu presencia en Gradiente.
-        <span style={{ color: '#6B7280' }}> // PRÓXIMAMENTE</span>
+    <section aria-labelledby="senales-head" className="flex flex-col gap-3">
+      <SectionHeader id="senales-head" title="Señales" note="NO DISPONIBLE" />
+
+      {/* The declaration — ink fill block, impossible to skim past. */}
+      <p
+        role="note"
+        className={`bg-ink px-3 py-2 ${LABEL} text-paper`}
+      >
+        PRÓXIMAMENTE · BOCETO · NADA DE ESTO ESTÁ A LA VENTA
       </p>
-      <div className="grid grid-cols-2 gap-3">
-        {MOCK_SENALES.map((s) => (
-          <article
-            key={s.id}
-            className="flex flex-col border border-border bg-elevated/20 p-3"
-          >
-            <span
-              className="mb-2 self-start border px-1.5 py-0.5 font-mono text-[8px] tracking-widest"
-              style={{ borderColor: '#7F77DD', color: '#9d96e8' }}
+
+      <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+        Cosméticos digitales que extenderán tu presencia en Gradiente. Todavía
+        no existen: lo de abajo es un boceto de lo que se está diseñando.
+      </p>
+
+      <div className="border border-dashed border-ink-faint p-3">
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-faint">
+          BOCETO · SIN PRECIOS DEFINITIVOS
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {MOCK_SENALES.map((s) => (
+            <article
+              key={s.id}
+              className="flex select-none flex-col gap-1 border border-ink-faint bg-paper p-3"
             >
-              {s.tag}
-            </span>
-            <h4 className="font-syne text-xs font-bold leading-tight text-primary">
-              {s.name}
-            </h4>
-            <span className="mt-0.5 font-mono text-[9px] tracking-wide text-muted">
-              {s.sub}
-            </span>
-            <span className="mt-2 font-syne text-sm font-bold text-primary">
-              ${s.price} MXN
-            </span>
-          </article>
-        ))}
+              <span className="self-start border border-ink-faint px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-ink-faint">
+                {s.tag}
+              </span>
+              <h4 className="font-syne text-d13 font-extrabold leading-tight text-ink-soft">
+                {s.name}
+              </h4>
+              <span className="font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+                {s.sub}
+              </span>
+              <span className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-faint">
+                PRECIO TENTATIVO · ${s.price} MXN
+              </span>
+            </article>
+          ))}
+        </div>
       </div>
-      <span className="font-mono text-[9px] leading-relaxed text-muted">
-        Los ingresos apoyan al franja. Cosméticos pagados nunca reemplazan
-        logros ganados.
-      </span>
+
+      <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+        Cuando existan, los ingresos apoyarán a la franja. Los cosméticos
+        pagados nunca reemplazan logros ganados.
+      </p>
     </section>
   )
 }
 
 // ── Shared bits ─────────────────────────────────────────────────────────────
 
+// Section head, expediente anatomy — Syne title on an ink hairline with a
+// mono note (and optionally a real link) on the right.
 function SectionHeader({
-  children,
+  id,
+  title,
+  note,
   action,
+  actionHref,
 }: {
-  children: ReactNode
+  id?: string
+  title: string
+  note?: string
   action?: string
+  actionHref?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border pb-1">
-      <span className="font-mono text-xs tracking-widest text-primary">
-        {children}
-      </span>
-      {action && (
-        <span className="inline-flex items-center gap-1 font-mono text-[10px] tracking-widest text-muted">
-          {action} <ArrowUpRight size={11} />
-        </span>
-      )}
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-ink pb-2">
+      <h2 id={id} className="font-syne text-d28 font-extrabold text-ink">
+        {title}
+      </h2>
+      <div className="flex items-baseline gap-3">
+        {note && (
+          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+            {note}
+          </span>
+        )}
+        {action && actionHref && (
+          <a
+            href={actionHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center gap-1 ${LABEL} text-ink transition-colors hover:bg-ink hover:text-paper ${FOCUS_RING}`}
+          >
+            {action} <ArrowUpRight size={11} />
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Type chip — 2-letter category swatch + label, the house anatomy (hue is
+// never the sole signal).
+function TypeChip({ type }: { type: ContentItem['type'] }) {
+  return (
+    <span
+      className={`inline-flex w-fit shrink-0 items-center gap-1.5 border border-ink bg-paper-raised px-1.5 py-0.5 ${LABEL} text-ink`}
+    >
+      <span
+        aria-hidden
+        className="h-[9px] w-[9px] shrink-0"
+        style={{ backgroundColor: categoryColorOnLight(type) }}
+      />
+      {TYPE_LABEL[type]}
+    </span>
+  )
+}
+
+// Ficha row — hairline-ruled label/value pair (the expediente's dl anatomy).
+function FichaRow({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-t border-ink py-2">
+      <dt className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+        {label}
+      </dt>
+      <dd className="font-mono text-d13 font-bold tabular-nums text-ink">
+        {value}
+      </dd>
     </div>
   )
 }
@@ -596,16 +695,17 @@ function SectionHeader({
 function StatCell({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="sys-label text-muted">{label}</span>
-      <span className="font-syne text-lg font-black tabular-nums text-primary">
+      <dt className={`${LABEL} text-ink-faint`}>{label}</dt>
+      <dd className="font-syne text-d28 font-extrabold tabular-nums text-ink">
         {value}
-      </span>
+      </dd>
     </div>
   )
 }
 
 // Compact flyer-forward card for próximos + archivo. Click opens the item
-// overlay over the page.
+// overlay over the page. Poster-first: art stays clean, chrome sits in the
+// caption band below the ink hairline.
 function MiniCard({
   item,
   onOpen,
@@ -621,9 +721,9 @@ function MiniCard({
       type="button"
       onClick={onOpen}
       aria-label={`Abrir ${item.title}`}
-      className={`group block w-full overflow-hidden border border-border bg-elevated/30 text-left transition-colors hover:border-white/30 ${className}`}
+      className={`group block w-full overflow-hidden border border-ink bg-paper-raised text-left transition-colors hover:bg-paper ${FOCUS_RING} ${className}`}
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-base">
+      <div className="relative aspect-[4/5] overflow-hidden bg-ink/10">
         {item.imageUrl ? (
           <SmartImage
             src={item.imageUrl}
@@ -632,23 +732,17 @@ function MiniCard({
             className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] tracking-widest text-muted">
+          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] uppercase tracking-widest text-ink-faint">
             SIN IMAGEN
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-        <span
-          className="absolute left-2 top-2 bg-black/70 px-1.5 py-0.5 font-mono text-[8px] tracking-widest backdrop-blur-sm"
-          style={{ color: categoryColor(item.type) }}
-        >
-          //{TYPE_LABEL[item.type]}
-        </span>
       </div>
-      <div className="p-2.5">
-        <h3 className="line-clamp-2 font-syne text-xs font-bold leading-tight text-white">
+      <div className="flex flex-col gap-1.5 border-t border-ink p-2.5">
+        <TypeChip type={item.type} />
+        <h3 className="line-clamp-2 font-syne text-d13 font-extrabold leading-tight text-ink">
           {item.title}
         </h3>
-        <p className="mt-1 line-clamp-1 font-mono text-[9px] tracking-wide text-muted">
+        <p className="line-clamp-1 font-mono text-[9px] uppercase tracking-widest text-ink-faint">
           {item.venue ??
             (hasDate ? fmtDateFull(item.date!) : TYPE_LABEL[item.type])}
         </p>
@@ -667,13 +761,15 @@ function ago(iso: string): string {
   }
 }
 
+// Empty zone — a ruled, dashed placeholder. No fake rows, no fake status:
+// it names what's missing and stops.
 function EmptyZone({ hint }: { hint: string }) {
   return (
-    <div className="flex flex-col items-start gap-2 border border-dashed border-border bg-elevated/30 p-4 font-mono text-[11px] text-muted">
-      <span className="tracking-widest" style={{ color: '#3a3a3a' }}>
-        //SIN·VÍNCULOS·VISIBLES
-      </span>
-      <p>{hint}</p>
+    <div className="flex flex-col items-start gap-1.5 border border-dashed border-ink-faint bg-paper-raised p-4">
+      <span className={`${LABEL} text-ink-faint`}>//SIN·VÍNCULOS·VISIBLES</span>
+      <p className="font-grotesk text-d13 leading-relaxed text-ink-soft">
+        {hint}
+      </p>
     </div>
   )
 }

@@ -3,7 +3,7 @@
 // ── ListicleCompose — «EL PLIEGO DE COMPOSICIÓN v2» light editor for LISTA ──
 //
 // State/logic preamble copied VERBATIM from the dark ListicleForm
-// (components/dashboard/forms/ListicleForm.tsx — untouched, /admin depends):
+// (components/dashboard/forms/ListicleForm.tsx — DELETED in fase F; this fork is now the only copy):
 // draft useState + patch + slugManuallyEdited effect + useDraftWorkbench with
 // the EXACT draftKey 'gradiente:dashboard:listicle-draft' + editItemId from
 // ?edit= + the publish recipe (requestPublish → setCategoryFilter(null) →

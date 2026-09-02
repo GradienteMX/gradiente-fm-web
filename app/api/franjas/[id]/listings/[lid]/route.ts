@@ -3,8 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 
 // /api/franjas/[id]/listings/[lid] — single-listing endpoint.
 // PATCH  → partial update of an existing listing.
-// DELETE → remove the listing row (cascades any future listing-scoped
-//          tables, but today nothing FKs to marketplace_listings).
+// DELETE → remove the listing row. This is a HARD delete and it CASCADES:
+//          listing_comments.listing_id references marketplace_listings(id)
+//          on delete cascade (migration 0033), so a listing's buyer threads
+//          go with it. The MERCADO space's confirm copy says so out loud.
 //
 // Gated on canManageFranja: site admin OR a team member of this franja.
 // RLS on marketplace_listings_team_write enforces the same DB-side.

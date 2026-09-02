@@ -24,6 +24,10 @@ import { isPaperRoute } from '@/lib/chrome/paperRoutes'
 const DISMISS_KEY = 'gradiente:mobile-notice:v1'
 const MOBILE_MAX_WIDTH = 768 // Tailwind `md` breakpoint
 
+// The house focus grammar, panel variant — for the ink-bezel skin below.
+const PANEL_FOCUS_RING =
+  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
+
 export function MobileNotice() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -65,11 +69,11 @@ export function MobileNotice() {
 
   if (!open || pathname?.startsWith('/welcome')) return null
 
-  // «EL PLIEGO» variant — the dashboard AND every fase-B paper route are a
-  // light print surface (paper/ink/acid tokens); the dark/orange EVA chrome
-  // reads as a foreign object there. Same copy, same dismiss logic, pliego
-  // skin. The dark skin survives only on still-dark routes (foro,
-  // marketplace, franja, mapa, perfil…) until their phases flip them.
+  // «EL PLIEGO» variant — the dashboard AND every paper route are a light
+  // print surface (paper/ink/acid tokens); a dark panel reads as a foreign
+  // object there. Same copy, same dismiss logic, pliego skin. The other skin
+  // (below) is the ink-bezel register /mapa's chrome uses — the only ground
+  // left that is dark on purpose.
   //
   // z-[110]: the dash shell is `fixed inset-0 z-40` and its own overlay stack
   // reaches z-[100] (HarvestConfirmModal) — the notice must sit above ALL of
@@ -154,62 +158,69 @@ export function MobileNotice() {
     )
   }
 
+  // Ink-bezel variant — /mapa's register: flat panel plates with panel-text
+  // hairlines, no blur, no glow, acid reserved for the one own-action, the
+  // focus grammar in its panel variant, ≥44px targets. Motion is dropped here
+  // for the same reason the pliego branch has none: `overlay-panel-in` is the
+  // 0.5s CRT boot-in (a scaleY(0.005) collapse), which left ENTENDIDO's hit
+  // area flat while it played.
   return (
     <div
-      className="overlay-backdrop-in fixed inset-0 z-[90] flex items-end justify-center p-4 md:hidden"
+      className="fixed inset-0 z-[90] flex touch-manipulation items-end justify-center p-4 md:hidden"
       onClick={dismiss}
       role="dialog"
       aria-modal="true"
       aria-labelledby="mobile-notice-title"
     >
-      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" aria-hidden />
+      <div className="absolute inset-0 bg-ink/80" aria-hidden />
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="eva-box eva-scanlines overlay-panel-in relative z-10 mb-6 flex w-full max-w-md flex-col overflow-hidden bg-base"
+        className="relative z-10 mb-6 flex w-full max-w-md flex-col overflow-hidden border border-panel-text/40 bg-panel text-panel-text"
       >
         {/* Title strip */}
-        <header className="flex items-center justify-between border-b border-border bg-elevated/60 px-3 py-2 font-mono text-[10px] tracking-widest text-secondary">
+        <header className="flex min-h-11 items-center justify-between border-b border-panel-text/40 pl-3 font-mono text-d11 tracking-widest text-panel-text/70">
           <span className="flex items-center gap-2">
-            <Smartphone size={12} strokeWidth={1.5} className="text-sys-amber" />
+            <Smartphone size={12} strokeWidth={1.5} className="text-panel-text" />
             <span id="mobile-notice-title">//AVISO·MÓVIL</span>
           </span>
           <button
             type="button"
             onClick={dismiss}
+            // Parity with the paper branch: this panel locks body scroll, and
+            // a locked dialog is exactly where the tap that never lands was
+            // observed. Same hardening, same reason.
+            onPointerUp={dismiss}
             aria-label="Cerrar"
-            className="text-muted transition-colors hover:text-primary"
+            className={`flex h-11 w-11 items-center justify-center text-panel-text/70 transition-colors hover:text-panel-text ${PANEL_FOCUS_RING}`}
           >
-            <X size={12} strokeWidth={1.5} />
+            <X size={14} strokeWidth={1.5} />
           </button>
         </header>
 
         {/* Body */}
         <div className="flex flex-col gap-3 p-4">
-          <h2 className="font-syne text-lg font-bold leading-tight text-primary">
+          <h2 className="font-syne text-d18 font-bold leading-tight text-panel-text">
             La versión móvil casi está lista
           </h2>
-          <p className="font-mono text-[11px] leading-relaxed text-secondary">
+          <p className="font-mono text-d11 leading-relaxed text-panel-text/70">
             Estamos puliendo la experiencia en celular. Por ahora, para la beta
             completamente funcional, entrá desde tu computadora.
           </p>
-          <p className="flex items-center gap-2 font-mono text-[11px] leading-relaxed text-sys-amber">
+          <p className="flex items-center gap-2 font-mono text-d11 leading-relaxed text-panel-text">
             <Monitor size={13} strokeWidth={1.5} className="shrink-0" />
             <span>Te esperamos en pantalla grande. ¡Gracias!</span>
           </p>
         </div>
 
-        {/* Action row */}
-        <div className="flex items-center justify-end border-t border-border/60 bg-elevated/30 px-3 py-2">
+        {/* Action row — the one acid moment on the bezel: a fill-block with
+            panel-ink text on top (the whitelisted use), at the 44px floor. */}
+        <div className="flex items-center justify-end border-t border-panel-text/40 p-2">
           <button
             type="button"
             onClick={dismiss}
-            className="border px-4 py-1.5 font-mono text-[10px] tracking-widest transition-colors"
-            style={{
-              borderColor: '#F97316',
-              color: '#F97316',
-              backgroundColor: '#F973161a',
-            }}
+            onPointerUp={dismiss}
+            className={`flex min-h-11 items-center justify-center border border-acid bg-acid px-6 font-mono text-d11 font-bold tracking-widest text-panel transition-colors hover:bg-panel hover:text-acid ${PANEL_FOCUS_RING}`}
           >
             ENTENDIDO
           </button>
