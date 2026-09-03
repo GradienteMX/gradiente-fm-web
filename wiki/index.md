@@ -25,7 +25,7 @@
 - [[Vibe Spectrum]] — 0 glacial → 10 volcán, the core filter axis (mechanics)
 - [[Vibe Checks]] — crowd `[min, max]` votes per item, threshold-gated median fall-through
 - [[HP Curation System]] — decay-based prominence ranking
-- [[HL Ledger]] — `hp_events` as an append-only ledger (0049): LEDGER_EPOCH, base_weight vs weight, the two system kinds, the decay-scope limit
+- [[HL Ledger]] — `hp_events` as an append-only ledger (0049): LEDGER_EPOCH, base_weight vs weight, the two system kinds, the decay-scope limit, and the creator-facing read (0050)
 - [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, listicle, franja
 - [[Franjas Isolation]] — why franjas never enter the main grid
 - [[Editorial Flag]] — the one editor lever (boost spawn HP)
@@ -44,6 +44,7 @@
 - [[Marketplace Page]] — `/marketplace` — public marketplace catalog; `?franja=<slug>` opens a franja's overlay
 - [[Franja Page]] — `/f/[slug]` — full franja dossier (Concept-1): stats · última actividad · próximos · archivo tabs · mercado · señales mockup · comunidad; the `[ENTRAR]` destination from [[FranjaOverlay]]
 - [[Dashboard]] — `/dashboard` — auth-gated insider surface for composing new content (visual prototype)
+- [[Recepcion]] — `/dashboard?espacio=recepcion` — the fifth «PLIEGO» space: how a creator's OWN work was received. Proportions and counts, never weights; read-only, self-only, no lever
 - [[Dashboard Drafts]] — `/dashboard/drafts` — table view of session items with edit / publish / delete actions
 - [[Admin]] — `/admin` — «CENTRAL DE ADMINISTRACIÓN»: seven tabs behind a server-side `role=admin` gate; the one surface that shows raw HL
 - [[About]] — `/about` — identity surface: what Gradiente is + franja ecosystem
@@ -174,7 +175,7 @@
 - [[Size and Position as Only Signals]] — no stars, likes, or counters
 - [[No Algorithm]] — editorial curation over engagement metrics
 - [[Novelty Weighting]] — box-breaking under the hood: HP contribution scaled by content-novelty-to-user; reads stay global (No-Algorithm-safe)
-- [[Admin Instrument Exemption]] — `/admin` may show raw HL; nothing else may. Narrow, gated, audited — and what stays forbidden even there
+- [[Admin Instrument Exemption]] — `/admin` may show raw HL; nothing else may. Narrow, gated, audited — plus the creator-facing edge: a creator sees the SHAPE of their own reception, never the weight ladder, never anyone else's numbers, never who did what
 - [[Roles and Ranks]] — three identity axes (creation tier + mod/og flags + auto-rank), !/? reaction palette
 - [[Polls As Attachments]] — poll = optional ContentItem attachment, per-type variant resolution, card-as-canvas voting, anonymous-until-vote
 - [[Marketplace]] — franja-only commerce, dedicated `/marketplace` route, `franjaId` field + `franjaAdmin` flag, four-step approval flow

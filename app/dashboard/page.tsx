@@ -10,15 +10,16 @@
 // URL contracts that survive the rebuild (§7.5):
 //   ?type=&edit=   compose dispatch — forms read ?edit themselves
 //   ?item=&comment= overlay host (in-place open, zero ejections)
-//   ?espacio=      FASE D — which SPACE is open (panel|publicar|franja|mercado)
+//   ?espacio=      FASE D — which SPACE is open
+//                  (panel|publicar|franja|mercado|recepcion)
 //   ?section=      legacy explorer values → space + widget scroll
 //   /dashboard/drafts → redirects to ?section=drafts (untouched)
 //
-// FASE D — «espacios». The panel became four spaces. The structural call that
-// keeps this cheap: **only PANEL is a widget grid**; PUBLICAR/FRANJA/MERCADO
-// are bespoke sheets. So the layout schema stays at v:4, the packer is
-// untouched, and edit mode still operates on the one and only grid — a drag
-// can never silently re-pack widgets the user cannot see.
+// FASE D — «espacios». The panel became a set of spaces. The structural call
+// that keeps this cheap: **only PANEL is a widget grid**; PUBLICAR / FRANJA /
+// MERCADO / RECEPCIÓN are bespoke sheets. So the layout schema stays at v:4,
+// the packer is untouched, and edit mode still operates on the one and only
+// grid — a drag can never silently re-pack widgets the user cannot see.
 // Role guards stay two-layered: `canCreateContent` bounces unauthorized
 // `?type=`, and admin/franja-only legacy sections fall back to the plain
 // grid — never an error.
@@ -43,6 +44,7 @@ import { DashTabBar } from '@/components/dashboard/shell/DashTabBar'
 import { PublicarSpace } from '@/components/dashboard/espacios/PublicarSpace'
 import { FranjaSpace } from '@/components/dashboard/espacios/FranjaSpace'
 import { MercadoSpace } from '@/components/dashboard/espacios/MercadoSpace'
+import { ReceptionSpace } from '@/components/dashboard/espacios/ReceptionSpace'
 import {
   DEFAULT_ESPACIO,
   ESPACIO_PARAM,
@@ -304,8 +306,13 @@ function DashboardPageInner() {
               <PublicarSpace />
             ) : espacio === 'franja' ? (
               <FranjaSpace />
-            ) : (
+            ) : espacio === 'mercado' ? (
               <MercadoSpace />
+            ) : (
+              // RECEPCIÓN closes the chain: `resolveEspacio` has already
+              // narrowed the value to a granted id, so the tail is the last
+              // space rather than a fallback that could render the wrong sheet.
+              <ReceptionSpace />
             )}
           </section>
 

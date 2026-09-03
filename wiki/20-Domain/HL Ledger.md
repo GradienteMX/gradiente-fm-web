@@ -1,7 +1,7 @@
 ---
 type: domain
 status: current
-tags: [hp, hl, ledger, hp-events, rollup, decay, migration]
+tags: [hp, hl, ledger, hp-events, rollup, decay, migration, privacy, recepcion]
 updated: 2026-09-02
 ---
 
@@ -103,6 +103,34 @@ Why the scope is not widened: decay is computed, never stored, and the anchors i
 
 **Branch function bodies from the live database, not from the files on disk.** 0049 §2/§3 were branched from `pg_get_functiondef` read on 2026-09-02. The migration files lie: 0008's body is stale V1, and `apply_hp_rollup` has been re-created four times (0008 → 0022 → 0024 → 0048). Branching from an earlier file silently reinstates `when 'partner' then 8760.0`, which no longer casts to `content_type` since the [[Franjas Ecosystem|partner → franja]] rename — and the cron then fails into the cron log with no visible symptom. See the migration-history-drift note.
 
+## The creator-facing read
+
+`/admin` was the ledger's only reader for its first day. Migration 0050 adds the second, and it is a fundamentally different kind of reader: **a creator asking about their own work**, not an operator reading an instrument. The whole surface is [[Recepcion]] (`/dashboard?espacio=recepcion`), and the shape of the read is what keeps it inside the laws.
+
+`creator_reception(p_days int)` ([0050 §2](../../supabase/migrations/0050_reception.sql)) is `security definer`, scoped to `items.created_by = auth.uid()`, and returns `{days, since, items[], totals[]}`. Per item and per reader kind it returns an event **count** and that kind's **share** of that item's earned HL. It never returns a raw `hp_events` row, and it never returns a weight.
+
+Both omissions are load-bearing and neither is defensive coding:
+
+- **No raw rows.** `hp_events` has no `user_id`, so a row cannot name anyone directly — but per-event timestamps at 61 users are close enough. "Someone saved this at 14:32" is a person. Aggregation happens **in the function**, so the UI is never the privacy boundary.
+- **No per-kind weight.** `weight = base_weight × m`, `m ∈ [0.6, 1.5]` ([[Novelty Weighting]]). Returning both `events` and a per-kind weight lets anyone divide one by the other and recover `m` — the multiplier the product deliberately keeps under the hood. A **share** closes that: the item's total earned HL is never returned, so `share × (unknown total)` does not solve for a weight.
+
+**The residual, disclosed in the 0050 header and repeated here so nobody trusts the guard further than it goes.** Shares plus counts do leak the **relative nominal ladder** to anyone willing to regress them. An item with one click and one open reports 25% / 75%, and 75/25 is 1.5/0.5. What that recovers is the *ratio between nominal weights* — not `m`, which varies per reader and averages away, and not any absolute value. The guard is against a price list printed on the screen, not against a determined analyst with a spreadsheet. If the ladder itself must stay secret, the feature cannot ship in any form; that trade was made knowingly. See [[Admin Instrument Exemption]] for the line being drawn.
+
+The creator-side half of the same surface reads `user_hp_events` directly, and **there the leak is wider**: the daily series sums to the window total, share × total recovers per-kind weight sums to rounding, and creator-side weights are flat constants with no multiplier to blur them (0018). Same trade, stated in the route header rather than hidden.
+
+### §1 — the attribution_key leak this migration closed
+
+Found while building the read, and worth applying **even if RECEPCIÓN never ships**:
+
+- `user_hp_events_self_read` admits a user to their own rows (`user_id = auth.uid()`).
+- A row's `user_id` is the **recipient** — the creator who earned the HP.
+- `attribution_key` on those rows is `item_saved:<item_id>:<SAVER_ID>` and `reaction_received:<comment_id>:<REACTOR_ID>`.
+- `authenticated` held a blanket table-level `SELECT` with no column restriction.
+
+So any logged-in creator could `GET /rest/v1/user_hp_events?select=attribution_key` and recover the user id of every person who saved their content or reacted to their comments. **Saves are anonymous by design** — the product shows a save count to nobody and a saver to nobody — and this handed the creator the full list.
+
+0050 §1 fixes it with the same revoke-then-regrant-by-column ritual 0049 §6 used on `items.hp`, because a column-level `REVOKE` cannot narrow a table-level grant. Admins lose the column too, deliberately: an admin is `authenticated` at the Postgres level and no admin surface needs saver identities. The dedup that genuinely depends on the column (`on conflict (attribution_key)`, all eight writers) runs inside `security definer` functions as the table owner and is unaffected.
+
 ## Where it lands
 
 | Piece | Location |
@@ -111,6 +139,7 @@ Why the scope is not widened: decay is computed, never stored, and the anchors i
 | Kinds, weights, codes, hues, `LEDGER_EPOCH`, `isReaderKind` | [kinds.ts](../../lib/hp/kinds.ts) |
 | Aggregate reads (RESUMEN) | [adminStats.ts](../../lib/data/adminStats.ts) |
 | Per-item reads (CONTENIDO dossier) | [adminItems.ts](../../lib/data/adminItems.ts) |
+| Creator-facing read + `attribution_key` revoke | [0050_reception.sql](../../supabase/migrations/0050_reception.sql) → [reception/route.ts](../../app/api/users/me/reception/route.ts) → [[Recepcion]] |
 | Writer | `record_hp_event()` via [hp-events/route.ts](../../app/api/hp-events/route.ts) |
 | Rollup / sweep | pg_cron — rollup every 5 min, sweep daily 04:20 |
 
@@ -123,7 +152,8 @@ Why the scope is not widened: decay is computed, never stored, and the anchors i
 ## Links
 
 - [[HP Curation System]] — what the ledger feeds
-- [[Admin]] — the surface that reads it
-- [[Admin Instrument Exemption]] — why those numbers are visible at all
+- [[Admin]] — the operator surface that reads it
+- [[Recepcion]] — the creator surface that reads it, and the aggregate it is allowed
+- [[Admin Instrument Exemption]] — why those numbers are visible at all, and where the creator-facing line is drawn
 - [[Novelty Weighting]] — the multiplier that makes `weight` unusable as a count
 - [[curation]] · [[Backend Plan]]

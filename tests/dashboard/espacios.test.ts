@@ -7,6 +7,10 @@
 //      The recon's predicted fase-D bug was a tab that renders with an empty
 //      body, so the gating rule ("no grant, no tab") is pinned here, together
 //      with the fallback that a stale or forged ?espacio= never errors.
+//      Since RECEPCIÓN the gate is data (`FRANJA_ONLY_ESPACIOS`) rather than a
+//      boolean chain, so the assertions below are written against that list:
+//      a space added later inherits the ungated default AND the coverage,
+//      instead of needing a new hand-written case per space.
 //
 //   2. lib/chrome/paperRoutes — decides which routes wear the paper ground.
 //      This one had a live trap: with a prefix match, '/foro'.startsWith('/f')
@@ -21,6 +25,7 @@ import {
   DEFAULT_ESPACIO,
   ESPACIO_IDS,
   ESPACIO_LABELS,
+  FRANJA_ONLY_ESPACIOS,
   espacioHref,
   isEspacioId,
   resolveEspacio,
@@ -31,13 +36,47 @@ import { PAPER_ROUTES, isPaperRoute } from '@/lib/chrome/paperRoutes'
 const TEAM = { isFranjaTeam: true }
 const SOLO = { isFranjaTeam: false }
 
+/** Everything the gate list does NOT name — universal by default. */
+const UNGATED = ESPACIO_IDS.filter((id) => !FRANJA_ONLY_ESPACIOS.includes(id))
+
 describe('visibleEspacios', () => {
-  it('gives a plain account exactly PANEL and PUBLICAR', () => {
-    assert.deepEqual(visibleEspacios(SOLO), ['panel', 'publicar'])
+  it('gives a plain account every ungated space, in tab order', () => {
+    assert.deepEqual(visibleEspacios(SOLO), ['panel', 'publicar', 'recepcion'])
+    // Property form, so a space added later is covered without editing this:
+    // the only thing that may be missing from a solo account's tabs is a
+    // space the gate list actually names.
+    assert.deepEqual(visibleEspacios(SOLO), UNGATED)
   })
 
-  it('gives a franja-team account all four, in tab order', () => {
-    assert.deepEqual(visibleEspacios(TEAM), ['panel', 'publicar', 'franja', 'mercado'])
+  it('gives a franja-team account all five, in tab order', () => {
+    assert.deepEqual(visibleEspacios(TEAM), [
+      'panel',
+      'publicar',
+      'franja',
+      'mercado',
+      'recepcion',
+    ])
+    assert.deepEqual(visibleEspacios(TEAM), ESPACIO_IDS)
+  })
+
+  it('shows RECEPCIÓN to a viewer with no franja — it needs no grant', () => {
+    // The universal claim spelled out on its own, because it is the one thing
+    // that separates this space from FRANJA/MERCADO: every account accrues HP,
+    // so there is no viewer for whom the sheet is empty by construction.
+    assert.ok(visibleEspacios(SOLO).includes('recepcion'))
+    assert.ok(visibleEspacios(TEAM).includes('recepcion'))
+    assert.ok(!FRANJA_ONLY_ESPACIOS.includes('recepcion'))
+  })
+
+  it('hides EVERY gated space from a viewer with no franja, and only those', () => {
+    const solo = visibleEspacios(SOLO)
+    for (const id of ESPACIO_IDS) {
+      assert.equal(
+        solo.includes(id),
+        !FRANJA_ONLY_ESPACIOS.includes(id),
+        `${id} visibility must follow the gate list, nothing else`,
+      )
+    }
   })
 
   it('never returns a space without a label (no unnamed tab can render)', () => {
@@ -45,12 +84,21 @@ describe('visibleEspacios', () => {
       assert.ok(ESPACIO_LABELS[id], `missing label for ${id}`)
     }
   })
+
+  it('keeps tab order stable — a space is appended, never inserted', () => {
+    // DashTabBar renders in this order and users navigate by muscle memory;
+    // a new space belongs at the end.
+    assert.equal(ESPACIO_IDS[0], DEFAULT_ESPACIO)
+    assert.equal(ESPACIO_IDS.indexOf('recepcion'), ESPACIO_IDS.length - 1)
+    assert.ok(ESPACIO_IDS.indexOf('recepcion') > ESPACIO_IDS.indexOf('mercado'))
+  })
 })
 
 describe('resolveEspacio', () => {
   it('resolves a granted space to itself', () => {
     assert.equal(resolveEspacio('mercado', TEAM), 'mercado')
     assert.equal(resolveEspacio('publicar', SOLO), 'publicar')
+    assert.equal(resolveEspacio('recepcion', SOLO), 'recepcion')
   })
 
   it('falls back to PANEL for an UNGRANTED space, never an error', () => {
@@ -60,8 +108,33 @@ describe('resolveEspacio', () => {
     assert.equal(resolveEspacio('mercado', SOLO), DEFAULT_ESPACIO)
   })
 
+  it('resolves every id against the gate list, for both viewers', () => {
+    // Property form of the two cases above: granted → itself, ungranted →
+    // PANEL, for every space that exists now or is added later.
+    for (const id of ESPACIO_IDS) {
+      assert.equal(resolveEspacio(id, TEAM), id, `${id} is granted to a team account`)
+      assert.equal(
+        resolveEspacio(id, SOLO),
+        FRANJA_ONLY_ESPACIOS.includes(id) ? DEFAULT_ESPACIO : id,
+        `${id} must follow the gate list for a solo account`,
+      )
+    }
+  })
+
   it('falls back to PANEL for junk, empty and missing values', () => {
-    for (const raw of ['', '  ', 'PANEL', 'ajustes', '../panel', null, undefined]) {
+    for (const raw of [
+      '',
+      '  ',
+      'PANEL',
+      'ajustes',
+      '../panel',
+      // The label carries an accent, the id does not. A hand-typed
+      // ?espacio=recepción must resolve, not 404 into an empty sheet.
+      'recepción',
+      'RECEPCION',
+      null,
+      undefined,
+    ]) {
       assert.equal(resolveEspacio(raw as string | null, TEAM), DEFAULT_ESPACIO)
     }
   })
@@ -75,9 +148,9 @@ describe('resolveEspacio', () => {
 })
 
 describe('isEspacioId', () => {
-  it('accepts exactly the four ids and nothing else', () => {
+  it('accepts exactly the listed ids and nothing else', () => {
     for (const id of ESPACIO_IDS) assert.equal(isEspacioId(id), true)
-    for (const bad of ['', 'Panel', 'mercadoo', null, undefined]) {
+    for (const bad of ['', 'Panel', 'mercadoo', 'recepción', 'recepciones', null, undefined]) {
       assert.equal(isEspacioId(bad as string | null), false)
     }
   })
@@ -92,6 +165,15 @@ describe('espacioHref', () => {
     assert.equal(espacioHref('publicar'), '/dashboard?espacio=publicar')
     assert.equal(espacioHref('franja'), '/dashboard?espacio=franja')
     assert.equal(espacioHref('mercado'), '/dashboard?espacio=mercado')
+    assert.equal(espacioHref('recepcion'), '/dashboard?espacio=recepcion')
+  })
+
+  it('emits a URL-safe param for every space (no encoding round-trip loss)', () => {
+    // The ids stay unaccented so the href needs no escaping — pinned as a
+    // property so an accented id can never be added silently.
+    for (const id of ESPACIO_IDS) {
+      assert.equal(encodeURIComponent(id), id, `${id} must be URL-safe as written`)
+    }
   })
 
   it('round-trips through resolveEspacio', () => {
@@ -99,6 +181,14 @@ describe('espacioHref', () => {
       const qs = espacioHref(id).split('?')[1] ?? ''
       const raw = new URLSearchParams(qs).get('espacio')
       assert.equal(resolveEspacio(raw, TEAM), id)
+    }
+  })
+
+  it('round-trips for a solo account too, on every space it can reach', () => {
+    for (const id of visibleEspacios(SOLO)) {
+      const qs = espacioHref(id).split('?')[1] ?? ''
+      const raw = new URLSearchParams(qs).get('espacio')
+      assert.equal(resolveEspacio(raw, SOLO), id)
     }
   })
 })

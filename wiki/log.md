@@ -8,6 +8,30 @@
 
 ---
 
+## 2026-09-02 · INGEST · RECEPCIÓN — el quinto espacio de `/dashboard` · rama `admin/central-2026` · migración `0050` SIN APLICAR (lleva una corrección de privacidad)
+
+Un creador puede por fin ver **cómo fue recibido su propio trabajo**. Sólo lectura, sólo lo suyo, sin palanca de ningún tipo. Nota nueva: [[Recepcion]]. Actualizadas: [[HL Ledger]] (la lectura de cara al creador + el residuo declarado), [[Admin Instrument Exemption]] (el borde de cara al creador — dónde queda la raya y por qué esto **no** es la exención de `/admin` ampliada), [[index]], [[Next Session]].
+
+### Lo que se construyó
+
+- **Quinto espacio, universal.** `EspacioId` gana `'recepcion'`, en la barra después de MERCADO. **No lleva grant**: FRANJA y MERCADO están en `FRANJA_ONLY_ESPACIOS` y RECEPCIÓN no, porque toda cuenta acumula HP — hasta una que nunca publicó gana `vibe_check_cast`. Es una **hoja**, no rejilla, así que el esquema de layout sigue en `v: 4` y el empaquetador no se toca. La compuerta pasó de cadena booleana a **lista de datos**, para que un espacio futuro herede el default sin grant a propósito y no por descuido.
+- **Dos sub-pestañas, y el orden es la parte honesta.** PRESENCIA lee `user_hp_events` (lado creador, historia real desde mayo) y va primero; OBRA lee `hp_events` vía `creator_reception()` (lado item, empezó el 2026-09-02 y tiene horas). Abrir por OBRA recibiría a cada creador con una gráfica vacía que se lee como «nadie te recibió», que es lo contrario de la verdad.
+- **Proporciones y conteos, jamás pesos.** Ni peso, ni multiplicador, ni escalera `× 4.0`. `creator_reception()` devuelve **share**, no peso, justo para que la escalera no se pueda dividir. Razón de una frase: *a un creador al que le entregas una lista de precios optimiza para la lista de precios en vez de para el trabajo.*
+
+### La fuga que apareció construyéndolo — vale aplicarla aunque RECEPCIÓN nunca se mergee
+
+`user_hp_events_self_read` admite a cada usuario a **sus propias filas**; el `user_id` de esa fila es el **receptor**; y `attribution_key` en esas filas codifica el id **del que guardó / del que reaccionó**. Con el `SELECT` de tabla completa que `authenticated` tiene hoy, cualquier creador con sesión podía recuperar la lista completa de quién guardó su contenido. **Los guardados son anónimos por diseño.** La 0050 §1 lo cierra con el mismo ritual de la 0049 §6 (`revoke` de tabla + `grant` por columna, porque un `revoke` de columna no estrecha un permiso de tabla). Ningún código de la app lee esa columna; la deduplicación que sí depende de ella corre en funciones `security definer` y no se entera.
+
+### El residuo, declarado
+
+Shares + conteos **sí** filtran la escalera *relativa* de pesos nominales a quien quiera hacer la regresión (un item con un clic y una apertura reporta 25/75, y 75/25 es 1.5/0.5). No filtran el multiplicador de novedad ni ningún valor absoluto. La guardia es contra **una lista de precios impresa en pantalla**, no contra una hoja de cálculo. Si la escalera en sí tuviera que ser secreta, esto no puede existir en ninguna forma — y ésa, no un ajuste de UI, es la decisión a revisar.
+
+### Verificación
+
+`npx tsc --noEmit` limpio; `npm run test:dashboard` **171/171** (el fichero de espacios sube de 13 a 22 casos, ahora escritos contra la lista de compuerta para que un espacio futuro quede cubierto solo). No se corrió `next build` — hay dev server sirviendo y eso corrompe el mapa de chunks.
+
+---
+
 ## 2026-09-02 · INGEST · «CENTRAL DE ADMINISTRACIÓN» — `/admin` se vuelve instrumento · rama `admin/central-2026` (sin merge) · migración `0049` SIN APLICAR
 
 El panel pasa de cinco pestañas ciegas a siete con lectura real del modelo de curación. **La sesión bendice dos leyes escritas y añade un libro mayor a la base de datos**, así que lo importante no es el código sino el registro: sin nota de decisión, la siguiente sesión borra esto como regresión y tiene razón. Notas nuevas: [[Admin Instrument Exemption]], [[HL Ledger]], [[Admin]] (reemplaza el `70-Roadmap/Admin Dashboard.md` de abril, borrado).

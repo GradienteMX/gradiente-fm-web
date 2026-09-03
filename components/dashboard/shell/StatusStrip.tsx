@@ -82,10 +82,10 @@ export function countUnreadActivity(
 // so off /dashboard a segment falls back to scrolling its widget in the grid
 // instead of navigating. `widget` is the in-grid anchor; `espacio` is where
 // the segment's material actually lives on the real panel.
-// The panel is four spaces, so a below-fold badge can be behind a tab rather
-// than merely below the fold — the click switches the tab first, then scrolls.
-// `widget` is optional because two spaces (PUBLICAR, MERCADO) are bespoke
-// sheets, not grids, and have no widget anchor to scroll to.
+// The panel is several spaces, so a below-fold badge can be behind a tab
+// rather than merely below the fold — the click switches the tab first, then
+// scrolls. `widget` is optional because only PANEL is a grid; every other
+// space is a bespoke sheet with no widget anchor to scroll to.
 interface Segment {
   key: string
   label: string
