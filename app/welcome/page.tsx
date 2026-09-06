@@ -7,7 +7,8 @@ import { useAuth } from '@/components/auth/useAuth'
 import { peekInviteCard, type InviteCard } from '@/lib/invitations'
 import { normalizeInviteCode } from '@/lib/identity'
 import { RegistroCard } from '@/components/welcome/RegistroCard'
-import { PrismField } from '@/components/welcome/PrismField'
+import { FractalField } from '@/components/welcome/FractalField'
+import { WelcomeRegistration } from '@/components/welcome/WelcomeRegistration'
 import {
   WAITLIST_ALIAS_MAX,
   WAITLIST_CITIES,
@@ -30,21 +31,7 @@ const INVITE_FONTS =
 // everyone here when they have no session, and bounces them off again once
 // they're logged in.
 //
-// The bones are the `landing-v2.html` "prisma 2008" prototype (paper ground,
-// grotesco face on stage, the animated prism field behind everything); the
-// CHROME speaks «EL PLIEGO» — the dashboard's editorial-brutalist language —
-// so the door and the panel share one voice:
-//   · tokens: paper #EDEBE3 / raised #F6F4EC / ink #111111 (+soft/faint),
-//     acid #D8FF00 only as a fill-block with ink on top, red #C42B20
-//   · type: Syne bold for titles, Space Grotesk 15/22 body, Space Mono
-//     11/16 · 13/18 for labels and controls (the dashboard's d-scale, as raw
-//     px — this branch predates the dashboard tailwind tokens)
-//   · chrome: straight 1px ink borders + hairline-headed panels (the
-//     DashPopup anatomy), NO bracket corners, no »« arrow dressing
-//   · interaction: ink-fill hover inversion, 2px ink focus ring at 2px
-//     offset, ≥44px targets
-// What survived untouched is the door itself — iniciar sesión, insertar
-// código, lista de espera — plus the whole invitación path underneath.
+// A printed fractal field frames the original identity and existing auth flows.
 export default function WelcomePage() {
   const { openLogin, isAuthed, authResolved } = useAuth()
   const router = useRouter()
@@ -119,11 +106,7 @@ export default function WelcomePage() {
     )
   }
 
-  // No-WebGL fallback for a valid code. The prism needs the same WebGL2 the 3D
-  // unbox does, so there is no landing skin to dress this in — the card sits
-  // on a plain ink scrim, the same paper-sheet-over-ink relationship
-  // LoginOverlay uses. (RegistroCard stopped carrying its own dark chrome in
-  // fase F; it is a paper sheet now.)
+  // A valid code still opens the registration form when 3D is unavailable.
   if (inviteState === 'ready' && invite) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-ink p-4">
@@ -136,26 +119,21 @@ export default function WelcomePage() {
 
   return (
     <div className="wl-root fixed inset-0 z-50 overflow-auto">
-      {/* Painted underneath the canvas in case WebGL never starts. */}
-      <div className="wl-fallback" aria-hidden />
-      <PrismField />
-      {/* Readability scrim. Over a field this saturated, darkening dirties the
-          color — lifting toward paper keeps it clean. It concentrates behind
-          the content and leaves the edges of the composition intact: that's
-          where the prism lives. */}
-      <div className="wl-scrim" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_48%_40%,#eeecdc_0%,#b6b8ad_30%,#363d39_65%,#101513_100%)]" aria-hidden />
+      <FractalField />
+      <WelcomeRegistration />
 
-      <main className="wl-main">
-        <section className={`wl-hero${formOpen ? ' wl-form-open' : ''}`}>
-          {/* Brand line — the masthead anchor of the dashboard, in ink on
-              paper. The only Syne display moment of the gate. */}
-          <header className="wl-brand">
-            <span className="wl-wordmark">GRADIENTE</span>
+      <main className="relative z-[2]">
+        <section className={`group flex min-h-[100svh] flex-col px-6 pb-7 pt-8 sm:px-10 sm:pb-28 sm:pt-10 ${formOpen ? 'is-form' : ''}`}>
+          <header className="flex shrink-0 items-start justify-between text-left sm:absolute sm:inset-x-10 sm:top-10">
+            <div>
+              <span className="inline-block border border-[#111] bg-[#edebe3] px-[9px] py-px font-syne text-[21px] font-extrabold leading-[26px] tracking-[-0.04em] text-[#111]">GRADIENTE</span>
+            </div>
           </header>
 
-          <div className="wl-stage">
+          <div className="grid min-h-[260px] flex-[1_0_auto] place-items-center pb-12 pt-6 group-[.is-form]:min-h-[130px] group-[.is-form]:pb-0 group-[.is-form]:pt-5 sm:min-h-[300px] sm:pb-8 sm:pt-20">
             <img
-              className="wl-face"
+              className="block h-auto w-[min(46vw,250px)] shrink-0 group-[.is-form]:mb-6 group-[.is-form]:w-[90px] sm:w-[min(22vw,28svh,280px)]"
               src="/welcome/grotesco-face.png"
               width={794}
               height={782}
@@ -163,7 +141,7 @@ export default function WelcomePage() {
             />
           </div>
 
-          <div className="wl-foot">
+          <div className="mx-auto w-full max-w-[620px] shrink-0 rounded-lg border border-[#d9dcc3]/35 bg-[#171d19]/80 p-3 shadow-[0_2px_24px_#0005,inset_0_1px_0_#ffffff20] backdrop-blur-md sm:p-5">
             {/* Resolved-invitation status for non-active codes (verifying,
                 spent, expired, unrecognized). An active code never reaches
                 here — it early-returns above. */}
@@ -173,10 +151,10 @@ export default function WelcomePage() {
 
             {panel === 'gate' && (
               <>
-                <div className="wl-gate">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
                   <button
                     type="button"
-                    className="wl-cell"
+                    className="flex min-h-12 items-center border border-[#eeecdc]/80 bg-white/[0.03] px-4 py-3 text-left font-mono text-[11px] uppercase tracking-[0.08em] text-[#eeecdc] transition-colors hover:bg-[#eeecdc] hover:text-[#111] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8ff00] motion-reduce:transition-none"
                     onClick={() => openLogin('login')}
                   >
                     <span>
@@ -186,7 +164,7 @@ export default function WelcomePage() {
 
                   <button
                     type="button"
-                    className="wl-cell"
+                    className="flex min-h-12 items-center border border-[#eeecdc]/80 bg-white/[0.03] px-4 py-3 text-left font-mono text-[11px] uppercase tracking-[0.08em] text-[#eeecdc] transition-colors hover:bg-[#eeecdc] hover:text-[#111] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8ff00] motion-reduce:transition-none"
                     onClick={() => setPanel('codigo')}
                   >
                     <span>
@@ -197,7 +175,7 @@ export default function WelcomePage() {
 
                 {/* The acid moment — one fill-block with ink on top, the same
                     weight CREAR NUEVO carries on the dashboard. */}
-                <button className="wl-bar" type="button" onClick={() => setPanel('wait')}>
+                <button className="mt-3 flex min-h-12 w-full items-center justify-between gap-4 border border-[#d8ff00] bg-[#d8ff00] px-4 py-3 text-left font-mono text-[10px] font-bold leading-relaxed tracking-[0.05em] text-[#111] transition-colors hover:bg-[#e7ff66] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8ff00] motion-reduce:transition-none sm:text-[11px]" type="button" onClick={() => setPanel('wait')}>
                   <span>¿SIN CÓDIGO? — UNIRME A LA LISTA DE ESPERA</span>
                   <span aria-hidden="true">→</span>
                 </button>
@@ -221,6 +199,9 @@ export default function WelcomePage() {
 
             {panel === 'wait' && <WaitlistPanel onBack={() => setPanel('gate')} />}
           </div>
+          <footer className="mt-6 flex shrink-0 items-end justify-end font-mono text-[8px] uppercase leading-[1.8] tracking-[0.18em] text-[#edebe3] [text-shadow:0_1px_5px_#111] sm:absolute sm:inset-x-10 sm:bottom-7 sm:mt-0 sm:text-[10px]">
+            <p className="text-right">Gradiente.org</p>
+          </footer>
         </section>
       </main>
 
@@ -245,203 +226,13 @@ export default function WelcomePage() {
           -webkit-font-smoothing: antialiased;
           overflow-x: hidden;
         }
-        .wl-fallback {
-          position: fixed;
-          inset: 0;
-          z-index: 0;
-          background: linear-gradient(
-            100deg,
-            #edebe3 0%,
-            #eef0f6 26%,
-            #cfd6ea 33%,
-            #ff4fa0 38%,
-            #ffd24a 42%,
-            #46d6ff 46%,
-            #f0483f 62%,
-            #d8322c 100%
-          );
-          filter: saturate(0.85);
-        }
-        .wl-scrim {
-          position: fixed;
-          inset: 0;
-          z-index: 1;
-          pointer-events: none;
-          background:
-            radial-gradient(
-              40% 44% at 52% 40%,
-              rgba(237, 235, 227, 0.74) 0%,
-              rgba(237, 235, 227, 0.46) 48%,
-              rgba(237, 235, 227, 0.16) 72%,
-              transparent 88%
-            ),
-            linear-gradient(
-              to bottom,
-              rgba(237, 235, 227, 0.34) 0%,
-              transparent 22%,
-              transparent 70%,
-              rgba(237, 235, 227, 0.44) 100%
-            );
-        }
-        .wl-main {
-          position: relative;
-          z-index: 2;
-        }
-
-        /* By default the face takes the center of the free space and the door
-           stays at the bottom. With a panel open everything collapses back to
-           one centered column, because the form needs the height. */
-        .wl-hero {
-          min-height: 100svh;
-          display: flex;
-          flex-direction: column;
-          text-align: center;
-          padding: clamp(14px, 2vw, 24px) clamp(16px, 4vw, 48px) clamp(26px, 4.5vh, 54px);
-        }
-        .wl-stage {
-          flex: 1 1 auto;
-          display: grid;
-          place-items: center;
-          min-height: 0;
-        }
-        .wl-foot {
-          flex: 0 0 auto;
-          width: 100%;
-        }
-        .wl-hero.wl-form-open {
-          justify-content: center;
-        }
-        .wl-hero.wl-form-open .wl-stage {
-          flex: 0 0 auto;
-        }
-
-        /* ── brand line ───────────────────────────────────────── */
-        .wl-brand {
-          flex: 0 0 auto;
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          gap: 16px;
-          text-align: left;
-        }
-        /* The mark rides a paper-glass chip so it stays legible wherever the
-           prism's hue cycle happens to be dark. */
-        .wl-wordmark {
-          border: 1px solid var(--wl-ink);
-          background: rgba(246, 244, 236, 0.78);
-          backdrop-filter: blur(7px) saturate(1.1);
-          -webkit-backdrop-filter: blur(7px) saturate(1.1);
-        }
-        .wl-wordmark {
-          padding: 2px 10px;
-          font: 800 18px/24px var(--wl-syne);
-          letter-spacing: -0.01em;
-          color: var(--wl-ink);
-        }
-
-        .wl-face {
-          display: block;
-          width: min(375px, 65vw);
-          height: auto;
-          margin: 0 auto;
-          opacity: 0.92;
-          transition: width 0.35s ease;
-        }
-        /* With a panel open the face gives up space instead of pushing it off. */
-        .wl-hero.wl-form-open .wl-face {
-          width: min(112px, 24vw);
-          margin-bottom: clamp(12px, 1.6vw, 16px);
-        }
-
-        /* ── door ─────────────────────────────────────────────── */
-        .wl-gate {
-          width: min(760px, 94vw);
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: clamp(10px, 1.4vw, 16px);
-        }
-        @media (max-width: 620px) {
-          .wl-gate {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        /* One focus grammar, page-wide: 2px ink outline at 2px offset. */
-        .wl-cell:focus-visible,
-        .wl-bar:focus-visible,
-        .wl-go:focus-visible,
-        .wl-chip:focus-visible,
-        .wl-f input:focus-visible,
-        .wl-f select:focus-visible {
-          outline: 2px solid var(--wl-ink);
-          outline-offset: 2px;
-        }
-
-        /* Door cells — straight 1px ink boxes on a translucent paper-raised
-           surface (the prism needs the glass); hover is the dashboard's
-           ink-fill inversion, no bracket corners. */
-        .wl-cell {
-          display: flex;
-          align-items: center;
-          gap: 15px;
-          min-height: 44px;
-          padding: 16px 18px;
-          border: 1px solid var(--wl-ink);
-          background: rgba(246, 244, 236, 0.78);
-          backdrop-filter: blur(7px) saturate(1.1);
-          -webkit-backdrop-filter: blur(7px) saturate(1.1);
-          color: var(--wl-ink);
-          text-align: left;
-          cursor: pointer;
-          transition:
-            background 0.15s ease,
-            color 0.15s ease;
-        }
-        .wl-cell:hover {
-          background: var(--wl-ink);
-          color: var(--wl-paper);
-        }
-        .wl-cell b {
-          display: block;
-          font: 700 13px/18px var(--wl-mono);
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-        }
-
-        /* The waitlist bar is the page's ONE acid use: a fill-block with ink
-           on top (the CREAR NUEVO weight). Hover inverts to ink. */
-        .wl-bar {
-          width: min(760px, 94vw);
-          margin: clamp(10px, 1.4vw, 16px) auto 0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          min-height: 44px;
-          padding: 13px 18px;
-          border: 1px solid var(--wl-ink);
-          background: var(--wl-acid);
-          color: var(--wl-ink);
-          cursor: pointer;
-          font: 700 13px/18px var(--wl-mono);
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          text-align: left;
-          transition:
-            background 0.15s ease,
-            color 0.15s ease;
-        }
-        .wl-bar:hover {
-          background: var(--wl-ink);
-          color: var(--wl-paper);
-        }
+        .wl-go:focus-visible, .wl-chip:focus-visible, .wl-f input:focus-visible, .wl-f select:focus-visible { outline: 2px solid var(--wl-ink); outline-offset: 2px; }
 
         /* ── panels (waitlist / código) ───────────────────────── */
         /* The DashPopup anatomy: Syne title + one working control on a
            hairline-headed sheet. Solid enough surface for small labels. */
         .wl-panel {
-          width: min(560px, 94vw);
+          width: 100%;
           margin: 0 auto;
           text-align: left;
           border: 1px solid var(--wl-ink);
@@ -583,7 +374,7 @@ export default function WelcomePage() {
         }
 
         .wl-peek {
-          width: min(560px, 94vw);
+          width: 100%;
           margin: 0 auto clamp(10px, 1.4vw, 16px);
           padding: 11px 16px;
           border: 1px solid var(--wl-ink);
@@ -602,9 +393,6 @@ export default function WelcomePage() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .wl-face,
-          .wl-cell,
-          .wl-bar,
           .wl-chip,
           .wl-go {
             transition: none;
