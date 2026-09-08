@@ -47,9 +47,9 @@ const FOCUS_RING =
 // coloured register left is sys-red-paper, and it means exactly one thing:
 // consequence (the MOD tombstone power, the self-demotion warning).
 export function AdminUsersEditor({
-  elevatedUsers,
-  recentUsers,
-  lectorUsers,
+  elevatedUsers: initialElevatedUsers,
+  recentUsers: initialRecentUsers,
+  lectorUsers: initialLectorUsers,
   franjas,
   selfId,
   totalUsers,
@@ -66,6 +66,11 @@ export function AdminUsersEditor({
   modCount: number
 }) {
   const router = useRouter()
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  const [deletionNotice, setDeletionNotice] = useState<string | null>(null)
+  const elevatedUsers = useMemo(() => initialElevatedUsers.filter((u) => !deletedIds.has(u.id)), [initialElevatedUsers, deletedIds])
+  const recentUsers = useMemo(() => initialRecentUsers.filter((u) => !deletedIds.has(u.id)), [initialRecentUsers, deletedIds])
+  const lectorUsers = useMemo(() => initialLectorUsers.filter((u) => !deletedIds.has(u.id)), [initialLectorUsers, deletedIds])
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState<UserRow[] | null>(null)
   const [searching, setSearching] = useState(false)
@@ -86,26 +91,33 @@ export function AdminUsersEditor({
     const q = query.trim()
     if (q.length < 2) {
       setSearchResults(null)
+      setSearching(false)
       return
     }
     setSearching(true)
+    const controller = new AbortController()
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
           `/api/admin/users/search?q=${encodeURIComponent(q)}`,
+          { signal: controller.signal },
         )
         if (!res.ok) {
           setSearchResults([])
           return
         }
         const json = await res.json()
-        setSearchResults((json.users as UserRow[] | undefined) ?? [])
+        if (!controller.signal.aborted) {
+          setSearchResults(((json.users as UserRow[] | undefined) ?? []).filter((u) => !deletedIds.has(u.id)))
+        }
+      } catch {
+        if (!controller.signal.aborted) setSearchResults([])
       } finally {
-        setSearching(false)
+        if (!controller.signal.aborted) setSearching(false)
       }
     }, 250)
-    return () => clearTimeout(t)
-  }, [query])
+    return () => { clearTimeout(t); controller.abort() }
+  }, [query, deletedIds])
 
   // LECTOR (role='user') has its own prefetched bucket because vanilla
   // readers aren't in elevatedUsers by definition; all other role chips
@@ -169,6 +181,8 @@ export function AdminUsersEditor({
           o nombre.
         </p>
       </header>
+
+      {deletionNotice && <p role="status" className="font-mono text-d13 text-ink">{deletionNotice}</p>}
 
       {/* Stats strip — orientation + filter chips. Ordered by tier
           (LECTOR → CURATOR → GUIDE / INSIDER → ADMIN), then MOD flag.
@@ -281,6 +295,13 @@ export function AdminUsersEditor({
               franjas={franjas}
               isSelf={selectedUser.id === selfId}
               onSaved={() => router.refresh()}
+              onDeleted={() => {
+                setDeletedIds((ids) => new Set(ids).add(selectedUser.id))
+                setSearchResults((rows) => rows?.filter((u) => u.id !== selectedUser.id) ?? null)
+                setDeletionNotice(`Cuenta @${selectedUser.username} eliminada.`)
+                setSelectedId(null)
+                router.refresh()
+              }}
               onClose={() => setSelectedId(null)}
             />
           ) : (
@@ -432,12 +453,14 @@ function UserEditorPanel({
   franjas,
   isSelf,
   onSaved,
+  onDeleted,
   onClose,
 }: {
   user: UserRow
   franjas: FranjaOption[]
   isSelf: boolean
   onSaved: () => void
+  onDeleted: () => void
   onClose: () => void
 }) {
   const initialRole = user.role as Role
@@ -449,6 +472,31 @@ function UserEditorPanel({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedFlash, setSavedFlash] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
+
+  const deleteUser = async () => {
+    if (submitting || isSelf || confirmation !== user.username) return
+    setError(null)
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: confirmation }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        setError(body?.error ?? 'No se pudo eliminar la cuenta.')
+        return
+      }
+      onDeleted()
+    } catch {
+      setError('No se pudo conectar. Verifica el estado de la cuenta antes de reintentar.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   // Self-demote guard: warn (don't block) if the admin is editing their
   // own row and dropping out of admin role.
@@ -519,6 +567,7 @@ function UserEditorPanel({
         <button
           type="button"
           onClick={onClose}
+          disabled={submitting}
           aria-label="Cerrar editor"
           className={`inline-flex min-h-11 shrink-0 items-center border border-ink px-3 font-mono text-d13 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
         >
@@ -585,7 +634,7 @@ function UserEditorPanel({
           <button
             type="button"
             onClick={submit}
-            disabled={submitting || !dirty}
+            disabled={submitting || confirmingDelete || !dirty}
             className={`inline-flex min-h-11 items-center gap-2 border border-ink bg-acid px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink transition-colors enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 ${FOCUS_RING}`}
           >
             {submitting ? 'GUARDANDO…' : 'GUARDAR'}
@@ -596,6 +645,40 @@ function UserEditorPanel({
             </span>
           )}
         </div>
+        <fieldset disabled={submitting} className="flex flex-col gap-3 border-t border-sys-red-paper pt-4">
+          <legend className="font-mono text-d11 font-bold uppercase text-sys-red-paper">Eliminar cuenta</legend>
+          {isSelf ? (
+            <p className="font-grotesk text-d13 text-ink-soft">No puedes eliminar tu propia cuenta desde administración.</p>
+          ) : confirmingDelete ? (
+            <>
+              <p className="font-grotesk text-d13 text-ink-soft">
+                Eliminar @{user.username} es permanente. Se borran su acceso, perfil, borradores,
+                comentarios, hilos del foro y actividad asociada, incluidas respuestas de otras
+                personas a sus comentarios e hilos. Las publicaciones se conservan sin vínculo
+                a la cuenta. Esta acción no bloquea un nuevo registro.
+              </p>
+              <label className="flex flex-col gap-2 font-mono text-d13 text-ink">
+                Escribe {user.username} para confirmar:
+                <input autoFocus value={confirmation} onChange={(e) => setConfirmation(e.target.value)}
+                  autoComplete="off" spellCheck={false}
+                  className={`min-h-11 border border-ink bg-paper px-3 ${FOCUS_RING}`} />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={deleteUser} disabled={confirmation !== user.username}
+                  className={`min-h-11 border border-sys-red-paper px-3 font-mono text-d13 font-bold text-sys-red-paper enabled:hover:bg-sys-red-paper enabled:hover:text-paper disabled:opacity-45 ${FOCUS_RING}`}>
+                  {submitting ? 'ELIMINANDO…' : 'ELIMINAR DEFINITIVAMENTE'}
+                </button>
+                <button type="button" onClick={() => { setConfirmingDelete(false); setConfirmation('') }}
+                  className={`min-h-11 border border-ink px-3 font-mono text-d13 text-ink ${FOCUS_RING}`}>CANCELAR</button>
+              </div>
+            </>
+          ) : (
+            <button type="button" onClick={() => { setConfirmingDelete(true); setSavedFlash(false); setError(null) }}
+              className={`min-h-11 self-start border border-sys-red-paper px-3 font-mono text-d13 font-bold text-sys-red-paper hover:bg-sys-red-paper hover:text-paper ${FOCUS_RING}`}>
+              ELIMINAR USUARIO
+            </button>
+          )}
+        </fieldset>
       </div>
     </div>
   )

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/api/requireAdmin'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/users/[id]
@@ -21,6 +23,45 @@ interface PatchBody {
 }
 
 const VALID_ROLES: readonly Role[] = ['user', 'curator', 'guide', 'insider', 'admin']
+
+// Delete the Auth account, not just its public profile. The database cascades
+// dependent activity and clears items.created_by while preserving the items.
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const gate = await requireAdmin()
+  if (!gate.ok) return gate.response
+  if (params.id === gate.userId) {
+    return NextResponse.json({ error: 'No puedes eliminar tu propia cuenta.' }, { status: 403 })
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)) {
+    return NextResponse.json({ error: 'ID de usuario inválido.' }, { status: 400 })
+  }
+  const body: unknown = await request.json().catch(() => null)
+  if (!body || typeof body !== 'object' || !('username' in body) || typeof body.username !== 'string') {
+    return NextResponse.json({ error: 'Confirma el nombre de usuario.' }, { status: 400 })
+  }
+  const { data: target, error: lookupError } = await gate.supabase
+    .from('users').select('username').eq('id', params.id).maybeSingle()
+  if (lookupError) {
+    return NextResponse.json({ error: 'No se pudo consultar el usuario.' }, { status: 500 })
+  }
+  if (!target) return NextResponse.json({ error: 'Usuario no encontrado.' }, { status: 404 })
+  if (body.username !== target.username) {
+    return NextResponse.json({ error: 'El nombre de usuario no coincide.' }, { status: 400 })
+  }
+  try {
+    const { error } = await createAdminClient().auth.admin.deleteUser(params.id)
+    if (error) {
+      console.error('Admin user deletion failed:', error)
+      return NextResponse.json({ error: 'No se pudo eliminar la cuenta. Revisa sus dependencias y archivos en Supabase.' }, { status: 500 })
+    }
+    return NextResponse.json({ deleted: true })
+  } catch {
+    return NextResponse.json({ error: 'El servicio de eliminación no está disponible.' }, { status: 500 })
+  }
+}
 
 export async function PATCH(
   request: NextRequest,

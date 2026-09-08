@@ -53,9 +53,11 @@ The **HL lever** lives in that dossier: `POST /api/admin/items/[id]/hp`, a thin 
 
 `AdminFranjasComposer`, over `/api/admin/franjas`. `marketplace_enabled` is **self-service** for the franja team (MERCADO › AJUSTES on the dashboard); what survives here is an abuse override, not an approval queue. The dashboard's retired-approvals path redirects to `/admin?tab=franjas`, which is why the `franjas` key is listed in the alias table even though it did not change.
 
-### USUARIOS — roles, flags, franja binding
+### USUARIOS — roles, flags, franja binding, account deletion
 
 `AdminUsersEditor`. The server prefetches three bounded lists rather than the whole roster: everyone with non-default permissions (`role != 'user'` OR `is_mod` OR `is_og` OR bound to a franja — the audit-staff workflow, ~50 rows even at scale), the 25 most recent signups, and 50 recent plain readers. Plus total user count, per-role counts, and the mod count. Writes go to `/api/admin/users`; lookup beyond those lists goes through `/api/admin/users/search`.
+
+The selected user's editor also offers **ELIMINAR USUARIO**, requiring the exact username before calling `DELETE /api/admin/users/[id]`. The route checks the caller with `requireAdmin()`, refuses self-deletion, verifies the target and confirmation, then uses the service-role Auth API to delete the account (requires `SUPABASE_SERVICE_ROLE_KEY`). Existing foreign keys cascade the profile, drafts, comments, forum threads and activity, including replies by other users; published items survive with `created_by = NULL`. This is permanent deletion, not a registration ban. Auth errors (including Storage ownership dependencies) leave the UI in the confirmation state with an error; there is no fallback that deletes only the public profile or removes shared media. No migration is required.
 
 ### ACCESO — invitaciones + espera
 
