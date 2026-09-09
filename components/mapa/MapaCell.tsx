@@ -77,6 +77,8 @@ function metaLine(item: ContentItem): string {
 
 export interface MapaCellProps {
   placed: PlacedItem
+  /** Quantized screen scale; panning must not change image variants. */
+  imageScale: number
   /** Roving tabindex — exactly one cell is tabbable at a time. */
   tabbable: boolean
   /** Franja focus: this cell is NOT attributed to the focused identity. */
@@ -106,6 +108,7 @@ export interface MapaCellProps {
 
 export const MapaCell = memo(function MapaCell({
   placed,
+  imageScale,
   tabbable,
   dimmed,
   emphasized,
@@ -160,9 +163,9 @@ export const MapaCell = memo(function MapaCell({
 
   const label = isArchive ? 'ARCHIVO' : TYPE_LABEL[item.type]
   const meta = metaLine(item)
-  // Optimizer variant hint — plane-space widths (hex ≈ 220px at zoom 1);
-  // the browser multiplies by devicePixelRatio when picking from the srcset.
-  const sizesHint = size >= 7 ? '560px' : size >= 3 ? '440px' : '240px'
+  // sizes is a SCREEN width, not a world width. At the global 22% zoom,
+  // requesting full-size flyers wastes ~16× the decoded bitmap area.
+  const sizesHint = `${Math.ceil(bbox.width * imageScale)}px`
 
   return (
     <div
@@ -180,7 +183,7 @@ export const MapaCell = memo(function MapaCell({
       onFocus={() => { onFocusItem(item.id); onInspect(item) }}
       onBlur={() => onInspect(null)}
       className={clsx(
-        'group/cell absolute cursor-pointer outline-none [contain:layout_style]',
+        'group/cell absolute cursor-pointer outline-none [contain:layout_paint_style]',
         'transition-[transform,opacity] duration-700 ease-in-out motion-reduce:transition-none',
         dimmed && 'mapa-cell--dim',
         emphasized && 'mapa-cell--emph',

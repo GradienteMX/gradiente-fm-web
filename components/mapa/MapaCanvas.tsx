@@ -4,8 +4,8 @@
 // One continuous surface: the global terrain and the franja focus state are
 // two camera positions over the SAME plane (spec § One continuous surface).
 // The camera transform is applied imperatively (ref → style) so pan/zoom
-// stays off the React render path; React state receives a throttled mirror
-// that drives virtualization and the semantic-zoom band.
+// is coalesced to display frames. React receives coverage-edge updates and
+// one settled mirror; direct pans reuse a bounded motion raster.
 //
 // Printed atlas: paper guides, ink focus fields and fixed-size inspection
 // captions surround the existing honeycomb engine. Motion always settles.
@@ -18,6 +18,7 @@ import {
   useMemo,
   useRef,
   useState,
+  startTransition,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type { ContentItem, MarketplaceListing } from '@/lib/types'
@@ -55,9 +56,11 @@ import { MapaCell } from '@/components/mapa/MapaCell'
 import { MapaFilterColumn } from '@/components/mapa/MapaFilterColumn'
 import { MapaListingCell } from '@/components/mapa/MapaListingCell'
 import { FranjaObi } from '@/components/mapa/FranjaObi'
-import { AtlasBackdrop } from '@/components/mapa/AtlasBackdrop'
+import { AtlasBackdrop, type AtlasBackdropHandle } from '@/components/mapa/AtlasBackdrop'
+import { cameraWindow, needsMapWindow, type MapWindow } from '@/lib/mapa/viewport'
 import { AtlasChrome } from '@/components/mapa/AtlasChrome'
 import { AtlasInspection, type AtlasInspectionHandle } from '@/components/mapa/AtlasInspection'
+import { AtlasMotionLayer, type AtlasMotionHandle } from '@/components/mapa/AtlasMotionLayer'
 
 const ZMIN = 0.06
 const ZMAX = 1.6
@@ -104,6 +107,10 @@ export function MapaCanvas({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const planeRef = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<AtlasBackdropHandle>(null)
+  const motionLayerRef = useRef<AtlasMotionHandle>(null)
+  const cameraFrameRef = useRef<number | null>(null)
+  const mountedWindowRef = useRef<MapWindow | null>(null)
   const cameraRef = useRef<Camera>({ cx: 0, cy: 0, z: 0.5 })
   const viewportRef = useRef({ w: 1280, h: 800 })
   const reducedMotionRef = useRef(false)
@@ -429,8 +436,11 @@ export function MapaCanvas({
     if (plane) {
       plane.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${z.toFixed(4)})`
     }
+    backdropRef.current?.setCamera(cameraRef.current, w, h)
+    motionLayerRef.current?.move(cameraRef.current)
     if (container) {
-      container.dataset.band = z < 0.45 ? 'far' : z < 0.95 ? 'mid' : 'near'
+      const band = z < 0.45 ? 'far' : z < 0.95 ? 'mid' : 'near'
+      if (container.dataset.band !== band) container.dataset.band = band
       // Zoom bursts: suspend cell-text transitions while the scale is moving
       // so band flips don't trigger a mass opacity-transition repaint.
       if (lastAppliedZ.current !== null && lastAppliedZ.current !== z) {
@@ -443,20 +453,36 @@ export function MapaCanvas({
       }
       lastAppliedZ.current = z
     }
-    // Trailing mirror into React state — virtualization + chrome react to the
-    // settled camera, not to every pointermove frame.
-    if (viewSyncTimer.current === null) {
-      viewSyncTimer.current = setTimeout(() => {
-        viewSyncTimer.current = null
-        setViewCam({ ...cameraRef.current })
-      }, 120)
+    const syncView = () => {
+      const camera = { ...cameraRef.current }
+      const viewport = viewportRef.current
+      mountedWindowRef.current = cameraWindow(camera, viewport.w, viewport.h)
+      startTransition(() => setViewCam(camera))
     }
+    // Replenish before exposing an unmounted edge. Small pans reuse the same
+    // cells; a true trailing update trims coverage and updates the zoom dock.
+    if (needsMapWindow(mountedWindowRef.current, cameraRef.current, w, h) &&
+        !motionLayerRef.current?.coversViewport(cameraRef.current, w, h)) syncView()
+    if (viewSyncTimer.current !== null) clearTimeout(viewSyncTimer.current)
+    viewSyncTimer.current = setTimeout(() => {
+      viewSyncTimer.current = null
+      backdropRef.current?.setCamera(cameraRef.current, viewportRef.current.w, viewportRef.current.h, true)
+      syncView()
+      if (pointersRef.current.size === 0) motionLayerRef.current?.end()
+    }, 180)
   }, [])
 
   const setCamera = useCallback(
     (cam: Camera) => {
       cameraRef.current = clampCamera(cam)
-      applyCamera()
+      // Pointer/wheel bursts may arrive faster than display refresh. Keep the
+      // latest camera immediately, but write the DOM only once per frame.
+      if (cameraFrameRef.current === null) {
+        cameraFrameRef.current = requestAnimationFrame(() => {
+          cameraFrameRef.current = null
+          applyCamera()
+        })
+      }
     },
     [applyCamera, clampCamera],
   )
@@ -468,9 +494,18 @@ export function MapaCanvas({
     momentumRef.current = null
   }, [])
 
+  useEffect(() => () => {
+    if (cameraFrameRef.current !== null) cancelAnimationFrame(cameraFrameRef.current)
+    if (animRef.current !== null) cancelAnimationFrame(animRef.current)
+    if (momentumRef.current !== null) cancelAnimationFrame(momentumRef.current)
+    if (viewSyncTimer.current !== null) clearTimeout(viewSyncTimer.current)
+    if (zoomingTimer.current !== null) clearTimeout(zoomingTimer.current)
+  }, [])
+
   const animateTo = useCallback(
     (target: Camera, duration = 700) => {
       stopMotion()
+      motionLayerRef.current?.end()
       const from = { ...cameraRef.current }
       const to = clampCamera(target)
       if (reducedMotionRef.current || duration <= 0) {
@@ -722,6 +757,7 @@ export function MapaCanvas({
           z,
         })
       } else {
+        if (planeRef.current) motionLayerRef.current?.begin(planeRef.current, cam, viewportRef.current.w, viewportRef.current.h)
         setCamera({
           cx: cam.cx + e.deltaX / cam.z,
           cy: cam.cy + e.deltaY / cam.z,
@@ -737,6 +773,7 @@ export function MapaCanvas({
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return
       if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
       inspectionRef.current?.hide()
       setHelpOpen(false)
@@ -803,6 +840,7 @@ export function MapaCanvas({
       const dy = e.clientY - drag.y
       if (!drag.moved && Math.hypot(dx, dy) < 5) return
       if (!drag.moved) {
+        if (planeRef.current) motionLayerRef.current?.begin(planeRef.current, cam, viewportRef.current.w, viewportRef.current.h)
         // Capture only once an actual drag starts — capturing on pointerdown
         // would retarget the ensuing `click` to the container and kill cell
         // opens (click dispatches to the capture target, not the cell).
@@ -831,10 +869,11 @@ export function MapaCanvas({
       if (pointersRef.current.size < 2) pinchRef.current = null
       if (pointersRef.current.size === 0) {
         containerRef.current?.classList.remove('mapa-dragging')
+        applyCamera()
       }
       const drag = dragRef.current
       dragRef.current = null
-      if (!drag || !drag.moved || reducedMotionRef.current) return
+      if (e.type !== 'pointerup' || !drag || !drag.moved || reducedMotionRef.current) return
       // Restrained momentum: strong friction, early cutoff.
       let { vx, vy } = drag
       if (Math.hypot(vx, vy) < 2) return
@@ -855,7 +894,7 @@ export function MapaCanvas({
       }
       momentumRef.current = requestAnimationFrame(glide)
     },
-    [setCamera],
+    [applyCamera, setCamera],
   )
 
   const zoomStepTarget = useRef<number | null>(null)
@@ -983,16 +1022,13 @@ export function MapaCanvas({
   // ── Virtualization ────────────────────────────────────────────────────────
 
   const visiblePlaced = useMemo(() => {
-    if (!ready || !viewCam) return layout.placed
+    if (!ready || !viewCam) return []
     const { w, h } = viewportRef.current
-    // 0.55 → roughly a 10% margin band beyond each edge; fewer mounted cells
-    // is the cheapest perf lever this surface has.
-    const halfW = (w / viewCam.z) * 0.55
-    const halfH = (h / viewCam.z) * 0.55
-    const x0 = viewCam.cx - halfW
-    const x1 = viewCam.cx + halfW
-    const y0 = viewCam.cy - halfH
-    const y1 = viewCam.cy + halfH
+    const window = cameraWindow(viewCam, w, h)
+    const x0 = window.x
+    const x1 = window.x + window.width
+    const y0 = window.y
+    const y1 = window.y + window.height
     const deltas = moveDeltas
     return layout.placed.filter((p) => {
       const d = deltas?.[p.item.id]
@@ -1003,6 +1039,23 @@ export function MapaCanvas({
   }, [moveDeltas, layout.placed, ready, viewCam])
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const plane = planeRef.current
+    if (!plane || !ready) return
+    let timer: ReturnType<typeof setTimeout>
+    const refresh = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => motionLayerRef.current?.refresh(plane, cameraRef.current, viewportRef.current.w, viewportRef.current.h), 80)
+    }
+    refresh()
+    // Lazy-loaded flyers should be included in the next gesture too.
+    plane.addEventListener('load', refresh, true)
+    return () => {
+      clearTimeout(timer)
+      plane.removeEventListener('load', refresh, true)
+    }
+  }, [viewCam, ready, hiddenItemIds, moveDeltas])
 
   return (
     <div
@@ -1018,6 +1071,7 @@ export function MapaCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onLostPointerCapture={onPointerUp}
       onDoubleClick={(e) => {
         const t = e.target as HTMLElement
         if (t.closest('[data-mapa-ui]')) return
@@ -1028,6 +1082,7 @@ export function MapaCanvas({
         if (t.closest('[data-item-id],[data-mapa-node]')) return
         zoomAtPoint(e.clientX, e.clientY, 1.5)
       }}
+      onKeyDownCapture={() => { suppressClickRef.current = false }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           if (helpOpen) setHelpOpen(false)
@@ -1049,17 +1104,18 @@ export function MapaCanvas({
       </svg>
 
       {/* The plane — all cells live in one transformed coordinate space. */}
+      <AtlasBackdrop ref={backdropRef} focus={focusArrangement && focusSlug ? { key: focusSlug, perimeter: focusArrangement.perimeter } : null} continents={continentArrangement?.continents ?? []} />
       <div
         ref={planeRef}
-        className={`absolute left-0 top-0 h-0 w-0 [transform-origin:0_0] [will-change:transform] ${
+        className={`mapa-plane absolute left-0 top-0 h-0 w-0 [transform-origin:0_0] [will-change:transform] ${
           ready ? 'opacity-100' : 'opacity-0'
         } transition-opacity duration-300 motion-reduce:transition-none`}
       >
-        <AtlasBackdrop bounds={viewCam ? { x: viewCam.cx - viewportRef.current.w / viewCam.z, y: viewCam.cy - viewportRef.current.h / viewCam.z, width: viewportRef.current.w * 2 / viewCam.z, height: viewportRef.current.h * 2 / viewCam.z } : activeBounds} focus={focusArrangement && focusSlug ? { key: focusSlug, perimeter: focusArrangement.perimeter } : null} continents={continentArrangement?.continents ?? []} />
         {visiblePlaced.map((p) => (
           <MapaCell
             key={p.item.id}
             placed={p}
+            imageScale={!viewCam || viewCam.z <= 0.25 ? 0.25 : viewCam.z <= 0.5 ? 0.5 : viewCam.z <= 1 ? 1 : 2}
             tabbable={p.item.id === focusedItemId}
             dimmed={
               focusMemberIds
@@ -1195,6 +1251,7 @@ export function MapaCanvas({
         helpOpen={helpOpen} onToggleHelp={() => { setHelpOpen((o) => !o); setFranjasOpen(false) }}
       />
       <AtlasInspection ref={inspectionRef} />
+      <AtlasMotionLayer ref={motionLayerRef} />
 
       {/* Right-edge category toggles — every category visible by default;
           each hex excludes its category from the active terrain. */}

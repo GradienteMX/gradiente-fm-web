@@ -19,8 +19,19 @@ The design is rendered with SVG and Tailwind, using real content. The generated 
 - The franja selector supports search. Dossiers with no map content are separate, collapsible links rather than inert focus targets.
 - Focus and affinity state are reflected in the header. If affinity is enabled during a focus, the rail explains that it resumes on exit.
 
+## Camera rendering
+
+Camera writes are coalesced to one animation frame. Content keeps a 30% overscan region on each side and refreshes as the camera approaches its edge, plus one update after motion settles; there is no repeating React refresh during small pans. The SVG guides and ink fields live in a separate, bounded layer with a cached camera transform.
+
+Direct drag and wheel panning use `AtlasMotionLayer`, a reusable, bounded canvas drawn from already-loaded flyers, polyhex outlines, paper guides and affinity boundaries. Flyer preparation runs in short asynchronous batches before gestures, and small movements reuse the existing pixels. During motion, images and rims carry the terrain; text, focus targets and normal image resolution return when motion settles. The display-only canvas never exports or reads pixels. It does not change placement, ranking, filters, or content routes. Image requests use quantized screen widths rather than unscaled world widths. Pointer cancellation/lost capture and unmount release the gesture and pending camera work.
+
 ## Implementation and validation
 
 `AtlasBackdrop`, `AtlasChrome`, `AtlasInspection`, `MapaCanvas`, `MapaCell`, `MapaFilterColumn`, and `FranjaObi` own the presentation. Geometry and ranking modules in `lib/mapa` were not modified. Existing synthetic-HL prototype behavior remains.
 
 Desktop Chrome checks covered small and large franja focus, caption/Enter opening, overlay return, category exclusion/restoration, affinity on/off and focus round-trip with URL preservation, searchable franjas, expanded identity details, and help dismissal. Existing MAPA suite: 64 tests passing. Mobile design is deferred.
+
+
+### Drag performance verification (2026-09-09)
+
+Production Chrome six-second camera-path checks at 22% zoom: standard view 335 frames, affinity 351 frames; both had a 17 ms median and 33 ms p95, with zero terrain commits during the gesture. Worst observed frames remained 608 ms and 509 ms respectively, so this is a substantial improvement, not a guarantee of hitch-free motion. Actual pointer dragging, release/preview restoration, category controls, zoom, and Enter-to-open after dragging were checked separately. MAPA geometry and viewport coverage suite: 67 passing tests. The temporary timing UI lives only in an isolated test build, not application source.

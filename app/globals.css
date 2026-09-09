@@ -392,6 +392,10 @@ body {
 .mapa-dragging {
   cursor: grabbing;
 }
+.mapa-panning .mapa-plane,
+.mapa-panning .mapa-backdrop {
+  visibility: hidden;
+}
 .mapa-dragging [data-item-id] {
   pointer-events: none;
 }

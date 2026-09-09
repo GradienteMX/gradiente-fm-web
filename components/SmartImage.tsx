@@ -109,6 +109,7 @@ export function SmartImage({
       src={src}
       alt={alt}
       loading={priority ? undefined : 'lazy'}
+      decoding="async"
       draggable={draggable}
       className={`absolute inset-0 h-full w-full ${className ?? ''}`}
     />
