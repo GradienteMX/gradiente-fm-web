@@ -55,9 +55,8 @@ type WidgetDef = {
 }
 
 // Revision-2 allowedSizes table (Iker 2026-08-22): every widget carries MORE
-// resize states than the scale-pass build — the corner grip cycles through
-// all of them, so "más opciones para hacer resize" is this table, not a new
-// gesture. First entry = the committed default.
+// resize states than the scale-pass build. The desktop picker previews these
+// exact states before committing one. First entry = the committed default.
 export const WIDGET_DEFS: Record<WidgetId, WidgetDef> = {
   // CREAR NUEVO — split out of CULTIVAR (revision-2 point 3): the acid block
   // is a whole widget now. Chips are law-visible, so it never compacts.

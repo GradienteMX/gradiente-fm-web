@@ -202,10 +202,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
           {/* Vibe fader on its faceplate seat — the fader's meter/grips are
               dark-ground instruments (instrument doctrine), so it sits on a
               bg-panel band like the dashboard ReproductorWidget's. */}
-          <div className="flex w-full min-w-0 items-center gap-3 border border-ink bg-panel px-3 py-2 sm:ml-auto sm:w-auto">
-            <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-panel-text">
-              VIBE
-            </span>
+          <div className="w-full min-w-0 border border-ink bg-panel px-3 py-2 sm:max-w-lg">
             <VibeFader item={item} />
           </div>
         </dl>

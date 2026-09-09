@@ -304,7 +304,8 @@ body {
   transition: opacity 0.25s ease;
 }
 .mapa-root[data-band='far'] .mapa-cell-label,
-.mapa-root[data-band='far'] .mapa-cell-meta {
+.mapa-root[data-band='far'] .mapa-cell-meta,
+.mapa-root[data-band='far'] .mapa-cell-shade {
   opacity: 0;
 }
 /* Far band: silhouette + imagery only — titles survive on rosettes alone
@@ -314,6 +315,8 @@ body {
 .mapa-root[data-band='far'] [data-size='3'] .mapa-cell-title {
   opacity: 0;
 }
+.mapa-root[data-band='mid'] .mapa-cell-label,
+.mapa-root[data-band='mid'] [data-size='1'] .mapa-cell-title,
 .mapa-root[data-band='mid'] [data-size='1'] .mapa-cell-meta {
   opacity: 0;
 }
@@ -337,7 +340,7 @@ body {
   pointer-events: none;
 }
 .mapa-cell--dim .mapa-cell-media {
-  filter: brightness(0.35) saturate(0.5);
+  opacity: 0.3;
 }
 .mapa-cell--dim .mapa-cell-text {
   opacity: 0.25;
@@ -345,7 +348,6 @@ body {
 .mapa-cell--dim .mapa-cell-media,
 .mapa-cell--dim .mapa-cell-text {
   transition:
-    filter 0.3s ease,
     opacity 0.3s ease;
 }
 .mapa-zooming .mapa-cell-label,
@@ -380,24 +382,12 @@ body {
 }
 
 /* ── /mapa — pointer feel ───────────────────────────────────────────────────
-   Hover press: the image scales slightly INSIDE its hex clip (glass-press
-   feel, compositor-only). Rim brightens in step. While the terrain is being
-   dragged (.mapa-dragging, class-toggled off the render path) cells stop
-   receiving pointer events: no hover churn mid-pan, grabbing cursor
-   everywhere. */
-.mapa-cell-img {
-  transition: transform 0.3s ease-out;
-}
-.group\/cell:hover .mapa-cell-img,
-.group\/cell:focus-visible .mapa-cell-img {
-  transform: scale(1.045);
-}
-.mapa-cell-rim {
-  transition: stroke-opacity 0.15s ease;
-}
-.group\/cell:hover .mapa-cell-rim,
+   No hover transforms, tints or stacking-order changes on the bitmap terrain.
+   The isolated caption supplies pointer feedback. Reserve the rim change for
+   keyboard focus so skimming hundreds of cells never repaints the terrain. */
 .group\/cell:focus-visible .mapa-cell-rim {
   stroke-opacity: 1;
+  stroke-width: 4;
 }
 .mapa-dragging {
   cursor: grabbing;
@@ -408,14 +398,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .mapa-booting .mapa-cell-anim {
     animation: none;
-  }
-  .mapa-cell-img,
-  .mapa-cell-rim {
-    transition: none;
-  }
-  .group\/cell:hover .mapa-cell-img,
-  .group\/cell:focus-visible .mapa-cell-img {
-    transform: none;
   }
 }
 

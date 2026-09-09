@@ -134,10 +134,7 @@ export function ListicleOverlay({ item }: ListicleOverlayProps) {
           )}
           {/* Vibe fader on its faceplate seat — instrument doctrine, same
               band as the dashboard ReproductorWidget's mini fader. */}
-          <div className="flex w-full min-w-0 items-center gap-3 border border-ink bg-panel px-3 py-2 sm:ml-auto sm:w-auto">
-            <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-panel-text">
-              VIBE
-            </span>
+          <div className="w-full min-w-0 border border-ink bg-panel px-3 py-2 sm:max-w-lg">
             <VibeFader item={item} />
           </div>
         </dl>

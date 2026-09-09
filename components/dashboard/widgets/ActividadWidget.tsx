@@ -12,11 +12,10 @@
 // in-place overlay popup — comment rows land with the comments column
 // addressed (`?comment=`), so the reply happens right there.
 //
-// Read-state is still the ONE localStorage watermark: unread computed with
-// the same countUnreadActivity the StatusStrip uses; the watermark advances
-// after ≥50%-in-viewport for 2s or via MARCAR VISTO. No per-row read state.
+// Exposed rows become seen individually after 2s. Explicit mark-all retains
+// the legacy watermark. StatusStrip uses the same combined unread rule.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
@@ -29,10 +28,13 @@ import {
   scrollToDashWidget,
 } from '@/components/dashboard/shell/StatusStrip'
 import {
+  markActivityRowSeen,
+  readSeenActivity,
   advanceLastSeenActivity,
   readLastSeenActivity,
   subscribeLastSeenActivity,
 } from '@/lib/dashboard/localState'
+import { isActivityUnread, type SeenActivity } from '@/lib/dashboard/activityRead'
 import { latestActivityTimestamp, type ActivityRow } from '@/lib/dashboard/activity'
 import { useOpenItem } from '@/lib/dashboard/openItem'
 import type { User } from '@/lib/types'
@@ -184,6 +186,28 @@ function ActivityRowView({
   )
 }
 
+// Read only the row actually exposed, including clipping inside the list.
+function ActivityExposure({ row, uid, unread, children }: { row: ActivityRow; uid: string | null; unread: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!uid || !unread || !ref.current) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let visible = false
+    const update = () => {
+      clearTimeout(timer)
+      if (visible && document.visibilityState === 'visible') timer = setTimeout(() => markActivityRowSeen(uid, row.key, row.createdAt), DWELL_MS)
+    }
+    const observer = new IntersectionObserver(([entry]) => { visible = entry.intersectionRatio >= 0.75; update() }, { threshold: [0, 0.75, 1] })
+    observer.observe(ref.current)
+    document.addEventListener('visibilitychange', update)
+    return () => { observer.disconnect(); clearTimeout(timer); document.removeEventListener('visibilitychange', update) }
+  }, [uid, unread, row.key, row.createdAt])
+  return <div ref={ref} className="flex items-center gap-2 border-b border-ink/15 last:border-b-0">
+    <span aria-label={unread ? 'Sin leer' : 'Leído'} className={`h-1.5 w-1.5 shrink-0 ${unread ? 'border border-ink bg-acid' : 'bg-transparent'}`} />
+    <div className="min-w-0 flex-1">{children}</div>
+  </div>
+}
+
 // ── The widget ──────────────────────────────────────────────────────────────
 
 export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
@@ -192,46 +216,24 @@ export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
   const { activity, loaded, errors, afterMutation } = useDashboardData()
   const uid = currentUser?.id ?? null
 
+  const [seen, setSeen] = useState<SeenActivity>({})
   const [watermark, setWatermark] = useState<string | null>(null)
   useEffect(() => {
     if (!uid) {
       setWatermark(null)
+      setSeen({})
       return
     }
-    setWatermark(readLastSeenActivity(uid))
-    return subscribeLastSeenActivity(() => setWatermark(readLastSeenActivity(uid)))
+    const sync = () => { setWatermark(readLastSeenActivity(uid)); setSeen(readSeenActivity(uid)) }
+    sync()
+    return subscribeLastSeenActivity(sync)
   }, [uid])
 
   const unread = useMemo(
-    () => countUnreadActivity(activity, watermark),
-    [activity, watermark],
+    () => countUnreadActivity(activity, watermark, seen),
+    [activity, watermark, seen],
   )
   const latestTs = useMemo(() => latestActivityTimestamp(activity), [activity])
-
-  // In-viewport watermark advance (≥50% for 2s; never on mount).
-  const rootRef = useRef<HTMLDivElement | null>(null)
-  const [inView, setInView] = useState(false)
-  useEffect(() => {
-    const el = rootRef.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[entries.length - 1]
-        if (entry) setInView(entry.intersectionRatio >= 0.5)
-      },
-      { threshold: [0, 0.5, 1] },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-  useEffect(() => {
-    if (!inView || !uid || !latestTs || unread === 0) return
-    const timer = window.setTimeout(
-      () => advanceLastSeenActivity(uid, latestTs),
-      DWELL_MS,
-    )
-    return () => window.clearTimeout(timer)
-  }, [inView, uid, latestTs, unread])
 
   const [notice, setNotice] = useState<string | null>(null)
   useEffect(() => {
@@ -253,15 +255,6 @@ export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
     () => (expanded ? activity : activity.slice(0, visibleCap)),
     [activity, expanded, visibleCap],
   )
-  const newRows = useMemo(
-    () => visibleRows.filter((row) => !watermark || row.createdAt > watermark),
-    [visibleRows, watermark],
-  )
-  const seenRows = useMemo(
-    () => visibleRows.filter((row) => !!watermark && row.createdAt <= watermark),
-    [visibleRows, watermark],
-  )
-
   const isLoading = loaded.activity !== true && !errors.activity && activity.length === 0
   const isError = !!errors.activity && activity.length === 0
   const isEmpty = loaded.activity === true && !errors.activity && activity.length === 0
@@ -269,7 +262,7 @@ export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
   const markSeenAction =
     !compact && unread > 0 && uid && latestTs
       ? {
-          label: 'MARCAR VISTO',
+          label: 'MARCAR TODO VISTO',
           cue: 'stamp',
           onClick: () => advanceLastSeenActivity(uid, latestTs),
         }
@@ -293,7 +286,7 @@ export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
   }
 
   return (
-    <div ref={rootRef} id={dashWidgetDomId('actividad')} className="h-full scroll-mt-14">
+    <div id={dashWidgetDomId('actividad')} className="h-full scroll-mt-14">
       <WidgetFrame
         title="ACTIVIDAD"
         count={unread > 0 ? unread : undefined}
@@ -337,27 +330,10 @@ export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
           ) : (
             <>
               <div className={expanded ? 'min-h-0 flex-1 overflow-y-auto' : 'shrink-0'}>
-                {newRows.map((row) => (
-                  <ActivityRowView
-                    key={row.key}
-                    row={row}
-                    onUnavailable={() => setNotice('unavailable')}
-                  />
-                ))}
-                {newRows.length > 0 && seenRows.length > 0 && (
-                  <div className="flex items-center gap-2 py-0.5">
-                    <span className="whitespace-nowrap font-mono text-d11 tracking-widest text-ink-soft">
-                      DESDE TU ÚLTIMA VISITA
-                    </span>
-                    <span aria-hidden className="h-px flex-1 bg-ink" />
-                  </div>
-                )}
-                {seenRows.map((row) => (
-                  <ActivityRowView
-                    key={row.key}
-                    row={row}
-                    onUnavailable={() => setNotice('unavailable')}
-                  />
+                {visibleRows.map((row) => (
+                  <ActivityExposure key={row.key} row={row} uid={uid} unread={isActivityUnread(row, watermark, seen)}>
+                    <ActivityRowView row={row} onUnavailable={() => setNotice('unavailable')} />
+                  </ActivityExposure>
                 ))}
               </div>
               {overflowCount > 0 && (

@@ -25,9 +25,8 @@
 // second target column. On first boot after the table exists, seed it from
 // this store, then keep localStorage as a mirror.
 //
-// The watermark is the ONE read-state for the whole dashboard: the spine's
-// unread count and ACTIVIDAD's badge both derive from this key — never a
-// second per-row read state.
+// The legacy watermark represents explicit mark-all; per-row exposure is
+// stored separately. StatusStrip and Actividad share the same unread rule.
 
 export type FollowKind = 'franja' | 'genre'
 
@@ -64,7 +63,7 @@ function hookStorageEvents() {
     if (!e.key) return
     if (e.key.startsWith('gradiente:dashboard:follows:')) {
       followListeners.forEach((fn) => fn())
-    } else if (e.key.startsWith('gradiente:dashboard:lastSeenActivity:')) {
+    } else if (e.key.startsWith('gradiente:dashboard:lastSeenActivity:') || e.key.startsWith('gradiente:dashboard:seenActivity:')) {
       lastSeenListeners.forEach((fn) => fn())
     }
   })
@@ -162,5 +161,26 @@ export function advanceLastSeenActivity(uid: string, iso: string): void {
   } catch {
     return
   }
+  lastSeenListeners.forEach((fn) => fn())
+}
+
+// Individually exposed activity remains private and per-device, like the
+// legacy mark-all watermark. Both publish through the same subscription.
+export function readSeenActivity(uid: string): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(`gradiente:dashboard:seenActivity:${uid}`) ?? '{}')
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return Object.fromEntries(Object.entries(parsed).filter(([, value]) => typeof value === 'string'))
+  } catch { return {} }
+}
+
+export function markActivityRowSeen(uid: string, key: string, createdAt: string): void {
+  if (typeof window === 'undefined') return
+  const seen = readSeenActivity(uid)
+  if (seen[key] && seen[key] >= createdAt) return
+  const entries = Object.entries({ ...seen, [key]: createdAt }).sort((a, b) => b[1].localeCompare(a[1])).slice(0, 2000)
+  try { window.localStorage.setItem(`gradiente:dashboard:seenActivity:${uid}`, JSON.stringify(Object.fromEntries(entries))) }
+  catch { return }
   lastSeenListeners.forEach((fn) => fn())
 }

@@ -26,6 +26,7 @@ import {
   useSyncExternalStore,
   type ComponentType,
 } from 'react'
+import { WidgetSizePicker } from '@/components/dashboard/grid/WidgetSizePicker'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import {
@@ -33,16 +34,15 @@ import {
   TABLET_COLS,
   applyCompactModes,
   defaultLayoutMeta,
-  nextAllowedSize,
   remapToTablet,
   visibleEntries,
   type LayoutEntry,
   type WidgetId,
   type WidgetSize,
 } from '@/lib/dashboard/layout'
-import { FOCUS_RING, WIDGET_LABELS, WidgetPlaceholder } from './WidgetFrame'
-import { GridGhost } from './GridGhost'
-import { EditModeBar } from './EditModeBar'
+import { FOCUS_RING, WIDGET_LABELS, WidgetPlaceholder } from '@/components/dashboard/grid/WidgetFrame'
+import { GridGhost } from '@/components/dashboard/grid/GridGhost'
+import { EditModeBar } from '@/components/dashboard/grid/EditModeBar'
 import {
   CUT_IN_DURATION,
   CUT_IN_STAGGER,
@@ -50,7 +50,7 @@ import {
   REORDER_TRANSITION,
   stepEase,
   useGridDrag,
-} from './useGridDrag'
+} from '@/components/dashboard/grid/useGridDrag'
 
 // ── Widget registry contract (Stage 2 integration point) ────────────────────
 
@@ -149,13 +149,13 @@ export function WidgetGrid({ widgets, editing, onEditingChange }: WidgetGridProp
     [data, mode],
   )
 
-  const cycleSize = useCallback(
-    (id: WidgetId) => {
+  const [sizingId, setSizingId] = useState<WidgetId | null>(null)
+  const selectSize = useCallback(
+    (id: WidgetId, next: WidgetSize) => {
       const current = metaRef.current
       const stored = current.layout.find((entry) => entry.id === id)
       if (!stored) return
       // Size SNAPS between the declared states — never tweens (§2.2/R4).
-      const next = nextAllowedSize(id, { w: stored.w, h: stored.h })
       data.commitLayout({
         ...current,
         layout: current.layout.map((entry) =>
@@ -314,7 +314,6 @@ export function WidgetGrid({ widgets, editing, onEditingChange }: WidgetGridProp
               ? drag.candidate.find((c) => c.id === entry.id) ?? entry
               : entry
           const isCompact = compact.has(entry.id)
-          const nextSize = nextAllowedSize(entry.id, { w: stored.w, h: stored.h })
           const label = WIDGET_LABELS[entry.id]
           return (
             <motion.div
@@ -332,48 +331,35 @@ export function WidgetGrid({ widgets, editing, onEditingChange }: WidgetGridProp
                 ...(isLifted ? { x: drag.x, y: drag.y } : null),
               }}
             >
-              {renderWidget(entry.id, { w: stored.w, h: stored.h }, isCompact)}
+              <div className="h-full" ref={(el) => { if (editing) el?.setAttribute('inert', ''); else el?.removeAttribute('inert') }}>
+                {renderWidget(entry.id, { w: stored.w, h: stored.h }, isCompact)}
+              </div>
               {editing && (
                 <>
-                  {/* The whole surface drags in edit mode (§2.2); content
-                      stays fully rendered and readable beneath. Listeners
-                      exist ONLY while this overlay exists. */}
-                  <div
-                    aria-hidden
-                    onPointerDown={(event) => drag.onPointerDown(entry.id, event)}
-                    className={`absolute inset-0 z-10 touch-none ${
-                      isDragged ? 'cursor-grabbing' : 'cursor-grab'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => hideWidget(entry.id)}
-                    aria-label={`Ocultar ${label}`}
-                    title="OCULTAR"
-                    className={`absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center border border-ink bg-paper font-mono text-d15 text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
-                  >
-                    ×
-                  </button>
-                  {!isCompact && (
-                    <button
-                      type="button"
-                      onClick={() => cycleSize(entry.id)}
-                      aria-label={`Cambiar tamaño de ${label}`}
-                      title={`TAMAÑO ${stored.w}×${stored.h} → ${nextSize.w}×${nextSize.h}`}
-                      className={`absolute bottom-2 right-2 z-20 flex h-8 w-8 items-center justify-center border border-ink bg-paper text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
-                    >
-                      <span
-                        aria-hidden
-                        className="block h-3 w-3 border-b-2 border-r-2 border-current"
-                      />
+                  <div className="absolute inset-0 z-10" aria-hidden />
+                  <div className="absolute inset-x-0 top-0 z-20 flex h-12 items-center gap-2 border border-ink bg-ink px-3 text-paper">
+                    <button type="button" onPointerDown={(event) => drag.onPointerDown(entry.id, event)}
+                      onKeyDown={(event) => {
+                        const dx = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+                        const dy = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0
+                        if (dx || dy) { event.preventDefault(); commitMove(entry.id, entry.x + dx, Math.max(0, entry.y + dy)) }
+                      }}
+                      aria-label={`Mover ${label}. Usa las flechas para reordenar.`}
+                      className={`flex min-w-0 flex-1 touch-none items-center gap-2 text-left font-mono text-d11 font-bold tracking-widest ${isDragged ? 'cursor-grabbing' : 'cursor-grab'} ${FOCUS_RING}`}>
+                      <span aria-hidden className="text-d18">⠿</span><span className="truncate">{label}</span>
                     </button>
-                  )}
+                    <button type="button" onClick={() => hideWidget(entry.id)} aria-label={`Ocultar ${label}`} className={`h-8 border border-paper px-2 font-mono text-d11 hover:bg-paper hover:text-ink ${FOCUS_RING}`}>OCULTAR</button>
+                  </div>
+                  {!isCompact && <button type="button" onClick={() => setSizingId(entry.id)} aria-label={`Cambiar tamaño de ${label}`} className={`absolute bottom-2 right-2 z-20 flex h-9 items-center gap-2 border border-ink bg-paper px-3 font-mono text-d11 text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}>
+                    TAMAÑO {stored.w} × {stored.h} <span aria-hidden>↗</span>
+                  </button>}
                 </>
               )}
             </motion.div>
           )
         })}
       </div>
+      {editing && sizingId && storedById.get(sizingId) && <WidgetSizePicker id={sizingId} current={storedById.get(sizingId)!} onClose={() => setSizingId(null)} onSelect={(next) => { selectSize(sizingId, next); setSizingId(null) }} />}
     </>
   )
 }

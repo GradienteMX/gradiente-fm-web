@@ -40,7 +40,7 @@ export function slugify(input: string): string {
 
 // ── Submit footer ───────────────────────────────────────────────────────────
 
-export type CommitFlash = 'draft' | 'published' | null
+export type CommitFlash = 'draft' | 'published' | 'saving' | 'error' | null
 
 // Displays a relative-time autosave indicator. Updates every 5 seconds.
 export function SaveIndicator({ lastSavedAt }: { lastSavedAt: number | null }) {
@@ -94,6 +94,7 @@ export { newItemId } from '@/lib/drafts'
 
 import type { DraftItem, DraftState, PublishMode } from '@/lib/drafts'
 import {
+  saveDraftItem,
   upsertItem as _commitItem,
   newItemId as _newItemId,
   removeItem,
@@ -132,6 +133,13 @@ export function useDraftWorkbench<T extends ContentItem>({
   const [flash, setFlash] = useState<CommitFlash>(null)
   const [isPublished, setIsPublished] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const savingRef = useRef(false)
+  const idRef = useRef<string | null>(null)
+  idRef.current = committedId
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(flashTimer.current), [])
 
   // Edit sessions get their OWN storage key (`…-draft:edit:<id>`), separate
   // from the new-compose slot (`…-draft`). Previously both shared one per-type
@@ -238,7 +246,27 @@ export function useDraftWorkbench<T extends ContentItem>({
     return id
   }
 
-  const saveDraft = () => commit('draft')
+  const saveDraft = async (): Promise<boolean> => {
+    if (!hydrated || savingRef.current) return false
+    savingRef.current = true
+    clearTimeout(flashTimer.current)
+    setFlash('saving')
+    const id = idRef.current ?? _newItemId(draft.type)
+    idRef.current = id
+    setCommittedId(id)
+    const snapshot = draft
+    const ok = await saveDraftItem({ ...snapshot, id, publishedAt: new Date().toISOString() })
+    savingRef.current = false
+    if (!ok) {
+      setFlash('error')
+      return false
+    }
+    const unchanged = draftRef.current === snapshot
+    setFlash(unchanged ? 'draft' : null)
+    flashTimer.current = setTimeout(() => setFlash(null), 2500)
+    // Continue-later must not close over edits made during the request.
+    return unchanged
+  }
   // Reserves the item as a draft and returns its id so the caller can route
   // the editor to the publish-confirmation flow (see [[Publish Confirmation Flow]]).
   // The state transition to 'published' happens only after the editor confirms
@@ -306,6 +334,7 @@ export function useDraftWorkbench<T extends ContentItem>({
 
   return {
     committedId,
+    canSave: hydrated && flash !== 'saving',
     lastSavedAt,
     flash,
     isPublished,

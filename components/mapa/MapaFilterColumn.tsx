@@ -1,219 +1,69 @@
 'use client'
 
-// Spatial Identity Canvas — right-edge category toggles.
-// The inverse of a filter picker: every category is VISIBLE by default and
-// each hex is a kill-switch. Clicking deactivates that category — its cells
-// fade out in place (nothing moves, nothing regroups; the geography stays
-// learnable, rule 11). Active hexes wear their category color; deactivated
-// ones go hollow. Types on top, the two eras below.
-//
-// Below the eras sits the one OPT-IN toggle of the column: AFINIDAD. Unlike
-// the kill-switches it hides nothing — activating it lets the terrain's
-// affinity structure breathe: high-affinity regions ring up as continents
-// and ocean opens between the masses (see lib/mapa/continents.ts).
-//
-// Fase F — chrome only. Geometry, every toggle behaviour and every URL param
-// (?ocultar= / ?afinidad=1) are untouched; the hardcoded charcoal hex cores
-// and the EVA-orange AFINIDAD accent moved onto the house bezel tokens:
-// panel-dark cores, acid latch for ON, ink-faint for OFF, and the ONE focus
-// grammar (outline-2/offset-2) in its panel-text variant for dark ground.
-
 import { memo } from 'react'
+import { Layers, Hexagon } from 'lucide-react'
 import type { ContentType } from '@/lib/types'
 import { categoryColor, clsx } from '@/lib/utils'
-import {
-  DASH_ACID,
-  DASH_INK_FAINT,
-  DASH_PANEL_TEXT,
-} from '@/lib/dashboard/palette'
 
-const ARCHIVE_COLOR = '#9C8F7F'
-const HEX_CLIP = 'polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)'
-
-// Bezel cores — panel (#111111) at two opacities. Hex strings rather than
-// classes because the clip-path fill can't take a Tailwind background.
-const BEZEL_CORE = '#111111D6'
-const BEZEL_CORE_OFF = '#111111F0'
-
-// One focus grammar, panel variant: the column sits on the map's dark void,
-// where an ink outline would be invisible.
-const FOCUS_RING =
-  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
-
-const TYPE_SHORT: Record<string, string> = {
-  evento: 'EVENTO',
-  mix: 'MIX',
-  noticia: 'NOTIC',
-  review: 'REVIEW',
-  editorial: 'EDIT',
-  opinion: 'OPIN',
-  articulo: 'ARTÍC',
-  listicle: 'LISTA',
+const LABELS: Record<string, string> = {
+  evento: 'EVENTOS', mix: 'MIXES', noticia: 'NOTICIAS', review: 'RESEÑAS',
+  editorial: 'EDITORIAL', opinion: 'OPINIÓN', articulo: 'ARTÍCULOS', listicle: 'LISTAS',
 }
+const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
-interface ToggleHexProps {
-  label: string
-  sub?: string
-  color: string
-  visible: boolean
-  onToggle: () => void
-  ariaLabel: string
-  /** Kill-switches strike the label when off; opt-in toggles don't. */
-  strike?: boolean
-}
-
-function ToggleHex({
-  label,
-  sub,
-  color,
-  visible,
-  onToggle,
-  ariaLabel,
-  strike = true,
-}: ToggleHexProps) {
+function ToggleHex({ label, color, visible, onToggle, count }: {
+  label: string; color: string; visible: boolean; onToggle: () => void; count: number
+}) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={ariaLabel}
-      aria-pressed={visible}
-      className={`group/hextg relative block h-[50px] w-[56px] transition-opacity ${FOCUS_RING}`}
-      style={{ opacity: visible ? 1 : 0.38 }}
-    >
-      <span
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          clipPath: HEX_CLIP,
-          backgroundColor: visible ? color : DASH_INK_FAINT,
-          opacity: visible ? 0.9 : 0.5,
-        }}
-      />
-      <span
-        aria-hidden
-        className="absolute"
-        style={{
-          inset: 1.5,
-          clipPath: HEX_CLIP,
-          backgroundColor: visible ? BEZEL_CORE : BEZEL_CORE_OFF,
-        }}
-      />
-      <span
-        className="relative z-10 flex h-full w-full flex-col items-center justify-center font-mono leading-none tracking-[0.06em]"
-        style={{ color: visible ? color : DASH_INK_FAINT, fontSize: 8.5 }}
-      >
-        <span
-          className={clsx(
-            'max-w-[86%] truncate',
-            strike && !visible && 'line-through',
-          )}
-        >
-          {label}
-        </span>
-        {sub && <span className="mt-0.5 text-[7px] opacity-60">{sub}</span>}
-      </span>
+    <button type="button" onClick={onToggle} aria-pressed={visible}
+      aria-label={`${visible ? 'Ocultar' : 'Mostrar'} ${label} (${count})`}
+      title={`${label}: ${count} · ${visible ? 'Clic para ocultar' : 'Clic para mostrar'}`}
+      className="group relative flex h-14 w-16 shrink-0 items-center justify-center [clip-path:polygon(25%_0%,75%_0%,100%_50%,75%_100%,25%_100%,0%_50%)] focus-visible:outline-none">
+      <svg aria-hidden viewBox="0 0 64 56" className="absolute inset-0 h-full w-full overflow-visible">
+        <path d="M16.5 1.1532 H47.5 L63 28 L47.5 54.8468 H16.5 L1 28 Z" fill={visible ? color : '#EDEBE3'} fillOpacity={visible ? 0.65 : 1} stroke="#111111" strokeWidth="1.4" className="transition-[fill-opacity] group-hover:[fill-opacity:1] group-focus-visible:[fill-opacity:1] group-focus-visible:stroke-[3px]" />
+        {!visible && <path d="M17 42 L47 14" stroke="#111111" strokeOpacity="0.25" />}
+      </svg>
+      <span className={clsx('relative font-mono text-[9px] font-bold tracking-tight text-ink', !visible && 'line-through')}>{label}</span>
     </button>
   )
 }
 
 export interface MapaFilterColumnProps {
-  /** [type, count] — content types present on the terrain. */
   typeOptions: [string, number][]
-  /** [contemporary count, archive count]. */
   eraCounts: [number, number]
-  /**
-   * Marketplace listings that can materialize on the map (focus-state
-   * MERCADO nodes). 0 → the hex doesn't render (honest chips).
-   */
   mercadoCount: number
-  /** Deactivated keys: content types, 'mercado', 'era:ahora'/'era:archivo'. */
   hidden: ReadonlySet<string>
   onToggle: (key: string) => void
-  /** AFINIDAD continent mode — number of detected continents while active. */
   affinityOn: boolean
   affinityCount: number | null
   onToggleAffinity: () => void
+  focusActive?: boolean
 }
 
 export const MapaFilterColumn = memo(function MapaFilterColumn({
-  typeOptions,
-  eraCounts,
-  mercadoCount,
-  hidden,
-  onToggle,
-  affinityOn,
-  affinityCount,
-  onToggleAffinity,
+  typeOptions, eraCounts, mercadoCount, hidden, onToggle, affinityOn, onToggleAffinity, focusActive,
 }: MapaFilterColumnProps) {
   return (
-    <div
-      data-mapa-ui
-      className="pointer-events-auto absolute right-3 top-1/2 z-20 flex max-h-[86dvh] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto py-1 [scrollbar-width:none]"
-      role="group"
-      aria-label="Categorías visibles en el mapa — toca para ocultar o mostrar"
-    >
-      {typeOptions.map(([t, n]) => {
-        const visible = !hidden.has(t)
-        return (
-          <ToggleHex
-            key={t}
-            label={TYPE_SHORT[t] ?? t.toUpperCase()}
-            sub={String(n)}
-            color={categoryColor(t as ContentType)}
-            visible={visible}
-            onToggle={() => onToggle(t)}
-            ariaLabel={`${visible ? 'Ocultar' : 'Mostrar'} ${TYPE_SHORT[t] ?? t} (${n})`}
-          />
-        )
-      })}
-      {mercadoCount > 0 && (
-        <ToggleHex
-          label="MERCADO"
-          sub={String(mercadoCount)}
-          color="#D6B37A"
-          visible={!hidden.has('mercado')}
-          onToggle={() => onToggle('mercado')}
-          ariaLabel={`${
-            hidden.has('mercado') ? 'Mostrar' : 'Ocultar'
-          } artículos de mercado (${mercadoCount})`}
-        />
-      )}
-      <div aria-hidden className="my-1 h-px w-8 bg-panel-text/25" />
-      {(
-        [
-          ['era:ahora', 'AHORA', DASH_PANEL_TEXT, eraCounts[0]],
-          ['era:archivo', 'ARCHIVO', ARCHIVE_COLOR, eraCounts[1]],
-        ] as const
-      ).map(([key, label, color, n]) => {
-        const visible = !hidden.has(key)
-        return (
-          <ToggleHex
-            key={key}
-            label={label}
-            sub={String(n)}
-            color={color}
-            visible={visible}
-            onToggle={() => onToggle(key)}
-            ariaLabel={`${visible ? 'Ocultar' : 'Mostrar'} era ${label} (${n})`}
-          />
-        )
-      })}
-      <div aria-hidden className="my-1 h-px w-8 bg-panel-text/25" />
-      {/* AFINIDAD — the column's one opt-in. Acid latch when engaged (a
-          fill-block on dark, never acid text on paper), ink-faint at rest. */}
-      <ToggleHex
-        label="AFINIDAD"
-        sub={affinityOn && affinityCount !== null ? String(affinityCount) : '◈'}
-        color={affinityOn ? DASH_ACID : DASH_INK_FAINT}
-        visible={affinityOn}
-        strike={false}
-        onToggle={onToggleAffinity}
-        ariaLabel={
-          affinityOn
-            ? 'Desactivar continentes de afinidad — volver al terreno global'
-            : 'Activar continentes de afinidad — separar las zonas de mayor afinidad'
-        }
-      />
-    </div>
+    <aside data-mapa-ui className="pointer-events-auto absolute bottom-[76px] right-4 top-[70px] z-20 flex w-[144px] cursor-auto flex-col border-l border-ink/25 bg-paper/95 px-2 text-ink" aria-label="Capas del mapa">
+      <p className="shrink-0 py-2 text-center font-mono text-[11px] font-bold tracking-widest">MOSTRAR</p>
+      <div role="group" aria-label="Tipos de contenido visibles" className="min-h-0 flex-1 overflow-y-auto px-1 pb-8 pt-1">
+        <div className="grid auto-rows-[56px] grid-cols-[48px_64px] content-start [&>button:nth-child(even)]:translate-y-7">
+          {typeOptions.map(([t, n]) => <ToggleHex key={t} label={LABELS[t] ?? t.toUpperCase()} count={n} color={categoryColor(t as ContentType)} visible={!hidden.has(t)} onToggle={() => onToggle(t)} />)}
+          {mercadoCount > 0 && <ToggleHex label="MERCADO" count={mercadoCount} color="#D6B37A" visible={!hidden.has('mercado')} onToggle={() => onToggle('mercado')} />}
+        </div>
+      </div>
+      <div className="shrink-0 border-t border-ink/30 py-2">
+        {(['AHORA', 'ARCHIVO'] as const).map((label, i) => {
+          const key = `era:${label.toLowerCase()}`
+          return <button key={key} type="button" aria-label={`${hidden.has(key) ? 'Mostrar' : 'Ocultar'} era ${label} (${eraCounts[i]})`} aria-pressed={!hidden.has(key)} onClick={() => onToggle(key)} className={`flex min-h-8 w-full items-center gap-2 px-1 font-mono text-[10px] hover:bg-ink/10 ${FOCUS}`}>
+            <Hexagon aria-hidden size={17} className={hidden.has(key) ? 'text-ink/40' : 'fill-ink text-ink'} /><span className={hidden.has(key) ? 'line-through' : ''}>{label}</span>
+          </button>
+        })}
+        <button type="button" aria-pressed={affinityOn} onClick={onToggleAffinity} aria-label={affinityOn ? 'Desactivar afinidad' : 'Activar afinidad'} className={clsx(`mt-1 flex min-h-11 w-full items-center gap-2 border border-ink px-1 font-mono text-[10px] ${FOCUS}`, affinityOn ? 'bg-acid font-bold' : 'hover:bg-ink/10')}>
+          <Layers aria-hidden size={17} /><span>AFINIDAD</span>
+        </button>
+        {focusActive && affinityOn && <p className="mt-1 font-mono text-[9px] leading-tight">Al salir del enfoque</p>}
+      </div>
+    </aside>
   )
 })

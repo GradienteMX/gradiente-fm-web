@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { vibeToColor, vibeRangeLabel } from '@/lib/utils'
+import { vibeRangeLabel, VIBE_SLOT_COLORS } from '@/lib/utils'
 import {
   castVibeCheck,
   useUserVibeCheck,
@@ -11,47 +11,14 @@ import {
 } from '@/lib/vibeChecks'
 import { useAuth } from '@/components/auth/useAuth'
 
-// ── The broadcast channel fader ──────────────────────────────────────────────
-//
-// In-overlay drag-to-commit crowd-vibe control, dressed as a CDMX-transmission
-// CHANNEL FADER going ON AIR. The intentional drag-to-commit friction is the
-// whole point — broadcast semantics JUSTIFY it (you don't bump a channel live
-// by accident), so the friction reads as professional, not awkward. Nothing
-// about the commitment gesture is softened here; it's the same drag-past-3px
-// commit as before, just operated like real console hardware.
-//
-// CONSOLE VOCABULARY mapped onto the live vibe-check data:
-//
-//   METER (crowd needle) — the displayed band (author until the crowd reaches
-//     threshold, then crowd median) is driven by a VU/PPM envelope follower:
-//     fast attack toward a new aggregate, slow release back. The band edges
-//     never *snap* to a new median — they ballistically chase it, exactly like
-//     a meter needle catching a transient. TRUE data; the only thing animated
-//     is how the real value is approached.
-//
-//   PEAK-HOLD (your committed vote) — the user's own saved [min,max] renders as
-//     two peak-hold ticks that STAY put after commit. Distinct from the moving
-//     crowd needle: the held peak is where YOU set the channel, frozen.
-//
-//   CALIBRATION (author range) — the author's [vibeMin,vibeMax] are factory
-//     calibration marks engraved below the throw: fixed reference, visually
-//     subordinate to the live needle + peak-hold.
-//
-//   FADER-START = ARM — entering edit mode WIDENS the throw (the track grows
-//     taller). The growth IS the "armed / going on-air" cue; gold (#F5C500)
-//     dresses the armed state. The committed drag is the on-air gesture. A
-//     micro-label reads ARMADO while editing, EN-AIRE the moment a vote lands.
-//
-//   DETENT — release snaps the dragged thumb to its integer slot with a slight
-//     overshoot (the felt "click" of a fader hitting a detent), via a spring
-//     position transition. Reduced motion → instant, no ballistics.
-//
-// Colors: thermal ramp (vibeToColor) for all signal, gold (#F5C500) for the
-// armed accent only, grey/white chrome for engraving. No other hues.
-//
-// Login-gated. Click while logged-out → openLogin().
+// Full-width instrument: stepped thermal meter, personal handles, fixed author
+// calibration. A >3px drag commits; keyboard arrows preview and Enter commits.
+// Aggregate ballistics and the five-check author/median fall-through are shared
+// across compact overlay seats and the expanded dashboard listening sheet.
 
 interface Props {
+  // Adds endpoints and the reading legend; both variants fill their seat.
+  fullWidth?: boolean
   item: { id: string; vibeMin: number; vibeMax: number }
 }
 
@@ -67,17 +34,6 @@ const ARMED = '#F5C500'
 // target is always the real aggregate, never invented motion.
 const ATTACK_MS = 90
 const RELEASE_MS = 540
-
-function bandGradient(min: number, max: number): string {
-  if (min === max) return vibeToColor(min)
-  const span = Math.max(1, max - min)
-  const stops: string[] = []
-  for (let i = Math.floor(min); i <= Math.ceil(max); i++) {
-    const pct = ((i - min) / span) * 100
-    stops.push(`${vibeToColor(i)} ${pct.toFixed(2)}%`)
-  }
-  return `linear-gradient(90deg, ${stops.join(', ')})`
-}
 
 // Asymmetric one-pole follower: pulls `current` toward `target` with a time
 // constant that depends on direction of travel (attack when |target|>|current|
@@ -95,7 +51,8 @@ function followEdge(
   return current + (target - current) * alpha
 }
 
-export function VibeFader({ item }: Props) {
+export function VibeFader({ item, fullWidth = false }: Props) {
+  const scaleId = useId()
   const { currentUser, openLogin } = useAuth()
   const viewerId = currentUser?.id ?? null
   const reducedMotion = useReducedMotion()
@@ -198,9 +155,9 @@ export function VibeFader({ item }: Props) {
   const [authMin, authMax] = authorBand
 
   // Displayed needle edges (ballistic) drive the lit meter band in view mode;
-  // in edit mode the thumbs follow the armed editRange instead.
+  // Handles retain the personal vote after commit; first use starts at the meter.
   const [needleMin, needleMax] = needleBand
-  const [thumbMin, thumbMax] = editing ? editRange : needleBand
+  const [thumbMin, thumbMax] = editing ? editRange : userVoteTuple ?? needleBand
 
   const valueFromX = (clientX: number): number => {
     const track = trackRef.current
@@ -276,9 +233,19 @@ export function VibeFader({ item }: Props) {
       movedRef.current = false
     }
 
+    const onCancel = () => {
+      draggingThumbRef.current = null
+      dragRangeRef.current = null
+      movedRef.current = false
+      setDragRange(null)
+      setEditing(false)
+    }
+
+    window.addEventListener('pointercancel', onCancel)
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     return () => {
+      window.removeEventListener('pointercancel', onCancel)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
@@ -342,6 +309,33 @@ export function VibeFader({ item }: Props) {
       movedRef.current = false
     }
 
+  // Keyboard changes are a preview; Enter is the deliberate commit gesture.
+  const handleThumbKeyDown = (thumb: 'min' | 'max') => (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (!viewerId) { openLogin(); return }
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (editing && dragRange) {
+        void castVibeCheck(item.id, viewerId, dragRange[0], dragRange[1])
+        setOnAir(true)
+        window.setTimeout(() => setOnAir(false), 720)
+        setEditing(false)
+        setDragRange(null)
+        dragRangeRef.current = null
+      } else setEditing(true)
+      return
+    }
+    const delta = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : -1
+    const [min, max] = editRange
+    const next: [number, number] = thumb === 'min'
+      ? [Math.max(0, Math.min(max, min + delta)), max]
+      : [min, Math.min(10, Math.max(min, max + delta))]
+    setEditing(true)
+    setDragRange(next)
+    dragRangeRef.current = next
+  }
+
   // Label — editing shows the live throw, view shows the displayed band
   // (quantized to slots so the readout matches the engraved scale, never a
   // fractional in-flight needle value). Uses vibeRangeLabel so the format
@@ -351,7 +345,6 @@ export function VibeFader({ item }: Props) {
     : [Math.round(needleMin), Math.round(needleMax)]
   const [labelMin, labelMax] = labelRange
   const labelTxt = vibeRangeLabel({ vibeMin: labelMin, vibeMax: labelMax })
-  const labelColor = vibeToColor(Math.round((labelMin + labelMax) / 2))
 
   // Opacity scaling for the lit meter band: dims in edit mode so the armed
   // throw takes focus.
@@ -360,7 +353,7 @@ export function VibeFader({ item }: Props) {
   // Peak-hold ticks track the user's committed vote (held position). Visible
   // whenever they've voted; brighten on hover; suppressed while arming so the
   // gold throw owns the surface.
-  const peakHoldOpacity = editing ? 0 : hovered ? 1 : 0.7
+  const peakHoldOpacity = editing ? 0 : hovered ? 1 : 0.85
 
   const tip = !viewerId
     ? 'Inicia sesión para hacer tu vibe check'
@@ -373,8 +366,8 @@ export function VibeFader({ item }: Props) {
   // ── Throw geometry — ARM widens the fader ────────────────────────────────
   // The track grows taller on arm: the growth IS the going-on-air cue. Reduced
   // motion gets the grown height instantly (designed static armed state).
-  const restH = 12 // px — the at-rest throw
-  const armedH = 22 // px — the widened (armed) throw
+  const restH = 20 // Visible tape; the interaction surface always stays 44px tall.
+  const armedH = 26
   const trackH = editing ? armedH : restH
   const heightTransition = reducedMotion
     ? { duration: 0 }
@@ -390,253 +383,87 @@ export function VibeFader({ item }: Props) {
         : { type: 'spring' as const, stiffness: 900, damping: 40 } // calm follow
 
   return (
-    // flex-wrap + min-w-0 so the readout labels drop BELOW the track on a phone
-    // instead of forcing the row ~470px wide (the overlay sideways-drift cause).
-    // Stays a single nowrap row from sm up.
-    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:flex-nowrap">
-      <motion.div
-        ref={trackRef}
-        onPointerDown={handleTrackPointerDown}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className="group relative w-full max-w-[180px] cursor-pointer md:w-[220px] md:max-w-none"
-        animate={{ height: trackH }}
-        initial={false}
-        transition={heightTransition}
-        style={{
-          // Armed/on-air glow lives on the throw itself so the widening reads
-          // as the channel powering up. EN-AIRE pulses brighter for ~0.7s.
-          boxShadow: onAir
-            ? `0 0 14px ${ARMED}, 0 0 4px ${ARMED}`
-            : editing
-              ? `0 0 9px ${ARMED}99`
-              : hovered
-                ? `0 0 6px ${ARMED}59`
-                : 'none',
-          transition: 'box-shadow 180ms linear',
-        }}
-        title={tip}
-      >
-        {/* Layer 1: throw scale — faint full-axis backdrop, the engraved 0–10
-            terrain past the lit segment. */}
+    <div className="w-full min-w-0 flex-1 basis-64 text-panel-text">
+      <p id={`${scaleId}-help`} className="sr-only">{viewerId ? 'Arrastra para registrar. Con teclado: flechas para ajustar, Enter para registrar y Escape para cancelar.' : 'Inicia sesión para hacer tu vibe check.'}</p>
+      {/* Metadata gets its own row. It can never steal the fader's throw. */}
+      <div className="mb-1 flex min-h-4 items-baseline justify-between gap-3 font-mono text-[10px] tracking-wider">
+        <span className="min-w-0 truncate font-bold">{editing ? 'TU LECTURA' : fullWidth ? 'RANGO DE LA PIEZA' : 'VIBE CHECK'} <span className="ml-2 font-normal text-panel-text">{labelMin === labelMax ? labelMin : `${labelMin}–${labelMax}`} · {labelTxt}</span></span>
+        <span className="shrink-0 text-[#F5C500]" aria-live="polite">{onAir ? '◉ EN AIRE' : editing ? '◎ ARMADO' : ''}</span>
+      </div>
+      {fullWidth && <div aria-hidden className="mb-2 mt-4 flex justify-between font-mono text-d11 tracking-widest"><span className="text-vibe-1">GLACIAL</span><span className="text-vibe-10">VOLCÁN</span></div>}
+      {/* Padding keeps the generous edge hit areas inside the faceplate. */}
+      <div className="px-4">
+        <svg aria-hidden width="100%" height="16" className="overflow-visible font-mono text-[10px] text-panel-text">
+          {VIBE_SLOT_COLORS.map((_, n) => <text key={n} x={`${n * 10}%`} y="11" fill="currentColor" textAnchor={n === 0 ? 'start' : n === 10 ? 'end' : 'middle'}>{n}</text>)}
+        </svg>
         <div
-          className="absolute inset-0 bg-vibe-gradient opacity-[0.14]"
-          aria-hidden
-        />
-
-        {/* Layer 2: METER — the lit displayed band, driven by the ballistic
-            needle (VU envelope chasing the live aggregate). Dims while armed.
-            Positions come from the smoothed needle, not the raw target, so it
-            reads as a meter catching the signal rather than a hard jump. The
-            needle band is set per-RAF; left/width are written directly (no CSS
-            transition — the RAF IS the animation). */}
-        <div
-          className="absolute inset-y-0"
-          style={{
-            left: `${(needleMin / 10) * 100}%`,
-            width: `${((needleMax - needleMin) / 10) * 100}%`,
-            background: bandGradient(needleMin, needleMax),
-            opacity: meterOpacity,
-            boxShadow: `0 0 5px ${vibeToColor(Math.round((needleMin + needleMax) / 2))}90`,
-            transition: 'opacity 140ms linear',
-          }}
-          aria-hidden
-        />
-
-        {/* Layer 3: ARMED throw — the user's live fader band while editing.
-            Gold-outlined, full vibe gradient. Only present in edit mode; the
-            committed (held) state lives in the peak-hold ticks instead. */}
-        {armedRange && (
-          <div
-            className="absolute inset-y-0"
-            style={{
-              left: `${(armedRange[0] / 10) * 100}%`,
-              width: `${((armedRange[1] - armedRange[0]) / 10) * 100}%`,
-              background: bandGradient(armedRange[0], armedRange[1]),
-              opacity: 1,
-              outline: `1px solid ${ARMED}`,
-              outlineOffset: -1,
-              boxShadow: `0 0 7px ${ARMED}99`,
-            }}
-            aria-hidden
-          />
-        )}
-
-        {/* Layer 4: PEAK-HOLD — the user's committed vote, frozen. Two held
-            ticks (min + max edge) that stay after commit, distinct from the
-            moving crowd needle. A bright cap + faint stem reads as a peak-hold
-            marker on a meter. Hidden while arming. */}
-        {userVoteTuple && (
-          <div
-            className="pointer-events-none absolute inset-y-0"
-            style={{ opacity: peakHoldOpacity, transition: 'opacity 140ms linear' }}
-            aria-hidden
-          >
-            {[userVoteTuple[0], userVoteTuple[1]].map((v, i) =>
-              // Collapse the duplicate when the vote is a single point.
-              i === 1 && userVoteTuple[0] === userVoteTuple[1] ? null : (
-                <div
-                  key={i}
-                  className="absolute inset-y-0 w-px -translate-x-1/2"
-                  style={{
-                    left: `${(v / 10) * 100}%`,
-                    background: vibeToColor(v),
-                    boxShadow: `0 0 4px ${vibeToColor(v)}`,
-                  }}
-                >
-                  {/* peak cap */}
-                  <div
-                    className="absolute left-1/2 top-[-2px] h-[3px] w-[5px] -translate-x-1/2"
-                    style={{ background: vibeToColor(v) }}
-                  />
-                </div>
-              ),
-            )}
-          </div>
-        )}
-
-        {/* Layer 5: fader thumbs — the channel handles. White grip caps in view
-            mode at the meter edges (affordance hint); gold + grabbable while
-            armed at the throw edges. A released thumb springs through its
-            detent (overshoot). Position animates via Framer spring; in edit
-            mode it tracks the drag with a stiff calm spring (near-instant
-            follow) and overshoots only on release. */}
-        <motion.button
-          type="button"
-          onPointerDown={handleThumbPointerDown('min')}
-          aria-label={`Mínimo: ${thumbMin}`}
-          className="absolute inset-y-[-3px] flex w-8 -translate-x-1/2 cursor-col-resize items-stretch justify-center sm:w-3"
-          animate={{ left: `${(thumbMin / 10) * 100}%` }}
-          initial={false}
-          transition={
-            // While actively dragging this thumb, follow instantly (no spring
-            // lag under the pointer); otherwise spring (detent on release).
-            draggingThumbRef.current === 'min'
-              ? { duration: 0 }
-              : thumbPosTransition('min')
-          }
+          ref={trackRef}
+          onPointerDown={handleTrackPointerDown}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className="group relative h-11 w-full touch-none cursor-pointer"
+          title={tip}
         >
-          <span
-            className="block h-full transition-[width,background-color,box-shadow] duration-150"
-            style={
-              editing
-                ? { width: 3, background: ARMED, boxShadow: `0 0 6px ${ARMED}` }
-                : {
-                    width: 2,
-                    background: '#fff',
-                    boxShadow: '0 0 4px rgba(255,255,255,0.7)',
-                  }
-            }
-          />
-        </motion.button>
+          <motion.div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2" animate={{ height: trackH }} initial={false} transition={heightTransition}>
+            <svg aria-hidden viewBox="0 0 1000 26" preserveAspectRatio="none" className="h-full w-full overflow-visible">
+              <defs>
+                <clipPath id={`${scaleId}-meter`}><rect x={Math.max(0, needleMin * 100 - 50)} y="0" width={Math.min(1000, needleMax * 100 + 50) - Math.max(0, needleMin * 100 - 50)} height="26" /></clipPath>
+                {armedRange && <clipPath id={`${scaleId}-armed`}><rect x={Math.max(0, armedRange[0] * 100 - 50)} y="0" width={Math.min(1000, armedRange[1] * 100 + 50) - Math.max(0, armedRange[0] * 100 - 50)} height="26" /></clipPath>}
+              </defs>
+              {/* Canonical hard-stepped thermal colors, anchored to the scale. */}
+              {VIBE_SLOT_COLORS.map((color, n) => <rect key={`base-${n}`} x={Math.max(0, n * 100 - 50)} y="0" width={n === 0 || n === 10 ? 50 : 100} height="26" fill={color} opacity="0.32" />)}
+              <g clipPath={`url(#${scaleId}-meter)`} opacity={meterOpacity}>{VIBE_SLOT_COLORS.map((color, n) => <rect key={n} x={Math.max(0, n * 100 - 50)} y="0" width={n === 0 || n === 10 ? 50 : 100} height="26" fill={color} />)}</g>
+              {armedRange && <g clipPath={`url(#${scaleId}-armed)`}>{VIBE_SLOT_COLORS.map((color, n) => <rect key={n} x={Math.max(0, n * 100 - 50)} y="0" width={n === 0 || n === 10 ? 50 : 100} height="26" fill={color} />)}</g>}
+              {Array.from({ length: 51 }, (_, n) => <line key={n} x1={n * 20} x2={n * 20} y1={n % 5 === 0 ? 14 : 21} y2="26" stroke="#0D0D0D" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+              <line x1="0" x2="1000" y1="26" y2="26" stroke={editing || onAir ? ARMED : '#ffffff66'} vectorEffect="non-scaling-stroke" />
+            </svg>
+          </motion.div>
 
-        <motion.button
-          type="button"
-          onPointerDown={handleThumbPointerDown('max')}
-          aria-label={`Máximo: ${thumbMax}`}
-          className="absolute inset-y-[-3px] flex w-8 -translate-x-1/2 cursor-col-resize items-stretch justify-center sm:w-3"
-          animate={{ left: `${(thumbMax / 10) * 100}%` }}
-          initial={false}
-          transition={
-            draggingThumbRef.current === 'max'
-              ? { duration: 0 }
-              : thumbPosTransition('max')
-          }
-        >
-          <span
-            className="block h-full transition-[width,background-color,box-shadow] duration-150"
-            style={
-              editing
-                ? { width: 3, background: ARMED, boxShadow: `0 0 6px ${ARMED}` }
-                : {
-                    width: 2,
-                    background: '#fff',
-                    boxShadow: '0 0 4px rgba(255,255,255,0.7)',
-                  }
-            }
-          />
-        </motion.button>
+          {/* Personal reading: a held white bracket, independent of the meter. */}
+          {userVoteTuple && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" opacity={peakHoldOpacity}>
+            <line x1={`${userVoteTuple[0] * 10}%`} x2={`${userVoteTuple[1] * 10}%`} y1="3" y2="3" stroke="white" />
+            {Array.from(new Set(userVoteTuple)).map(v => <rect key={v} x={`${v * 10}%`} y="0" width="4" height="6" fill="white" />)}
+          </svg>}
 
-        {/* Layer 6: CALIBRATION marks — the author's range, engraved as fixed
-            factory reference below the throw. Subordinate: thin, dim, with a
-            hairline base rule connecting them so they read as a printed scale
-            mark, not another needle. Self-revealing — sit under the lit meter
-            when displayed == author, only separate once the crowd diverges. */}
-        <div
-          className="pointer-events-none absolute -bottom-[6px] left-0 right-0 h-[5px]"
-          aria-hidden
-        >
-          <div
-            className="absolute bottom-0 h-px bg-white/15"
-            style={{
-              left: `${(authMin / 10) * 100}%`,
-              width: `${(Math.max(0, authMax - authMin) / 10) * 100}%`,
-            }}
-          />
-          <div
-            className="absolute bottom-0 h-full w-px bg-white/40"
-            style={{ left: `${(authMin / 10) * 100}%` }}
-          />
-          {authMax !== authMin && (
-            <div
-              className="absolute bottom-0 h-full w-px bg-white/40"
-              style={{ left: `${(authMax / 10) * 100}%` }}
-            />
-          )}
+          {(['min', 'max'] as const).map(which => {
+            const value = which === 'min' ? thumbMin : thumbMax
+            return <motion.button
+              key={which}
+              type="button"
+              onPointerDown={handleThumbPointerDown(which)}
+              onKeyDown={handleThumbKeyDown(which)}
+              role="slider"
+              aria-valuemin={which === 'min' ? 0 : Math.round(thumbMin)}
+              aria-valuemax={which === 'min' ? Math.round(thumbMax) : 10}
+              aria-valuenow={Math.round(value)}
+              aria-describedby={`${scaleId}-help`}
+              aria-label={`${which === 'min' ? 'Mínimo' : 'Máximo'}: ${Math.round(value)}`}
+              className="absolute inset-y-0 flex w-8 -translate-x-1/2 touch-none cursor-col-resize items-center justify-center outline-none focus-visible:ring-1 focus-visible:ring-[#F5C500]"
+              animate={{ left: `${value * 10}%` }}
+              initial={false}
+              transition={draggingThumbRef.current === which ? { duration: 0 } : thumbPosTransition(which)}
+            >
+              <span className={`flex h-8 w-3.5 items-center justify-center gap-px rounded-[2px] border border-black/80 shadow-[0_2px_5px_#000] ${editing || onAir ? 'bg-[#F5C500]' : 'bg-paper'}`}>
+                <span className="h-4 w-px bg-black/60" /><span className="h-4 w-px bg-black/60" />
+              </span>
+            </motion.button>
+          })}
+
+          {/* Author calibration remains fixed below the interactive range. */}
+          <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+            <line x1={`${authMin * 10}%`} x2={`${authMax * 10}%`} y1="42" y2="42" stroke="#ffffff66" strokeDasharray="2 2" />
+            {[authMin, authMax].map((v, i) => <line key={i} x1={`${v * 10}%`} x2={`${v * 10}%`} y1="38" y2="44" stroke="#ffffff99" />)}
+          </svg>
         </div>
-      </motion.div>
-
-      {/* Channel-state micro-label — the broadcast voice. ARMADO while editing,
-          a transient EN AIRE on commit, else hidden (slot stays reserved so
-          the meta strip never reflows). Gold to match the armed accent. */}
-      <span
-        className="inline-block min-w-0 font-mono text-[10px] font-bold tracking-[0.18em] tabular-nums whitespace-normal sm:min-w-[3.25rem] sm:text-[8px] sm:whitespace-nowrap"
-        style={{
-          color: ARMED,
-          opacity: editing || onAir ? 1 : 0,
-          transition: 'opacity 160ms linear',
-        }}
-        aria-hidden={!editing && !onAir}
-      >
-        {onAir ? '◉ EN AIRE' : editing ? '◎ ARMADO' : ''}
-      </span>
-
-      {/* Numeric label + vibe names — vibeRangeLabel("4-7 · COOL → HOT").
-          Fixed min-width slot so the label's content can change between
-          single-point ("5 · GROOVE") and range ("0-10 · GLACIAL → VOLCÁN")
-          without reflowing the surrounding meta strip. */}
-      <span
-        className="inline-block min-w-0 font-mono text-[10px] tracking-widest tabular-nums whitespace-normal sm:min-w-[12rem] sm:whitespace-nowrap"
-        style={{ color: labelColor }}
-      >
-        {labelTxt}
-      </span>
-
-      {/* Crowd-check count — always rendered to keep the slot stable. Empty
-          when zero, visibility-hidden in edit mode, ◆ when the crowd has
-          crossed threshold (meter is crowd-authoritative), ◇ otherwise. */}
-      <span
-        className={`inline-block min-w-0 font-mono text-[10px] tracking-widest text-muted whitespace-normal sm:min-w-[1.75rem] sm:text-[9px] sm:whitespace-nowrap ${
-          editing || aggregate.checkCount === 0 ? 'invisible' : ''
-        }`}
-        aria-hidden={editing || aggregate.checkCount === 0}
-        title={
-          aggregate.checkCount === 0
-            ? undefined
-            : `${aggregate.checkCount} vibe check${aggregate.checkCount === 1 ? '' : 's'}${
-                aggregate.checkCount >= VIBE_CHECK_THRESHOLD
-                  ? ' · banda colectiva'
-                  : ' · aún muestra autor'
-              }`
-        }
-      >
-        {aggregate.checkCount > 0 && (
-          <>
-            {aggregate.checkCount >= VIBE_CHECK_THRESHOLD ? '◆' : '◇'}
-            {aggregate.checkCount}
-          </>
-        )}
-      </span>
+      </div>
+      {fullWidth && <div className="mt-3 grid gap-3 border-t border-white/25 pt-3 font-mono text-d11 sm:grid-cols-[1fr_auto]">
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <span>▰ {aggregate.checkCount >= VIBE_CHECK_THRESHOLD ? 'RANGO COLECTIVO' : 'RANGO DEL AUTOR'}: {targetBand[0]}–{targetBand[1]}</span>
+          <span>⌜ TU LECTURA: {userVoteTuple ? `${userVoteTuple[0]}–${userVoteTuple[1]}` : 'SIN REGISTRAR'}</span>
+          {aggregate.checkCount >= VIBE_CHECK_THRESHOLD && <span>┊ AUTOR: {authMin}–{authMax}</span>}
+        </div>
+        <p className="max-w-72 text-panel-text/75">{viewerId ? 'Arrastra un extremo y suelta para registrar tu rango.' : 'Inicia sesión para registrar tu lectura.'}</p>
+      </div>}
     </div>
   )
 }

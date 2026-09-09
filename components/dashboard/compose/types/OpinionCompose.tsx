@@ -135,6 +135,7 @@ export function OpinionCompose({ onClose }: { onClose: () => void }) {
           completeness={completeness(checklist)}
           canSubmit={canSubmit}
           flash={workbench.flash}
+          canSave={workbench.canSave}
           isPublished={workbench.isPublished}
           publishMode={workbench.publishMode}
           typeLabel={composeTypeLabel('opinion')}
@@ -145,9 +146,8 @@ export function OpinionCompose({ onClose }: { onClose: () => void }) {
           franjaValue={franjaValue}
           onFranjaChange={(v) => patch({ attributeFranja: v })}
           onSave={workbench.saveDraft}
-          onSaveAndClose={() => {
-            workbench.saveDraft()
-            onClose()
+          onSaveAndClose={async () => {
+            if (await workbench.saveDraft()) onClose()
           }}
           onPublish={onPublish}
           onAnchor={onAnchor}

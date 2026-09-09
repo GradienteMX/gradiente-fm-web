@@ -20,7 +20,9 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
+import { CoverSelector } from '@/components/dashboard/CoverSelector'
+import { DashPopup } from '@/components/dashboard/DashPopup'
+import { ChevronLeft, ChevronRight, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import { useAudioPlayer } from '@/components/audio/AudioPlayerProvider'
 import { MarqueeText } from '@/components/audio/MarqueeText'
 import {
@@ -49,8 +51,6 @@ const PLATFORM_LABEL: Record<EmbedPlatform, string> = {
   bandcamp: 'BANDCAMP',
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0')
-
 function fmtTime(sec: number): string {
   if (!isFinite(sec) || sec < 0) sec = 0
   const h = Math.floor(sec / 3600)
@@ -60,7 +60,7 @@ function fmtTime(sec: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-const TRANSPORT_BTN = `relative flex h-8 w-8 shrink-0 items-center justify-center border border-ink text-ink before:absolute before:-inset-1.5 before:content-[''] enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-not-allowed disabled:opacity-30 ${FOCUS_RING}`
+const TRANSPORT_BTN = `relative flex h-8 w-8 shrink-0 items-center justify-center border border-panel-text text-panel-text before:absolute before:-inset-1.5 before:content-[''] enabled:hover:bg-paper enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 ${FOCUS_RING}`
 
 interface MixRowModel {
   item: ContentItem
@@ -71,7 +71,7 @@ interface MixRowModel {
 
 // ── TransportCore — THE useAudioPlayer subscriber leaf ──────────────────────
 
-function TransportCore() {
+function TransportCore({ compact = false }: { compact?: boolean }) {
   const audio = useAudioPlayer()
   const item = audio.currentItem
 
@@ -118,90 +118,47 @@ function TransportCore() {
     }
   }
 
-  const stateLabel = cued ? 'EN CUE' : audio.isPlaying ? 'REPRODUCIENDO' : 'EN PAUSA'
+  const stateLabel = cued ? 'EN CUE' : audio.isPlaying ? 'SONANDO' : 'EN PAUSA'
+
+  if (compact) {
+    return (
+      <div className="flex h-9 shrink-0 items-center gap-3 border-b border-ink/25 pb-1">
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 font-mono text-[9px] leading-3 tracking-widest text-ink-soft">
+            <span aria-hidden className={`h-1.5 w-1.5 border border-ink ${audio.isPlaying ? 'bg-acid' : 'bg-ink/25'}`} />
+            {stateLabel} · {PLATFORM_LABEL[item.platform]}
+          </p>
+          <MarqueeText text={item.title} className="text-d13 leading-4 text-ink" />
+        </div>
+        <button type="button" onClick={handlePlay} aria-label={!cued && audio.isPlaying ? 'Pausar reproducción actual' : 'Reanudar reproducción actual'} className={`flex h-8 w-8 shrink-0 items-center justify-center border border-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}>
+          {!cued && audio.isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-ink pb-2">
-      <p className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-        {stateLabel} · {PLATFORM_LABEL[item.platform]}
-      </p>
-
+    <div className={`shrink-0 border border-ink bg-panel text-panel-text ${compact ? 'p-2' : 'p-3'}`}>
       <div className="flex items-center gap-3">
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => audio.prev()}
-            disabled={!audio.hasPrev}
-            aria-label={
-              audio.hasPrev ? 'Pista anterior' : 'Pista anterior — inicio de la cola'
-            }
-            title={audio.hasPrev ? 'ANTERIOR' : 'INICIO DE LA COLA'}
-            className={TRANSPORT_BTN}
-          >
-            <SkipBack size={12} />
-          </button>
-          <button
-            type="button"
-            onClick={handlePlay}
-            aria-label={!cued && audio.isPlaying ? 'Pausar' : 'Reproducir'}
-            className={`relative flex h-8 w-8 shrink-0 items-center justify-center border border-ink bg-ink text-paper before:absolute before:-inset-1.5 before:content-[''] ${FOCUS_RING}`}
-          >
-            {!cued && audio.isPlaying ? (
-              <Pause size={12} fill="currentColor" />
-            ) : (
-              <Play size={12} fill="currentColor" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => audio.next()}
-            disabled={!audio.hasNext}
-            aria-label={
-              audio.hasNext ? 'Siguiente pista' : 'Siguiente pista — fin de la cola'
-            }
-            title={audio.hasNext ? 'SIGUIENTE' : 'FIN DE LA COLA'}
-            className={TRANSPORT_BTN}
-          >
-            <SkipForward size={12} />
-          </button>
-        </div>
-
+        {!compact && item.imageUrl && <div className="relative h-10 w-10 shrink-0 border border-panel-text"><SmartImage src={item.imageUrl} alt="" sizes="40px" className="object-contain" /></div>}
         <div className="min-w-0 flex-1">
-          <MarqueeText
-            text={[item.title, item.author].filter(Boolean).join(' — ')}
-            className="text-d15 font-medium text-ink"
-          />
+          <p className="font-mono text-d11 tracking-widest"><span className="text-acid">{stateLabel}</span> · {PLATFORM_LABEL[item.platform]}</p>
+          <MarqueeText text={item.title} className="text-d13 font-medium text-panel-text" />
         </div>
-
-        {audio.queueIndex >= 0 && audio.queueLength > 0 && (
-          <span className="shrink-0 font-mono text-d13 tabular-nums text-ink-soft">
-            PISTA {pad2(audio.queueIndex + 1)}/{pad2(audio.queueLength)}
-          </span>
-        )}
+        <div className="flex shrink-0 gap-1">
+          {!compact && <button type="button" onClick={() => audio.prev()} disabled={!audio.hasPrev} aria-label="Pista anterior" className={TRANSPORT_BTN}><SkipBack size={12} /></button>}
+          <button type="button" onClick={handlePlay} aria-label={!cued && audio.isPlaying ? 'Pausar reproducción actual' : 'Reanudar reproducción actual'} className={TRANSPORT_BTN}>
+            {!cued && audio.isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+          </button>
+          {!compact && <button type="button" onClick={() => audio.next()} disabled={!audio.hasNext} aria-label="Siguiente pista" className={TRANSPORT_BTN}><SkipForward size={12} /></button>}
+        </div>
       </div>
-
-      {!cued && audio.duration > 0 && (
-        <div className="flex items-center gap-3">
-          <div
-            role="slider"
-            aria-label="Posición de reproducción"
-            aria-valuemin={0}
-            aria-valuemax={Math.round(audio.duration)}
-            aria-valuenow={Math.round(audio.currentTime)}
-            tabIndex={0}
-            onClick={handleSeek}
-            onKeyDown={handleSeekKey}
-            className={`relative h-2 flex-1 cursor-pointer border border-ink before:absolute before:-inset-y-[18px] before:inset-x-0 before:content-[''] ${FOCUS_RING}`}
-          >
-            <div
-              aria-hidden
-              className="absolute left-0 top-0 h-full bg-ink"
-              style={{ width: `${progress * 100}%` }}
-            />
+      {!compact && !cued && audio.duration > 0 && (
+        <div className="mt-3 flex items-center gap-3">
+          <div role="slider" aria-label="Posición de reproducción" aria-valuemin={0} aria-valuemax={Math.round(audio.duration)} aria-valuenow={Math.round(audio.currentTime)} tabIndex={0} onClick={handleSeek} onKeyDown={handleSeekKey} className={`flex h-6 flex-1 cursor-pointer items-center ${FOCUS_RING}`}>
+            <progress aria-hidden max={1} value={progress} className="pointer-events-none h-1 w-full accent-acid" />
           </div>
-          <span className="shrink-0 font-mono text-d13 tabular-nums text-ink-soft">
-            {fmtTime(audio.currentTime)} / {fmtTime(audio.duration)}
-          </span>
+          <span className="font-mono text-d11 tabular-nums">{fmtTime(audio.currentTime)} / {fmtTime(audio.duration)}</span>
         </div>
       )}
     </div>
@@ -216,7 +173,11 @@ const MixCard = memo(function MixCard({
   playing,
   onPlay,
   onOpen,
+  expanded = false,
+  dense = false,
 }: {
+  dense?: boolean
+  expanded?: boolean
   row: MixRowModel
   active: boolean
   playing: boolean
@@ -226,17 +187,17 @@ const MixCard = memo(function MixCard({
   const { item, source, openUrl, openPlatform } = row
   const meta = [item.author, item.duration].filter(Boolean).join(' · ')
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className={expanded ? "flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start" : "flex min-w-0 items-center gap-3"}>
       {/* Cover — click opens the content popup (overlay in place). */}
       <button
         type="button"
         onClick={onOpen}
         data-cue="tick"
         aria-label={`Abrir ${item.title}`}
-        className={`relative h-16 w-16 shrink-0 overflow-hidden border border-ink bg-panel ${FOCUS_RING}`}
+        className={`relative ${expanded ? 'aspect-square w-40 lg:w-44' : dense ? 'h-12 w-12' : 'h-16 w-16'} shrink-0 overflow-hidden border border-ink bg-panel ${FOCUS_RING}`}
       >
         {item.imageUrl ? (
-          <SmartImage src={item.imageUrl} alt="" sizes="64px" className="object-cover" />
+          <SmartImage src={item.imageUrl} alt="" sizes={expanded ? "176px" : dense ? "48px" : "64px"} className="object-contain" />
         ) : (
           <span className="flex h-full w-full items-center justify-center font-mono text-d11 uppercase tracking-widest text-panel-text">
             {typeCode(item.type)}
@@ -244,32 +205,33 @@ const MixCard = memo(function MixCard({
         )}
       </button>
 
-      <div className="min-w-0 flex-1">
+      <div className={expanded ? "min-w-0 flex-1" : "grid min-w-0 flex-1 grid-cols-[1fr_auto] items-center gap-x-2"}>
+        <div className="min-w-0">
         <button
           type="button"
           onClick={onOpen}
           data-cue="tick"
-          className={`block w-full truncate text-left text-d15 font-medium text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
+          className={`block w-full text-left ${expanded ? 'font-syne text-d28 font-bold leading-tight' : 'truncate text-d15 font-medium'} text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
         >
           {item.title}
         </button>
         <span className="block truncate font-mono text-d13 text-ink-soft">
           {source
-            ? meta || PLATFORM_LABEL[source.platform]
+            ? [PLATFORM_LABEL[source.platform], meta].filter(Boolean).join(' · ')
             : openUrl
               ? [openPlatform ? PLATFORM_LABEL[openPlatform] : 'FUENTE EXTERNA', item.author]
                   .filter(Boolean)
                   .join(' · ')
               : 'SIN FUENTE'}
         </span>
-        {active && (
+        {active && expanded && (
           <span className="flex items-center gap-1.5 font-mono text-d11 tracking-widest text-ink">
             <span aria-hidden className="h-2 w-2 rounded-full border border-ink bg-acid" />
             {playing ? 'REPRODUCIENDO' : 'EN PAUSA'}
           </span>
         )}
+      {expanded && <p className="mt-3 text-d13 leading-relaxed text-ink-soft">Seleccionar una portada no cambia lo que suena.</p>}
       </div>
-
       {/* The one playback affordance for this mix. */}
       {source ? (
         <button
@@ -277,8 +239,8 @@ const MixCard = memo(function MixCard({
           onClick={onPlay}
           data-cue="tick"
           aria-label={active && playing ? `Pausar ${item.title}` : `Reproducir ${item.title}`}
-          className={`relative flex h-11 w-11 shrink-0 items-center justify-center border border-ink before:absolute before:-inset-1 before:content-[''] ${
-            active ? 'bg-ink text-paper' : 'bg-paper text-ink hover:bg-ink hover:text-paper'
+          className={`relative flex ${expanded ? 'mt-4 min-h-11 gap-2 px-3' : 'h-11 w-11'} shrink-0 items-center justify-center border border-ink before:absolute before:-inset-1 before:content-[''] ${
+            active ? 'bg-ink text-paper' : expanded ? 'bg-acid text-ink hover:bg-ink hover:text-paper' : 'bg-paper text-ink hover:bg-ink hover:text-paper'
           } ${FOCUS_RING}`}
         >
           {active && playing ? (
@@ -286,6 +248,7 @@ const MixCard = memo(function MixCard({
           ) : (
             <Play size={14} fill="currentColor" />
           )}
+          {expanded && <span className="font-mono text-d11 font-bold">{active && playing ? 'PAUSAR ESTA MEZCLA' : 'REPRODUCIR ESTA MEZCLA'}</span>}
         </button>
       ) : openUrl ? (
         <a
@@ -293,11 +256,12 @@ const MixCard = memo(function MixCard({
           target="_blank"
           rel="noopener noreferrer"
           data-cue="tick"
-          className={`flex min-h-11 shrink-0 items-center whitespace-nowrap font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
+          className={`flex min-h-11 shrink-0 items-center whitespace-nowrap font-mono text-d11 uppercase tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
         >
           ABRIR FUENTE ↗
         </a>
       ) : null}
+      </div>
     </div>
   )
 })
@@ -369,15 +333,19 @@ function CarouselHost({
   rows,
   queue,
   showFader,
+  expanded,
+  onClose,
 }: {
   rows: MixRowModel[]
   queue: ContentItem[]
   showFader: boolean
+  expanded: boolean
+  onClose: () => void
 }) {
   const { playQueue, primePlatform, currentItem, activePlatform, isPlaying, toggle } =
     useAudioPlayer()
   const openItem = useOpenItem()
-  const [index, setIndex] = useState(0)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Platform priming on mount (the getDisplayMedia prompt must never sit
   // between click and sound).
@@ -392,19 +360,16 @@ function CarouselHost({
     }
   }, [queue, primePlatform])
 
-  const clamped = rows.length === 0 ? 0 : Math.min(index, rows.length - 1)
+  const clamped = Math.max(0, rows.findIndex(({ item }) => item.id === selectedId))
   const row = rows[clamped]
   const activeId = activePlatform !== null ? currentItem?.id ?? null : null
   const active = !!row && row.source !== null && activeId === row.item.id
 
   const step = useCallback(
     (dir: 1 | -1) => {
-      setIndex((prev) => {
-        if (rows.length === 0) return 0
-        return (prev + dir + rows.length) % rows.length
-      })
+      if (rows.length) setSelectedId(rows[(clamped + dir + rows.length) % rows.length].item.id)
     },
-    [rows.length],
+    [rows, clamped],
   )
 
   // Play fires playQueue SYNCHRONOUSLY inside the click gesture; an active
@@ -421,31 +386,50 @@ function CarouselHost({
   }, [row, active, queue, playQueue, toggle])
 
   const handleOpen = useCallback(() => {
-    if (row) void openItem(row.item.slug)
-  }, [row, openItem])
+    if (row) {
+      onClose()
+      void openItem(row.item.slug)
+    }
+  }, [row, openItem, onClose])
 
   if (!row) return null
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+  const focus = (
+    <div className={`flex min-h-0 flex-1 flex-col ${expanded ? 'gap-5' : 'gap-2'}`}>
+      <div className={expanded ? 'grid gap-6 lg:grid-cols-[1fr_240px]' : 'shrink-0'}>
+      <div className="min-w-0">
+      <div className="mb-1 flex h-8 shrink-0 items-center justify-between gap-2">
+        <p className="font-mono text-d11 tracking-widest text-ink-soft">TUS MEZCLAS · {clamped + 1}/{rows.length}</p>
+        <div className="flex shrink-0 gap-1">
+          {([-1, 1] as const).map(direction => (
+            <button key={direction} type="button" onClick={() => step(direction)} disabled={rows.length < 2} aria-label={direction === -1 ? 'Mix anterior' : 'Siguiente mix'} data-cue="tick" className={`flex h-8 w-9 items-center justify-center border border-ink text-ink enabled:hover:bg-ink enabled:hover:text-paper disabled:cursor-default disabled:opacity-40 ${FOCUS_RING}`}>
+              {direction === -1 ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </button>
+          ))}
+        </div>
+      </div>
       <MixCard
+        expanded={expanded}
+        dense={!showFader && !expanded}
         row={row}
         active={active}
         playing={isPlaying}
         onPlay={handlePlay}
         onOpen={handleOpen}
       />
+      </div>
+      {expanded && <div className="border-ink lg:border-l lg:pl-5"><p className="mb-3 font-mono text-d11 font-bold tracking-widest">TUS MEZCLAS</p><CoverSelector gallery label="Tus mezclas" items={rows.map(({ item }) => item)} selectedId={row.item.id} playingId={isPlaying ? activeId : null} onSelect={setSelectedId} /></div>}
+      </div>
 
       {/* Mini vibe fader — the REAL fader on a slim faceplate band (its
           meter/grips are dark-ground calibrated). Keyed per mix so the
           armed/drag state never bleeds across carousel steps. */}
-      {showFader && (
-        <div className="flex shrink-0 items-center gap-3 border border-ink bg-panel px-3 py-2">
-          <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-panel-text">
-            VIBE
-          </span>
+      {(showFader || expanded) && (
+        <div className={`shrink-0 border border-ink bg-panel ${expanded ? 'p-5' : 'px-2 py-1'}`}>
+          {expanded && <p className="mb-4 font-mono text-d11 tracking-widest text-panel-text">VIBE CHECK · {row.item.title}</p>}
           <VibeFader
             key={row.item.id}
+            fullWidth={expanded}
             item={{
               id: row.item.id,
               vibeMin: row.item.vibeMin,
@@ -454,44 +438,17 @@ function CarouselHost({
           />
         </div>
       )}
-
-      {/* Carousel transport — ‹ › + honest n/N. */}
-      <div className="flex shrink-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={() => step(-1)}
-          aria-label="Mix anterior"
-          data-cue="tick"
-          className={`flex h-9 w-11 items-center justify-center border border-ink font-mono text-d15 text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
-        >
-          ‹
-        </button>
-        <button
-          type="button"
-          onClick={() => step(1)}
-          aria-label="Siguiente mix"
-          data-cue="tick"
-          className={`flex h-9 w-11 items-center justify-center border border-ink font-mono text-d15 text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
-        >
-          ›
-        </button>
-        <span className="font-mono text-d13 tabular-nums text-ink-soft">
-          {clamped + 1}/{rows.length}
-        </span>
-        {queue.length !== rows.length && (
-          <span className="ml-auto font-mono text-d11 tracking-widest text-ink-faint">
-            {queue.length} {queue.length === 1 ? 'REPRODUCIBLE' : 'REPRODUCIBLES'}
-          </span>
-        )}
-      </div>
     </div>
   )
+  return expanded ? <DashPopup title="REPRODUCTOR" width="xl" closeLabel="VOLVER AL PANEL ↙" footer={currentItem ? <TransportCore /> : undefined} onClose={onClose}>{focus}</DashPopup> : focus
 }
 
 // ── The widget ──────────────────────────────────────────────────────────────
 
 export function ReproductorWidget({ size, compact }: DashboardWidgetProps) {
   const { saves, loaded } = useDashboardData()
+  const [expanded, setExpanded] = useState(false)
+  const closeExpanded = useCallback(() => setExpanded(false), [])
 
   // Saved mixes, truly most-recently-saved first.
   const mixes = useMemo(() => {
@@ -531,6 +488,7 @@ export function ReproductorWidget({ size, compact }: DashboardWidgetProps) {
     <div ref={anchorRef} id={dashWidgetDomId('reproductor')} className="h-full scroll-mt-14">
       <WidgetFrame
         title="REPRODUCTOR"
+        action={!compact && rows.length > 0 ? { label: 'EXPANDIR', onClick: () => setExpanded(true) } : undefined}
         count={mixes.length > 0 ? mixes.length : undefined}
         compact={compact}
         loading={!loaded.saves && mixes.length === 0}
@@ -539,13 +497,13 @@ export function ReproductorWidget({ size, compact }: DashboardWidgetProps) {
           <CompactContent />
         ) : (
           <div className="flex h-full flex-col gap-2">
-            <TransportCore />
+            <TransportCore compact />
             {rows.length === 0 ? (
               <div className="min-h-0 flex-1">
                 <EmptyMixes />
               </div>
             ) : (
-              <CarouselHost rows={rows} queue={queue} showFader={size.h >= 3} />
+              <CarouselHost rows={rows} queue={queue} showFader={size.h >= 3} expanded={expanded} onClose={closeExpanded} />
             )}
           </div>
         )}

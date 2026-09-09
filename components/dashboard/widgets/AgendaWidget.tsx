@@ -1,10 +1,10 @@
 'use client'
 
-// ── AGENDA — próximos as a LIST + ASISTIDOS (revision-2 point 14) ───────────
+// ── AGENDA — próximos as a LIST + GUARDADOS PASADOS (revision-2 point 14) ───────────
 //
 // The photo-card lead is retired: PRÓXIMOS renders as a plain date list so
 // MORE than one event is visible at the default size. The foot carries two
-// affordances side by side: ASISTIDOS (toggles to the past saved events —
+// affordances side by side: GUARDADOS PASADOS (toggles to the past saved events —
 // the honest attendance proxy until real attendance markers exist) and VER
 // AGENDA ↗. Rows are the user's SAVED eventos date-asc; with zero saved the
 // global upcoming pool fills the list under an honest label (never empty
@@ -110,7 +110,7 @@ function EventRow({
           <span className="font-mono text-d13 font-bold text-ink">NO DISPONIBLE</span>
         ) : past ? (
           <span className="border border-ink-faint px-1.5 py-0.5 font-mono text-d11 font-bold tracking-widest text-ink-soft">
-            ASISTIDO
+            PASADO
           </span>
         ) : (
           <span className="font-mono text-d13 font-bold tabular-nums text-ink">
@@ -206,11 +206,11 @@ export function AgendaWidget({ size, compact }: DashboardWidgetProps) {
         ) : (
           <div className="flex h-full min-h-0 flex-col">
             {showPast ? (
-              // ── ASISTIDOS — past saved events (explicit depth choice). ──
+              // ── GUARDADOS PASADOS — past saved events (explicit depth choice). ──
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {pastSaved.length === 0 ? (
                   <p className="font-mono text-d13 text-ink-soft">
-                    SIN ASISTIDOS TODAVÍA — los eventos guardados que ya pasaron
+                    SIN GUARDADOS PASADOS TODAVÍA — los eventos guardados que ya pasaron
                     aparecen aquí.
                   </p>
                 ) : (
@@ -245,8 +245,8 @@ export function AgendaWidget({ size, compact }: DashboardWidgetProps) {
               </>
             )}
 
-            {/* Foot — ASISTIDOS toggle + VER AGENDA ↗ side by side. */}
-            <div className="mt-auto flex shrink-0 gap-2 pt-1">
+            {/* Foot — GUARDADOS PASADOS toggle + VER AGENDA ↗ side by side. */}
+            <div className="mt-auto flex shrink-0 flex-wrap gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowPast((open) => !open)}
@@ -256,7 +256,7 @@ export function AgendaWidget({ size, compact }: DashboardWidgetProps) {
                   showPast ? 'bg-ink text-paper' : 'text-ink hover:bg-ink hover:text-paper'
                 } ${FOCUS_RING}`}
               >
-                <span>{showPast ? 'PRÓXIMOS' : 'ASISTIDOS'}</span>
+                <span className="text-d11">{showPast ? 'PRÓXIMOS' : 'GUARDADOS PASADOS'}</span>
                 <span className="tabular-nums">
                   {showPast ? upcomingSaved.length : pastSaved.length}
                 </span>

@@ -15,10 +15,9 @@
 //                        exist in the system; deliberate omissions.)
 //   ACCIONES             GUARDAR BORRADOR (ink-filled) · CONTINUAR DESPUÉS
 //                        (outline) · PUBLICAR <TYPE> (acid fill-block,
-//                        ≥44px). Required-incomplete HOLDS all three exactly
-//                        like the dark SubmitFooter gates save+publish — but
-//                        legibly: «FALTAN n CAMPOS» renders inline, never a
-//                        silently dead control.
+//                        ≥44px). Incomplete work can be saved. Only publishing
+//                        requires every field. Save-and-close awaits server
+//                        acknowledgement; failures preserve the open editor.
 //
 // PRESENTATIONAL: the owning form computes the checklist (requiredFields.ts)
 // and hands down workbench outputs + callbacks. No publishedAt anywhere —
@@ -43,6 +42,7 @@ export interface ComposeRailProps {
   completeness: { done: number; total: number }
   // errors.length === 0 (same gate the dark SubmitFooter applies).
   canSubmit: boolean
+  canSave: boolean
   // Workbench outputs (useDraftWorkbench — passed through untouched).
   flash: CommitFlash
   isPublished: boolean
@@ -137,6 +137,7 @@ export function ComposeRail({
   checklist,
   completeness,
   canSubmit,
+  canSave,
   flash,
   isPublished,
   publishMode,
@@ -159,11 +160,10 @@ export function ComposeRail({
       : Math.round((completeness.done / completeness.total) * 100)
   const faltanLabel = `FALTAN ${pending} ${pending === 1 ? 'CAMPO' : 'CAMPOS'}`
 
-  // Held (not silently dead): aria-disabled + guarded click keep the controls
-  // focusable so the inline FALTAN reason is readable by everyone. Same gate
-  // as the dark SubmitFooter (save AND publish require canSubmit).
+  // Publishing keeps its field gate and cannot race an in-flight save.
+  // Incomplete drafts remain saveable once hydration has finished.
   const guard = (fn: () => void) => () => {
-    if (canSubmit) fn()
+    if (canSubmit && canSave) fn()
   }
 
   return (
@@ -174,13 +174,15 @@ export function ComposeRail({
             rail states the mechanism + the transient commit flashes. */}
         <div className="flex items-center justify-between gap-3">
           <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-            AUTOGUARDADO
+            COPIA LOCAL
           </span>
           <span className="flex items-center gap-1.5 font-mono text-d13 tracking-widest text-ink">
             <span aria-hidden className="h-2 w-2 rounded-full border border-ink bg-acid" />
-            ACTIVO
+            ESTA SESIÓN
           </span>
         </div>
+        {flash === 'error' && <p role="alert" className="font-mono text-d13 text-sys-red-paper">No se pudo guardar en tu cuenta. Tu texto sigue aquí; vuelve a intentarlo.</p>}
+        {flash === 'saving' && <p role="status" className="font-mono text-d13 text-ink">Guardando en tu cuenta…</p>}
         {flash === 'draft' && (
           <p className="font-mono text-d11 font-bold tracking-widest text-ink" role="status">
             ◉ BORRADOR GUARDADO
@@ -271,35 +273,14 @@ export function ComposeRail({
       <RailPanel title="ACCIONES" className="sticky bottom-0 z-20 lg:static">
         <button
           type="button"
-          onClick={guard(onSave)}
-          aria-disabled={!canSubmit}
+          onClick={() => { if (canSave) onSave() }}
+          disabled={!canSave}
           data-cue="tick"
-          className={`flex min-h-11 w-full flex-col items-center justify-center border px-4 py-1.5 font-mono text-d13 font-bold tracking-widest ${
-            canSubmit
-              ? 'border-ink bg-ink text-panel-text hover:bg-ink-soft'
-              : 'cursor-not-allowed border-ink-faint bg-paper-raised text-ink-faint'
-          } ${FOCUS_RING}`}
+          className={`flex min-h-11 w-full items-center justify-center border border-ink bg-ink px-4 py-1.5 font-mono text-d13 font-bold tracking-widest text-paper disabled:cursor-wait disabled:opacity-50 ${FOCUS_RING}`}
         >
-          <span>▣ GUARDAR BORRADOR</span>
-          {!canSubmit && (
-            <span className="font-mono text-d11 font-bold tracking-widest text-sys-red-paper">
-              ⚠ {faltanLabel}
-            </span>
-          )}
+          {flash === 'saving' ? 'GUARDANDO…' : '▣ GUARDAR BORRADOR'}
         </button>
-
-        <button
-          type="button"
-          onClick={guard(onSaveAndClose)}
-          aria-disabled={!canSubmit}
-          title={canSubmit ? undefined : faltanLabel}
-          data-cue="tick"
-          className={`flex min-h-11 w-full items-center justify-center border px-4 py-1.5 font-mono text-d13 tracking-widest ${
-            canSubmit
-              ? 'border-ink text-ink hover:bg-ink hover:text-paper'
-              : 'cursor-not-allowed border-ink-faint text-ink-faint'
-          } ${FOCUS_RING}`}
-        >
+        <button type="button" onClick={() => { if (canSave) onSaveAndClose() }} disabled={!canSave} data-cue="tick" className={`flex min-h-11 w-full items-center justify-center border border-ink px-4 font-mono text-d13 tracking-widest text-ink hover:bg-ink hover:text-paper disabled:opacity-50 ${FOCUS_RING}`}>
           CONTINUAR DESPUÉS
         </button>
 
@@ -307,7 +288,7 @@ export function ComposeRail({
           <button
             type="button"
             onClick={guard(onPublish)}
-            aria-disabled={!canSubmit}
+            aria-disabled={!canSubmit || !canSave}
             data-cue="tick"
             className={`flex min-h-12 w-full flex-col items-center justify-center border px-4 py-2 font-mono text-d15 font-bold tracking-widest ${
               canSubmit

@@ -271,15 +271,11 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
             )}
             {/* VIBE — the fader is a dark-calibrated instrument, so it keeps a
                 bg-panel faceplate band (instrument doctrine, like the
-                dashboard ReproductorWidget). Component untouched. */}
-            <div className="flex items-center gap-3">
-              <dt className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-                VIBE
-              </dt>
-              <dd>
-                <div className="flex items-center border border-ink bg-panel px-3 py-2">
-                  <VibeFader item={item} />
-                </div>
+                dashboard ReproductorWidget). */}
+            <div className="w-full min-w-0 sm:max-w-lg">
+              <dt className="sr-only">Vibe check</dt>
+              <dd className="border border-ink bg-panel px-3 py-2">
+                <VibeFader item={item} />
               </dd>
             </div>
             {/* DISCUSIÓN — surfaces the comments module inside the reading

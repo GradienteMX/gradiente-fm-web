@@ -7,9 +7,11 @@ import { es } from 'date-fns/locale'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import {
+  readSeenActivity,
   readLastSeenActivity,
   subscribeLastSeenActivity,
 } from '@/lib/dashboard/localState'
+import { isActivityUnread, type SeenActivity } from '@/lib/dashboard/activityRead'
 import type { ActivityRow } from '@/lib/dashboard/activity'
 import type { WidgetId } from '@/lib/dashboard/layout'
 import {
@@ -61,14 +63,14 @@ export function scrollToDashWidget(id: WidgetId): void {
   attempt()
 }
 
-// The ONE unread derivation — rows newer than the single localStorage
-// watermark. ACTIVIDAD's badge (WP6) computes the identical expression, so
-// the spine number and the widget number can never diverge.
+// Shared unread derivation: explicit mark-all watermark plus exposed rows.
+// Both this strip and ACTIVIDAD use this rule and the same subscription.
 export function countUnreadActivity(
   rows: readonly ActivityRow[],
   watermark: string | null,
+  seen: SeenActivity = {},
 ): number {
-  return rows.filter((row) => !watermark || row.createdAt > watermark).length
+  return rows.filter((row) => isActivityUnread(row, watermark, seen)).length
 }
 
 // Link-affordance rule (panel-wide, shared with WidgetFrame's action chips):
@@ -119,19 +121,22 @@ export function StatusStrip() {
     else if (onDashboard) window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const [seen, setSeen] = useState<SeenActivity>({})
   const [watermark, setWatermark] = useState<string | null>(null)
   useEffect(() => {
     if (!uid) {
       setWatermark(null)
+      setSeen({})
       return
     }
-    setWatermark(readLastSeenActivity(uid))
-    return subscribeLastSeenActivity(() => setWatermark(readLastSeenActivity(uid)))
+    const sync = () => { setWatermark(readLastSeenActivity(uid)); setSeen(readSeenActivity(uid)) }
+    sync()
+    return subscribeLastSeenActivity(sync)
   }, [uid])
 
   const unread = useMemo(
-    () => countUnreadActivity(activity, watermark),
-    [activity, watermark],
+    () => countUnreadActivity(activity, watermark, seen),
+    [activity, watermark, seen],
   )
   const ofertas = franja?.unansweredListingIds.length ?? 0
   const borradores = drafts.length

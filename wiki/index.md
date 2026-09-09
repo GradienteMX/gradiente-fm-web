@@ -139,6 +139,10 @@
 
 ## 60 — Design
 
+- [[Mapa Printed Atlas]] — approved desktop MAPA: paper terrain, ink focus fields, readable captions and persistent navigation
+
+- [[Pliego Desktop Refinement]] — approved desktop direction 02: cover browsing, expanded listening, explicit layout controls, trophies and truthful save/read states
+
 - [[NGE Aesthetic]] — Neon Genesis Evangelion as design language
 - [[Typography]] — Syne display / Space Grotesk body / Space Mono label
 - [[Color System]] — base black, NGE orange glow, vibe gradient, category colors

@@ -82,7 +82,7 @@ export function EditModeBar({ hidden, onRestore, onReset, onDone }: EditModeBarP
           EDICIÓN DEL PANEL
         </span>
         <span className="font-mono text-d13 text-ink">
-          Arrastra para reordenar. Cada cambio se guarda solo.
+          Arrastra el encabezado o usa sus flechas de teclado. TAMAÑO muestra las opciones. Cada cambio se guarda solo.
         </span>
 
         {hidden.length > 0 && (

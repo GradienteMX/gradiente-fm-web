@@ -7,9 +7,8 @@
 // stays off the React render path; React state receives a throttled mirror
 // that drives virtualization and the semantic-zoom band.
 //
-// Interaction reference: the "screen interface" glass-grid video — an endless
-// drifting field of thick slabs, cropped at every edge. Momentum is
-// restrained: editorial browsing, not a physics toy.
+// Printed atlas: paper guides, ink focus fields and fixed-size inspection
+// captions surround the existing honeycomb engine. Motion always settles.
 
 import Link from 'next/link'
 import {
@@ -47,26 +46,22 @@ import {
   computeContinentArrangement,
   type ContinentArrangement,
 } from '@/lib/mapa/continents'
-import { DASH_ACID } from '@/lib/dashboard/palette'
 import { recordItems } from '@/lib/itemsCache'
 import { useOverlay } from '@/components/overlay/useOverlay'
 import { MarketplaceListingDetail } from '@/components/marketplace/MarketplaceListingDetail'
 import { SmartImage } from '@/components/SmartImage'
 import { KIND_LABEL } from '@/components/overlay/FranjaOverlay'
-import { MapaCell } from './MapaCell'
-import { MapaFilterColumn } from './MapaFilterColumn'
-import { MapaListingCell } from './MapaListingCell'
-import { FranjaObi } from './FranjaObi'
+import { MapaCell } from '@/components/mapa/MapaCell'
+import { MapaFilterColumn } from '@/components/mapa/MapaFilterColumn'
+import { MapaListingCell } from '@/components/mapa/MapaListingCell'
+import { FranjaObi } from '@/components/mapa/FranjaObi'
+import { AtlasBackdrop } from '@/components/mapa/AtlasBackdrop'
+import { AtlasChrome } from '@/components/mapa/AtlasChrome'
+import { AtlasInspection, type AtlasInspectionHandle } from '@/components/mapa/AtlasInspection'
 
-// ONE focus grammar, panel variant (fase F). The map's chrome floats on the
-// dark void, where an ink outline would be invisible — same 2px/offset-2 ring
-// as everywhere else on paper, drawn in panel-text instead.
-const FOCUS_ON_PANEL =
-  'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-text'
-
-const ZMIN = 0.22
+const ZMIN = 0.06
 const ZMAX = 1.6
-const OBI_WIDTH = 300 // lg+ left strip, px
+const OBI_WIDTH = 240 // lg+ left strip, px
 const OBI_SHEET_RATIO = 0.42 // mobile bottom sheet height fraction
 
 interface Camera {
@@ -131,6 +126,12 @@ export function MapaCanvas({
   const pendingKeyFocusRef = useRef<string | null>(null)
 
   const [ready, setReady] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const inspectionRef = useRef<AtlasInspectionHandle>(null)
+  const inspectItem = useCallback((item: ContentItem | null) => {
+    if (item) inspectionRef.current?.show(item)
+    else inspectionRef.current?.hide()
+  }, [])
   const [viewCam, setViewCam] = useState<Camera | null>(null)
   const [focusSlug, setFocusSlug] = useState<string | null>(initialFocusSlug)
   const [focusedItemId, setFocusedItemId] = useState<string | null>(
@@ -171,8 +172,8 @@ export function MapaCanvas({
   const focusArrangement = focusedCluster ? getArrangement(focusedCluster) : null
 
   // ── Category visibility toggles (rule 11 — exclusion model) ───────────────
-  // Every category is visible by default; the right-edge hex column
-  // deactivates types/eras. Hidden cells fade in place — nothing moves.
+  // Every category starts visible. Exclusion compacts the global terrain;
+  // focus/affinity keep their geometry and fade excluded pieces in place.
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
   const hiddenItemIds = useMemo(() => {
     if (hidden.size === 0) return null
@@ -402,7 +403,7 @@ export function MapaCanvas({
 
   // The continent drift expands the terrain — camera clamp and global fit
   // follow whichever bounds are live.
-  const activeBounds = continentArrangement?.bounds ?? layout.bounds
+  const activeBounds = continentArrangement?.bounds ?? compactArrangement?.derived.bounds ?? layout.bounds
 
   const clampCamera = useCallback(
     (cam: Camera): Camera => {
@@ -497,7 +498,7 @@ export function MapaCanvas({
     const b = activeBounds
     const { w, h } = viewportRef.current
     const z = Math.min(
-      Math.max(Math.min(w / b.width, h / b.height) * 1.15, ZMIN),
+      Math.max(Math.min(w / b.width, h / b.height) * 1.15, 0.22),
       0.7,
     )
     return { cx: b.x + b.width / 2, cy: b.y + b.height / 2, z }
@@ -512,20 +513,20 @@ export function MapaCanvas({
       const desktop = w >= 1024
       // Lens fits don't reserve obi space — there's no identity strip.
       const availX = reserveObi && desktop ? OBI_WIDTH : 0
-      const availW = w - availX
-      const availH = reserveObi && !desktop ? h * (1 - OBI_SHEET_RATIO) : h
-      const pad = 90
+      const availW = w - availX - (desktop ? 184 : 0)
+      const availH = reserveObi && !desktop ? h * (1 - OBI_SHEET_RATIO) : h - 130
+      const pad = 42
       const z = Math.min(
         Math.max(
           Math.min((availW - pad * 2) / b.width, (availH - pad * 2) / b.height),
-          0.5,
+          ZMIN,
         ),
         1.15,
       )
       // Place the cluster center at the center of the AVAILABLE region (right
       // of the obi / above the sheet) rather than the raw viewport center.
       const availCx = availX + availW / 2
-      const availCy = availH / 2
+      const availCy = availH / 2 + (desktop ? 65 : 0)
       return {
         cx: b.x + b.width / 2 - (availCx - w / 2) / z,
         cy: b.y + b.height / 2 - (availCy - h / 2) / z,
@@ -588,12 +589,13 @@ export function MapaCanvas({
   // Camera refit when the mode flips: the drift and the zoom-out travel
   // together. While a franja focus is up the focus camera owns the view —
   // unfocusing refits through zoomGlobal (which already reads activeBounds).
-  const prevAffinityRef = useRef(false)
+  const prevViewModeRef = useRef({ affinityOn: false, focusSlug: initialFocusSlug })
   useEffect(() => {
-    if (prevAffinityRef.current === affinityOn) return
-    prevAffinityRef.current = affinityOn
-    if (focusSlug) return
-    animateTo(globalFitCamera(), 800)
+    const previous = prevViewModeRef.current
+    if (previous.affinityOn === affinityOn && previous.focusSlug === focusSlug) return
+    prevViewModeRef.current = { affinityOn, focusSlug }
+    // Leaving a focus must fit the newly restored continent bounds as well.
+    if (!focusSlug && (affinityOn || previous.affinityOn)) animateTo(globalFitCamera(), 800)
   }, [affinityOn, animateTo, focusSlug, globalFitCamera])
 
   // Browser Back/Forward restores the previous scale + camera (spec).
@@ -699,6 +701,7 @@ export function MapaCanvas({
     const onWheel = (e: WheelEvent) => {
       if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
       e.preventDefault()
+      inspectionRef.current?.hide()
       // First interaction ends the boot ripple — cells mounted by the
       // ensuing pan must not enter delayed/invisible.
       container.classList.remove('mapa-booting')
@@ -735,6 +738,8 @@ export function MapaCanvas({
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if ((e.target as HTMLElement).closest('[data-mapa-ui]')) return
+      inspectionRef.current?.hide()
+      setHelpOpen(false)
       setFranjasOpen(false) // terrain interaction dismisses the selector
       // First interaction ends the boot ripple (see onWheel).
       containerRef.current?.classList.remove('mapa-booting')
@@ -1003,7 +1008,9 @@ export function MapaCanvas({
     <div
       ref={containerRef}
       data-band="mid"
-      className="mapa-root fixed inset-0 z-40 cursor-grab touch-none select-none overflow-hidden bg-base"
+      // Clip without creating a scroll container: native focus must never
+      // scroll the chrome when a translated terrain piece moves offscreen.
+      className="mapa-root fixed inset-0 z-40 cursor-grab touch-none select-none overflow-clip bg-paper text-ink"
       role="region"
       aria-label="Mapa global de Gradiente — terreno hexagonal navegable"
       aria-describedby="mapa-instructions"
@@ -1022,7 +1029,12 @@ export function MapaCanvas({
         zoomAtPoint(e.clientX, e.clientY, 1.5)
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Escape' && focusSlug) zoomGlobal()
+        if (e.key === 'Escape') {
+          if (helpOpen) setHelpOpen(false)
+          else if (franjasOpen) setFranjasOpen(false)
+          else if (focusSlug) zoomGlobal()
+          inspectionRef.current?.hide()
+        }
       }}
     >
       <p id="mapa-instructions" className="sr-only">
@@ -1031,6 +1043,11 @@ export function MapaCanvas({
         abrir un contenido y Escape para volver a la vista global.
       </p>
 
+      <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full text-ink/25">
+        <defs><pattern id="mapa-registration" width="280" height="220" patternUnits="userSpaceOnUse"><path d="M130 110 H150 M140 100 V120" stroke="currentColor" strokeWidth="1" /></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#mapa-registration)" />
+      </svg>
+
       {/* The plane — all cells live in one transformed coordinate space. */}
       <div
         ref={planeRef}
@@ -1038,6 +1055,7 @@ export function MapaCanvas({
           ready ? 'opacity-100' : 'opacity-0'
         } transition-opacity duration-300 motion-reduce:transition-none`}
       >
+        <AtlasBackdrop bounds={viewCam ? { x: viewCam.cx - viewportRef.current.w / viewCam.z, y: viewCam.cy - viewportRef.current.h / viewCam.z, width: viewportRef.current.w * 2 / viewCam.z, height: viewportRef.current.h * 2 / viewCam.z } : activeBounds} focus={focusArrangement && focusSlug ? { key: focusSlug, perimeter: focusArrangement.perimeter } : null} continents={continentArrangement?.continents ?? []} />
         {visiblePlaced.map((p) => (
           <MapaCell
             key={p.item.id}
@@ -1056,55 +1074,9 @@ export function MapaCanvas({
             onOpen={handleOpen}
             onArrow={onArrow}
             onFocusItem={setFocusedItemId}
+            onInspect={inspectItem}
           />
         ))}
-
-        {/* Continent rings — the identified major affinity areas. They fade
-            in behind the 700ms drift so the water opens first. Fase F: the
-            ring is the terrain half of the AFINIDAD latch, so it carries the
-            same acid the toggle does (was EVA orange). Geometry untouched. */}
-        {continentArrangement && (
-          <svg
-            aria-hidden
-            className="animate-fade-in pointer-events-none absolute left-0 top-0 overflow-visible"
-            style={{ animationDelay: '0.55s', animationFillMode: 'backwards' }}
-            width="0"
-            height="0"
-          >
-            {continentArrangement.continents.map((c) => (
-              <path
-                key={c.itemIds[0]}
-                d={c.perimeter}
-                fill="none"
-                stroke={DASH_ACID}
-                strokeOpacity="0.35"
-                strokeWidth="2"
-                strokeDasharray="4 10"
-                strokeLinejoin="round"
-              />
-            ))}
-          </svg>
-        )}
-
-        {/* Perimeter ring around the focused cluster. */}
-        {focusArrangement && (
-          <svg
-            aria-hidden
-            className="pointer-events-none absolute left-0 top-0 overflow-visible"
-            width="0"
-            height="0"
-          >
-            <path
-              d={focusArrangement.perimeter}
-              fill="none"
-              stroke="#F0F0F0"
-              strokeOpacity="0.5"
-              strokeWidth="2.5"
-              strokeDasharray="10 8"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
 
         {/* Focus state: identity rosette + marketplace listing nodes. The
             identity is a full 7-cell rosette carrying the franja image at
@@ -1144,7 +1116,7 @@ export function MapaCanvas({
               href={`/f/${focusedCluster.franja.slug}`}
               data-mapa-node
               aria-label={`${focusedCluster.franja.title} — entrar al dossier del franja`}
-              className="animate-fade-in absolute z-10 block no-underline"
+              className="animate-fade-in absolute z-10 block no-underline motion-reduce:animate-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink"
               style={{
                 left: focusArrangement.identityBox.x,
                 top: focusArrangement.identityBox.y,
@@ -1171,17 +1143,17 @@ export function MapaCanvas({
                     />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-black/70" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/80" />
                 {/* Prominent identity type — the cell must read as THE
                     franja, not as one more content slab. */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-[14%] text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 px-[20%] pb-[26%] text-center">
                   <span className="inline-flex w-fit items-center border border-primary/70 bg-[#0D0D0DCC] px-2 py-0.5 font-mono text-[11px] tracking-[0.2em] text-primary">
                     {'//'}FRANJA
                     {focusedCluster.franja.franjaKind
                       ? ` · ${KIND_LABEL[focusedCluster.franja.franjaKind]}`
                       : ''}
                   </span>
-                  <span className="font-syne text-5xl font-extrabold uppercase leading-[0.95] tracking-tight text-primary [text-shadow:0_2px_18px_rgba(0,0,0,0.85)]">
+                  <span className="font-syne text-3xl font-extrabold uppercase leading-[0.95] tracking-tight text-primary [text-shadow:0_2px_18px_rgba(0,0,0,0.85)]">
                     {focusedCluster.franja.title}
                   </span>
                   {focusedCluster.franja.subtitle && (
@@ -1212,162 +1184,20 @@ export function MapaCanvas({
         )}
       </div>
 
-      {/* Edge vignette — the surface reads as continuing past every edge. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_58%,rgba(0,0,0,0.55)_100%)]"
+      <AtlasChrome
+        focusTitle={focusedCluster?.franja.title ?? null} focusSlug={focusSlug}
+        affinityOn={affinityOn} zoom={viewCam?.z ?? 0.5}
+        clusters={clusters} inertFranjas={inertFranjas} franjasOpen={franjasOpen}
+        onToggleFranjas={() => { setFranjasOpen((o) => !o); setHelpOpen(false) }}
+        onSelectFranja={(slug) => { setFranjasOpen(false); inspectionRef.current?.hide(); if (slug === focusSlug) zoomGlobal(); else focusFranja(slug) }}
+        onZoom={(factor) => { inspectionRef.current?.hide(); zoomStep(factor) }}
+        onFit={() => { inspectionRef.current?.hide(); animateTo(focusArrangement ? focusCameraFor(focusArrangement.bbox) : focusCameraFor(activeBounds, false)) }}
+        helpOpen={helpOpen} onToggleHelp={() => { setHelpOpen((o) => !o); setFranjasOpen(false) }}
       />
-
-      {/* ── Chrome (non-terrain UI) ────────────────────────────────────────
-          Fase F: the TERRAIN stays dark on purpose — /mapa is an instrument,
-          and instruments are dark hardware. Only the chrome ON it was
-          converted: out of EVA orange, into the house bezel register — panel
-          plates with panel-text hairlines, flat (no blur, no glow), acid
-          reserved for the one latched own-action, ONE focus grammar in its
-          panel variant, ≥44px targets. */}
-
-      {/* Top-left: exit + surface id */}
-      <div
-        data-mapa-ui
-        className="pointer-events-auto absolute left-4 top-4 z-20 flex items-center gap-3"
-      >
-        <Link
-          href="/"
-          className={`flex min-h-11 items-center border border-panel-text/40 bg-panel/90 px-3 font-mono text-d11 font-bold uppercase tracking-widest text-panel-text transition-colors hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
-        >
-          ← GRADIENTE//FM
-        </Link>
-        <span className="hidden border border-panel-text/25 px-2 py-1 font-mono text-d11 uppercase tracking-widest text-panel-text/55 sm:inline">
-          MAPA · GLOBAL
-        </span>
-      </div>
-
-      {/* Top-right: franja selector + zoom controls. The selector scales to
-          the full franja roster (78 in prod): identities WITH terrain are
-          focusable with their publication count; the rest are listed inert —
-          an honest index, not fake affordances. */}
-      <div
-        data-mapa-ui
-        className="pointer-events-auto absolute right-4 top-4 z-20 flex items-start gap-2"
-      >
-        <div className="relative">
-          {/* Latched on a focused franja: an acid fill-block with panel-ink
-              text — the whitelisted acid use, and the only acid on the map.
-              Merely open (no focus yet) brightens the bezel instead. */}
-          <button
-            type="button"
-            onClick={() => setFranjasOpen((o) => !o)}
-            aria-expanded={franjasOpen}
-            aria-haspopup="listbox"
-            className={`flex min-h-11 items-center border px-3 font-mono text-d11 font-bold uppercase tracking-widest transition-colors ${FOCUS_ON_PANEL} ${
-              focusSlug
-                ? 'border-acid bg-acid text-panel'
-                : franjasOpen
-                  ? 'border-panel-text bg-panel text-panel-text'
-                  : 'border-panel-text/40 bg-panel/90 text-panel-text hover:bg-panel-text hover:text-panel'
-            }`}
-          >
-            ◎ FRANJAS{focusSlug ? ` · ${focusSlug.toUpperCase()}` : ''}
-          </button>
-          {franjasOpen && (
-            <div className="absolute right-0 top-full mt-2 max-h-[62dvh] w-72 overflow-y-auto border border-panel-text/40 bg-panel">
-              <p className="border-b border-panel-text/25 px-3 py-2 font-mono text-d11 uppercase tracking-widest text-panel-text/55">
-                CON TERRENO
-              </p>
-              {clusters.map((c) => (
-                <button
-                  key={c.franja.id}
-                  type="button"
-                  onClick={() => {
-                    setFranjasOpen(false)
-                    if (focusSlug === c.franja.slug) zoomGlobal()
-                    else focusFranja(c.franja.slug)
-                  }}
-                  aria-pressed={focusSlug === c.franja.slug}
-                  className={`flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left transition-colors ${FOCUS_ON_PANEL} ${
-                    focusSlug === c.franja.slug
-                      ? 'bg-panel-text text-panel'
-                      : 'text-panel-text/75 hover:bg-panel-text hover:text-panel'
-                  }`}
-                >
-                  {c.franja.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={c.franja.imageUrl}
-                      alt=""
-                      loading="lazy"
-                      className="h-6 w-6 shrink-0 border border-panel-text/40 object-cover"
-                    />
-                  )}
-                  <span className="min-w-0 flex-1 truncate font-mono text-d11 tracking-widest">
-                    {c.franja.title}
-                  </span>
-                  <span className="shrink-0 font-mono text-d11 tabular-nums opacity-60">
-                    {c.itemIds.length}
-                  </span>
-                </button>
-              ))}
-              {inertFranjas.length > 0 && (
-                <>
-                  <p className="border-y border-panel-text/25 px-3 py-2 font-mono text-d11 uppercase tracking-widest text-panel-text/55">
-                    SIN CONTENIDO EN EL MAPA
-                  </p>
-                  {inertFranjas.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-2.5 px-3 py-1.5 opacity-45"
-                    >
-                      {p.imageUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.imageUrl}
-                          alt=""
-                          loading="lazy"
-                          className="h-5 w-5 shrink-0 border border-panel-text/40 object-cover"
-                        />
-                      )}
-                      <span className="min-w-0 flex-1 truncate font-mono text-d11 tracking-widest text-panel-text">
-                        {p.title}
-                      </span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex border border-panel-text/40 bg-panel/90">
-          <button
-            type="button"
-            onClick={() => zoomStep(1 / 1.35)}
-            aria-label="Alejar"
-            className={`flex min-h-11 min-w-11 items-center justify-center font-mono text-d13 text-panel-text transition-colors hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => zoomStep(1.35)}
-            aria-label="Acercar"
-            className={`flex min-h-11 min-w-11 items-center justify-center border-l border-panel-text/40 font-mono text-d13 text-panel-text transition-colors hover:bg-panel-text hover:text-panel ${FOCUS_ON_PANEL}`}
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom-left: keyboard legend (desktop) — the bottom-right corner
-          belongs to the radial filter. */}
-      <div
-        data-mapa-ui
-        className="pointer-events-none absolute bottom-4 left-4 z-20 hidden font-mono text-d11 uppercase tracking-widest text-panel-text/55 lg:block"
-      >
-        ↑↓←→ NAVEGAR · ⌥ DIAGONAL · ENTER ABRIR
-        {focusSlug ? ' · ESC GLOBAL' : ''}
-      </div>
+      <AtlasInspection ref={inspectionRef} />
 
       {/* Right-edge category toggles — every category visible by default;
-          each hex is a kill-switch that fades its cells in place. */}
+          each hex excludes its category from the active terrain. */}
       <MapaFilterColumn
         typeOptions={typeOptions}
         eraCounts={eraCounts}
@@ -1375,6 +1205,7 @@ export function MapaCanvas({
         hidden={hidden}
         onToggle={toggleHidden}
         affinityOn={affinityOn}
+        focusActive={!!focusSlug}
         affinityCount={
           continentArrangement ? continentArrangement.continents.length : null
         }
@@ -1384,6 +1215,7 @@ export function MapaCanvas({
       {/* Franja identity strip — contextual chrome, never terrain. */}
       {focusedCluster && (
         <FranjaObi
+          key={focusedCluster.franja.slug}
           cluster={focusedCluster}
           items={focusMemberItems}
           relatedFranjas={rankedFranjas.map((r) => ({
@@ -1404,10 +1236,7 @@ export function MapaCanvas({
           franja={openListingEntry.franja}
           index={openListingEntry.index}
           onClose={closeListing}
-          // The ONE dark call site: every other host of this sheet is a paper
-          // surface, but here it floats over the terrain void, which is design
-          // rather than un-converted chrome. 'dark' is the pliego sheet in
-          // negative, not the retired EVA skin.
+          // Listing detail keeps its established dark listening/instrument treatment.
           variant="dark"
         />
       )}

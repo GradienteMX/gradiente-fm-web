@@ -23,7 +23,8 @@ import {
   subscribeVibeChecks,
   type VibeCheck,
   type VibeCheckAggregate,
-} from './vibeChecksCache'
+} from '@/lib/vibeChecksCache'
+import { createSharedSubscription } from '@/lib/sharedSubscription'
 
 export const VIBE_CHECK_THRESHOLD = 5
 
@@ -92,6 +93,23 @@ export async function clearVibeCheck(itemId: string, userId: string) {
   }
 }
 
+// Unique lifetime suffix prevents a fresh mount from reusing a channel whose
+// asynchronous teardown is still in flight (including Strict Mode remounts).
+let realtimeLifetime = 0
+const acquireVibeCheckRealtime = createSharedSubscription((itemId) => {
+  const supabase = createClient()
+  const channel = supabase
+    .channel(`vibe-checks:item:${itemId}:${++realtimeLifetime}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'vibe_checks', filter: `item_id=eq.${itemId}`,
+    }, () => {
+      invalidateItem(itemId)
+      void ensureVibeChecksFetched(itemId)
+    })
+    .subscribe()
+  return () => { void supabase.removeChannel(channel) }
+})
+
 // ── Hooks ───────────────────────────────────────────────────────────────────
 
 // User's own check for this item — null when logged-out or unvoted.
@@ -122,8 +140,7 @@ export function useUserVibeCheck(
 }
 
 // Crowd aggregate (count + median min + median max). Lazy fetch on first
-// subscription. Each subscriber also opens a realtime channel scoped to
-// this item so peer votes invalidate + refetch automatically.
+// subscription. Concurrent faders share one realtime channel for the item.
 export function useVibeCheckAggregate(itemId: string | null): VibeCheckAggregate {
   const [agg, setAgg] = useState<VibeCheckAggregate>(() =>
     itemId
@@ -140,30 +157,11 @@ export function useVibeCheckAggregate(itemId: string | null): VibeCheckAggregate
     refresh()
     const unsub = subscribeVibeChecks(refresh)
 
-    // Realtime: invalidate this item's cache on any peer write so the next
-    // refresh pulls fresh data. Local optimistic writes update the cache
-    // directly and don't depend on this echo.
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`vibe-checks:item:${itemId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'vibe_checks',
-          filter: `item_id=eq.${itemId}`,
-        },
-        () => {
-          invalidateItem(itemId)
-          void ensureVibeChecksFetched(itemId)
-        },
-      )
-      .subscribe()
+    const releaseRealtime = acquireVibeCheckRealtime(itemId)
 
     return () => {
       unsub()
-      void supabase.removeChannel(channel)
+      releaseRealtime()
     }
   }, [itemId])
   return agg

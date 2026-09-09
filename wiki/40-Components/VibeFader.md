@@ -2,114 +2,44 @@
 type: component
 status: current
 tags: [component, vibe, vibe-checks, fader, overlay]
-updated: 2026-05-05
+updated: 2026-09-09
 ---
 
 # VibeFader
 
-> Inline draggable fader that replaces the static VIBE row in every overlay. Renders the displayed band (author or crowd median) and lets authed users commit their own [[Vibe Checks|vibe check]] by dragging.
+Shared vibe-check instrument in the six content overlays and dashboard Reproductor. See [[Vibe Checks]] for the unchanged author-to-median threshold and authenticated write contract.
 
-## Source
+## Layout and color
 
-[components/VibeFader.tsx](../../components/VibeFader.tsx)
+The track fills its seat. Metadata occupies a separate row; there are no reserved label widths squeezing the interactive axis. Both compact and expanded variants show 0–10 and a 44px-tall interaction surface, with 32px-wide hit areas around visible 14×32px grips. Edge padding keeps targets inside the faceplate.
 
-## Client component? Yes
+The tape uses the canonical eleven hard-stepped [[Vibe Gradient]] colors. Slots are centered on their numbered positions (half slots at 0 and 10). The full spectrum remains visible at low opacity, with the effective range lit. A single-point reading lights one slot rather than disappearing into a zero-width band.
 
-Owns drag state via refs; subscribes to per-item realtime via [[vibeChecks]] hooks.
+- Thermal tape: author range until five checks, then collective median. Existing attack/release animation and reduced-motion behavior remain.
+- White grips: your stored range, or the effective range before your first check. Grips turn gold while adjusting.
+- White held bracket: your committed reading.
+- Dotted reference beneath the tape: original author calibration.
+- Expanded view: Glacial/Volcán endpoints, explicit personal/effective range legend and login-aware instructions. Author values remain listed when the collective range takes over.
 
-## Where it renders
+## Interaction
 
-Used by all six content overlays in place of the old `swatch + vibeRangeLabel` row:
+A pointer drag exceeding 3px commits on release. A bare click only arms; it does not submit. Single-point left/right auto-switching remains. Pointer cancellation, clicking outside and Escape discard the preview.
 
-- [[ReaderOverlay]]
-- [[EventoOverlay]]
-- [[MixOverlay]]
-- [[ArticuloOverlay]]
-- [[ListicleOverlay]]
-- [[GenericOverlay]]
+Keyboard: Tab to either slider, arrow keys preview integer adjustments bounded by 0–10 and the other endpoint, Enter or Space commits. Screen-reader instructions describe the interaction. Login remains required for pointer and keyboard input.
 
-## Anatomy
+Dashboard sign-in opens above the listening sheet; that sheet yields its keyboard trap while login is open.
 
-```
-↯ VIBE  [▓▓▓▓▓░░░░░]  4-7 · COOL → HOT  ◇1  ★4-7
-        ⌃         ⌃
-       (author tick anchors)
-```
+## Realtime lifecycle
 
-Five visual layers stacked on the 220px-wide track:
+`useVibeCheckAggregate` shares one channel per item across simultaneous dashboard/overlay consumers. The last consumer releases it. Each channel lifetime gets a unique name so asynchronous removal cannot collide with immediate remounts. Regression coverage lives in `tests/vibe/subscriptions.test.ts` (`npm run test:vibe`).
 
-1. **Faint full-axis backdrop** — `bg-vibe-gradient` at 15% opacity. Shows the 0-10 scale subtly so the user has visible terrain past the lit band.
-2. **Lit displayed band** — full vibe-color gradient between the displayed band's min/max. Dims to 30% in edit mode so the user vote takes focus.
-3. **User-vote ghost** — same vibe-color gradient at the user's `[vibeMin, vibeMax]`. Opacity scales with interaction:
-   - **Default:** 25% (persistent post-commit feedback)
-   - **Hover:** 60%
-   - **Edit:** 100% + EVA-gold outline
-4. **Thumbs** — white in view mode at displayed-band edges (subtle affordance hint), gold + draggable in edit mode at the user-vote / drag-preview edges.
-5. **Author tick marks** — 1px white-on-45% verticals below the band at `[vibeMin, vibeMax]`. Self-revealing: when displayed band == author band they sit directly under the lit segment; only visually separate when crowd median diverges from author.
+## Validation limits
 
-Right of the track:
-
-- **Numeric label** — `vibeRangeLabel` format (`4-7 · COOL → HOT` or `5 · NEUTRAL`). Updates live during drag. Color tracks the band midpoint.
-- **Crowd-check count** — `◇N` (under threshold, author still authoritative) or `◆N` (≥5, crowd is authoritative). Hidden in edit mode but slot stays reserved (`invisible`) so layout doesn't shift.
-
-## Layout-shift hardening
-
-Both the label and count slots have `min-width` (12rem and 1.75rem) so when the label content swaps between single-point (`5 · GROOVE`) and range (`0-10 · GLACIAL → VOLCÁN`), or the count badge appears/disappears between modes, the surrounding meta strip doesn't reflow. Some overlays use `ml-auto` on the meta block — without these slot widths, every label change shifted the block left.
-
-## Interaction model
-
-Login-gated. Logged-out tooltip: `Inicia sesión para hacer tu vibe check` — clicking fires `openLogin()`.
-
-For authed users:
-
-| Gesture | Effect |
-|---|---|
-| Hover (view mode) | Track gets faint orange shadow; ghost overlay fades from 25% → 60% |
-| Click anywhere on track | Enter edit mode (gold shadow on track, thumbs glow gold) |
-| Drag a thumb | Live preview band tracks the drag; label updates to current edit range |
-| Release after drag | Commits via `castVibeCheck` (optimistic). Exits edit mode. |
-| Click outside / ESC | Cancels without committing |
-
-The drag-to-set physicality is intentional friction — see [[Vibe Philosophy]] idea 4.
-
-### Single-point auto-switch
-
-When `userVote.vibeMin === userVote.vibeMax`, both thumbs sit at the same x-position. The DOM stacking order would otherwise capture the click for the max thumb only, making leftward drags impossible. Fix in [VibeFader.tsx:99](../../components/VibeFader.tsx) (the `onMove` handler): when `curMin === curMax` and the drag direction is leftward, the active thumb auto-flips to `min`. Drag right → max thumb. Drag left → min thumb. Either gesture works first-try.
-
-### Drag void threshold
-
-Pointer-up within 3px of pointer-down counts as a click, not a drag. Bare clicks on a thumb stay in edit mode without saving — protects against accidental votes.
-
-## State sources
-
-- `useUserVibeCheck(item.id, viewerId)` → user's saved vote (or null)
-- `useVibeCheckAggregate(item.id)` → `{ checkCount, medianMin, medianMax }`. Realtime-subscribed to `vibe_checks` changes for this item.
-- `item.vibeMin/vibeMax` (prop) → author's range
-- `currentUser` from [[useAuth]] → for login gate
-
-Computed locally:
-
-```ts
-displayedBand = aggregate.checkCount >= VIBE_CHECK_THRESHOLD
-  ? [aggregate.medianMin, aggregate.medianMax]
-  : authorBand
-```
-
-## Why a separate file from VibeSlider
-
-The slider is a **filter** for the home feed (writes to `vibeRange`). The fader is a **vote** on a specific item (writes to `vibe_checks`). Different state targets, different gestures (range narrowing vs single-band selection), different RLS shape. Sharing a single component would tangle the two concerns; keeping them separate lets each evolve.
-
-Both render the same vibe-color palette via `vibeToColor` / `vibeRangeLabel`, so visual consistency comes from shared utilities, not shared component state.
-
-## Open questions
-
-- Visual cue for "your vote is far from consensus" — currently it's just the gap between ghost and lit band. Could be louder (e.g. a tiny `Δ` indicator) but defer until users complain.
-- Mobile: drag-to-set works on touch but the chip count badge can crowd small screens. Audit during the [Mobile pass](../Next%20Session.md).
+Compact and expanded desktop layouts, overlay coexistence and the login gate are checked in Chrome. Authenticated vote persistence requires a real signed-in account and was not exercised during this desktop refinement. Mobile-specific tuning remains separate.
 
 ## Links
 
-- [[Vibe Checks]] — the feature this UI surfaces
-- [[Vibe Philosophy]] — idea 4 explains the friction
-- [[vibeChecks]] — the cache + hooks module
-- [[VibeSlider]] — sibling, but different concern (filter not vote)
+- [[Vibe Checks]]
+- [[Vibe Philosophy]]
 - [[Vibe Gradient]]
+- [[Pliego Desktop Refinement]]

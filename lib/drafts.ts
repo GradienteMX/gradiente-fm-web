@@ -192,7 +192,7 @@ export function newItemId(type: string): string {
 
 // ── Internals: API plumbing ────────────────────────────────────────────────
 
-async function postDraft(item: ContentItem): Promise<void> {
+async function postDraft(item: ContentItem): Promise<boolean> {
   try {
     const res = await fetch('/api/drafts', {
       method: 'POST',
@@ -205,10 +205,19 @@ async function postDraft(item: ContentItem): Promise<void> {
       // probably retried because they saw their input land. Re-saves
       // re-attempt the upsert.
       console.error('[drafts] save failed:', await safeReadError(res))
+      return false
     }
+    return true
   } catch (e) {
     console.error('[drafts] save network error:', e)
+    return false
   }
+}
+
+// Explicit composer saves await persistence; legacy callers keep their API.
+export async function saveDraftItem(item: ContentItem): Promise<boolean> {
+  upsertItem(item, 'draft', { localOnly: true })
+  return postDraft(item)
 }
 
 export interface PublishResult {

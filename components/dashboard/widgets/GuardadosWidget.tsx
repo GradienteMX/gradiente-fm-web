@@ -280,6 +280,7 @@ export function GuardadosWidget({ size, compact }: DashboardWidgetProps) {
 
   const total = orderedItems.length
 
+  const previousSize = useRef<WidgetSize | null>(null)
   const large = isLargeState(size)
   const cols = galleryColumns(size)
 
@@ -287,13 +288,19 @@ export function GuardadosWidget({ size, compact }: DashboardWidgetProps) {
   // through the provider's single layout write path.
   const commitToLarge = useCallback(() => {
     const current = ctx.layoutMeta
+    previousSize.current = { ...size }
     ctx.commitLayout({
       ...current,
       layout: current.layout.map((entry) =>
         entry.id === 'guardados' ? { ...entry, w: 12, h: 3 } : entry,
       ),
     })
-  }, [ctx])
+  }, [ctx, size])
+  const restoreSize = () => {
+    const prior = previousSize.current ?? { w: 4, h: 3 }
+    ctx.commitLayout({ ...ctx.layoutMeta, layout: ctx.layoutMeta.layout.map((entry) => entry.id === 'guardados' ? { ...entry, ...prior } : entry) })
+    previousSize.current = null
+  }
 
   const activeOverflow = railEntries.length > cols
 
@@ -333,9 +340,10 @@ export function GuardadosWidget({ size, compact }: DashboardWidgetProps) {
     )
   }
 
-  const headerAction =
-    !isEmpty && !large && size.h <= 2 && activeOverflow
-      ? { label: 'VER TODO', onClick: commitToLarge }
+  const headerAction = large
+    ? { label: 'REDUCIR', onClick: restoreSize }
+    : !isEmpty && !large && size.h <= 2 && activeOverflow
+      ? { label: 'AMPLIAR PANEL', onClick: commitToLarge }
       : undefined
 
   return (
@@ -421,7 +429,7 @@ export function GuardadosWidget({ size, compact }: DashboardWidgetProps) {
                   )}
                 </div>
                 {size.h >= 3 && activeOverflow && (
-                  <VerRow label="VER TODO" count={total} onClick={commitToLarge} />
+                  <VerRow label="AMPLIAR PANEL" count={total} onClick={commitToLarge} />
                 )}
               </>
             )}

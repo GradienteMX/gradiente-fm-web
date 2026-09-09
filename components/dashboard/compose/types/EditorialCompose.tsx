@@ -134,6 +134,7 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
           completeness={completeness(checklist)}
           canSubmit={canSubmit}
           flash={workbench.flash}
+          canSave={workbench.canSave}
           isPublished={workbench.isPublished}
           publishMode={workbench.publishMode}
           typeLabel={composeTypeLabel('editorial')}
@@ -144,9 +145,8 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
           franjaValue={false}
           onFranjaChange={() => {}}
           onSave={workbench.saveDraft}
-          onSaveAndClose={() => {
-            workbench.saveDraft()
-            onClose()
+          onSaveAndClose={async () => {
+            if (await workbench.saveDraft()) onClose()
           }}
           onPublish={onPublish}
           onAnchor={onAnchor}

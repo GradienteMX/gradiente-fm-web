@@ -13,8 +13,8 @@
 //   Either way the DOM is an HTML <img>: GPU-composited bitmap, so pan/zoom
 //   scales it without the per-frame re-raster that made SVG cells lag.
 // - A multi-unit item is ONE unbroken slab — no interior seam lines.
-// - Hover/focus lift is an overlay tint + a slight image press INSIDE the
-//   clip (compositor-cheap transform), not a filter.
+// - Hover changes only the isolated caption HUD; keyboard focus boosts the rim.
+//   Moving/scaling imagery or raising z-index invalidates the large map layer.
 // - Everything visual sits in one `.mapa-cell-anim` wrapper so the boot
 //   entrance ripple animates it without touching the root's transform (the
 //   root transform belongs to focus/compaction deltas).
@@ -100,6 +100,7 @@ export interface MapaCellProps {
   enterDelay: number
   onOpen: (item: ContentItem, rect: DOMRect | null) => void
   onArrow: (itemId: string, key: string, altKey: boolean) => void
+  onInspect: (item: ContentItem | null) => void
   onFocusItem: (itemId: string) => void
 }
 
@@ -114,6 +115,7 @@ export const MapaCell = memo(function MapaCell({
   onOpen,
   onArrow,
   onFocusItem,
+  onInspect,
 }: MapaCellProps) {
   const { item, bbox, outline, size, cells } = placed
   const ref = useRef<HTMLDivElement>(null)
@@ -173,7 +175,10 @@ export const MapaCell = memo(function MapaCell({
       aria-hidden={hidden || undefined}
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
-      onFocus={() => onFocusItem(item.id)}
+      onMouseEnter={() => onInspect(item)}
+      onMouseLeave={() => onInspect(null)}
+      onFocus={() => { onFocusItem(item.id); onInspect(item) }}
+      onBlur={() => onInspect(null)}
       className={clsx(
         'group/cell absolute cursor-pointer outline-none [contain:layout_style]',
         'transition-[transform,opacity] duration-700 ease-in-out motion-reduce:transition-none',
@@ -196,7 +201,7 @@ export const MapaCell = memo(function MapaCell({
         className="mapa-cell-anim absolute inset-0"
         style={{ '--mapa-enter-delay': `${enterDelay}s` } as CSSProperties}
       >
-        {/* Media stack — image + legibility shade + hover lift share one
+        {/* Media stack — image + legibility shade share one
             hex-shaped clip. */}
         <div
           className="mapa-cell-media absolute inset-0"
@@ -216,8 +221,7 @@ export const MapaCell = memo(function MapaCell({
             <div className="absolute inset-0 bg-surface" />
           )}
           {/* Natural full-color image; the gradient only guards text zones. */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/5 to-black/75" />
-          <div className="absolute inset-0 bg-white/0 transition-colors duration-150 group-hover/cell:bg-white/10 group-focus-visible/cell:bg-white/10" />
+          <div className="mapa-cell-shade absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
         </div>
 
         {/* Type-colored rim — EXTERIOR boundary only, stroke-only SVG. */}

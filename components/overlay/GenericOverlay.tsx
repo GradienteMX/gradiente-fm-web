@@ -95,14 +95,9 @@ export function GenericOverlay({ item }: Props) {
             </div>
           )}
           {/* VIBE — the fader is a dark-calibrated instrument: it keeps a
-              bg-panel faceplate band on the paper sheet (component untouched). */}
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-              VIBE
-            </span>
-            <span className="flex items-center border border-ink bg-panel px-3 py-2">
-              <VibeFader item={item} />
-            </span>
+              bg-panel faceplate band on the paper sheet (shared with the dashboard). */}
+          <div className="w-full min-w-0 border border-ink bg-panel px-3 py-2 sm:max-w-lg">
+            <VibeFader item={item} />
           </div>
         </dl>
 

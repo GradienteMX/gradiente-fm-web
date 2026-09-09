@@ -24,6 +24,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { HarvestConfirmModal } from '@/components/dashboard/HarvestConfirmModal'
+import { CoverSelector } from '@/components/dashboard/CoverSelector'
 import { DashPopup } from '@/components/dashboard/DashPopup'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
 import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
@@ -37,7 +38,7 @@ import { currentHp } from '@/lib/curation'
 import { hlBracket } from '@/lib/dashboard/hl'
 import { typeCode, typeDisplayLabel } from '@/lib/dashboard/palette'
 import type { ContentItem } from '@/lib/types'
-import { TypeDot } from './cultivar/CrearZone'
+import { TypeDot } from '@/components/dashboard/widgets/cultivar/CrearZone'
 
 // Mirrors HarvestConfirmModal's ECHO_FACTOR (0.4) — the modal recomputes the
 // real echo server-side; this is the same preview it shows.
@@ -94,7 +95,7 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
   const { published, afterMutation, lastTickAt, loaded } = useDashboardData()
   const openItem = useOpenItem()
 
-  const [index, setIndex] = useState(0)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
 
   // Ranked rows — cache-patched display objects, slice-HP sort (a fresh
@@ -111,16 +112,13 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
       .map(({ item, hp }) => ({ item, hp }))
   }, [published, lastTickAt])
 
-  const clamped = rows.length === 0 ? 0 : Math.min(index, rows.length - 1)
+  const clamped = Math.max(0, rows.findIndex(({ item }) => item.id === selectedId))
   const current = rows[clamped] ?? null
   const step = useCallback(
     (dir: 1 | -1) => {
-      setIndex((prev) => {
-        if (rows.length === 0) return 0
-        return (prev + dir + rows.length) % rows.length
-      })
+      if (rows.length) setSelectedId(rows[(clamped + dir + rows.length) % rows.length].item.id)
     },
-    [rows.length],
+    [rows, clamped],
   )
 
   // ── R1 harvest recipe (ported verbatim from PublishedRail) ────────────────
@@ -223,14 +221,14 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
                   data-cue="tick"
                   aria-label={`Abrir ${current.item.title}`}
                   className={`relative h-full ${
-                    tall ? 'w-40 md:w-52' : 'w-24'
+                    tall ? 'w-32 md:w-40 lg:w-44' : 'w-24'
                   } shrink-0 overflow-hidden border border-ink bg-panel ${FOCUS_RING}`}
                 >
                   {current.item.imageUrl ? (
                     <SmartImage
                       src={current.item.imageUrl}
                       alt=""
-                      className="object-cover"
+                      className="object-contain"
                       sizes="208px"
                     />
                   ) : (
@@ -266,7 +264,9 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
                       ◇ {hlBracket(current.hp)}
                     </span>
                   </span>
-                  <div className="mt-auto flex items-center pt-1">
+                  {tall && <p className="text-d13 leading-snug text-ink-soft">Déjala circular o cosecha parte de su vida.</p>}
+                  <div className="mt-auto flex flex-wrap items-center gap-3 pt-1">
+                    <button type="button" onClick={() => void openItem(current.item.slug)} className={`font-mono text-d11 underline underline-offset-4 ${FOCUS_RING}`}>ABRIR PIEZA</button>
                     <HarvestControl
                       item={current.item}
                       hp={current.hp}
@@ -278,6 +278,7 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
 
               {/* ── Carousel transport — ‹ › + honest position readout. ─── */}
               <div className="flex shrink-0 items-center gap-2 border-t border-ink pt-2">
+                {tall && <CoverSelector label="Tus publicaciones" items={rows.map(({ item }) => item)} selectedId={current.item.id} onSelect={setSelectedId} />}
                 <button
                   type="button"
                   onClick={() => step(-1)}
@@ -314,7 +315,7 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
           onClose={() => setExpanded(false)}
         >
           <div className="flex flex-col">
-            {rows.map(({ item, hp }, i) => (
+            {rows.map(({ item, hp }) => (
               <div
                 key={item.id}
                 className="flex min-h-14 items-center gap-3 border-b border-ink py-2 last:border-b-0"
@@ -322,7 +323,7 @@ export function CultivarWidget({ size, compact }: DashboardWidgetProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    setIndex(i)
+                    setSelectedId(item.id)
                     setExpanded(false)
                     void openItem(item.slug)
                   }}

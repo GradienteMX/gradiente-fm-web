@@ -1,63 +1,39 @@
 'use client'
 
-// ── CULTIVAR trophy strip (FINAL_SPEC §3.1 + judge FIX-B 3) ─────────────────
-//
-// Earned trophies inline at 0 clicks — real keys from the provider's
-// `trophies` slice against TROPHY_CATALOG, each drawn as a designed 14px
-// inline-SVG pictograph (the canonical set — extracted to
-// components/trophies/TrophyGlyphs in fase E so the public expediente
-// renders the same iconography).
-// Every glyph chip carries title + aria-label naming the trophy AND its
-// unlock condition; chips have no click action, so they render as spans
-// (role="img"), never buttons. Locked trophies = ink-faint outlines with the
-// NAMED condition — no counters, no «próximamente».
-//
-// Beneath: one hairline progress bar toward the next presence trophy —
-// words + a rule, zero numerals, zero donuts (the identity spine is the only
-// place the raw scalar renders). The strip is a single 24px row (border-t 1
-// + pt-2 8 + h-6 24 = 33px — part of Zone C's exact h3 budget).
-
+import { useId, useState } from 'react'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
+import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import { TROPHY_CATALOG } from '@/lib/trophies'
 import { TrophyGlyph } from '@/components/trophies/TrophyGlyphs'
 
+/** Canonical glyphs remain visible; their conditions are inspectable in place. */
 export function TrophyStrip() {
   const { trophies } = useDashboardData()
-
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [focused, setFocused] = useState<string | null>(null)
+  const descriptionId = useId()
+  const active = TROPHY_CATALOG.find((t) => t.key === (hovered ?? focused))
   return (
-    <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-3 overflow-hidden border-t border-ink pt-2">
-      <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-ink-soft">
-        TROFEOS
-      </span>
-
-      <div className="flex shrink-0 items-center gap-1">
+    <div className="relative flex min-w-0 flex-wrap items-center gap-3 border-t border-ink pt-2" onMouseLeave={() => setHovered(null)}>
+      <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-ink-soft">TROFEOS</span>
+      <div className="flex flex-wrap items-center gap-1">
         {TROPHY_CATALOG.map((t) => {
           const earned = trophies.has(t.key)
-          const named = `${t.label} — ${t.description}`
-          return (
-            <span
-              key={t.key}
-              role="img"
-              title={earned ? named : `BLOQUEADO — ${named}`}
-              aria-label={
-                earned ? `Trofeo ganado: ${named}` : `Trofeo bloqueado: ${named}`
-              }
-              className={`flex h-6 w-6 items-center justify-center border border-ink ${
-                earned ? 'bg-ink text-paper' : 'bg-transparent text-ink-faint'
-              }`}
-            >
-              <TrophyGlyph trophyKey={t.key} />
-            </span>
-          )
+          return <button key={t.key} type="button"
+            aria-label={`${earned ? 'Trofeo ganado' : 'Trofeo bloqueado'}: ${t.label}`}
+            aria-describedby={active?.key === t.key ? descriptionId : undefined}
+            onFocus={() => setFocused(t.key)} onBlur={() => setFocused(null)}
+            onMouseEnter={() => setHovered(t.key)} onClick={() => setFocused(t.key)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setHovered(null); setFocused(null) } }}
+            className={`flex h-6 w-6 items-center justify-center border border-ink ${earned ? 'bg-ink text-paper' : 'bg-transparent text-ink-faint'} ${FOCUS_RING}`}>
+            <TrophyGlyph trophyKey={t.key} />
+          </button>
         })}
       </div>
-
-      {/* Judge r5 fix 3, final form: the strip is TROPHIES ONLY. The next-hito
-          echo («PRÓXIMO: …») could never render whole beside 10 sigil chips in
-          the {8,4} zone (it cropped in two successive builds), and the spine's
-          PRIVADO block already prints the same fact whole with its progress
-          bar. One surface, one readout — the duplicate dies rather than
-          truncates. */}
+      {active && <div id={descriptionId} role="tooltip" className="absolute left-0 top-full z-40 mt-2 w-80 max-w-full border border-ink bg-paper-raised p-3 text-ink shadow-lift">
+        <p className="font-mono text-d11 font-bold tracking-widest">{trophies.has(active.key) ? 'DESBLOQUEADO' : 'POR DESBLOQUEAR'} · {active.label}</p>
+        <p className="mt-1 text-d13 leading-relaxed">{active.description}</p>
+      </div>}
     </div>
   )
 }

@@ -17,13 +17,6 @@ import type { FranjaCluster } from '@/lib/mapa/layout'
 import { KIND_LABEL } from '@/components/overlay/FranjaOverlay'
 import { fmtDateShort } from '@/lib/utils'
 
-// House «PLIEGO» values (fase F) — the obi was already paper but off-palette;
-// these now mirror tailwind paper / ink / sys-red-paper exactly. Hex strings
-// because the seal + sheet are painted through inline style on a dark ground.
-const PAPER = '#EDEBE3'
-const INK = '#111111'
-const SEAL = '#C42B20'
-
 // Franja-customizable ornament within the controlled Gradiente template
 // (spec allows per-franja skinning). Presentation-only strings — not
 // content, not data.
@@ -190,220 +183,45 @@ export function FranjaObi({
   ].filter((url, i, arr) => arr.indexOf(url) === i)
 
   return (
-    <aside
-      data-mapa-ui
-      aria-label={`${p.title}, franja enfocado, ${count} publicaciones en el mapa`}
-      className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex max-h-[46dvh] flex-col overflow-y-auto shadow-[0_-8px_40px_rgba(0,0,0,0.6)] lg:inset-x-auto lg:bottom-0 lg:left-0 lg:top-0 lg:max-h-none lg:w-[300px] lg:overflow-y-auto lg:shadow-[8px_0_40px_rgba(0,0,0,0.6)]"
-      style={{ backgroundColor: PAPER, color: INK }}
-    >
-      {/* Top band — system label + close */}
-      <div className="flex shrink-0 items-center justify-between border-b border-[#11111122] px-4 py-2.5">
-        <span className="font-mono text-[10px] tracking-[0.16em] text-[#111111]/60">
-          {'//FRANJA · '}
-          {kind}
-        </span>
-        <button
-          type="button"
-          onClick={onZoomGlobal}
-          aria-label="Cerrar enfoque de franja"
-          className="font-mono text-[13px] leading-none text-[#111111]/50 transition-colors hover:text-[#111111]"
-        >
-          ✕
-        </button>
+    <aside data-mapa-ui aria-label={`${p.title}, franja enfocada, ${count} publicaciones en el mapa`}
+      className="group/obi pointer-events-auto absolute bottom-[76px] left-4 top-[180px] z-30 flex w-[192px] cursor-auto flex-col border border-ink/40 bg-paper-raised text-ink shadow-[3px_3px_0_0_#11111120] animate-fade-in motion-reduce:animate-none">
+      <div className="flex shrink-0 items-center justify-between border-b border-ink/20 px-3 py-1">
+        <span className="font-mono text-[9px] tracking-widest">// FRANJA · {kind}</span>
+        <button type="button" onClick={onZoomGlobal} aria-label="Cerrar enfoque de franja" className="p-2 hover:bg-ink hover:text-paper"><X size={14} /></button>
       </div>
-
-      <div className="flex flex-1 flex-col gap-4 px-5 py-4 lg:gap-5 lg:py-6">
-        {/* ── Logo — large, the obi's printed mark ── */}
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-hidden px-3 py-3">
         {p.imageUrl && (
-          <div className="flex shrink-0 justify-center lg:pt-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={p.imageUrl}
-              alt={`Logo de ${p.title}`}
-              className="h-20 w-20 border border-[#11111126] object-cover lg:h-24 lg:w-24"
-            />
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.imageUrl} alt={`Logo de ${p.title}`} className="h-10 w-10 shrink-0 border border-ink/20 object-cover" />
         )}
-
-        {/* ── Vertical hero — katakana + seal + dominant wordmark ──
-            Desktop only: the vertical writing needs the strip's height. */}
-        <div className="hidden min-h-0 flex-1 items-start justify-center gap-3 overflow-hidden lg:flex">
-          <div className="flex flex-col items-center gap-3">
-            {katakana && (
-              <span
-                aria-hidden
-                className="font-mono text-[13px] leading-none tracking-[0.28em] text-[#111111]/55 [writing-mode:vertical-rl]"
-              >
-                {katakana}
-              </span>
-            )}
-            {/* Red seal — Gradiente template mark (hanko ornament) */}
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold leading-none"
-              style={{ backgroundColor: SEAL, color: PAPER }}
-            >
-              {'//'}
-            </span>
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-2 self-stretch overflow-hidden group-has-[[open]]/obi:hidden">
+          <div aria-hidden className="flex shrink-0 flex-col items-center gap-3">
+            {katakana && <span className="font-mono text-[11px] tracking-[0.2em] [writing-mode:vertical-rl]">{katakana}</span>}
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sys-red-paper font-mono text-[10px] text-paper">//</span>
           </div>
-          <h2 className="max-h-full font-syne text-[44px] font-extrabold uppercase leading-[0.9] tracking-tight [writing-mode:vertical-rl]">
-            {p.title}
-          </h2>
+          <svg role="img" aria-label={p.title} viewBox="0 0 60 320" className="h-full min-h-0 w-16 overflow-visible">
+            <text x="0" y="0" transform="translate(14 2) rotate(90)" textLength="310" lengthAdjust="spacingAndGlyphs" className="fill-ink font-syne text-[44px] font-extrabold uppercase">{p.title}</text>
+          </svg>
         </div>
-
-        {/* Mobile identity row — horizontal wordmark + inline ornament */}
-        <div className="flex items-center gap-3 lg:hidden">
-          <h2 className="min-w-0 flex-1 font-syne text-2xl font-extrabold uppercase leading-none tracking-tight">
-            {p.title}
-          </h2>
-          {katakana && (
-            <span
-              aria-hidden
-              className="shrink-0 font-mono text-[11px] tracking-[0.24em] text-[#111111]/55"
-            >
-              {katakana}
-            </span>
-          )}
-          <span
-            aria-hidden
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-bold leading-none"
-            style={{ backgroundColor: SEAL, color: PAPER }}
-          >
-            {'//'}
-          </span>
+      </div>
+      <details className="shrink-0 border-t border-ink/20 px-3 text-[10px]">
+        <summary className="cursor-pointer py-2 font-mono tracking-wider">FICHA · {count} PIEZAS</summary>
+        <div className="max-h-[18dvh] space-y-2 overflow-y-auto pb-3 font-mono">
+          {location && <p>{location}</p>}
+          {p.franjaUrl && <a href={p.franjaUrl} target="_blank" rel="noopener noreferrer" className="block truncate font-bold underline underline-offset-4">{contactLabel(p.franjaUrl)}</a>}
+          {p.verified && <p className="text-sys-red-paper">■ VERIFICADO</p>}
+          <dl>{contextRows.map((r) => <div key={r.label}><dt className="font-bold">{r.label}</dt><dd>{r.value}</dd></div>)}</dl>
+          <div className="flex flex-wrap gap-1">{socialUrls.map((url) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" aria-label={`${p.title} en ${platformOf(url)}`} className="flex h-8 w-8 items-center justify-center border border-ink hover:bg-ink hover:text-paper"><SocialIcon platform={platformOf(url)} /></a>)}</div>
         </div>
-
-        {/* ── Info block — name, address, contextual data, contact ── */}
-        <div className="flex shrink-0 flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <h3 className="font-mono text-[15px] font-bold tracking-[0.14em]">
-              {p.title.toUpperCase()}
-            </h3>
-            {p.verified && (
-              <span
-                className="font-mono text-[9px] tracking-[0.14em]"
-                style={{ color: SEAL }}
-              >
-                ■ VERIFICADO
-              </span>
-            )}
-          </div>
-
-          {location && (
-            <div className="flex flex-col font-mono text-[12px] font-bold uppercase leading-relaxed tracking-[0.1em] text-[#111111]/85">
-              {location.split(/\s*[,·]\s*/).map((line) => (
-                <span key={line}>{line}</span>
-              ))}
-            </div>
-          )}
-
-          <dl className="flex flex-col gap-1 font-mono text-[11px] leading-relaxed">
-            {contextRows.map((row) => (
-              <div key={row.label} className="flex flex-col">
-                <dt className="font-bold tracking-[0.14em] text-[#111111]/85">
-                  {row.label}
-                </dt>
-                <dd className="uppercase tracking-[0.06em] text-[#111111]/65">
-                  {row.value}
-                </dd>
-              </div>
-            ))}
-            <div className="flex flex-col">
-              <dt className="font-bold tracking-[0.14em] text-[#111111]/85">
-                EN EL MAPA
-              </dt>
-              <dd className="uppercase tracking-[0.06em] text-[#111111]/65">
-                {count} {count === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES'}
-              </dd>
-            </div>
-          </dl>
-
-          {p.franjaUrl && (
-            <a
-              href={p.franjaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-fit font-mono text-[13px] font-bold tracking-[0.12em] underline decoration-[#11111133] underline-offset-4 transition-colors hover:text-[#C42B20]"
-            >
-              {contactLabel(p.franjaUrl)}
-            </a>
-          )}
-
-          {/* Social icon row — rounded ink chips, one per real link */}
-          {socialUrls.length > 0 && (
-            <div className="flex items-center gap-2">
-              {socialUrls.map((url) => (
-                <a
-                  key={url}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${p.title} en ${platformOf(url)}`}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-70"
-                  style={{ backgroundColor: INK, color: PAPER }}
-                >
-                  <SocialIcon platform={platformOf(url)} />
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Affine-franja carousel — ‹ › steps through the other clustered
-            identities by content affinity to this one. */}
-        {relatedFranjas.length > 0 && (
-          <div className="flex shrink-0 flex-col gap-1.5">
-            <span className="font-mono text-[9px] tracking-[0.18em] text-[#111111]/45">
-              {'//'}FRANJAS AFINES
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                aria-label="Franja afín anterior"
-                onClick={() =>
-                  onFocusFranja(
-                    relatedFranjas[relatedFranjas.length - 1].slug,
-                  )
-                }
-                className="border border-[#11111155] px-2 py-1 font-mono text-[10px] text-[#111111]/70 transition-colors hover:border-[#111111] hover:text-[#111111]"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                onClick={() => onFocusFranja(relatedFranjas[0].slug)}
-                className="min-w-0 flex-1 truncate border border-[#11111155] px-2 py-1 text-center font-mono text-[10px] tracking-[0.12em] text-[#111111]/80 transition-colors hover:border-[#111111] hover:text-[#111111]"
-              >
-                {relatedFranjas[0].title.toUpperCase()}
-              </button>
-              <button
-                type="button"
-                aria-label="Siguiente franja afín"
-                onClick={() => onFocusFranja(relatedFranjas[0].slug)}
-                className="border border-[#11111155] px-2 py-1 font-mono text-[10px] text-[#111111]/70 transition-colors hover:border-[#111111] hover:text-[#111111]"
-              >
-                ›
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex shrink-0 flex-col justify-end gap-2 lg:mt-auto">
-          <Link
-            href={`/f/${p.slug}`}
-            className="border border-[#111111] px-3 py-2 text-center font-mono text-[10px] tracking-[0.16em] text-[#111111] transition-colors hover:bg-[#111111] hover:text-[#EDEBE3]"
-          >
-            ENTRAR AL DOSSIER →
-          </Link>
-          <button
-            type="button"
-            onClick={onZoomGlobal}
-            className="border border-[#11111155] px-3 py-2 font-mono text-[10px] tracking-[0.16em] text-[#111111]/70 transition-colors hover:border-[#111111] hover:text-[#111111]"
-          >
-            − ZOOM GLOBAL
-          </button>
-        </div>
+      </details>
+      {relatedFranjas.length > 0 && <div className="flex shrink-0 items-center gap-1 border-t border-ink/20 px-2 py-1">
+        <button type="button" aria-label="Franja afín anterior" onClick={() => onFocusFranja(relatedFranjas[relatedFranjas.length - 1].slug)} className="h-8 w-7 shrink-0 border border-ink/40 hover:bg-ink hover:text-paper">‹</button>
+        <button type="button" onClick={() => onFocusFranja(relatedFranjas[0].slug)} className="min-w-0 flex-1 truncate py-2 font-mono text-[9px]" title={`Explorar ${relatedFranjas[0].title}`}>{relatedFranjas[0].title.toUpperCase()}</button>
+        <button type="button" aria-label="Siguiente franja afín" onClick={() => onFocusFranja(relatedFranjas[0].slug)} className="h-8 w-7 shrink-0 border border-ink/40 hover:bg-ink hover:text-paper">›</button>
+      </div>}
+      <div className="flex shrink-0 flex-col gap-1.5 border-t border-ink/20 p-2">
+        <Link href={`/f/${p.slug}`} className="border border-ink bg-acid px-2 py-2 font-mono text-[10px] font-bold hover:bg-ink hover:text-paper">ENTRAR AL DOSSIER ↗</Link>
+        <button type="button" onClick={onZoomGlobal} className="border border-ink px-2 py-2 text-left font-mono text-[10px] hover:bg-ink hover:text-paper">SALIR DEL ENFOQUE</button>
       </div>
     </aside>
   )
