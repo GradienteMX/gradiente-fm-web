@@ -55,6 +55,13 @@ const nextConfig = {
   // source files) so only the icons actually used land in each bundle.
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    // Client Router Cache for dynamic routes. Next 14.2 keeps a dynamic
+    // page's RSC payload for 30s after a client navigation, so /admin →
+    // header wordmark → / could show a mosaic ranked on HL from before the
+    // lever fired (and a hero pinned a moment ago would not appear). The home
+    // is force-dynamic on the server already; 0 makes every navigation
+    // refetch it (Next 15's default). Back/forward keeps its own cache.
+    staleTimes: { dynamic: 0 },
   },
   // The franja profile route moved /p/[slug] → /f/[slug] in the partner→franja
   // rename. Permanent so shared links and any indexed URLs keep resolving.

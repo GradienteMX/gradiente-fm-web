@@ -2,7 +2,7 @@
 type: component
 status: current
 tags: [component, vibe, filter, slider, station-dial, phosphor, multi-genre]
-updated: 2026-06-12
+updated: 2026-09-10
 ---
 
 # VibeSlider
@@ -10,6 +10,10 @@ updated: 2026-06-12
 > Sticky **station dial** — printed scale plate + three-row phosphor tape + two needle handles — plus a feed-driven multi-genre chip strip below. Writes to [[VibeContext]].
 
 > **Redesign 2026** reworked the band as a station dial (see "Three layers, strict roles" below): static printed plate, hard-slot tape colors, PPM ballistics, release-snap detents, arrow-key stepping. Preserved verbatim: the `[data-vibe-strip]` container contract (measured by [[CategoryRail]] for its sticky offset), the chip strip's interaction-gated auto-hide, and the [[VibeContext]] API.
+
+## Fold (2026-09-10)
+
+A «▾ PLEGAR» key after RESET collapses the dial to one slim line: VIBE · a 3px band of the eleven cells lit across the active range · the words readout · RESET when narrowed · the «▴ VIBE» key. The filter keeps working while folded; only the controls are put away (114px → 54px). One preference for the whole site: module store mirrored to `localStorage` (`gradiente:vibeslider:folded`) via `useSyncExternalStore`, so it follows the reader across pages and reloads; server render and first paint are always open. Motion: one persistent row — only the band column tweens its height (open ↔ 3px, 340 ms ease-out, no spring so nothing overshoots) while the printed instrument and the slim band crossfade inside it; the genre band tweens to zero underneath. The strip therefore moves continuously 114 → 54 px and never passes through an empty state (an earlier AnimatePresence swap did, which read as a snap). Chevron rotates; instant under reduced motion. `aria-expanded` / `aria-controls="vibe-instrument"` wire the key to the instrument block.
 
 ## Source
 

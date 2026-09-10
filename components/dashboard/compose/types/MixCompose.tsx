@@ -146,6 +146,9 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
           showEditorial={isStaff}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
+          showPin={isStaff}
+          pinValue={!!draft.pinned}
+          onPinChange={(v) => patch({ pinned: v })}
           showFranja={showFranja}
           franjaValue={draft.attributeFranja ?? !!draft.franjaId}
           onFranjaChange={(v) => patch({ attributeFranja: v })}

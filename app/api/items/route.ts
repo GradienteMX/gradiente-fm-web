@@ -267,6 +267,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Note: `pinned` is no longer single-slot — every pinned item rotates
+  // through the HeroCarousel — so nothing is unpinned here.
+
   // 2. Polls (optional). Look up by item_id (unique constraint) so a
   //    re-publish UPDATEs the existing row instead of inserting a duplicate.
   //

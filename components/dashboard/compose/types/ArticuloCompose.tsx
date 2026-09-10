@@ -128,6 +128,9 @@ export function ArticuloCompose({ onClose }: { onClose: () => void }) {
           showEditorial={isStaff}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
+          showPin={isStaff}
+          pinValue={!!draft.pinned}
+          onPinChange={(v) => patch({ pinned: v })}
           showFranja={false}
           franjaValue={false}
           onFranjaChange={() => {}}

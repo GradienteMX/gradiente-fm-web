@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-09-10 · INGEST · Portada carousel + admin feed toggle · HL lever feed presets
+
+- [[Pinned Hero]] **decision reversed** (pending lead sign-off): portada = carousel of every pinned item, any type but franja (`getPortada`, `HeroCarousel`, type-aware `HeroCard` byline). Single-slot unpin rule removed. «Fijar en portada» on all eight composers (staff).
+- Admin one-click pin/unpin from the feed: `PortadaToggle` chip on cards, key on the hero and in the overlay header → `PATCH /api/admin/items/[id]/portada` → refresh.
+- [[Admin]]: HL lever gets «EN EL FEED» projection + presets against the type peak (`lib/hp/feedProjection.ts`, `typePeakOthers` on the dossier); `revalidatePath('/')` after an adjustment. New `npm run test:home`.
+
+## 2026-09-10 · INGEST · Fader fold · portada lever · HL lever vs feed
+
+- Fold key moved from [[VibeFader]] (reverted the same day — the request was about the header dial) to [[VibeSlider]]: shared preference in localStorage, the readout stays visible while folded, spring fold.
+- [[Pinned Hero]]: `pinned` had no UI anywhere — the portada was frozen on the seeded row. Added «Fijar en portada» (staff, hero-eligible composers) and single-slot enforcement in `POST /api/items` (unpins other rows).
+- [[Admin]]: documented why the HL lever looks inert on the home (per-type peak normalization, freshness half of prominence, 30s client Router Cache). `next.config.mjs` sets `experimental.staleTimes.dynamic = 0`.
+
 ## 2026-09-10 · INGEST · Publish lockout fixed — hard/soft readiness, required classification, franja subject links · migración `0051` APLICADA (2026-09-10)
 
 Users could not publish or edit their own drafts after `968879c`. Two causes, both in that commit: (1) `POST /api/items` applied every composer rule (audio link, track entry, meaningful body, end-after-start) as a 422 on every publish including edits of older pieces; (2) the publish button only opened confirmation if the account draft save succeeded, and a failed save returned silently.

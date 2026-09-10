@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContentItem } from '@/lib/types'
-import { effectiveVibeBand, fmtDateShort } from '@/lib/utils'
+import { effectiveVibeBand, fmtDateFull, fmtDateShort } from '@/lib/utils'
 import { VibeMeterLight } from '@/components/dashboard/widgets/shared/VibeMeterLight'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
@@ -13,13 +13,31 @@ import {
   typeCode,
   typeDisplayLabel,
 } from '@/lib/dashboard/palette'
-import { useEffect, useRef, type KeyboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from 'react'
 import { useOverlay } from '@/components/overlay/useOverlay'
-import { useVibe } from '@/context/VibeContext'
+import { PortadaToggle } from '@/components/portada/PortadaToggle'
 import { recordItems } from '@/lib/itemsCache'
+
+// Carousel seat — present when the hero is one slide among several
+// (HeroCarousel). All handlers stop propagation: the whole card opens the
+// overlay on click.
+export interface HeroSlot {
+  index: number
+  total: number
+  paused: boolean
+  autoRotates: boolean
+  onPrev: () => void
+  onNext: () => void
+  onTogglePause: () => void
+}
 
 interface HeroCardProps {
   item: ContentItem
+  slot?: HeroSlot
+  // False for slides currently off-screen in the carousel track: they keep
+  // their layout but drop out of the tab order so keyboard users are not
+  // walked through invisible cards.
+  live?: boolean
 }
 
 // PORTADA — the pinned hero rendered as the paper's front page («EL PLIEGO»
@@ -27,7 +45,12 @@ interface HeroCardProps {
 // component renders whatever arrives. Split frame: text page | artwork plate.
 // Dark art inside the paper frame is intentional — the flyer is where ink
 // bleeds through; the frame itself stays paper.
-export function HeroCard({ item }: HeroCardProps) {
+const KEY =
+  'flex h-8 min-w-8 items-center justify-center border border-ink bg-paper px-2 font-mono text-d13 leading-none text-ink transition-colors hover:bg-ink hover:text-paper focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+const stop = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault() }
+const stopKeys = (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }
+
+export function HeroCard({ item, slot, live = true }: HeroCardProps) {
   const typeColor = categoryColorOnLight(item.type)
   const genres = item.genres.map((id) => ({
     id,
@@ -35,7 +58,6 @@ export function HeroCard({ item }: HeroCardProps) {
   }))
   const tags = getTagNames(item.tags).slice(0, 3)
   const { open } = useOverlay()
-  const { categoryFilter } = useVibe()
   const ref = useRef<HTMLElement>(null)
 
   // The hero is excluded from the main grid (see app/page.tsx), so ContentGrid
@@ -44,10 +66,6 @@ export function HeroCard({ item }: HeroCardProps) {
   useEffect(() => {
     recordItems([item])
   }, [item])
-
-  // When the category filter is active and doesn't match this hero's type,
-  // hide it — the rest of the home grid filters in place.
-  if (categoryFilter && item.type !== categoryFilter) return null
 
   const handleOpen = () => {
     const rect = ref.current?.getBoundingClientRect()
@@ -68,15 +86,32 @@ export function HeroCard({ item }: HeroCardProps) {
 
   // Split bodyPreview into paragraphs for rendering. Match any run of
   // newlines so a single Enter in the composer also renders as a break.
-  const paragraphs = item.bodyPreview
+  // The dek is a TEASER, not the body: two paragraphs at most, line-clamped,
+  // so a piece with a long bodyPreview cannot stretch the front page (every
+  // slide in the carousel track takes the tallest slide's height).
+  const paragraphs = (item.bodyPreview
     ? item.bodyPreview.split(/\n+/).map((p) => p.trim()).filter(Boolean)
     : item.excerpt
     ? [item.excerpt]
     : []
+  ).slice(0, 2)
 
+  // Display size bends to the longest word: Syne Black at 52px puts an
+  // all-caps «BIENVENIDO» past the column edge, and break-words is banned
+  // here (it splits mid-word with no hyphen). Whole words always fit instead.
+  const longestWord = item.title.split(/\s+/).reduce((m, w) => Math.max(m, w.length), 0)
+  const titleMaxPx = longestWord > 12 ? 32 : longestWord > 9 ? 40 : 52
+
+  // Byline adapts to the slide's type now that any type can hold the front
+  // page: events print date + venue, mixes print series/duration, text
+  // pieces keep author + reading time.
   const bylineParts = [
+    item.type === 'evento' && item.date ? fmtDateFull(item.date).toUpperCase() : null,
+    item.type === 'evento' && item.venue ? item.venue.toUpperCase() : null,
+    item.type === 'mix' && item.mixSeries ? item.mixSeries.toUpperCase() : null,
+    item.type === 'mix' && item.duration ? item.duration : null,
     item.author ? `POR ${item.author.toUpperCase()}` : null,
-    item.readTime ? `LECTURA ${item.readTime} MIN` : null,
+    item.readTime && item.type !== 'evento' && item.type !== 'mix' ? `LECTURA ${item.readTime} MIN` : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -87,9 +122,9 @@ export function HeroCard({ item }: HeroCardProps) {
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
       role="button"
-      tabIndex={0}
+      tabIndex={live ? 0 : -1}
       aria-label={`Abrir ${item.title}`}
-      className="group mb-6 cursor-pointer border border-ink bg-paper-raised focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+      className="group flex h-full cursor-pointer flex-col border border-ink bg-paper-raised focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
     >
       {/* Kicker row — red PORTADA fill chip + pinned fact. Printed, not live:
           no dot, no pulse. */}
@@ -98,12 +133,28 @@ export function HeroCard({ item }: HeroCardProps) {
           PORTADA
         </span>
         <span className="font-mono text-d11 uppercase tracking-widest text-sys-red-paper">
-          ⌖ FIJADA · SE ACTUALIZA SEMANALMENTE
+          {slot && slot.total > 1 ? `⌖ EN PORTADA · ${slot.index + 1}/${slot.total}` : '⌖ EN PORTADA'}
+        </span>
+        {/* Carousel transport — printed keys, no autoplay dots. Every handler
+            stops propagation so the keys never open the overlay. */}
+        {slot && slot.total > 1 && (
+          <span className="ml-auto flex items-center gap-1" onClick={stop} onKeyDown={stopKeys}>
+            <button type="button" onClick={(e) => { stop(e); slot.onPrev() }} aria-label="Anterior en portada" className={KEY}>‹</button>
+            <button type="button" onClick={(e) => { stop(e); slot.onNext() }} aria-label="Siguiente en portada" className={KEY}>›</button>
+            {slot.autoRotates && (
+              <button type="button" onClick={(e) => { stop(e); slot.onTogglePause() }} aria-pressed={slot.paused} aria-label={slot.paused ? 'Reanudar rotación' : 'Pausar rotación'} title={slot.paused ? 'Reanudar rotación' : 'Pausar rotación'} className={KEY}>
+                {slot.paused ? '▶' : '❚❚'}
+              </button>
+            )}
+          </span>
+        )}
+        <span className={slot && slot.total > 1 ? '' : 'ml-auto'}>
+          <PortadaToggle item={item} variant="hero" />
         </span>
       </div>
 
       {/* Split body: text page left, artwork plate right */}
-      <div className="flex flex-col md:min-h-[360px] md:flex-row">
+      <div className="flex flex-1 flex-col md:min-h-[360px] md:flex-row">
         {/* LEFT — text page */}
         <div className="flex min-w-0 flex-1 flex-col justify-between p-6">
           <div>
@@ -140,7 +191,8 @@ export function HeroCard({ item }: HeroCardProps) {
                 no hyphen («Venezue/la»); the clamp guarantees fit instead. */}
             <h1
               lang="es"
-              className="mb-5 font-syne text-d28 font-black leading-none text-ink md:text-[clamp(34px,3.4vw,52px)] [text-wrap:balance]"
+              style={{ fontSize: `clamp(28px, 3.4vw, ${titleMaxPx}px)` }}
+              className="mb-5 font-syne font-black leading-none text-ink [text-wrap:balance]"
             >
               {item.title}
             </h1>
@@ -150,11 +202,11 @@ export function HeroCard({ item }: HeroCardProps) {
               {paragraphs.map((p, i) => (
                 <p
                   key={i}
-                  className={[
-                    'font-grotesk',
-                    i === 0 ? 'text-d15 text-ink-soft' : 'text-d13 text-ink-faint',
-                    i >= 2 ? 'hidden md:block' : '',
-                  ].join(' ')}
+                  className={
+                    i === 0
+                      ? 'line-clamp-4 font-grotesk text-d15 text-ink-soft'
+                      : 'hidden font-grotesk text-d13 text-ink-faint md:line-clamp-3 md:[display:-webkit-box]'
+                  }
                 >
                   {p}
                 </p>
@@ -189,7 +241,7 @@ export function HeroCard({ item }: HeroCardProps) {
             <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-ink pt-3 font-mono text-d11 uppercase tracking-widest">
               <span className="text-ink-soft">{bylineParts}</span>
               <span className="px-1 font-bold text-ink transition-colors group-hover:bg-ink group-hover:text-paper">
-                LEER COMPLETO →
+                {item.type === 'evento' ? 'VER EVENTO →' : item.type === 'mix' ? 'ESCUCHAR →' : 'LEER COMPLETO →'}
               </span>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { requireAdmin, statusForRpcError } from '@/lib/api/requireAdmin'
 
 // POST /api/admin/items/[id]/hp — the beta-calibration HL lever.
@@ -84,5 +85,8 @@ export async function POST(
     )
   }
 
+  // The home is force-dynamic; this clears any route cache a later deploy
+  // adds. The client-side Router Cache is handled by staleTimes.dynamic = 0.
+  revalidatePath('/')
   return NextResponse.json(data)
 }

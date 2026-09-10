@@ -26,6 +26,12 @@ export interface ComposeRailProps {
   showEditorial: boolean
   editorialValue: boolean
   onEditorialChange: (value: boolean) => void
+  // FIJAR EN PORTADA — staff-gated AND hero-eligible types only (editorial /
+  // review / noticia / opinion — see getPinnedHero). Exactly one item holds
+  // the portada: the publish route unpins every other row when this is set.
+  showPin?: boolean
+  pinValue?: boolean
+  onPinChange?: (value: boolean) => void
   // VINCULAR A MI PROMOTORA — franja-team only; row hidden when false.
   showFranja: boolean
   franjaValue: boolean
@@ -85,11 +91,13 @@ function ToggleRow({
 // ── The rail ────────────────────────────────────────────────────────────────
 
 export function ComposeRail({ showEditorial, editorialValue, onEditorialChange,
+  showPin = false, pinValue = false, onPinChange,
   showFranja, franjaValue, onFranjaChange }: ComposeRailProps) {
-  if (!showEditorial && !showFranja) return null
+  if (!showEditorial && !showFranja && !showPin) return null
   return <div className="mt-5 border-y border-ink/20 py-3">
     <p className="mb-2 font-mono text-d11 uppercase tracking-widest">Publicación y firma</p>
     {showEditorial && <ToggleRow label="Selección editorial" hint="Identifica esta pieza como una selección de redacción." value={editorialValue} onChange={onEditorialChange} />}
+    {showPin && onPinChange && <ToggleRow label="Fijar en portada" hint="Ocupa el único hueco de portada al publicar; la pieza fijada hasta ahora lo deja." value={pinValue} onChange={onPinChange} />}
     {showFranja && <ToggleRow label="Publicar con mi franja" hint="La publicación mostrará la atribución de tu equipo." value={franjaValue} onChange={onFranjaChange} />}
   </div>
 }

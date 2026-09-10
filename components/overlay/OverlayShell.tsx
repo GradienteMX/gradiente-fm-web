@@ -31,6 +31,7 @@ import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { CommentsColumn } from './CommentsColumn'
 import { SaveItemButton } from './SaveItemButton'
 import { useAuth } from '@/components/auth/useAuth'
+import { PortadaToggle } from '@/components/portada/PortadaToggle'
 import { canAssignRoles } from '@/lib/permissions'
 import { usePrompt } from '@/components/prompt/usePrompt'
 import { useComments } from '@/lib/hooks/useComments'
@@ -335,6 +336,7 @@ export function OverlayShell({
             <div className="flex shrink-0 items-center gap-2">
               <SaveItemButton item={item} />
               <ShareButton item={item} variant="paper" />
+              {!isSessionOnly && <PortadaToggle item={item} variant="overlay" />}
               {canAdminDelete && (
                 <button
                   type="button"

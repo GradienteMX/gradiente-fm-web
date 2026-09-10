@@ -840,6 +840,7 @@ function Dossier({
         title={detail.title}
         currentHp={detail.hp}
         bracket={detail.bracket}
+        feed={{ peakOthers: detail.typePeakOthers, multiplier: detail.typeMultiplier, type: detail.type }}
         onApplied={onApplied}
         prefill={prefill}
       />

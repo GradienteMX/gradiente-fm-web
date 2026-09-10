@@ -118,6 +118,9 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
+          showPin={showEditorial}
+          pinValue={!!draft.pinned}
+          onPinChange={(v) => patch({ pinned: v })}
           showFranja={false}
           franjaValue={false}
           onFranjaChange={() => {}}

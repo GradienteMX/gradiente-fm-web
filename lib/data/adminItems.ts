@@ -2,6 +2,7 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { currentHp, spawnHp, type HpDecayParts } from '@/lib/curation'
+import { typeMultiplier } from '@/lib/hp/feedProjection'
 import { hlBracket, type HlBracketLabel } from '@/lib/dashboard/hl'
 import {
   HP_EVENT_KINDS,
@@ -291,6 +292,10 @@ export interface AdminItemDetail {
   /** Daily net over the window, for the detail chart. */
   series: { days: string[]; net: number[] }
   ledgerStartsAt: string
+  /** Highest live HL among the OTHER published items of this type — the
+   *  denominator the mosaic sizes against. See lib/hp/feedProjection.ts. */
+  typePeakOthers: number
+  typeMultiplier: number
 }
 
 export async function getAdminItemDetail(
@@ -310,7 +315,16 @@ export async function getAdminItemDetail(
   if (!row) return null
   const item = row as ItemRow
 
-  const [ledgerRes, auditRes, savesRes, commentsRes, vibesRes, reportsRes, franjaRes, creatorRes] =
+  // The type's peak on the public feed: every other published row of the
+  // same type, decayed to now. Service role so unpublished rows the admin
+  // could read never inflate the denominator.
+  const peakRes = admin
+    .from('items')
+    .select('id, type, hp, hp_last_updated_at, published_at, editorial, hp_decay_multiplier, date, end_date')
+    .eq('type', item.type)
+    .eq('published', true)
+    .neq('id', itemId)
+  const [ledgerRes, auditRes, savesRes, commentsRes, vibesRes, reportsRes, franjaRes, creatorRes, peakRows] =
     await Promise.all([
       supabase
         .from('hp_events')
@@ -347,6 +361,7 @@ export async function getAdminItemDetail(
             .eq('id', item.created_by)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      peakRes,
     ])
 
   const ledger = (ledgerRes.data as LedgerRow[] | null) ?? []
@@ -423,5 +438,10 @@ export async function getAdminItemDetail(
     },
     series: { days: series.map((d) => d.day), net: series.map((d) => round(d.value, 2)) },
     ledgerStartsAt: LEDGER_EPOCH,
+    typePeakOthers: round(
+      ((peakRows.data ?? []) as ItemRow[]).reduce((m, r) => Math.max(m, currentHp(toParts(r), now)), 0),
+      2,
+    ),
+    typeMultiplier: typeMultiplier(item.type),
   }
 }

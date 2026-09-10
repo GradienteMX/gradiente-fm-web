@@ -43,6 +43,13 @@ One row per item: decayed HL, bracket, state flags (`published` / `editorial` / 
 
 Rows expand (`ExpandableRow`, one open at a time via `useSingleOpen`) into a dossier fetched from `GET /api/admin/items/[id]/stats?dias=` → `getAdminItemDetail()`: per-kind breakdown, exact save / comment / vibe-check / report counts read from their own tables, every admin adjustment the piece has received, and a daily net series. Fetched on expand rather than shipped with the list — a page holds 50 rows, and hydrating every dossier up front would mean 50 ledger scans and 200 count queries for the one row the operator opens.
 
+**Why a lever adjustment can look like it did nothing on the home (2026-09-10).** Three independent reasons, none a bug in the RPC (`items.hp` does move — check ANTES/DESPUÉS in the dialog or `audit_log`):
+1. **Size is relative, not absolute.** `score = currentHp / max currentHp of the same type on the page × TYPE_SCORE_MULTIPLIER`; tiers at 0.5 (md) and 1.0 (lg), then rank caps (one xl, `MAX_LG = 3`). A +5 on a 20-HL review whose type peak is 70 moves the score from 0.37 to 0.46 — still `sm`. To change tier you must cross a fraction of the type's peak, and raising one item raises that peak and demotes its siblings.
+2. **Position is half freshness.** For content, `prominence = 0.5·freshness(publishedAt) + 0.5·score`; HL touches only the second half. For events, date urgency dominates and HL contributes `0.3·score`.
+3. **Client Router Cache.** Next 14.2 kept a dynamic route's payload for 30s after a client navigation, so `/admin` → wordmark → `/` showed the pre-lever mosaic. Fixed with `experimental.staleTimes.dynamic = 0` in `next.config.mjs` (the home was already `force-dynamic` server-side). A hard reload always showed the truth.
+
+**Lever presets against the type peak (2026-09-10).** The dossier now carries `typePeakOthers` (highest live HL among the other published items of the type) and `typeMultiplier`; the lever's «EN EL FEED» block shows the item's current tier, the tier after the typed delta, and one-click presets «→ MD», «→ LG», «→ CIMA DEL TIPO» that fill the exact delta ([lib/hp/feedProjection.ts](../../lib/hp/feedProjection.ts)). When a tier is unreachable for the type (noticia at 0.8× can never read lg) the preset says so instead of lying. Position still owes half to freshness — the block states that too.
+
 The **HL lever** lives in that dossier: `POST /api/admin/items/[id]/hp`, a thin wrapper over `admin_adjust_item_hp()`. See [[Admin Instrument Exemption]] for what it is for, what it refuses to touch, and the per-type-peak side effect the UI states at the point of commit.
 
 ### EVENTOS — the events editor

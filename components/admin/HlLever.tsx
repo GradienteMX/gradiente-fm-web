@@ -5,6 +5,7 @@ import { AlertTriangle, X } from 'lucide-react'
 import { FOCUS_RING, InkButton, MarginNote } from '@/components/admin/kit'
 import { hlBracket } from '@/lib/dashboard/hl'
 import { round } from '@/lib/dashboard/scale'
+import { deltaToReachTier, feedTier } from '@/lib/hp/feedProjection'
 
 // ── HlLever — the audited beta-calibration lever ────────────────────────────
 //
@@ -51,6 +52,7 @@ export function HlLever({
   currentHp,
   bracket,
   onApplied,
+  feed,
   prefill,
 }: {
   itemId: string
@@ -59,6 +61,13 @@ export function HlLever({
   currentHp: number
   bracket: string
   onApplied: (result: HlAdjustResult) => void
+  /**
+   * What the mosaic will do with the result. `peakOthers` is the highest live
+   * HL among the other published items of the type — the denominator the
+   * grid sizes against — so the block can say "md needs +7" instead of
+   * leaving the operator to guess against a relative scale.
+   */
+  feed?: { peakOthers: number; multiplier: number; type: string }
   /**
    * Load an adjustment into the form without committing it. The REVERTIR
    * action on an audit row uses this so reversal rides the ONE POST path that
@@ -116,6 +125,19 @@ export function HlLever({
   const projected = Math.max(0, round(currentHp + delta, 2))
   const projectedBracket = hlBracket(projected)
   const crosses = valid && projectedBracket !== bracket
+
+  // Feed projection — tier now vs tier after the delta, plus the deltas the
+  // presets would fill. Null preset = unreachable for this type.
+  const tierNow = feed ? feedTier(currentHp, feed.peakOthers, feed.multiplier) : null
+  const tierAfter = feed && valid ? feedTier(projected, feed.peakOthers, feed.multiplier) : null
+  const presets = feed
+    ? ([
+        { label: '→ MD', delta: deltaToReachTier('md', currentHp, feed.peakOthers, feed.multiplier) },
+        { label: '→ LG', delta: deltaToReachTier('lg', currentHp, feed.peakOthers, feed.multiplier) },
+        { label: '→ CIMA DEL TIPO', delta: currentHp > feed.peakOthers ? 0 : round(feed.peakOthers * 1.02 - currentHp + 0.05, 2) },
+      ] as const)
+    : []
+  const TIER_WORD: Record<string, string> = { sm: 'SM · 1×1', md: 'MD · media', lg: 'LG · 2×2', xl: 'XL · 3×2' }
 
   // One always-visible line stating what is still missing. An operator should
   // never have to press a disabled button to find out why it is disabled.
@@ -323,6 +345,48 @@ export function HlLever({
         <p className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink">
           ESTE AJUSTE CRUZA DE {bracket} A {projectedBracket}.
         </p>
+      )}
+
+      {/* EN EL FEED — the mosaic sizes against the TYPE'S PEAK, not an absolute
+          scale, so this is where "how much is enough" gets answered. */}
+      {feed && tierNow && (
+        <div className="flex flex-col gap-2 border border-ink bg-paper p-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">EN EL FEED</span>
+            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
+              CIMA DE {feed.type.toUpperCase()}: <span className="text-hp">{feed.peakOthers.toFixed(2)}</span> · ×{feed.multiplier}
+            </span>
+          </div>
+          <p className="font-mono text-d13 uppercase tracking-widest text-ink">
+            TAMAÑO AHORA <span className="font-bold">{TIER_WORD[tierNow]}</span>
+            {valid && tierAfter && (
+              <>
+                {' '}→ DESPUÉS <span className={`font-bold ${tierAfter !== tierNow ? 'text-sys-red-paper' : ''}`}>{TIER_WORD[tierAfter]}</span>
+              </>
+            )}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {presets.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                disabled={p.delta === null || p.delta === 0}
+                title={p.delta === null ? `Inalcanzable: ${feed.type} multiplica ×${feed.multiplier}` : p.delta === 0 ? 'Ya está ahí' : `+${p.delta.toFixed(2)} HL`}
+                onClick={() => {
+                  if (p.delta === null || p.delta === 0) return
+                  setAmount(String(p.delta))
+                  setSign(1)
+                }}
+                className={`min-h-11 border border-ink px-3 font-mono text-d11 uppercase tabular-nums tracking-widest text-ink-soft hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
+              >
+                {p.label}{p.delta === null ? ' · N/A' : p.delta === 0 ? ' · YA' : ` · +${p.delta.toFixed(2)}`}
+              </button>
+            ))}
+          </div>
+          <MarginNote>
+            EL TAMAÑO SALE DE HL ÷ CIMA DEL TIPO. LA POSICIÓN DEBE LA MITAD A LA FRESCURA (FECHA DE PUBLICACIÓN), QUE LA PALANCA NO TOCA. SUBIR ESTA PIEZA POR ENCIMA DE LA CIMA BAJA A LAS DEMÁS DEL MISMO TIPO.
+          </MarginNote>
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-3">

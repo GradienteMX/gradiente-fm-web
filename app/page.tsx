@@ -2,13 +2,13 @@ import { CategoryRail } from '@/components/CategoryRail'
 import { EventosRail } from '@/components/EventosRail'
 import { HomeFeedWithDrafts } from '@/components/HomeFeedWithDrafts'
 import { FeedHeader } from '@/components/FeedHeader'
-import { HeroCard } from '@/components/HeroCard'
+import { HeroCarousel } from '@/components/HeroCarousel'
 import { FranjasRail } from '@/components/FranjasRail'
 import { FranjasDrawer } from '@/components/FranjasDrawer'
 import { MarketplaceRail } from '@/components/marketplace/MarketplaceRail'
 import { getItems } from '@/lib/data/items'
 import type { ContentItem } from '@/lib/types'
-import { filterForHome, getPinnedHero, isUpcoming } from '@/lib/utils'
+import { filterForHome, getPortada, isUpcoming } from '@/lib/utils'
 import { parseISO } from 'date-fns'
 
 // Reads from Supabase via cookies()-aware server client → forces dynamic.
@@ -20,7 +20,9 @@ export default async function HomePage() {
   const now = new Date()
   const allItems = await getItems()
   const homeItems = filterForHome(allItems, now)
-  const hero = getPinnedHero(allItems)
+  // PORTADA — every pinned item rotates through the hero frame (HeroCarousel).
+  const portada = getPortada(allItems)
+  const portadaIds = new Set(portada.map((i) => i.id))
 
   // Franjas live in the right rail, never in the main mosaic. The
   // marketplace-enabled subset feeds MarketplaceRail directly so the
@@ -86,7 +88,7 @@ export default async function HomePage() {
   const gridItems = homeItems.filter(
     (i) =>
       i.type !== 'franja' &&
-      (!hero || i.id !== hero.id) &&
+      !portadaIds.has(i.id) &&
       // Non-eventos pass through; eventos require editorial or elevated.
       (i.type !== 'evento' || isMosaicEvent(i)),
   )
@@ -105,8 +107,8 @@ export default async function HomePage() {
         <CategoryRail items={gridItems} />
 
         <div className="min-w-0 flex-1">
-          {/* Pinned hero — editorial / review / noticia in portada */}
-          {hero && <HeroCard item={hero} />}
+          {/* Portada — pinned items of any type, one frame, rotating */}
+          <HeroCarousel items={portada} />
 
           {/* Scraped-event firehose — auto-scrolling rail under the hero,
               above the main mosaic. Empty when no scraped events present. */}

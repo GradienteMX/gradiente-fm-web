@@ -207,24 +207,25 @@ export function filterByDate(items: ContentItem[], date: Date): ContentItem[] {
 }
 
 // Prefers pinned items, falls back to most-recent editorial-flagged non-evento.
-export function getPinnedHero(items: ContentItem[]): ContentItem | null {
-  const heroTypes: ContentItem['type'][] = ['editorial', 'review', 'noticia', 'opinion']
-  const pinned = items
-    .filter((i) => i.pinned && heroTypes.includes(i.type))
-    .sort(
-      (a, b) =>
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-    )
-  if (pinned.length > 0) return pinned[0]
+// ── Portada ──────────────────────────────────────────────────────────────────
+// Every pinned item (any type except franja) takes a turn in the front-page
+// carousel, newest first. When nothing is pinned the front page still exists:
+// the newest editorial-flagged text piece stands in alone. Franjas never
+// enter (they live in their rail).
+const FALLBACK_TYPES: ContentItem['type'][] = ['editorial', 'review', 'noticia', 'opinion', 'articulo']
+const newestFirst = (a: ContentItem, b: ContentItem) =>
+  new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
 
-  return (
-    items
-      .filter((i) => i.editorial && heroTypes.includes(i.type))
-      .sort(
-        (a, b) =>
-          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-      )[0] ?? null
-  )
+export function getPortada(items: ContentItem[]): ContentItem[] {
+  const pinned = items.filter((i) => i.pinned && i.type !== 'franja').sort(newestFirst)
+  if (pinned.length > 0) return pinned
+  const fallback = items.filter((i) => i.editorial && FALLBACK_TYPES.includes(i.type)).sort(newestFirst)[0]
+  return fallback ? [fallback] : []
+}
+
+// Back-compat: the first slide.
+export function getPinnedHero(items: ContentItem[]): ContentItem | null {
+  return getPortada(items)[0] ?? null
 }
 
 // ── Format helpers ────────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { useVibe } from '@/context/VibeContext'
 import { VIBE_SLOT_COLORS, VIBE_SLOT_NAMES } from '@/lib/utils'
@@ -46,6 +47,34 @@ function snapToSlot(v: number): number {
 // Focus grammar on paper: 2px ink outline, offset 2.
 const FOCUS_ON_PAPER =
   'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+
+// ── Fold — one preference for the whole site ────────────────────────────────
+// «▾ PLEGAR» collapses the dial to a single slim line: VIBE · a 3px thermal
+// band lit across the active range · the words readout · the key. The
+// filter keeps working while folded; only the controls are put away. Module
+// store mirrored to localStorage so the choice follows the reader across
+// pages and reloads; server render and first paint are always open.
+const FOLD_KEY = 'gradiente:vibeslider:folded'
+let folded = false
+let foldHydrated = false
+const foldListeners = new Set<() => void>()
+function readFold(): boolean {
+  if (!foldHydrated) {
+    foldHydrated = true
+    try { folded = localStorage.getItem(FOLD_KEY) === '1' } catch { folded = false }
+  }
+  return folded
+}
+function setFold(next: boolean) {
+  folded = next
+  foldHydrated = true
+  try { localStorage.setItem(FOLD_KEY, next ? '1' : '0') } catch { /* per-viewer convenience only */ }
+  foldListeners.forEach((fn) => fn())
+}
+function subscribeFold(fn: () => void) {
+  foldListeners.add(fn)
+  return () => { foldListeners.delete(fn) }
+}
 
 // ── Readout contrast audit (module scope — deterministic, SSR-safe) ────────
 // The words-only readout may print in the slot hue ONLY when that hue clears
@@ -115,6 +144,7 @@ function VibeSliderImpl() {
   // while dragging (instant follow) and back on for the detent overshoot.
   const [dragHandle, setDragHandle] = useState<'min' | 'max' | null>(null)
   const reducedMotion = usePrefersReducedMotion()
+  const isFolded = useSyncExternalStore(subscribeFold, readFold, () => false)
 
   // The chip strip is hidden by default. Two ways to reveal it:
   //   - Pin button (manual override — stays open until unpinned).
@@ -313,6 +343,49 @@ function VibeSliderImpl() {
   // The player lives in a fixed bottom bar, so no top-strip arithmetic: one
   // offset on every page. CategoryRail keeps measuring [data-vibe-strip]
   // for its own placement below.
+  // Shared between the open instrument row and the folded line.
+  const readout = (
+    <span className="inline-block min-w-[17ch] whitespace-nowrap text-right font-mono text-d11 tracking-wider">
+      <span style={{ color: READOUT_COLORS[minSlot] }}>
+        {VIBE_SLOT_NAMES[minSlot]}
+      </span>
+      {minSlot !== maxSlot && (
+        <>
+          <span className="text-ink-faint"> → </span>
+          <span style={{ color: READOUT_COLORS[maxSlot] }}>
+            {VIBE_SLOT_NAMES[maxSlot]}
+          </span>
+        </>
+      )}
+    </span>
+  )
+  const foldKey = (
+    <button
+      type="button"
+      onClick={() => setFold(!isFolded)}
+      aria-expanded={!isFolded}
+      aria-controls="vibe-instrument"
+      title={isFolded ? 'Desplegar el dial' : 'Plegar el dial (el filtro sigue activo)'}
+      className={`group flex min-h-11 shrink-0 items-center ${FOCUS_ON_PAPER}`}
+    >
+      <span className="flex items-center gap-1.5 border border-ink px-2 py-0.5 font-mono text-d11 font-bold tracking-widest text-ink transition-colors group-hover:bg-ink group-hover:text-paper">
+        <ChevronDown
+          size={11}
+          className={`transition-transform duration-300 ${isFolded ? '' : 'rotate-180'}`}
+          aria-hidden
+        />
+        {isFolded ? 'VIBE' : 'PLEGAR'}
+      </span>
+    </button>
+  )
+  // One continuous motion: the middle column tweens between its open height
+  // and the 3px folded band; the row follows, so the strip never passes
+  // through an empty state. Tween, not spring — a height spring overshoots.
+  const foldTween = reducedMotion
+    ? { duration: 0 }
+    : { type: 'tween' as const, duration: 0.34, ease: [0.22, 0.61, 0.36, 1] as [number, number, number, number] }
+  const fadeTween = reducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' as const }
+
   return (
     <div
       data-vibe-strip
@@ -321,18 +394,31 @@ function VibeSliderImpl() {
     >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
 
-        {/* ── Instrument row: VIBE · band+needles+names · readout · RESET ──
+        {/* ── Instrument row: VIBE · band+needles+names · readout · RESET · fold ──
             One printed line on md+. On phones the band takes its own
             full-width line (order-last) and the label/readout/RESET share
-            the line above — same DOM, CSS order only. */}
+            the line above — same DOM, CSS order only. Folding animates ONLY
+            the band column's height (open → 3px) and crossfades the printed
+            instrument with the slim band inside it. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0 py-1 md:flex-nowrap md:gap-x-4">
           <span className="order-1 shrink-0 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
             VIBE
           </span>
 
-          {/* Track column — the band IS the slider; the names row below
-              shares its exact width so printed names register with cells. */}
-          <div className="order-4 w-full md:order-2 md:min-w-0 md:w-auto md:flex-1">
+          <motion.div
+            id="vibe-instrument"
+            initial={false}
+            animate={{ height: isFolded ? 3 : 'auto' }}
+            transition={foldTween}
+            className="relative order-4 w-full overflow-hidden md:order-2 md:min-w-0 md:w-auto md:flex-1"
+          >
+            <motion.div
+              initial={false}
+              animate={{ opacity: isFolded ? 0 : 1 }}
+              transition={fadeTween}
+              style={{ pointerEvents: isFolded ? 'none' : 'auto' }}
+              aria-hidden={isFolded}
+            >
             <div
               ref={trackRef}
               onClick={handleTrackClick}
@@ -455,26 +541,27 @@ function VibeSliderImpl() {
                 )
               })}
             </div>
-          </div>
+            </motion.div>
+            {/* Folded band: the eleven cells at 3px, lit across the range. */}
+            <motion.div
+              aria-hidden
+              initial={false}
+              animate={{ opacity: isFolded ? 1 : 0 }}
+              transition={fadeTween}
+              className="pointer-events-none absolute inset-x-0 top-0 flex h-[3px]"
+            >
+              {VIBE_SLOT_COLORS.map((color, i) => {
+                const lit = i >= minSlot && i <= maxSlot
+                return <span key={i} className="flex-1" style={{ backgroundColor: lit ? color : 'transparent', boxShadow: lit ? undefined : 'inset 0 0 0 1px rgba(13,13,13,0.25)' }} />
+              })}
+            </motion.div>
+          </motion.div>
 
           {/* Words-only readout — reserved width so a changing range never
               reflows the row. Word color = slot hue only where it clears
               AA on paper (READOUT_COLORS audit above), ink otherwise.
               Never numbers. */}
-          <span className="order-2 ml-auto inline-block min-w-[17ch] whitespace-nowrap text-right font-mono text-d11 tracking-wider md:order-3 md:ml-0">
-            <span style={{ color: READOUT_COLORS[minSlot] }}>
-              {VIBE_SLOT_NAMES[minSlot]}
-            </span>
-            {minSlot !== maxSlot && (
-              <>
-                <span className="text-ink-faint"> → </span>
-                <span style={{ color: READOUT_COLORS[maxSlot] }}>
-                  {VIBE_SLOT_NAMES[maxSlot]}
-                </span>
-              </>
-            )}
-          </span>
-
+          <span className="order-2 ml-auto md:order-3 md:ml-0">{readout}</span>
           {/* RESET — always rendered (toggling `invisible`, not conditional
               mount) so the row never reflows when the user narrows or
               resets the range. */}
@@ -490,9 +577,19 @@ function VibeSliderImpl() {
               RESET
             </span>
           </button>
+          <span className="order-3 md:order-5">{foldKey}</span>
         </div>
       </div>
 
+      {/* Lower band folds with the dial — height tween, same curve. */}
+      <motion.div
+        initial={false}
+        animate={{ height: isFolded ? 0 : 'auto', opacity: isFolded ? 0 : 1 }}
+        transition={{ height: foldTween, opacity: fadeTween }}
+        style={{ pointerEvents: isFolded ? 'none' : 'auto' }}
+        aria-hidden={isFolded}
+        className="overflow-hidden"
+      >
       {/* ── Lower band: pin + genre chips ──
           Visibility is tied to interaction, not range:
           - Slider moves → chips fade in, stay open while dragging, fade
@@ -616,6 +713,7 @@ function VibeSliderImpl() {
           </div>
         </div>
       </div>
+      </motion.div>
     </div>
   )
 }

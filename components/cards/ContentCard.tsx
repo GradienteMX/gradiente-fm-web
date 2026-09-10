@@ -29,6 +29,7 @@ import { useOverlay } from '@/components/overlay/useOverlay'
 import { useHeatReport } from '@/lib/hooks/useHeatReport'
 import { recordHpEvent } from '@/lib/hpEvents'
 import { useAuth } from '@/components/auth/useAuth'
+import { PortadaToggle } from '@/components/portada/PortadaToggle'
 import { currentHp } from '@/lib/curation'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
@@ -272,6 +273,8 @@ function ChipRow({ item, isFresh }: { item: ContentItem; isFresh: boolean }) {
       )}
       <FranjaAttributionChip item={item} />
       <PublisherHlChip item={item} />
+      {/* Admin-only portada lever — null for everyone else. */}
+      <PortadaToggle item={item} variant="chip" />
     </div>
   )
 }

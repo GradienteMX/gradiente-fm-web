@@ -140,7 +140,7 @@ export function computePeakByType(items: ContentItem[], now: Date = new Date()):
 // ── Per-type score multipliers ────────────────────────────────────────────────
 // Constants, not per-item knobs. Corrects cross-type dominance in sort order:
 // events win top positions via imminence; these priors re-balance longtail types.
-const TYPE_SCORE_MULTIPLIER: Partial<Record<ContentType, number>> = {
+export const TYPE_SCORE_MULTIPLIER: Partial<Record<ContentType, number>> = {
   review:    1.3,
   opinion:   1.2,
   editorial: 1.1,

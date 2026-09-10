@@ -120,6 +120,9 @@ export function OpinionCompose({ onClose }: { onClose: () => void }) {
           showEditorial={showEditorial}
           editorialValue={!!draft.editorial}
           onEditorialChange={(v) => patch({ editorial: v })}
+          showPin={showEditorial}
+          pinValue={!!draft.pinned}
+          onPinChange={(v) => patch({ pinned: v })}
           showFranja={showFranja}
           franjaValue={franjaValue}
           onFranjaChange={(v) => patch({ attributeFranja: v })}
