@@ -211,6 +211,10 @@ export interface ContentItem {
   // `attachEntities` in lib/data/items.ts. The composer sends these on
   // publish; the items API writes the join rows. Drives the CONTEXTO rail.
   entities?: EntityRef[]
+  // Franjas this piece is ABOUT (subject links, table item_franjas, migration
+  // 0051) — distinct from `franjaId`, which is authorship attribution. Chips in
+  // the CONTEXTO rail link to /f/[slug]; shared refs feed the affinity map.
+  franjaRefs?: FranjaRef[]
   // Free-form outbound links surfaced in the CONTEXTO block — "where to buy /
   // listen / read more" (Bandcamp, Discogs, official site, news source…).
   // Distinct from `entities` (browsable scene rows) and `embeds` (playable
@@ -418,6 +422,16 @@ export interface Entity {
   imageUrl?: string
   city?: string          // mostly meaningful for venue
   links?: EntityLink[]
+}
+
+// Lightweight reference to a franja (an items row of type 'franja') carried
+// on a ContentItem as a subject link. Resolved by `attachFranjaRefs` in
+// lib/data/items.ts and the browser-side `fetchFranjaRefsByItemIds`.
+export interface FranjaRef {
+  id: string
+  title: string
+  slug: string
+  kind: FranjaKind
 }
 
 // Lightweight reference carried on a ContentItem — enough to render a

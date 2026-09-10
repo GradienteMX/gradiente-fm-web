@@ -6,6 +6,7 @@ import type { useDraftWorkbench } from '@/components/dashboard/forms/shared/Fiel
 import type { ComposeRailProps } from '@/components/dashboard/compose/editor/ComposeRail'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import { composeSteps, isOptionalComposeSection, sectionStep } from '@/lib/composeWorkflow'
+import { blockingFields, recommendedFields } from '@/lib/contentReadiness'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { ComposeGuide } from '@/components/dashboard/compose/editor/ComposeGuide'
 import { ComposePreview } from '@/components/dashboard/compose/editor/ComposePreview'
@@ -39,10 +40,18 @@ export function ComposeLayout({ typeLabel, isEdit, draft, setDraft, workbench, o
   const index = steps.findIndex((s) => s.id === step)
   const controls = rail.props
   const sections = Children.toArray(children).filter((child): child is ReactElement<{ number: string }> => isValidElement(child))
-  const missing = controls.checklist.filter((field) => !field.done)
+  // Hard misses block publishing; soft misses are listed as recommendations
+  // and never disable the button (the server enforces only the hard set).
+  const missing = blockingFields(controls.checklist)
+  const recommended = recommendedFields(controls.checklist)
   const outline = (draft.articleBody ?? []).map((block, i) => block.kind === 'h2' || block.kind === 'h3' ? { title: block.text || 'Sección sin título', index: i } : null).filter((v) => v !== null)
 
-  useEffect(() => { if (!confirmingId) workbench.resumeSaving() }, [confirmingId, workbench])
+  // Resume autosave only when the confirmation actually closes. `workbench` is
+  // a fresh object every render, so depending on it would re-run this on the
+  // render between requestPublish() and the modal opening and undo the pause.
+  const resumeSaving = useRef(workbench.resumeSaving)
+  resumeSaving.current = workbench.resumeSaving
+  useEffect(() => { if (!confirmingId) resumeSaving.current() }, [confirmingId])
 
   const navigate = (next: string) => {
     const target = steps.some((candidate) => candidate.id === next) ? next : 'content'
@@ -69,7 +78,11 @@ export function ComposeLayout({ typeLabel, isEdit, draft, setDraft, workbench, o
   const reviewPublish = async () => {
     if (busy || missing.length) return
     setBusy(true)
-    if (await workbench.saveDraft()) controls.onPublish()
+    // Publishing posts the composer payload directly; it never depends on the
+    // account draft save succeeding. Only wait for a save already on the wire
+    // to land, then kick the (background) autosave and open confirmation.
+    await workbench.settle()
+    controls.onPublish()
     setBusy(false)
   }
   const jumpToField = (id: string) => {
@@ -159,8 +172,9 @@ export function ComposeLayout({ typeLabel, isEdit, draft, setDraft, workbench, o
           <ComposePreview draft={draft} full />
           <aside className="border border-ink bg-paper-raised p-5 lg:sticky lg:top-36">
             <h2 className="font-syne text-xl font-extrabold">Antes de compartir</h2>
-            <p className="mt-3 text-d15 leading-relaxed">{missing.length ? 'Revisa estos detalles para poder publicar. Tu borrador puede guardarse tal como está.' : 'La información necesaria está completa. Comprueba el texto y la presentación.'}</p>
-            {missing.length > 0 && <ul className="my-4 border-y border-ink/20 py-2">{missing.map((field) => <li key={field.key}><button type="button" onClick={() => jumpToField(field.anchorId)} className={`min-h-11 w-full text-left text-d15 underline ${FOCUS_RING}`}>{field.label} →</button></li>)}</ul>}
+            <p className="mt-3 text-d15 leading-relaxed">{missing.length ? 'Revisa estos detalles para poder publicar. Tu borrador puede guardarse tal como está.' : recommended.length ? 'Puedes publicar ya. Estas sugerencias ayudan a que tu pieza se encuentre mejor.' : 'La información necesaria está completa. Comprueba el texto y la presentación.'}</p>
+            {missing.length > 0 && <ul className="my-4 border-y border-ink/20 py-2" aria-label="Necesario para publicar">{missing.map((field) => <li key={field.key}><button type="button" onClick={() => jumpToField(field.anchorId)} className={`min-h-11 w-full text-left text-d15 underline ${FOCUS_RING}`}>{field.label} →</button></li>)}</ul>}
+            {recommended.length > 0 && <div className="my-4 border-y border-ink/20 py-2"><p className="mb-1 font-mono text-d11 uppercase tracking-widest text-ink-soft">Recomendado</p><ul>{recommended.map((field) => <li key={field.key}><button type="button" onClick={() => jumpToField(field.anchorId)} className={`min-h-11 w-full text-left text-d13 text-ink-soft underline ${FOCUS_RING}`}>{field.label} →</button></li>)}</ul></div>}
             {!draft.imageUrl && <button type="button" onClick={() => jumpToField('compose-field-cover')} className={`my-3 min-h-11 text-left text-d13 underline ${FOCUS_RING}`}>Añadir portada (opcional) →</button>}
             {rail}
             <button type="button" disabled={missing.length > 0 || busy} onClick={() => void reviewPublish()} className={`${button} mt-5 w-full bg-acid font-bold`}>{busy ? 'Guardando…' : workbench.isPublished ? 'Actualizar publicación →' : 'Continuar a publicar →'}</button>

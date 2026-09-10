@@ -387,7 +387,7 @@ export function MixOverlay({ item }: Props) {
               )}
           </dl>
           <div className="mt-3 flex flex-col gap-3">
-            <OverlayEntities entities={item.entities} />
+            <OverlayEntities entities={item.entities} franjaRefs={item.franjaRefs} />
             <OverlayLinks links={item.links} />
           </div>
         </Panel>

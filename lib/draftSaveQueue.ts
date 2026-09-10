@@ -13,6 +13,9 @@ export class DraftSaveQueue<T> {
 
   update(value: T): void { this.latest = value }
   get pending(): boolean { return this.latest !== this.saved }
+  // The write currently on the wire, if any. Publishing waits for it to land
+  // (not to succeed) so a late autosave cannot recreate a just-deleted draft.
+  get inFlight(): Promise<boolean> | null { return this.running }
   stop(): void { this.stopped = true }
 
   flush(): Promise<boolean> {

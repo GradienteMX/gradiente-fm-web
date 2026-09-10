@@ -56,8 +56,11 @@ export async function POST(request: NextRequest) {
   if (!item || typeof item.id !== 'string' || typeof item.slug !== 'string') {
     return NextResponse.json({ error: 'item.id and item.slug required' }, { status: 400 })
   }
+  // Hard readiness only (title, slug, vibe range, classification, event date).
+  // Soft recommendations are the composer's business — they are never
+  // enforced here, so pieces published under older rules stay editable.
   if (item.type !== 'franja') {
-    const missing = errorsFrom(requiredFields(item.type, item))
+    const missing = errorsFrom(requiredFields(item.type, item), 'hard')
     if (missing.length) return NextResponse.json({ error: 'incomplete', message: `Revisa: ${missing.join(', ')}` }, { status: 422 })
   }
   // Default to 'edit' so any caller that predates the guard keeps working
@@ -333,6 +336,45 @@ export async function POST(request: NextRequest) {
         .insert(links)
       if (linkError) {
         console.error('[POST /api/items] item_entities sync failed', {
+          code: linkError.code,
+          message: linkError.message,
+          itemId: item.id,
+        })
+      }
+    }
+  }
+
+  // 2c. Sync franja subject links (migration 0051, table item_franjas). Same
+  //     delete-then-insert shape as item_entities and equally non-fatal. Ids
+  //     are verified against real franja rows with the RLS-blind client so a
+  //     stale ref from a renamed/deleted franja is dropped rather than 500ing;
+  //     the write itself goes through the user's RLS-scoped client.
+  if (Array.isArray(item.franjaRefs)) {
+    const wanted = Array.from(new Set(item.franjaRefs
+      .map((f) => (typeof f?.id === 'string' ? f.id : ''))
+      .filter((id) => id && id !== item.id)))
+    let valid: string[] = []
+    if (wanted.length > 0) {
+      const { data: franjaRows } = await admin
+        .from('items')
+        .select('id')
+        .eq('type', 'franja')
+        .in('id', wanted)
+      valid = ((franjaRows ?? []) as { id: string }[]).map((r) => r.id)
+    }
+    const { error: unlinkError } = await supabase.from('item_franjas').delete().eq('item_id', item.id)
+    if (unlinkError) {
+      console.error('[POST /api/items] item_franjas clear failed', {
+        code: unlinkError.code,
+        message: unlinkError.message,
+        itemId: item.id,
+      })
+    } else if (valid.length > 0) {
+      const { error: linkError } = await supabase
+        .from('item_franjas')
+        .insert(valid.map((franja_id) => ({ item_id: item.id, franja_id })))
+      if (linkError) {
+        console.error('[POST /api/items] item_franjas sync failed', {
           code: linkError.code,
           message: linkError.message,
           itemId: item.id,

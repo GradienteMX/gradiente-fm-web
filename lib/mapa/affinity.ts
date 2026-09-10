@@ -12,12 +12,14 @@
 
 import { parseISO } from 'date-fns'
 import type { ContentItem } from '@/lib/types'
-import { getGenreById, getTagById } from '@/lib/genres'
+import { getGenreById, isClassifierTag } from '@/lib/genres'
 
 // ── Weights (global editorial config) ────────────────────────────────────────
 
 export const AFFINITY_WEIGHTS = {
   franja: 8, // same explicit franja attribution — the cluster-forming signal
+  franjaRefEach: 4, // shared franja SUBJECT link (item_franjas, 0051)
+  franjaRefCap: 8,
   entityEach: 4,
   entityCap: 8,
   artistEach: 3,
@@ -43,6 +45,7 @@ const TIME_DECAY_DAYS = 30
 export interface AffinityFeatures {
   id: string
   franjaId: string | null
+  franjaRefIds: ReadonlySet<string>
   creatorId: string | null
   entityIds: ReadonlySet<string>
   artists: ReadonlySet<string>
@@ -79,13 +82,14 @@ function genreRootsOf(ids: readonly string[]): Set<string> {
   return roots
 }
 
-// Tags filtered to the curated taxonomy. Provenance/off-taxonomy tags ('ra' on
-// every scraped event, '2026', 'curaduria', …) would otherwise glue the whole
-// scraper firehose into one cluster.
+// Tags that classify (shipped catalog + user-created registry ids). Provenance
+// tags ('ra' on every scraped event, '2026', 'curaduria', …) are excluded by
+// `isClassifierTag` — they would otherwise glue the whole scraper firehose
+// into one cluster.
 function curatedTags(ids: readonly string[]): Set<string> {
   const out = new Set<string>()
   for (const id of ids) {
-    if (getTagById(id)) out.add(id)
+    if (isClassifierTag(id)) out.add(id)
   }
   return out
 }
@@ -97,6 +101,7 @@ export function extractFeatures(item: ContentItem): AffinityFeatures {
   return {
     id: item.id,
     franjaId: item.franjaId ?? null,
+    franjaRefIds: new Set((item.franjaRefs ?? []).map((f) => f.id)),
     creatorId: item.createdById ?? null,
     entityIds: new Set((item.entities ?? []).map((e) => e.id)),
     artists: new Set((item.artists ?? []).map(normalizeName)),
@@ -124,6 +129,8 @@ export function affinityScore(a: AffinityFeatures, b: AffinityFeatures): number 
 
   if (a.franjaId && a.franjaId === b.franjaId) s += W.franja
   if (a.creatorId && a.creatorId === b.creatorId) s += W.creator
+
+  s += Math.min(W.franjaRefCap, intersectionSize(a.franjaRefIds, b.franjaRefIds) * W.franjaRefEach)
 
   s += Math.min(W.entityCap, intersectionSize(a.entityIds, b.entityIds) * W.entityEach)
   s += Math.min(W.artistCap, intersectionSize(a.artists, b.artists) * W.artistEach)

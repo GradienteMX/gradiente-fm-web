@@ -209,9 +209,15 @@ export function useDraftWorkbench<T extends ContentItem>({
     } else queue.current.update(draftRef.current)
     return queue.current.flush()
   }
+  // Publishing never depends on a draft save succeeding — it only waits for a
+  // write already on the wire to land, so a late autosave cannot recreate the
+  // draft row the publish route deletes. Resolves immediately when idle.
+  const settle = async (): Promise<void> => {
+    try { await queue.current?.inFlight } catch { /* A failed save keeps the draft local; publishing proceeds. */ }
+  }
   const requestPublish = (): string => {
-    // The layout flushes account saving before opening confirmation. Pause
-    // autosave for its lifetime to prevent recreating the removed draft.
+    // Pause autosave for the confirmation's lifetime to prevent recreating
+    // the removed draft; the layout resumes it when the modal closes.
     publishingRef.current = true
     const id = idRef.current ?? makeId(draft.type)
     idRef.current = id
@@ -233,5 +239,5 @@ export function useDraftWorkbench<T extends ContentItem>({
   const publishMode: PublishMode = editItemId ? 'edit' : 'create'
   return { committedId, hydrated, loadError, canSave: hydrated && syncState !== 'saving', lastSavedAt,
     syncState, localCopy, recovered, hasChanges: queue.current?.pending ?? false, flash, isPublished,
-    publishMode, saveDraft, requestPublish, resumeSaving, releaseRecovery, reset }
+    publishMode, saveDraft, settle, requestPublish, resumeSaving, releaseRecovery, reset }
 }

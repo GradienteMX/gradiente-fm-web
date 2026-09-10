@@ -26,6 +26,8 @@ import { ImageFieldL } from '@/components/dashboard/compose/kit/ImageFieldL'
 import { VibeFieldL } from '@/components/dashboard/compose/kit/VibeFieldL'
 import { VibePriorHintL } from '@/components/dashboard/compose/kit/VibePriorHintL'
 import { GenreMultiSelectL } from '@/components/dashboard/compose/kit/GenreMultiSelectL'
+import { TagMultiSelectL } from '@/components/dashboard/compose/kit/TagMultiSelectL'
+import { FranjaMultiSelectL } from '@/components/dashboard/compose/kit/FranjaMultiSelectL'
 import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMultiSelectL'
 import { LinkListFieldL } from '@/components/dashboard/compose/kit/LinkListFieldL'
 import { PollFieldsetL } from '@/components/dashboard/compose/kit/PollFieldsetL'
@@ -211,6 +213,10 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
           value={draft.genres}
           onChange={(genres) => patch({ genres })}
         />
+        <TagMultiSelectL
+          value={draft.tags}
+          onChange={(tags) => patch({ tags })}
+        />
       </PliegoSection>
 
       <PliegoSection number="05" label="PORTADA">
@@ -240,6 +246,12 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
           kind="label"
           value={draft.entities ?? []}
           onChange={(entities) => patch({ entities })}
+        />
+        {/* Franjas of the dial this piece is ABOUT (subject links, 0051) — not
+            the same as publishing WITH a franja (authorship). */}
+        <FranjaMultiSelectL
+          value={draft.franjaRefs ?? []}
+          onChange={(franjaRefs) => patch({ franjaRefs })}
         />
         {/* Outbound buy/listen/source links → //ENLACES row in the overlay. */}
         <LinkListFieldL

@@ -860,6 +860,22 @@ export function slugifyTag(input: string): string {
 // Longest tag label we accept from the composer.
 export const TAG_NAME_MAX = 40
 
+// Tags that pipelines stamp for provenance rather than classification. They
+// never count as "the piece is tagged" and carry no affinity signal — 'ra' on
+// every scraped event would otherwise glue the whole firehose together.
+const PROVENANCE_TAGS = new Set(['ra', 'noticia', 'curaduria', 'scraper', 'instagram', 'seed'])
+const TAG_ID_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
+// A tag chosen to classify content: in the shipped catalog, or a well-formed
+// user-created slug (registry rows share the foro composer's shape). Bare
+// years and provenance markers are excluded.
+export function isClassifierTag(id: string): boolean {
+  if (typeof id !== 'string' || !TAG_ID_SHAPE.test(id) || id.length > TAG_NAME_MAX) return false
+  if (PROVENANCE_TAGS.has(id) || /^\d{4}$/.test(id)) return false
+  const known = TAG_BY_ID.get(id)
+  return known ? !known.legacy : true
+}
+
 // ── Vibe heuristic (legacy / foro-side) ────────────────────────────────────
 //
 // Now-deprecated stereotype map. Two reasons it stays:

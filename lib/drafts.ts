@@ -284,7 +284,9 @@ async function deleteDraft(itemId: string): Promise<void> {
 async function safeReadError(res: Response): Promise<string> {
   try {
     const body = await res.json()
-    return body?.error ?? `HTTP ${res.status}`
+    // Routes send a machine `error` plus a human `message` (e.g. the list of
+    // missing fields on 422) — surface the human one when present.
+    return body?.message ?? body?.error ?? `HTTP ${res.status}`
   } catch {
     return `HTTP ${res.status}`
   }

@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 
 const labels: Record<string, string> = {
   IDENTIDAD: 'Tu pieza', CUERPO: 'Texto de la pieza', COPY: 'Texto de la pieza',
-  FOOTNOTES: 'Notas al pie', 'VIBE + GÉNEROS': 'Ambiente y géneros', PORTADA: 'Imagen de portada',
-  CONTEXTO: 'Contexto y enlaces', 'ENCUESTA (OPCIONAL)': 'Encuesta (opcional)',
+  FOOTNOTES: 'Notas al pie', 'VIBE + GÉNEROS': 'Ambiente, géneros y etiquetas', PORTADA: 'Imagen de portada',
+  CONTEXTO: 'Contexto, vínculos y enlaces', 'ENCUESTA (OPCIONAL)': 'Encuesta (opcional)',
   'FUENTE / AUDIO': 'Audio', TRACKLIST: 'Lista de temas (opcional)', FECHAS: 'Fecha y hora',
   UBICACIÓN: 'Lugar', ENTRADAS: 'Entradas y enlaces', ARTISTAS: 'Artistas', RESEÑA: 'Sobre la obra',
 }

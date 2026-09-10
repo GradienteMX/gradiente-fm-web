@@ -16,6 +16,7 @@
 
 import { useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchFranjaRefsByItemIds } from '@/lib/franjaRefs'
 import { getItemBySlugSync, recordItems } from '@/lib/itemsCache'
 import { useOverlay, type OverlayOrigin } from '@/components/overlay/useOverlay'
 import type { ContentItem } from '@/lib/types'
@@ -168,6 +169,9 @@ export async function ensureItemBySlug(slug: string): Promise<ContentItem | null
     } catch {
       // aggregate is decorative here — never block the open
     }
+    // Franja subject chips (0051) — same decorative status as the aggregate.
+    const refs = (await fetchFranjaRefsByItemIds(supabase, [item.id])).get(item.id)
+    if (refs) item.franjaRefs = refs
     recordItems([item])
     return item
   })()

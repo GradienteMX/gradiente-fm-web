@@ -8,6 +8,27 @@
 
 ---
 
+## 2026-09-10 · INGEST · Publish lockout fixed — hard/soft readiness, required classification, franja subject links · migración `0051` APLICADA (2026-09-10)
+
+Users could not publish or edit their own drafts after `968879c`. Two causes, both in that commit: (1) `POST /api/items` applied every composer rule (audio link, track entry, meaningful body, end-after-start) as a 422 on every publish including edits of older pieces; (2) the publish button only opened confirmation if the account draft save succeeded, and a failed save returned silently.
+
+**Shipped (uncommitted, working tree):**
+- [[Publication Readiness]] — `lib/contentReadiness.ts` splits the checklist into hard (title, slug, vibe, ≥1 género, ≥1 etiqueta, event date) and soft (body, audio, track, end date, scene links). Server enforces hard only; `exclusivo` mixes exempt from the audio rule. Review step lists soft misses under «Recomendado» without disabling the button.
+- Publish no longer depends on a draft save: `workbench.settle()` waits for an in-flight write, then confirmation posts the payload. `resumeSaving` effect now keys on `confirmingId` only (was re-running every render and undoing the autosave pause).
+- Tags: `TagMultiSelectL` in all eight composers (shipped `TAGS` ∪ `foro_tags` registry, create in place). `isClassifierTag` excludes provenance markers; affinity's `curatedTags` uses it.
+- Franjas as subject: `item_franjas` (migration `0051`), `ContentItem.franjaRefs`, `FranjaMultiSelectL` in every CONTEXTO, `GET /api/franjas`, chips in `OverlayEntities` + `ReaderOverlay`, affinity weight. Two-query resolver `lib/franjaRefs.ts` on server + browser.
+- 0051 also lets item authors write `item_entities` (was guide/admin only → curator links silently dropped).
+- Articulo composer gains artist/label entity pickers.
+- Tests: `tests/dashboard/compose.test.ts` readiness block rewritten (197 pass). `tsc` clean.
+
+**Not verified in a browser** — the compose sheet is auth-gated and no test account was available in the session. `0051` was applied by hand the same day.
+
+## 2026-09-09 · INGEST · Dashboard/MAPA session close and drafting-design handoff
+
+Recorded the completed UI work and MAPA performance fixes, pushed to `main` as `303f948` and `4f453a8`, in [[Next Session]]. Captured verification and the remaining occasional pan hitches from [[Mapa Printed Atlas]]. The user selected drafting feed content and publications as the next session's design focus; no composer redesign has started. The handoff preserves desktop scope, Gradiente's expressive visual language, browser-first workflow review and proposal approval before implementation. Older operational handoffs were retained as historical context rather than treated as current production facts.
+
+---
+
 ## 2026-09-02 · INGEST · RECEPCIÓN — el quinto espacio de `/dashboard` · rama `admin/central-2026` · migración `0050` SIN APLICAR (lleva una corrección de privacidad)
 
 Un creador puede por fin ver **cómo fue recibido su propio trabajo**. Sólo lectura, sólo lo suyo, sin palanca de ningún tipo. Nota nueva: [[Recepcion]]. Actualizadas: [[HL Ledger]] (la lectura de cara al creador + el residuo declarado), [[Admin Instrument Exemption]] (el borde de cara al creador — dónde queda la raya y por qué esto **no** es la exención de `/admin` ampliada), [[index]], [[Next Session]].

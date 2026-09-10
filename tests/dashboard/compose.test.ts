@@ -4,7 +4,7 @@ import { patchDraftContent, readingMinutes } from '@/lib/draftContent'
 import { emphasizeSelection, linkSelection } from '@/lib/composeFormatting'
 import { composeSteps, isOptionalComposeSection, sectionStep } from '@/lib/composeWorkflow'
 import { DraftSaveQueue } from '@/lib/draftSaveQueue'
-import { requiredFields, errorsFrom, meaningfulBlock, usableUrl } from '@/lib/contentReadiness'
+import { requiredFields, errorsFrom, completeness, meaningfulBlock, usableUrl } from '@/lib/contentReadiness'
 import type { ContentItem } from '@/lib/types'
 
 const draft: ContentItem = { id: 'draft-test', type: 'articulo', title: 'Una pieza', slug: 'una-pieza', vibeMin: 3, vibeMax: 6, genres: [], tags: [], publishedAt: '2026-09-09T00:00:00Z' }
@@ -60,31 +60,48 @@ describe('account autosave sequencing', () => {
 })
 
 describe('publication readiness', () => {
-  it('rejects whitespace titles, empty blocks and separators as article content', () => {
-    const missing = errorsFrom(requiredFields('articulo', { ...draft, title: '   ', articleBody: [{ kind: 'p', text: ' ' }, { kind: 'divider' }] }))
-    assert.ok(missing.includes('Título'))
-    assert.ok(missing.includes('Contenido de la pieza'))
+  const classified = { ...draft, genres: ['techno'], tags: ['dancefloor'] }
+  const soft = (type: Parameters<typeof requiredFields>[0], item: ContentItem) => errorsFrom(requiredFields(type, item), 'soft')
+  it('blocks only on identity, vibe and classification; content gaps are recommendations', () => {
+    const list = requiredFields('articulo', { ...draft, title: '   ', articleBody: [{ kind: 'p', text: ' ' }, { kind: 'divider' }] })
+    assert.deepEqual(errorsFrom(list), ['Título', 'Al menos un género', 'Al menos una etiqueta'])
+    assert.ok(errorsFrom(list, 'soft').includes('Contenido de la pieza'))
     assert.equal(meaningfulBlock({ kind: 'list', items: ['', '  '] }), false)
+    assert.deepEqual(errorsFrom(requiredFields('articulo', classified)), [])
+  })
+  it('requires a genre and a classifying tag; provenance markers do not count', () => {
+    assert.ok(errorsFrom(requiredFields('noticia', { ...draft, type: 'noticia', genres: ['techno'], tags: ['noticia', 'ra', '2026'] })).includes('Al menos una etiqueta'))
+    assert.deepEqual(errorsFrom(requiredFields('noticia', { ...draft, type: 'noticia', genres: ['techno'], tags: ['noticia', 'mi-etiqueta-nueva'] })), [])
+    assert.ok(errorsFrom(requiredFields('mix', { ...draft, type: 'mix', tags: ['after'] })).includes('Al menos un género'))
   })
   it('allows a meaningful article or an intentional image feature', () => {
-    assert.deepEqual(errorsFrom(requiredFields('articulo', { ...draft, articleBody: [{ kind: 'p', text: 'Texto' }] })), [])
+    assert.deepEqual(soft('articulo', { ...classified, articleBody: [{ kind: 'p', text: 'Texto' }] }).filter((l) => l === 'Contenido de la pieza'), [])
     assert.equal(meaningfulBlock({ kind: 'image', src: '/flyers/example.jpg', alt: '' }), true)
   })
-  it('requires a source for an available mix but permits an announced or archived mix', () => {
-    assert.ok(errorsFrom(requiredFields('mix', { ...draft, type: 'mix' })).includes('Enlace del audio'))
-    for (const mixStatus of ['proximamente', 'archivo'] as const) assert.deepEqual(errorsFrom(requiredFields('mix', { ...draft, type: 'mix', mixStatus })), [])
-    assert.deepEqual(errorsFrom(requiredFields('mix', { ...draft, type: 'mix', embeds: [{ platform: 'soundcloud', url: 'https://soundcloud.com/example/mix' }] })), [])
+  it('recommends a source for an available mix but not for announced, archived or exclusive mixes', () => {
+    assert.ok(soft('mix', { ...classified, type: 'mix' }).includes('Enlace del audio'))
+    for (const mixStatus of ['proximamente', 'archivo', 'exclusivo'] as const) assert.ok(!soft('mix', { ...classified, type: 'mix', mixStatus }).includes('Enlace del audio'))
+    assert.ok(!soft('mix', { ...classified, type: 'mix', embeds: [{ platform: 'soundcloud', url: 'https://soundcloud.com/example/mix' }] }).includes('Enlace del audio'))
     assert.equal(usableUrl('javascript:alert(1)'), false)
   })
-  it('checks event chronology and vibe bounds', () => {
-    const errors = errorsFrom(requiredFields('evento', { ...draft, type: 'evento', date: '2026-09-18T21:00', endDate: '2026-09-18T02:00', vibeMin: 8, vibeMax: 4 }))
-    assert.ok(errors.includes('Cierre posterior al inicio'))
-    assert.ok(errors.includes('Ambiente entre 0 y 10'))
+  it('checks event chronology softly and vibe bounds hard', () => {
+    const list = requiredFields('evento', { ...classified, type: 'evento', date: '2026-09-18T21:00', endDate: '2026-09-18T02:00', vibeMin: 8, vibeMax: 4 })
+    assert.ok(errorsFrom(list, 'soft').includes('Cierre posterior al inicio'))
+    assert.ok(errorsFrom(list).includes('Ambiente entre 0 y 10'))
+    assert.ok(errorsFrom(requiredFields('evento', { ...classified, type: 'evento', date: 'nunca' })).includes('Fecha de inicio'))
   })
-  it('requires an actual list entry, while permitting short news text', () => {
-    assert.ok(errorsFrom(requiredFields('listicle', { ...draft, type: 'listicle', articleBody: [{ kind: 'p', text: 'Introducción' }] })).length)
-    assert.deepEqual(errorsFrom(requiredFields('listicle', { ...draft, type: 'listicle', articleBody: [{ kind: 'track', artist: 'Artista', title: 'Tema' }] })), [])
-    assert.deepEqual(errorsFrom(requiredFields('noticia', { ...draft, type: 'noticia', excerpt: 'Una noticia breve.' })), [])
+  it('recommends an actual list entry, while permitting short news text', () => {
+    assert.ok(soft('listicle', { ...classified, type: 'listicle', articleBody: [{ kind: 'p', text: 'Introducción' }] }).length)
+    assert.ok(!soft('listicle', { ...classified, type: 'listicle', articleBody: [{ kind: 'track', artist: 'Artista', title: 'Tema' }] }).includes('Una entrada con artista y título'))
+    assert.ok(!soft('noticia', { ...classified, type: 'noticia', excerpt: 'Una noticia breve.' }).includes('Texto de la pieza'))
+  })
+  it('recommends linking scene context and counts franja links towards it', () => {
+    assert.ok(soft('review', { ...classified, type: 'review' }).includes('Vincula artistas, sellos o franjas'))
+    assert.ok(!soft('review', { ...classified, type: 'review', franjaRefs: [{ id: 'pa-x', title: 'X', slug: 'x', kind: 'label' }] }).includes('Vincula artistas, sellos o franjas'))
+  })
+  it('measures completeness over the hard set only', () => {
+    const list = requiredFields('opinion', classified)
+    assert.deepEqual(completeness(list), { done: 5, total: 5 })
   })
 })
 

@@ -80,7 +80,7 @@ export function GenreMultiSelectL({
   const nameOf = (id: string) => GENRES.find((g) => g.id === id)?.name ?? id
 
   return (
-    <div className="flex flex-col gap-2">
+    <div id="compose-field-genres" className="flex scroll-mt-40 flex-col gap-2">
       <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
         GÉNEROS ({value.length})
       </span>

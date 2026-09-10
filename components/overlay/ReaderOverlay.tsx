@@ -13,6 +13,7 @@ import type {
 import { fmtDateFull, isEditableTarget } from '@/lib/utils'
 import { getGenreById, getTagNames } from '@/lib/genres'
 import { OverlaySources } from './OverlaySources'
+import { FranjaChip } from './OverlayEntities'
 import { ExternalLink } from 'lucide-react'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { EntityChipButton } from '@/components/entity/EntityChipButton'
@@ -133,8 +134,10 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
 
   // Whether the CONTEXTO block has anything real to show — drives the empty
   // fallback instead of a box with only a label.
+  const franjaRefs = item.franjaRefs ?? []
   const hasContext =
     artists.length > 0 ||
+    franjaRefs.length > 0 ||
     labels.length > 0 ||
     venues.length > 0 ||
     promoters.length > 0 ||
@@ -441,6 +444,15 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
                   </>
                 )}
                 <EntityRow label="PROMOTORA" entities={promoters} />
+                {franjaRefs.length > 0 && (
+                  <>
+                    <dt className="text-ink-faint">FRANJAS</dt>
+                    <dd className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <span className="text-ink-faint">:</span>
+                      {franjaRefs.map((f) => <FranjaChip key={f.id} franja={f} />)}
+                    </dd>
+                  </>
+                )}
                 {item.author && (
                   <>
                     <dt className="text-ink-faint">FIRMA</dt>

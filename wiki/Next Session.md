@@ -1,5 +1,36 @@
 # Next Session — start here
 
+## Current handoff — 2026-09-10
+
+**Publish lockout fixed in the working tree (uncommitted).** See [[Publication Readiness]] and the 2026-09-10 [[log]] entry. Before judging the composer:
+
+1. ~~Apply `0051_item_franjas.sql`~~ — **applied by hand in the Supabase SQL editor on 2026-09-10** (ikerio). `schema_migrations` still stops at 0016; see [[Supabase migration apply drift]] conventions in the 0049/0050 handoffs below.
+2. **Verify in Chrome with a non-admin creator account:** open an older published piece → it must hydrate and the «Actualizar publicación» button must be enabled once a género and an etiqueta are set; soft gaps appear under «Recomendado» only. Publish a draft with an autosave error forced (offline) → the button must still open confirmation. Tag a franja in CONTEXTO, publish, confirm the FRANJAS chip in the overlay routes to `/f/[slug]`.
+3. Existing published content lacking a genre or a classifier tag is now blocked from re-publish until classified — intended (classification feeds the dial filter and the affinity map), but tell the team.
+4. Then commit; the drafting UX revamp below remains the next design focus.
+
+## Previous handoff — 2026-09-09
+
+**Next session: revamp the design and UX of drafting feed content and publications.** The user ended the current session and named this as the next focus. No composer redesign has been started or approved yet.
+
+### Where this session finished
+
+- Dashboard, player/vibe-check and printed MAPA refinements shipped in `303f948`; the subsequent MAPA drag-performance work shipped in `4f453a8cf8b6763beac992c4436daa1ef8492de1`. Both were pushed to `origin/main` at the user's request. The working tree was clean after that push; this handoff is a subsequent documentation-only update.
+- MAPA now coalesces camera writes into animation frames, reuses viewport coverage, requests images at appropriate screen sizes, and uses an asynchronously prepared canvas preview during direct panning. Honeycomb geometry, affinity rearrangements and content routes remain intact. Enter-to-open after dragging was also fixed.
+- Verification: 67 MAPA tests, TypeScript, targeted lint and production build passed. Desktop Chrome checks covered drag/release, filters, zoom and opening/closing content. Production camera-path measurements at 22% zoom had 17 ms median / 33 ms p95 frames and zero terrain commits during six-second pans. Occasional hitches remained (worst observed ~0.6 s); do not describe performance as completely smooth. See [[Mapa Printed Atlas]].
+- The temporary production test server was stopped; diagnostic controls are absent from application source. The normal local map was left at `http://localhost:3000/mapa`. Re-check local server/browser state next session rather than assuming it persists. Production deployment completion was not independently verified after the push.
+
+### Direction and starting points for the drafting revamp
+
+- Start by inspecting the actual desktop drafting workflow in Chrome: create content, resume a draft, edit an existing publication, preview, save/autosave feedback, validation and the publishing confirmation flow. Audit before proposing changes; avoid publishing test content as part of inspection.
+- Preserve Gradiente's expressive visual language: paper/ink contrast, bold display typography, monospaced system labels, vivid category/vibe color and engaging interactions. The user rejected overly streamlined concepts that lost the site's personality. Desktop is the current scope; mobile remains deferred.
+- Present concrete visual proposals for review before implementing the next redesign. Use image generation when useful for concepts, supported by real browser inspection. Prior implementation approval applied to the completed dashboard/MAPA work, not an unseen composer proposal.
+- Read [[Pliego Desktop Refinement]], [[PublicarSpace]], [[Dashboard Drafts]], [[Publish Confirmation Flow]] and [[Vibe Checks]]. Verify notes against current source; older handoffs below contain historical branch and migration claims, not newly verified production status.
+- Entry points: `components/dashboard/espacios/PublicarSpace.tsx`, `components/dashboard/compose/ComposeSheet.tsx`, `components/dashboard/compose/editor/ComposeLayout.tsx`, `ComposeRail.tsx`, the per-type composers and shared `compose/kit/` fields, and `app/dashboard/drafts/page.tsx`.
+- Keep existing draft persistence, autosave, published-item editing, permissions, content-type requirements and publish confirmation behavior in view while redesigning. Do not change feed curation, introduce engagement metrics, or flatten the differences between content types merely to simplify the form.
+
+## Earlier handoffs — historical context
+
 > Brief for picking up where the previous session ended.
 >
 > **Latest: 2026-09-02 — RECEPCIÓN CONSTRUIDA (quinto espacio de `/dashboard`), rama `admin/central-2026`. ⛔ LA MIGRACIÓN `0050` NO ESTÁ APLICADA — Y CONTIENE UNA CORRECCIÓN DE PRIVACIDAD QUE VALE LA PENA APLICAR AUNQUE RECEPCIÓN NO SE MERGEE NUNCA.**

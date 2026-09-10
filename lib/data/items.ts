@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchFranjaRefsByItemIds } from '@/lib/franjaRefs'
 import type { Database, Json } from '@/lib/supabase/database.types'
 import type {
   ArticleBlock,
@@ -13,6 +14,7 @@ import type {
   MixEmbed,
   MixTrack,
   FranjaKind,
+  FranjaRef,
   PollAttachment,
   PollChoice,
 } from '@/lib/types'
@@ -448,17 +450,19 @@ export async function getItems(): Promise<ContentItem[]> {
   const creatorIds = Array.from(
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
-  const [aggregates, franjas, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities, franjaRefs] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
     fetchFranjasByIds(franjaIds),
     fetchCreatorsByIds(creatorIds),
     fetchEntitiesByItemIds(items.map((i) => i.id)),
+    fetchFranjaRefsByItemIds(supabase, items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
     .map((i) => attachFranja(i, i.franjaId ? franjas.get(i.franjaId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
     .map((i) => attachEntities(i, entities.get(i.id)))
+    .map((i) => attachFranjaRefs(i, franjaRefs.get(i.id)))
 }
 
 // All events for the admin events editor (/admin?tab=events). Unlike getItems
@@ -609,17 +613,19 @@ export async function getItemsByEntity(entityId: string): Promise<ContentItem[]>
   const creatorIds = Array.from(
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
-  const [aggregates, franjas, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities, franjaRefs] = await Promise.all([
     fetchVibeCheckAggregates(items.map((i) => i.id)),
     fetchFranjasByIds(franjaIds),
     fetchCreatorsByIds(creatorIds),
     fetchEntitiesByItemIds(items.map((i) => i.id)),
+    fetchFranjaRefsByItemIds(supabase, items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
     .map((i) => attachFranja(i, i.franjaId ? franjas.get(i.franjaId) : undefined))
     .map((i) => attachCreator(i, i.createdById ? creators.get(i.createdById) : undefined))
     .map((i) => attachEntities(i, entities.get(i.id)))
+    .map((i) => attachFranjaRefs(i, franjaRefs.get(i.id)))
 }
 
 // ── Creator attribution merge ──────────────────────────────────────────────
@@ -738,6 +744,17 @@ function attachEntities(
   return { ...item, entities }
 }
 
+// Franja SUBJECT links (item_franjas, 0051) — what the piece is about, as
+// opposed to `franja` above (who published it). Resolver shared with the
+// browser hooks in lib/franjaRefs.ts.
+function attachFranjaRefs(
+  item: ContentItem,
+  franjaRefs: FranjaRef[] | undefined,
+): ContentItem {
+  if (!franjaRefs || franjaRefs.length === 0) return item
+  return { ...item, franjaRefs }
+}
+
 // Single item by slug — used by overlay deep-links and `/[type]/[slug]` pages.
 export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   const supabase = createClient()
@@ -753,16 +770,17 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   }
   if (!data) return null
   const item = rowToContentItem(data as unknown as ItemRowWithPoll)
-  const [aggregates, franjas, creators, entities] = await Promise.all([
+  const [aggregates, franjas, creators, entities, franjaRefs] = await Promise.all([
     fetchVibeCheckAggregates([item.id]),
     item.franjaId ? fetchFranjasByIds([item.franjaId]) : Promise.resolve(new Map()),
     item.createdById ? fetchCreatorsByIds([item.createdById]) : Promise.resolve(new Map()),
     fetchEntitiesByItemIds([item.id]),
+    fetchFranjaRefsByItemIds(supabase, [item.id]),
   ])
   const withAgg = attachAggregate(item, aggregates.get(item.id))
   const withFranja = attachFranja(withAgg, item.franjaId ? franjas.get(item.franjaId) : undefined)
   const withCreator = attachCreator(withFranja, item.createdById ? creators.get(item.createdById) : undefined)
-  return attachEntities(withCreator, entities.get(item.id))
+  return attachFranjaRefs(attachEntities(withCreator, entities.get(item.id)), franjaRefs.get(item.id))
 }
 
 // Items attributed to a franja via the //PRESENTA self-FK — drives the full

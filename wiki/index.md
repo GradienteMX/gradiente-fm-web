@@ -27,6 +27,7 @@
 - [[HP Curation System]] — decay-based prominence ranking
 - [[HL Ledger]] — `hp_events` as an append-only ledger (0049): LEDGER_EPOCH, base_weight vs weight, the two system kinds, the decay-scope limit, and the creator-facing read (0050)
 - [[Content Types]] — evento, mix, noticia, review, editorial, opinion, articulo, listicle, franja
+- [[Publication Readiness]] — hard vs soft publish rules, required genre + tag, franja subject links (0051), publish never waits on a draft save
 - [[Franjas Isolation]] — why franjas never enter the main grid
 - [[Editorial Flag]] — the one editor lever (boost spawn HP)
 - [[Pinned Hero]] — single slot, portada logic

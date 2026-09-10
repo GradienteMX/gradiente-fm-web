@@ -539,6 +539,41 @@ export type Database = {
           },
         ]
       }
+      // Hand-added for migration 0051 (item ↔ franja subject links). Replace
+      // with the generated block after `npx supabase gen types typescript`.
+      item_franjas: {
+        Row: {
+          created_at: string
+          franja_id: string
+          item_id: string
+        }
+        Insert: {
+          created_at?: string
+          franja_id: string
+          item_id: string
+        }
+        Update: {
+          created_at?: string
+          franja_id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_franjas_franja_id_fkey"
+            columns: ["franja_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_franjas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           article_body: Json

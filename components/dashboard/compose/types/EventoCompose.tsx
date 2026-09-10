@@ -28,6 +28,8 @@ import { SlugRow } from '@/components/dashboard/compose/kit/SlugRow'
 import { VibeFieldL } from '@/components/dashboard/compose/kit/VibeFieldL'
 import { VibePriorHintL } from '@/components/dashboard/compose/kit/VibePriorHintL'
 import { GenreMultiSelectL } from '@/components/dashboard/compose/kit/GenreMultiSelectL'
+import { TagMultiSelectL } from '@/components/dashboard/compose/kit/TagMultiSelectL'
+import { FranjaMultiSelectL } from '@/components/dashboard/compose/kit/FranjaMultiSelectL'
 import { ImageFieldL } from '@/components/dashboard/compose/kit/ImageFieldL'
 import { VenueFieldL } from '@/components/dashboard/compose/kit/VenueFieldL'
 import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMultiSelectL'
@@ -244,6 +246,12 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
           value={draft.entities ?? []}
           onChange={(entities) => patch({ entities })}
         />
+        {/* Franjas of the dial this piece is ABOUT (subject links, 0051) — not
+            the same as publishing WITH a franja (authorship). */}
+        <FranjaMultiSelectL
+          value={draft.franjaRefs ?? []}
+          onChange={(franjaRefs) => patch({ franjaRefs })}
+        />
         <div className="grid grid-cols-2 gap-4">
           <TextFieldL
             label="PAÍS"
@@ -334,6 +342,10 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
         <GenreMultiSelectL
           value={draft.genres}
           onChange={(genres) => patch({ genres })}
+        />
+        <TagMultiSelectL
+          value={draft.tags}
+          onChange={(tags) => patch({ tags })}
         />
       </PliegoSection>
 

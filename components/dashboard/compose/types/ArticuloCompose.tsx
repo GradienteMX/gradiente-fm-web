@@ -26,6 +26,9 @@ import { ImageFieldL } from '@/components/dashboard/compose/kit/ImageFieldL'
 import { VibeFieldL } from '@/components/dashboard/compose/kit/VibeFieldL'
 import { VibePriorHintL } from '@/components/dashboard/compose/kit/VibePriorHintL'
 import { GenreMultiSelectL } from '@/components/dashboard/compose/kit/GenreMultiSelectL'
+import { TagMultiSelectL } from '@/components/dashboard/compose/kit/TagMultiSelectL'
+import { FranjaMultiSelectL } from '@/components/dashboard/compose/kit/FranjaMultiSelectL'
+import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMultiSelectL'
 import { LinkListFieldL } from '@/components/dashboard/compose/kit/LinkListFieldL'
 import { PollFieldsetL } from '@/components/dashboard/compose/kit/PollFieldsetL'
 import {
@@ -228,6 +231,10 @@ export function ArticuloCompose({ onClose }: { onClose: () => void }) {
           value={draft.genres}
           onChange={(genres) => patch({ genres })}
         />
+        <TagMultiSelectL
+          value={draft.tags}
+          onChange={(tags) => patch({ tags })}
+        />
       </PliegoSection>
 
       <PliegoSection number="06" label="PORTADA">
@@ -246,6 +253,24 @@ export function ArticuloCompose({ onClose }: { onClose: () => void }) {
 
       <PliegoSection number="07" label="CONTEXTO">
         {/* Reference / source links → //ENLACES row in the overlay CONTEXTO. */}
+        {/* Scene entities the piece is about (→ CONTEXTO rail chips + per-entity
+            filter). */}
+        <EntityMultiSelectL
+          kind="artist"
+          value={draft.entities ?? []}
+          onChange={(entities) => patch({ entities })}
+        />
+        <EntityMultiSelectL
+          kind="label"
+          value={draft.entities ?? []}
+          onChange={(entities) => patch({ entities })}
+        />
+        {/* Franjas of the dial this piece is ABOUT (subject links, 0051) — not
+            the same as publishing WITH a franja (authorship). */}
+        <FranjaMultiSelectL
+          value={draft.franjaRefs ?? []}
+          onChange={(franjaRefs) => patch({ franjaRefs })}
+        />
         <LinkListFieldL
           label="ENLACES"
           values={draft.links ?? []}

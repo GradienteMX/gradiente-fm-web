@@ -175,7 +175,7 @@ export function EventoOverlay({ item }: Props) {
           <VibeFader item={item} />
         </div>
 
-        <OverlayEntities entities={item.entities} />
+        <OverlayEntities entities={item.entities} franjaRefs={item.franjaRefs} />
         <OverlayLinks links={item.links} />
 
         {/* Artists */}

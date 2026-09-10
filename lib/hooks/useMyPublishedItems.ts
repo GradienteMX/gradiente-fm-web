@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchFranjaRefsByItemIds } from '@/lib/franjaRefs'
 import {
   clearPublishedItemsCache,
   getPublishedItemSync,
@@ -45,7 +46,7 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
       )
       .eq('created_by' as never, userId as never)
       .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return
         if (error) {
           console.error('[useMyPublishedItems]', error)
@@ -53,6 +54,14 @@ export function useMyPublishedItems(userId: string | null): ContentItem[] {
           return
         }
         const mapped = (data ?? []).map(rowToContentItem)
+        // Franja subject links (0051) ride a separate query so a pending
+        // migration can never take the whole list — and the edit form — down.
+        const franjaRefs = await fetchFranjaRefsByItemIds(supabase, mapped.map((i) => i.id))
+        if (cancelled) return
+        for (const it of mapped) {
+          const refs = franjaRefs.get(it.id)
+          if (refs) it.franjaRefs = refs
+        }
         setItems(mapped)
         // Prime the published-items cache so `getItemById` (lib/drafts.ts)
         // can resolve published rows synchronously when the editor opens

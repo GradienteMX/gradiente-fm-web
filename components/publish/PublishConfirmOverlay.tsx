@@ -20,7 +20,9 @@ function publishErrorMessage(res: PublishResult): string {
   if (res.status === 403)
     return 'No tienes permiso para editar este ítem. Puede pertenecer a otra persona.'
   if (res.status === 422)
-    return 'Falta información para publicar. Vuelve al editor y revisa los campos indicados.'
+    return res.error && res.error !== 'incomplete'
+      ? `Falta información para publicar. ${res.error}`
+      : 'Falta información para publicar. Vuelve al editor y revisa los campos indicados.'
   if (res.status === 409)
     return 'No se pudo crear el ítem por un conflicto de id. Vuelve a intentarlo.'
   if (res.status === 0)

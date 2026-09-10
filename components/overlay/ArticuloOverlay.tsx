@@ -378,7 +378,7 @@ export function ArticuloOverlay({ item }: ArticuloOverlayProps) {
                     </>
                   )}
                 </dl>
-                <OverlayEntities entities={item.entities} color={color} />
+                <OverlayEntities entities={item.entities} franjaRefs={item.franjaRefs} color={color} />
                 <OverlayLinks links={item.links} color={color} />
               </div>
             </RailBlock>
