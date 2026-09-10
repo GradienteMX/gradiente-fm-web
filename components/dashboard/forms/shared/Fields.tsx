@@ -1,42 +1,15 @@
 'use client'
 
-// ── Compose logic kit — what SURVIVED the dark forms (fase F) ───────────────
-//
-// This file was the shared field library of the dark per-type forms. Those
-// forms, and every dark field widget in here, were deleted in fase F: the
-// pliego compose tree (components/dashboard/compose/**) had already forked
-// each widget into a light counterpart, and /admin migrated to those forks,
-// leaving ~1,050 lines with no caller and a pile of comments elsewhere
-// promising a "dark original" that nothing rendered.
-//
-// What is left is the part that was never about chrome:
-//   · slugify           — the one slug rule (27 call sites)
-//   · CommitFlash       — the save/publish flash type
-//   · SaveIndicator     — the autosave readout
-//   · newItemId         — re-exported from lib/drafts so composers have one door
-//   · useDraftWorkbench — the draft engine: edit-keyed sessionStorage slots,
-//                         wait-for-cache ?edit hydration, URL-anchored publish
-//                         mode. Its three shipped data-loss fixes live here
-//                         and are reused, never reimplemented.
-//
-// Nothing here renders chrome any more. A new field belongs in
-// components/dashboard/compose/kit/, not in this file.
+// Shared draft persistence and compatibility exports for compose consumers.
+// Field components live in components/dashboard/compose/kit.
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ContentItem } from '@/lib/types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-export function slugify(input: string): string {
-  return input
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .slice(0, 80)
-}
+export { slugify, patchDraftContent } from '@/lib/draftContent'
+import { readingMinutes } from '@/lib/draftContent'
 
 // ── Submit footer ───────────────────────────────────────────────────────────
 
@@ -79,268 +52,186 @@ export function SaveIndicator({ lastSavedAt }: { lastSavedAt: number | null }) {
 // Re-exported so forms have a single import surface.
 export { newItemId } from '@/lib/drafts'
 
-// ── useDraftWorkbench ───────────────────────────────────────────────────────
-//
-// Owns autosave + commit + reset logic shared across every dashboard form.
-// Each form keeps its own draft state + form-specific concerns (slug
-// auto-generation, etc.); this hook handles:
-//
-//   - Hydrating draft + committedId + isPublished from sessionStorage on mount
-//   - Persisting on every change (and stamping `lastSavedAt`)
-//   - `saveDraft()` and `publish()` that upsert into the shared drafts store
-//     under a stable id (generated lazily on first commit)
-//   - `reset()` that wipes both the in-progress draft and any committed item
-//   - A transient `flash` state for the SubmitFooter confirmation chip
-
-import type { DraftItem, DraftState, PublishMode } from '@/lib/drafts'
-import {
-  saveDraftItem,
-  upsertItem as _commitItem,
-  newItemId as _newItemId,
-  removeItem,
-  getItemById,
-} from '@/lib/drafts'
+// Account autosave and local recovery share a stable identity. Saving never
+// publishes: only the explicit confirmation writes to items.
+import { useSearchParams } from 'next/navigation'
+import { useAuth } from '@/components/auth/useAuth'
+import { DraftSaveQueue } from '@/lib/draftSaveQueue'
+import { saveDraftItem, upsertItem, newItemId as makeId, getItemById } from '@/lib/drafts'
+import type { DraftItem, PublishMode } from '@/lib/drafts'
 import { subscribeDrafts } from '@/lib/draftsCache'
-import { subscribePublishedItems } from '@/lib/publishedItemsCache'
+import { getPublishedItemSync, subscribePublishedItems } from '@/lib/publishedItemsCache'
 
-interface DraftWorkbenchPersisted<T extends ContentItem> {
-  draft: T
-  committedId: string | null
-  isPublished: boolean
-}
+export type DraftSyncState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+interface Recovery<T> { draft: T; id: string; savedAt: number | null; pending: boolean }
 
 export function useDraftWorkbench<T extends ContentItem>({
-  draftKey,
-  emptyFn,
-  draft,
-  setDraft,
-  editItemId = null,
+  draftKey, emptyFn, draft, setDraft, editItemId = null,
 }: {
-  draftKey: string
-  emptyFn: () => T
-  draft: T
-  setDraft: (t: T) => void
-  /**
-   * If set, on mount the form hydrates from this stored item instead of the
-   * per-form local-draft key. Wires the edit-published-or-draft flow — the
-   * form pre-populates with the item's data and binds `committedId` to its
-   * id, so subsequent saves/publishes UPDATE the same row.
-   */
-  editItemId?: string | null
+  draftKey: string; emptyFn: () => T; draft: T; setDraft: (draft: T) => void; editItemId?: string | null
 }) {
-  const [committedId, setCommittedId] = useState<string | null>(null)
-  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
-  const [flash, setFlash] = useState<CommitFlash>(null)
-  const [isPublished, setIsPublished] = useState(false)
+  const { currentUser } = useAuth()
+  const search = useSearchParams()
+  const sessionId = search?.get('draft') ?? 'recovery'
+  const account = currentUser?.id ?? 'anonymous'
+  const storageKey = `gradiente:compose:${account}:${draftKey}:${editItemId ?? sessionId}`
+  const [committedId, setCommittedId] = useState<string | null>(editItemId)
+  const idRef = useRef<string | null>(editItemId)
   const [hydrated, setHydrated] = useState(false)
-  const savingRef = useRef(false)
-  const idRef = useRef<string | null>(null)
-  idRef.current = committedId
+  const [loadError, setLoadError] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+  const [syncState, setSyncState] = useState<DraftSyncState>('idle')
+  const [localCopy, setLocalCopy] = useState(false)
+  const [isPublished, setIsPublished] = useState(false)
+  const queue = useRef<DraftSaveQueue<T> | null>(null)
   const draftRef = useRef(draft)
   draftRef.current = draft
-  const flashTimer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(flashTimer.current), [])
+  const savedAtRef = useRef<number | null>(null)
+  const publishingRef = useRef(false)
+  const [recovered, setRecovered] = useState(false)
 
-  // Edit sessions get their OWN storage key (`…-draft:edit:<id>`), separate
-  // from the new-compose slot (`…-draft`). Previously both shared one per-type
-  // key, so merely opening a published item wrote its id into the slot and the
-  // next NUEVO compose resumed it — silently rebinding a "new" publish onto the
-  // published item (the Report A overwrite). Separate keys break that link.
-  const storageKey = editItemId ? `${draftKey}:edit:${editItemId}` : draftKey
+  const persist = useCallback((value: T, pending: boolean) => {
+    try {
+      const record: Recovery<T> = { draft: value, id: idRef.current ?? value.id, savedAt: savedAtRef.current, pending }
+      sessionStorage.setItem(storageKey, JSON.stringify(record))
+      setLocalCopy(true)
+    } catch { setLocalCopy(false) }
+  }, [storageKey])
 
-  // Hydrate — prefer the editItemId from the URL over the local slot. Re-runs
-  // when editItemId changes (feed-overlay EDITAR / back-forward between edits).
   useEffect(() => {
+    publishingRef.current = false
+    setHydrated(false)
+    setLoadError(false)
     let cancelled = false
-
-    const applyExisting = (existing: DraftItem) => {
-      if (cancelled) return
-      // Strip the frontend-only flag before slotting into form state.
-      const { _draftState, ...clean } = existing
-      // Double-cast through `unknown` because TS can't prove the runtime
-      // narrowing matches the form's specific T (e.g. MixDraft) — at this
-      // point we know the existing item's `type` matches the form.
-      setDraft({ ...emptyFn(), ...(clean as unknown as T) })
-      setCommittedId(existing.id)
-      setIsPublished(existing._draftState === 'published')
-      setLastSavedAt(Date.now())
-      setHydrated(true)
-    }
-
-    if (editItemId) {
-      const existing = getItemById(editItemId)
-      if (existing) {
-        applyExisting(existing)
-        return
-      }
-      // The draft/published caches prime asynchronously (auth + dashboard-mount
-      // fetch), so on a hard reload or deep link they may be empty right now.
-      // Wait for the item to appear rather than falling through to the local
-      // slot — that used to bind the WRONG id and duplicate the item on publish
-      // (or mint a fresh row). Stay unhydrated (form disabled) until it lands.
-      setHydrated(false)
-      let done = false
-      let unsubD = () => {}
-      let unsubP = () => {}
-      const attempt = () => {
-        if (cancelled || done) return
-        const found = getItemById(editItemId)
-        if (found) {
-          done = true
-          applyExisting(found)
-          unsubD()
-          unsubP()
-        }
-      }
-      unsubD = subscribeDrafts(attempt)
-      unsubP = subscribePublishedItems(attempt)
-      return () => {
-        cancelled = true
-        unsubD()
-        unsubP()
-      }
-    }
-
-    // New-compose: hydrate from the per-type slot. Edit sessions use a separate
-    // key, so opening a published item can no longer poison this one.
+    let done = false
+    let recovery: Recovery<T> | null = null
     try {
       const raw = sessionStorage.getItem(storageKey)
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<DraftWorkbenchPersisted<T>>
-        if (parsed.draft) setDraft({ ...emptyFn(), ...parsed.draft })
-        if (parsed.committedId) setCommittedId(parsed.committedId)
-        if (parsed.isPublished) setIsPublished(parsed.isPublished)
-        if (parsed.draft) setLastSavedAt(Date.now())
+        const parsed = JSON.parse(raw) as Recovery<T>
+        if (parsed.draft?.type === draft.type && typeof parsed.id === 'string') recovery = parsed
       }
-    } catch {}
-    setHydrated(true)
+    } catch { /* A corrupt recovery cannot replace the account version. */ }
+
+    const apply = (existing?: DraftItem) => {
+      if (cancelled || done) return
+      done = true
+      const { _draftState, _createdAt, _updatedAt, ...content } = existing ?? {} as DraftItem
+      const base = existing ? { ...emptyFn(), ...content } as T : emptyFn()
+      // Only unsynced recovery supersedes an account copy. Acknowledged local
+      // copies must not overwrite changes made on another device.
+      const useRecovery = recovery && (!existing || recovery.pending) ? recovery : null
+      const value = useRecovery ? useRecovery.draft : base
+      idRef.current = existing?.id ?? recovery?.id ?? makeId(draft.type)
+      setCommittedId(idRef.current)
+      setIsPublished(_draftState === 'published' || Boolean(existing && getPublishedItemSync(existing.id)))
+      setRecovered(Boolean(useRecovery && useRecovery.pending))
+      savedAtRef.current = useRecovery ? useRecovery.savedAt : null
+      setLastSavedAt(savedAtRef.current)
+      setDraft(value)
+      draftRef.current = value
+      const initial = useRecovery && useRecovery.pending ? base : value
+      const writer = new DraftSaveQueue(initial, async (snapshot) => {
+        if (cancelled || publishingRef.current) return false
+        setSyncState('saving')
+        const ok = await saveDraftItem({ ...snapshot, id: idRef.current!, publishedAt: snapshot.publishedAt, readTime: readingMinutes(snapshot) })
+        if (cancelled) return false
+        if (!ok) { setSyncState('error'); return false }
+        savedAtRef.current = Date.now()
+        setLastSavedAt(savedAtRef.current)
+        const unchanged = draftRef.current === snapshot
+        persist(draftRef.current, !unchanged)
+        setSyncState(unchanged ? 'saved' : 'pending')
+        return true
+      })
+      writer.update(value)
+      queue.current = writer
+      setSyncState(writer.pending ? 'pending' : savedAtRef.current ? 'saved' : 'idle')
+      setHydrated(true)
+    }
+
+    if (!editItemId) apply()
+    const attempt = () => {
+      if (!editItemId) return
+      const existing = getItemById(editItemId)
+      if (existing && existing.type === draft.type) apply(existing)
+    }
+    attempt()
+    const unsubD = subscribeDrafts(attempt)
+    const unsubP = subscribePublishedItems(attempt)
+    const timeout = setTimeout(() => {
+      if (!done && !cancelled) setLoadError(true)
+    }, 12000)
     return () => {
       cancelled = true
+      queue.current?.stop()
+      clearTimeout(timeout)
+      unsubD(); unsubP()
     }
+    // Form factories and setters are per-render; only the session identity
+    // should hydrate. The compose root is keyed by type + edit/new identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editItemId])
+  }, [storageKey, editItemId])
 
-  // Autosave on every change (post-hydration only — avoids overwriting
-  // freshly-loaded state with the empty-default snapshot).
   useEffect(() => {
-    if (!hydrated) return
-    try {
-      const payload: DraftWorkbenchPersisted<T> = {
-        draft,
-        committedId,
-        isPublished,
-      }
-      sessionStorage.setItem(storageKey, JSON.stringify(payload))
-      setLastSavedAt(Date.now())
-    } catch {}
-  }, [draft, committedId, isPublished, hydrated, storageKey])
+    // Hydration may replace the draft earlier in this effect pass when the
+    // account arrives. Never enqueue the previous session's render.
+    if (!hydrated || draft !== draftRef.current || !queue.current || publishingRef.current) return
+    queue.current.update(draft)
+    const pending = queue.current.pending
+    persist(draft, pending)
+    if (!pending) return
+    setSyncState('pending')
+    // Lab/anonymous edits remain local, never silently claim an account save.
+    if (!currentUser) return
+    const timer = setTimeout(() => { void queue.current?.flush() }, 900)
+    return () => clearTimeout(timer)
+  }, [draft, hydrated, currentUser, persist])
 
-  const commit = (state: DraftState, opts?: { localOnly?: boolean }): string => {
-    const id = committedId ?? _newItemId(draft.type)
-    const item = { ...draft, id, publishedAt: new Date().toISOString() }
-    _commitItem(item, state, opts)
-    setCommittedId(id)
-    setIsPublished(state === 'published')
-    setFlash(state)
-    setTimeout(() => setFlash(null), 2500)
-    return id
-  }
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!queue.current?.pending) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [])
 
   const saveDraft = async (): Promise<boolean> => {
-    if (!hydrated || savingRef.current) return false
-    savingRef.current = true
-    clearTimeout(flashTimer.current)
-    setFlash('saving')
-    const id = idRef.current ?? _newItemId(draft.type)
-    idRef.current = id
-    setCommittedId(id)
-    const snapshot = draft
-    const ok = await saveDraftItem({ ...snapshot, id, publishedAt: new Date().toISOString() })
-    savingRef.current = false
-    if (!ok) {
-      setFlash('error')
-      return false
-    }
-    const unchanged = draftRef.current === snapshot
-    setFlash(unchanged ? 'draft' : null)
-    flashTimer.current = setTimeout(() => setFlash(null), 2500)
-    // Continue-later must not close over edits made during the request.
-    return unchanged
+    if (!hydrated || !queue.current) return false
+    // Explicitly saving a pristine draft is allowed too.
+    if (!queue.current.pending && syncState === 'idle') {
+      const snapshot = { ...draftRef.current }
+      draftRef.current = snapshot
+      setDraft(snapshot)
+      queue.current.update(snapshot)
+    } else queue.current.update(draftRef.current)
+    return queue.current.flush()
   }
-  // Reserves the item as a draft and returns its id so the caller can route
-  // the editor to the publish-confirmation flow (see [[Publish Confirmation Flow]]).
-  // The state transition to 'published' happens only after the editor confirms
-  // via [[PublishConfirmOverlay]] — never directly from the form.
   const requestPublish = (): string => {
-    // localOnly: seed the drafts CACHE (so the confirm overlay can resolve the
-    // item) but DON'T POST a server draft row. The publish creates the items
-    // row directly, so there's no server draft to race-delete → no durable
-    // "zombie" draft carrying the published id (finding #6).
-    const id = commit('draft', { localOnly: true })
-    // Suppress the "DRAFT GUARDADO" flash since the editor pressed PUBLICAR,
-    // not SAVE — they shouldn't see a "saved" confirmation chip.
-    setFlash(null)
+    // The layout flushes account saving before opening confirmation. Pause
+    // autosave for its lifetime to prevent recreating the removed draft.
+    publishingRef.current = true
+    const id = idRef.current ?? makeId(draft.type)
+    idRef.current = id
+    upsertItem({ ...draftRef.current, id, readTime: readingMinutes(draftRef.current) }, 'draft', { localOnly: true })
     return id
   }
-
-  // Create-vs-edit intent for the publish guard, derived from the ENTRY POINT
-  // (?edit=<id> present ⇒ editing an existing item; absent ⇒ NUEVO). This is
-  // deliberately NOT read from `committedId`/`isPublished`: those are restored
-  // from the per-type sessionStorage slot, which a prior edit-open can poison
-  // with a published item's id. Anchoring to the URL keeps a NUEVO compose a
-  // 'create' even when its slot carries a stale id — so the server rejects the
-  // overwrite and the client re-keys to a fresh id instead of clobbering the
-  // original. On success the composer unmounts (nav to feed), so there is no
-  // same-session re-publish that would need to flip to 'edit'.
-  const publishMode: PublishMode = editItemId ? 'edit' : 'create'
-
+  const resumeSaving = () => { publishingRef.current = false }
+  const releaseRecovery = () => {
+    try { sessionStorage.removeItem(storageKey) } catch { /* Account copy remains. */ }
+  }
   const reset = () => {
-    // Editing an existing item: "reset" REVERTS to the stored version rather
-    // than blanking. Blanking used to detach committedId, so a subsequent
-    // publish minted a NEW id and duplicated the item (finding #23). Never
-    // deletes the underlying published/draft row.
-    if (editItemId) {
-      const existing = getItemById(editItemId)
-      if (existing) {
-        const { _draftState, ...clean } = existing
-        setDraft({ ...emptyFn(), ...(clean as unknown as T) })
-        setCommittedId(existing.id)
-        setIsPublished(existing._draftState === 'published')
-        setFlash(null)
-        try {
-          sessionStorage.removeItem(storageKey)
-        } catch {}
-        return
-      }
-    }
-    // New-compose: clear the form. If a DB draft was already saved, confirm
-    // before discarding it (destructive — it holds the only copy).
-    if (committedId && getItemById(committedId)) {
-      const ok =
-        typeof window === 'undefined' ||
-        window.confirm('¿Descartar este borrador? No se puede deshacer.')
-      if (!ok) return
-      removeItem(committedId)
-    }
-    setDraft(emptyFn())
-    setCommittedId(null)
-    setIsPublished(false)
-    setLastSavedAt(null)
-    setFlash(null)
-    try {
-      sessionStorage.removeItem(storageKey)
-    } catch {}
+    const existing = editItemId ? getItemById(editItemId) : null
+    if (existing) {
+      const { _draftState, _createdAt, _updatedAt, ...content } = existing
+      setDraft({ ...emptyFn(), ...content } as T)
+    } else setDraft(emptyFn())
   }
-
-  return {
-    committedId,
-    canSave: hydrated && flash !== 'saving',
-    lastSavedAt,
-    flash,
-    isPublished,
-    publishMode,
-    saveDraft,
-    requestPublish,
-    reset,
-  }
+  const flash: CommitFlash = syncState === 'saving' ? 'saving' : syncState === 'error' ? 'error' : syncState === 'saved' ? 'draft' : null
+  const publishMode: PublishMode = editItemId ? 'edit' : 'create'
+  return { committedId, hydrated, loadError, canSave: hydrated && syncState !== 'saving', lastSavedAt,
+    syncState, localCopy, recovered, hasChanges: queue.current?.pending ?? false, flash, isPublished,
+    publishMode, saveDraft, requestPublish, resumeSaving, releaseRecovery, reset }
 }

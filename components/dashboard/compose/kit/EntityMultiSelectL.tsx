@@ -20,15 +20,15 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 const KIND_LABEL: Record<EntityKind, string> = {
   artist: 'ARTISTAS',
-  label: 'LABELS',
-  venue: 'VENUES',
+  label: 'SELLOS',
+  venue: 'LUGARES DEL CATÁLOGO',
   promoter: 'PROMOTORAS',
 }
 
 const KIND_PLACEHOLDER: Record<EntityKind, string> = {
   artist: 'Buscar o crear artista…',
-  label: 'Buscar o crear label…',
-  venue: 'Buscar o crear venue…',
+  label: 'Buscar un sello…',
+  venue: 'Buscar un lugar…',
   promoter: 'Buscar o crear promotora…',
 }
 
@@ -142,6 +142,7 @@ export function EntityMultiSelectL({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={KIND_PLACEHOLDER[kind]}
+        aria-label={KIND_PLACEHOLDER[kind]}
         className={`min-h-11 border border-ink bg-paper-raised px-3 font-mono text-d13 text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
       />
 

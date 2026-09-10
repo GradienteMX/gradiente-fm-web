@@ -177,7 +177,7 @@ export function VibeFieldL({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div id="compose-field-vibe" className="flex scroll-mt-40 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
           VIBE
@@ -202,6 +202,7 @@ export function VibeFieldL({
         )}
       </div>
 
+      <p className="text-d13 leading-relaxed text-ink-soft">Describe la energía de tu pieza: 0 es glacial y 10 es volcán. Arrastra los dos extremos para elegir un rango, o toca un número para elegir un punto.</p>
       {/* Custom pointer-driven slider. Track catches clicks (drags nearer
           thumb), thumb buttons catch direct pointer-down (drag that thumb),
           window pointermove + pointerup own the drag lifecycle. Mirrors
@@ -241,6 +242,7 @@ export function VibeFieldL({
         </button>
       </div>
 
+      <div aria-hidden className="flex justify-between font-mono text-d11"><span>0 · Glacial</span><span>10 · Volcán</span></div>
       {/* Thermal ramp ticks on paper — in-band bars carry the ramp color,
           out-of-band bars mute to the cream tick tone. */}
       <div className="flex items-end gap-[3px]">
@@ -251,14 +253,10 @@ export function VibeFieldL({
               key={i}
               type="button"
               onClick={(e) => handleBarClick(i, e.shiftKey)}
-              className={`flex-1 hover:opacity-80 ${FOCUS_RING}`}
-              style={{
-                height: `${6 + i * 1.5}px`,
-                backgroundColor: inBand ? vibeToColor(i) : OFF_TICK,
-              }}
+              className={`flex min-h-11 flex-1 flex-col items-stretch justify-end gap-1 bg-paper py-1 text-d11 text-ink hover:opacity-80 ${FOCUS_RING}`}
               aria-label={`vibe ${i}`}
-              title="click: punto · shift+click: extender"
-            />
+              title="Tocar: un punto. Mayús + clic: ampliar el rango."
+            ><span aria-hidden className="block border border-ink/20" style={{ height: `${6 + i * 1.5}px`, backgroundColor: inBand ? vibeToColor(i) : OFF_TICK }} /><span>{i}</span></button>
           )
         })}
       </div>

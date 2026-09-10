@@ -1,6 +1,6 @@
 'use client'
 
-// ── ArticuloBlocksEditor — pliego port of ArticuloForm's block suite ────────
+// Structured article editor: direct writing, formatting and contextual insertion.
 //
 // Logic VERBATIM from components/dashboard/forms/ArticuloForm.tsx (:284-822 —
 // DELETED in fase F — this fork is the only copy): insertAt / update / remove / move pure logic,
@@ -10,20 +10,8 @@
 // upload field uses the kit ImageFieldL fork (same compressAndUploadImage
 // flow the dark ImageUrlField carries).
 
-import {
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Trash2,
-  Type,
-  Heading2,
-  Heading3,
-  Quote,
-  Image as ImageIcon,
-  Minus,
-  MessageSquare,
-  List,
-} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Trash2, ChevronUp, ChevronDown, Heading2, Image as ImageIcon, Quote, Type } from 'lucide-react'
 import type { ArticleBlock, Footnote } from '@/lib/types'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import {
@@ -32,6 +20,7 @@ import {
   TextFieldL,
   ToggleL,
 } from '@/components/dashboard/compose/kit/fields'
+import { FormattingTextarea } from '@/components/dashboard/compose/kit/FormattingTextarea'
 import { ImageFieldL } from '@/components/dashboard/compose/kit/ImageFieldL'
 
 type BlockKind =
@@ -46,107 +35,95 @@ type BlockKind =
   | 'qa'
   | 'list'
 
-const BLOCK_CHOICES: {
-  kind: BlockKind
-  label: string
-  blurb: string
-}[] = [
-  { kind: 'lede', label: 'LEDE', blurb: 'Párrafo introductorio con drop-cap.' },
-  { kind: 'p', label: 'PÁRRAFO', blurb: 'Prosa normal.' },
-  { kind: 'h2', label: 'H2', blurb: 'Encabezado de sección (entra al ÍNDICE).' },
-  { kind: 'h3', label: 'H3', blurb: 'Subencabezado.' },
-  { kind: 'quote', label: 'QUOTE', blurb: 'Cita destacada en color vibe.' },
-  { kind: 'blockquote', label: 'BLOCKQUOTE', blurb: 'Cita atribuida discreta.' },
-  { kind: 'image', label: 'IMAGEN', blurb: 'Imagen inline con caption opcional.' },
-  { kind: 'divider', label: 'DIVISOR', blurb: 'Separador ornamental.' },
-  { kind: 'qa', label: 'Q&A', blurb: 'Línea de entrevista (pregunta/respuesta).' },
-  { kind: 'list', label: 'LISTA', blurb: 'Lista ordenada o de viñetas.' },
+const BLOCK_CHOICES: { kind: BlockKind; label: string; blurb: string }[] = [
+  { kind: 'p', label: 'Texto', blurb: 'Sigue escribiendo.' },
+  { kind: 'h2', label: 'Sección', blurb: 'Organiza tu pieza con un subtítulo.' },
+  { kind: 'image', label: 'Imagen', blurb: 'Añade una foto y su crédito.' },
+  { kind: 'quote', label: 'Cita destacada', blurb: 'Haz visible una voz o una idea.' },
+  { kind: 'lede', label: 'Introducción', blurb: 'Abre con una letra capitular.' },
+  { kind: 'h3', label: 'Subsección', blurb: 'Divide una sección extensa.' },
+  { kind: 'blockquote', label: 'Cita con autor', blurb: 'Incluye una cita y su atribución.' },
+  { kind: 'qa', label: 'Entrevista', blurb: 'Añade una pregunta o respuesta.' },
+  { kind: 'list', label: 'Lista', blurb: 'Ordena ideas con números o viñetas.' },
+  { kind: 'divider', label: 'Separador', blurb: 'Marca una pausa visual.' },
 ]
 
-export function ArticuloBlocksEditor({
-  blocks,
-  onChange,
-}: {
-  blocks: ArticleBlock[]
-  onChange: (next: ArticleBlock[]) => void
+export function ArticuloBlocksEditor({ blocks, onChange }: {
+  blocks: ArticleBlock[]; onChange: (next: ArticleBlock[]) => void
 }) {
-  const insertAt = (at: number, kind: BlockKind) => {
-    const fresh = freshBlock(kind)
-    const next = [...blocks.slice(0, at), fresh, ...blocks.slice(at)]
-    onChange(next)
+  const [focusAt, setFocusAt] = useState<{ index: number; offset: number; end?: number } | null>(null)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (focusAt === null) return
+    const field = root.current?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-block-index="${focusAt.index}"] textarea, [data-block-index="${focusAt.index}"] input`)
+    field?.focus()
+    if (field && (field instanceof HTMLTextAreaElement || field.type === 'text')) field.setSelectionRange(focusAt.offset, focusAt.end ?? focusAt.offset)
+    setFocusAt(null)
+  }, [focusAt, blocks])
+  const insertAt = (i: number, kind: BlockKind) => {
+    onChange([...blocks.slice(0, i), freshBlock(kind), ...blocks.slice(i)])
+    setFocusAt({ index: i, offset: 0 })
   }
-  const addBlock = (kind: BlockKind) => insertAt(blocks.length, kind)
-  const update = (i: number, next: ArticleBlock) =>
-    onChange(blocks.map((b, idx) => (idx === i ? next : b)))
-  const remove = (i: number) =>
-    onChange(blocks.filter((_, idx) => idx !== i))
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir
-    if (j < 0 || j >= blocks.length) return
+  const update = (i: number, value: ArticleBlock) => onChange(blocks.map((b, index) => index === i ? value : b))
+  const move = (i: number, direction: number) => {
     const next = blocks.slice()
-    ;[next[i], next[j]] = [next[j], next[i]]
-    onChange(next)
+    const target = i + direction
+    if (target < 0 || target >= next.length) return
+    ;[next[i], next[target]] = [next[target], next[i]]
+    onChange(next); setFocusAt({ index: target, offset: 0 })
   }
-
-  if (blocks.length === 0) {
-    // Pristine empty state — neutral ink, never a red scold (judge r6 fix 2):
-    // the rail's FALTA row already marks CUERPO pending, and the red register
-    // is unreachable pre-publish anyway (PUBLICAR is gated on it).
-    return (
-      <div className="flex flex-col items-center gap-3 border-2 border-dashed border-ink bg-paper p-8 text-center">
-        <span className="font-mono text-d13 font-bold tracking-widest text-ink">
-          AÑADE EL CUERPO DEL ARTÍCULO AQUÍ
-        </span>
-        <p className="max-w-md font-mono text-d11 leading-relaxed text-ink-soft">
-          Tu texto principal va en bloques de PÁRRAFO, H2/H3, citas, listas e
-          imágenes — no en el EXCERPT. Empieza con un{' '}
-          <span className="font-bold text-ink">LEDE</span> o un PÁRRAFO.
-        </p>
-        <AddBlockChips onPick={addBlock} />
-      </div>
-    )
+  const split = (i: number, start: number, end: number) => {
+    const b = blocks[i]
+    if (!('text' in b)) return
+    onChange([...blocks.slice(0, i), { ...b, text: b.text.slice(0, start) }, { kind: 'p', text: b.text.slice(end) }, ...blocks.slice(i + 1)])
+    setFocusAt({ index: i + 1, offset: 0 })
   }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {blocks.map((b, i) => (
-        <BlockCardL
-          key={i}
-          index={i}
-          block={b}
-          canMoveUp={i > 0}
-          canMoveDown={i < blocks.length - 1}
-          onChange={(next) => update(i, next)}
-          onRemove={() => remove(i)}
-          onMoveUp={() => move(i, -1)}
-          onMoveDown={() => move(i, 1)}
-        />
-      ))}
-
-      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-dashed border-ink pt-3">
-        <FieldLabelL label="AÑADIR BLOQUE" />
-        <AddBlockChips onPick={addBlock} />
-      </div>
+  return <div ref={root} className="min-w-0">
+    <div className="mb-3 flex flex-wrap items-center gap-1 border border-ink bg-ink text-paper p-1" role="group" aria-label="Añadir a la pieza">
+      {[{ kind: 'p' as const, label: 'Texto', Icon: Type }, { kind: 'h2' as const, label: 'Sección', Icon: Heading2 }, { kind: 'image' as const, label: 'Imagen', Icon: ImageIcon }, { kind: 'quote' as const, label: 'Cita', Icon: Quote }].map(({ kind, label, Icon }) => <button key={kind} type="button" onClick={() => insertAt(blocks.length, kind)} className={`inline-flex min-h-11 items-center gap-2 px-3 text-d13 hover:bg-acid hover:text-ink ${FOCUS_RING}`}><Icon size={16} aria-hidden />{label}<Plus size={12} aria-hidden /></button>)}
     </div>
-  )
+    {blocks.length === 0 ? <>
+      <FormattingTextarea value="" aria-label="Texto de la pieza" placeholder="Empieza a escribir aquí o pega tu texto…" rows={5}
+        onChange={(text, selected) => { onChange([{ kind: 'p', text }]); setFocusAt({ index: 0, offset: selected?.start ?? text.length, end: selected?.end }) }}
+        className={`min-h-[160px] w-full resize-y border-0 bg-transparent px-3 py-3 text-d18 leading-relaxed placeholder:text-ink-faint ${FOCUS_RING}`} />
+      <InsertMenu onPick={(kind) => insertAt(0, kind)} />
+    </> : <>
+      {blocks.map((block, i) => <div id={`compose-block-${i}`} data-block-index={i} key={i} className="scroll-mt-40">
+        <div className="group relative my-2">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="font-mono text-d11 text-ink-soft">{BLOCK_CHOICES.find((choice) => choice.kind === block.kind)?.label ?? 'Contenido'}</span>
+            <div className="flex gap-1">
+              <IconBtnL onClick={() => move(i, -1)} disabled={i === 0} aria={`Subir contenido ${i + 1}`}><ChevronUp size={14} /></IconBtnL>
+              <IconBtnL onClick={() => move(i, 1)} disabled={i === blocks.length - 1} aria={`Bajar contenido ${i + 1}`}><ChevronDown size={14} /></IconBtnL>
+              <IconBtnL onClick={() => { onChange(blocks.filter((_, index) => index !== i)); setFocusAt({ index: Math.max(0, i - 1), offset: 0 }) }} aria={`Eliminar contenido ${i + 1}`}><Trash2 size={14} /></IconBtnL>
+            </div>
+          </div>
+          {block.kind === 'p' || block.kind === 'lede' || block.kind === 'h2' || block.kind === 'h3' ?
+            <FormattingTextarea aria-label={`${BLOCK_CHOICES.find((c) => c.kind === block.kind)?.label} ${i + 1}`} value={block.text} rows={block.kind === 'p' || block.kind === 'lede' ? 2 : 1}
+              placeholder={block.kind === 'h2' || block.kind === 'h3' ? 'Nombre de la sección' : 'Sigue escribiendo…'}
+              onChange={(text) => update(i, { ...block, text })}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); split(i, e.currentTarget.selectionStart, e.currentTarget.selectionEnd) } }}
+              className={`w-full resize-y border-0 bg-transparent px-3 py-2 leading-relaxed [field-sizing:content] ${block.kind === 'h2' || block.kind === 'h3' ? 'font-syne text-2xl font-bold' : 'min-h-16 text-d18'} placeholder:text-ink-faint ${FOCUS_RING}`} />
+            : <BlockBodyL block={block} onChange={(value) => update(i, value)} />}
+        </div>
+        <InsertMenu onPick={(kind) => insertAt(i + 1, kind)} />
+      </div>)}
+    </>}
+    <p className="mt-5 text-d13 text-ink-soft">Enter crea otro párrafo. Mayús + Enter añade una línea. Puedes deshacer también los cambios de estructura.</p>
+  </div>
 }
 
-function AddBlockChips({ onPick }: { onPick: (kind: BlockKind) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {BLOCK_CHOICES.map((c) => (
-        <button
-          key={c.kind}
-          type="button"
-          onClick={() => onPick(c.kind)}
-          title={c.blurb}
-          className={`flex min-h-11 items-center gap-1 border border-dashed border-ink px-2.5 font-mono text-d11 tracking-widest text-ink hover:bg-ink hover:text-paper md:min-h-9 ${FOCUS_RING}`}
-        >
-          <Plus size={10} aria-hidden /> {c.label}
-        </button>
-      ))}
+function InsertMenu({ onPick }: { onPick: (kind: BlockKind) => void }) {
+  const menu = useRef<HTMLDetailsElement>(null)
+  return <details ref={menu} className="my-2" onKeyDown={(e) => { if (e.key === 'Escape' && menu.current?.open) { e.preventDefault(); e.stopPropagation(); menu.current.open = false; menu.current.querySelector('summary')?.focus() } }}>
+    <summary className={`w-fit min-h-11 cursor-pointer list-none py-3 text-d13 text-ink-soft hover:text-ink ${FOCUS_RING}`}>+ Añadir contenido</summary>
+    <div className="max-w-lg border border-ink bg-paper-raised p-2">
+      {BLOCK_CHOICES.slice(0, 4).map((choice) => <button type="button" key={choice.kind} onClick={() => { onPick(choice.kind); if (menu.current) menu.current.open = false }} className={`flex min-h-14 w-full flex-col justify-center border-b border-ink/15 px-3 py-2 text-left hover:bg-acid ${FOCUS_RING}`}><span className="text-d15 font-bold">{choice.label}</span><span className="text-d13 text-ink-soft">{choice.blurb}</span></button>)}
+      <details><summary className={`min-h-11 cursor-pointer p-3 text-d13 ${FOCUS_RING}`}>Más opciones</summary>
+        {BLOCK_CHOICES.slice(4).map((choice) => <button type="button" key={choice.kind} onClick={() => { onPick(choice.kind); if (menu.current) menu.current.open = false }} className={`flex min-h-14 w-full flex-col justify-center px-3 py-2 text-left hover:bg-acid ${FOCUS_RING}`}><span className="text-d15 font-bold">{choice.label}</span><span className="text-d13 text-ink-soft">{choice.blurb}</span></button>)}
+      </details>
     </div>
-  )
+  </details>
 }
 
 // Verbatim from ArticuloForm.tsx:376-399.
@@ -175,92 +152,6 @@ function freshBlock(kind: BlockKind): ArticleBlock {
   }
 }
 
-// ── Block card ──────────────────────────────────────────────────────────────
-
-function BlockCardL({
-  index,
-  block,
-  canMoveUp,
-  canMoveDown,
-  onChange,
-  onRemove,
-  onMoveUp,
-  onMoveDown,
-}: {
-  index: number
-  block: ArticleBlock
-  canMoveUp: boolean
-  canMoveDown: boolean
-  onChange: (next: ArticleBlock) => void
-  onRemove: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
-}) {
-  return (
-    <div className="flex flex-col gap-3 border border-ink bg-paper p-3">
-      <header className="flex items-center justify-between gap-2 border-b border-dashed border-ink pb-2">
-        <div className="flex min-w-0 items-center gap-2 font-mono text-d11 tracking-widest">
-          <KindGlyph kind={block.kind} />
-          <span className="text-ink-faint">{String(index + 1).padStart(2, '0')}</span>
-          <span className="font-bold text-ink">{labelForKind(block.kind)}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <IconBtnL onClick={onMoveUp} disabled={!canMoveUp} aria="Subir">
-            <ChevronUp size={13} />
-          </IconBtnL>
-          <IconBtnL onClick={onMoveDown} disabled={!canMoveDown} aria="Bajar">
-            <ChevronDown size={13} />
-          </IconBtnL>
-          <IconBtnL onClick={onRemove} aria="Eliminar" danger>
-            <Trash2 size={13} />
-          </IconBtnL>
-        </div>
-      </header>
-      <BlockBodyL block={block} onChange={onChange} />
-    </div>
-  )
-}
-
-function KindGlyph({ kind }: { kind: ArticleBlock['kind'] }) {
-  const cls = 'text-ink'
-  if (kind === 'h2') return <Heading2 size={12} className={cls} aria-hidden />
-  if (kind === 'h3') return <Heading3 size={12} className={cls} aria-hidden />
-  if (kind === 'quote' || kind === 'blockquote')
-    return <Quote size={12} className={cls} aria-hidden />
-  if (kind === 'image') return <ImageIcon size={12} className={cls} aria-hidden />
-  if (kind === 'divider') return <Minus size={12} className={cls} aria-hidden />
-  if (kind === 'qa') return <MessageSquare size={12} className={cls} aria-hidden />
-  if (kind === 'list') return <List size={12} className={cls} aria-hidden />
-  return <Type size={12} className={cls} aria-hidden />
-}
-
-function labelForKind(kind: ArticleBlock['kind']): string {
-  switch (kind) {
-    case 'lede':
-      return 'LEDE'
-    case 'p':
-      return 'PÁRRAFO'
-    case 'h2':
-      return 'H2'
-    case 'h3':
-      return 'H3'
-    case 'quote':
-      return 'QUOTE'
-    case 'blockquote':
-      return 'BLOCKQUOTE'
-    case 'image':
-      return 'IMAGEN'
-    case 'divider':
-      return 'DIVISOR'
-    case 'qa':
-      return 'Q&A'
-    case 'list':
-      return 'LISTA'
-    case 'track':
-      return 'TRACK'
-  }
-}
-
 // The 10 kind-cases — field wiring verbatim, pliego fields.
 function BlockBodyL({
   block,
@@ -272,7 +163,7 @@ function BlockBodyL({
   if (block.kind === 'lede') {
     return (
       <TextAreaL
-        label="TEXTO DEL LEDE"
+        label="Introducción"
         value={block.text}
         onChange={(text) => onChange({ ...block, text })}
         rows={3}
@@ -295,13 +186,13 @@ function BlockBodyL({
     return (
       <div className="flex flex-col gap-2">
         <TextFieldL
-          label="TEXTO H2"
+          label="Nombre de la sección"
           value={block.text}
           onChange={(text) => onChange({ ...block, text })}
           placeholder="Sección"
         />
         <TextFieldL
-          label="ID (OPCIONAL, PARA ANCLAS EN EL TOC)"
+          label="Enlace de sección (opcional)"
           value={block.id ?? ''}
           onChange={(id) => onChange({ ...block, id })}
           placeholder="seccion-uno"
@@ -313,7 +204,7 @@ function BlockBodyL({
   if (block.kind === 'h3') {
     return (
       <TextFieldL
-        label="TEXTO H3"
+        label="Nombre de la subsección"
         value={block.text}
         onChange={(text) => onChange({ ...block, text })}
         placeholder="Subsección"
@@ -497,20 +388,18 @@ export function ArticuloFootnotesEditor({
     onChange(footnotes.map((f, idx) => (idx === i ? { ...f, ...patch } : f)))
   const remove = (i: number) =>
     onChange(footnotes.filter((_, idx) => idx !== i))
-  const add = () =>
-    onChange([
-      ...footnotes,
-      { id: `n${footnotes.length + 1}`, text: '' },
-    ])
+  const add = () => {
+    let number = footnotes.length + 1
+    while (footnotes.some((note) => note.id === `n${number}`)) number += 1
+    onChange([...footnotes, { id: `n${number}`, text: '' }])
+  }
 
   return (
     <div className="flex flex-col gap-3">
       <p className="font-mono text-d11 leading-relaxed text-ink-soft">
-        Cada footnote tiene un <span className="font-bold text-ink">id</span>{' '}
-        (ej. <code className="bg-paper px-1">n1</code>). Referénciala desde un
-        bloque de texto con{' '}
-        <code className="bg-ink px-1 text-acid">[^n1]</code>. Las referencias
-        se renderizan como superíndice numerado y enlazan al texto de la nota.
+        Las notas amplían una idea sin interrumpir la lectura. Copia la referencia
+        de una nota, por ejemplo <code className="bg-ink px-1 text-acid">[^n1]</code>,
+        y pégala donde quieras citarla en el texto.
       </p>
 
       {footnotes.length === 0 && (
@@ -556,7 +445,7 @@ export function ArticuloFootnotesEditor({
         onClick={add}
         className={`flex min-h-11 w-fit items-center gap-2 border border-dashed border-ink px-3 font-mono text-d11 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper md:min-h-9 ${FOCUS_RING}`}
       >
-        <Plus size={12} aria-hidden /> AÑADIR FOOTNOTE
+        <Plus size={12} aria-hidden /> Añadir nota al pie
       </button>
     </div>
   )
@@ -581,7 +470,7 @@ function IconBtnL({
       onClick={onClick}
       disabled={disabled}
       aria-label={aria}
-      className={`flex h-9 w-9 items-center justify-center border border-ink text-ink disabled:cursor-not-allowed disabled:border-ink-faint disabled:text-ink-faint ${
+      className={`flex h-11 w-11 items-center justify-center border border-ink text-ink disabled:cursor-not-allowed disabled:border-ink-faint disabled:text-ink-faint ${
         danger
           ? 'hover:border-sys-red-paper hover:bg-sys-red-paper hover:text-paper'
           : 'hover:bg-ink hover:text-paper'

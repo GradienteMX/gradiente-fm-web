@@ -18,7 +18,8 @@
 // only the dark TextArea had one (used on EXCERPT). TextFieldL has none —
 // the dark TextField never did.
 
-import { useState } from 'react'
+import { FormattingTextarea } from '@/components/dashboard/compose/kit/FormattingTextarea'
+import { useId, useState } from 'react'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 
 export function FieldLabelL({
@@ -70,20 +71,20 @@ export function TextFieldL({
   // and left empty (touched on blur). The rail checklist owns the pristine
   // «pending» signal.
   const [touched, setTouched] = useState(false)
-  const showError = required && !value && touched
+  const showError = required && !value.trim() && touched
   return (
     <label id={id} className="flex scroll-mt-24 flex-col gap-1.5">
-      <FieldLabelL label={label} required={required} />
+      <span className={label === 'Subtítulo (opcional)' ? 'sr-only' : ''}><FieldLabelL label={label} required={required} /></span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => setTouched(true)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? (label === 'Subtítulo (opcional)' ? 'Añade un subtítulo (opcional)' : undefined)}
         aria-required={required || undefined}
         aria-invalid={showError || undefined}
         className={`min-h-11 border bg-paper-raised px-3 text-ink placeholder:text-ink-faint ${
-          mono ? 'font-mono text-d13' : 'text-d15'
+          label === 'Subtítulo (opcional)' ? 'border-0 bg-transparent px-0 text-d18 text-ink-soft' : label === 'TÍTULO' || label === 'TITULAR' ? 'min-h-14 border-x-0 border-t-0 border-b-ink/30 bg-transparent px-0 font-syne text-2xl font-extrabold md:text-3xl' : mono ? 'font-mono text-d13' : 'text-d15'
         } ${showError ? 'border-sys-red-paper' : 'border-ink'} ${FOCUS_RING}`}
       />
     </label>
@@ -98,6 +99,7 @@ export function TextAreaL({
   rows,
   required,
   maxLength,
+  formatting = false,
   id,
 }: {
   label: string
@@ -112,18 +114,21 @@ export function TextAreaL({
    * (used on EXCERPT to keep the lead from swallowing the body).
    */
   maxLength?: number
+  formatting?: boolean
   /** Checklist scroll-anchor id. */
   id?: string
 }) {
   // Same touched gate as TextFieldL — a virgin textarea renders calm.
   const [touched, setTouched] = useState(false)
-  const showError = required && !value && touched
+  const showError = required && !value.trim() && touched
   const len = value.length
   const nearLimit = maxLength != null && len >= maxLength * 0.9
+  const formatted = formatting || label === 'Texto completo'
+  const textId = useId()
   return (
-    <label id={id} className="flex scroll-mt-24 flex-col gap-1.5">
+    <div id={id} className="flex scroll-mt-24 flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <FieldLabelL label={label} required={required} />
+        <label htmlFor={textId}><FieldLabelL label={label} required={required} /></label>
         {maxLength != null && (
           <span
             aria-live="polite"
@@ -135,20 +140,38 @@ export function TextAreaL({
           </span>
         )}
       </div>
+      {formatted ? (
+      <FormattingTextarea
+        id={textId}
+        value={value}
+        onChange={onChange}
+        onBlur={() => setTouched(true)}
+        placeholder={placeholder}
+        rows={label === 'Texto completo' ? 6 : rows ?? 4}
+        maxLength={maxLength}
+        aria-required={required || undefined}
+        aria-invalid={showError || undefined}
+        className={`min-h-11 border bg-paper-raised px-3 py-2.5 text-d15 leading-relaxed [field-sizing:content] ${label === 'Texto completo' ? 'min-h-[200px] w-full border-0 bg-transparent text-d18' : ''} text-ink placeholder:text-ink-faint ${
+          showError ? 'border-sys-red-paper' : 'border-ink'
+        } ${FOCUS_RING}`}
+      />
+      ) : (
       <textarea
+        id={textId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => setTouched(true)}
         placeholder={placeholder}
-        rows={rows ?? 4}
+        rows={label === 'Texto completo' ? 6 : rows ?? 4}
         maxLength={maxLength}
         aria-required={required || undefined}
         aria-invalid={showError || undefined}
-        className={`min-h-11 border bg-paper-raised px-3 py-2.5 text-d15 leading-relaxed text-ink placeholder:text-ink-faint ${
+        className={`min-h-11 border bg-paper-raised px-3 py-2.5 text-d15 leading-relaxed [field-sizing:content] ${label === 'Texto completo' ? 'min-h-[280px] border-0 bg-transparent px-0 text-d18' : ''} text-ink placeholder:text-ink-faint ${
           showError ? 'border-sys-red-paper' : 'border-ink'
         } ${FOCUS_RING}`}
       />
-    </label>
+      )}
+    </div>
   )
 }
 

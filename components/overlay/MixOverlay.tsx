@@ -1,5 +1,7 @@
 'use client'
 
+import { InlineProse } from '@/components/overlay/ArticuloOverlay'
+
 import { useEffect, useMemo } from 'react'
 import type { ContentItem } from '@/lib/types'
 import { getRelatedByVibe } from '@/lib/itemsCache'
@@ -244,7 +246,7 @@ export function MixOverlay({ item }: Props) {
           <div className="flex flex-col gap-4 font-grotesk text-sm leading-relaxed text-ink md:text-[15px]">
             {item.bodyPreview.split('\n').map((p, i) =>
               p.trim() ? (
-                <p key={i}>{p}</p>
+                <p key={i}><InlineProse text={p} /></p>
               ) : null,
             )}
           </div>

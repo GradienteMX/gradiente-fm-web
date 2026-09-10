@@ -1,5 +1,7 @@
 'use client'
 
+import { InlineProse } from '@/components/overlay/ArticuloOverlay'
+
 import { useEffect, useRef, useState } from 'react'
 import type {
   ContentItem,
@@ -313,7 +315,7 @@ export function ReaderOverlay({ item }: ReaderOverlayProps) {
             {paragraphs.length > 0 ? (
               paragraphs.map((p, i) => (
                 <p key={i} className="text-ink">
-                  {p}
+                  <InlineProse text={p} />
                 </p>
               ))
             ) : (

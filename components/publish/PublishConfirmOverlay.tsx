@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Send } from 'lucide-react'
-import { usePublishConfirm } from './usePublishConfirm'
+import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { getItemById, publishItem, type PublishResult } from '@/lib/drafts'
 import { removeDraftLocal } from '@/lib/draftsCache'
-import { setPublishedItemLocal } from '@/lib/publishedItemsCache'
+import { getPublishedItemSync, setPublishedItemLocal } from '@/lib/publishedItemsCache'
 import {
   categoryColorOnLight,
   TYPE_CODES,
@@ -19,6 +19,8 @@ import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 function publishErrorMessage(res: PublishResult): string {
   if (res.status === 403)
     return 'No tienes permiso para editar este ítem. Puede pertenecer a otra persona.'
+  if (res.status === 422)
+    return 'Falta información para publicar. Vuelve al editor y revisa los campos indicados.'
   if (res.status === 409)
     return 'No se pudo crear el ítem por un conflicto de id. Vuelve a intentarlo.'
   if (res.status === 0)
@@ -86,6 +88,7 @@ export function PublishConfirmOverlay() {
   const item = getItemById(confirmingId)
   if (!item) return null
 
+  const updating = Boolean(getPublishedItemSync(item.id))
   const color = categoryColorOnLight(item.type)
 
   const handleConfirm = async () => {
@@ -117,6 +120,13 @@ export function PublishConfirmOverlay() {
     // holds THIS item (otherwise we'd destroy an unrelated in-progress compose
     // of the same type — finding #22); always clear this item's edit slot.
     try {
+      for (const key of Object.keys(sessionStorage)) {
+        if (!key.startsWith('gradiente:compose:')) continue
+        try {
+          const recovery = JSON.parse(sessionStorage.getItem(key) ?? '{}')
+          if (recovery.id === payload.id) sessionStorage.removeItem(key)
+        } catch { /* Leave unrelated or unreadable recovery intact. */ }
+      }
       const newKey = `gradiente:dashboard:${payload.type}-draft`
       const raw = sessionStorage.getItem(newKey)
       if (raw) {
@@ -177,7 +187,7 @@ export function PublishConfirmOverlay() {
               id="publish-confirm-title"
               className="font-syne text-d28 font-black uppercase leading-tight text-ink"
             >
-              ¿Publicar en el feed?
+              {updating ? '¿Actualizar esta publicación?' : '¿Publicar en el feed?'}
             </h1>
           </header>
 
@@ -232,7 +242,7 @@ export function PublishConfirmOverlay() {
               className={`flex min-h-11 items-center gap-2 border border-ink bg-acid px-4 font-mono text-d13 font-bold tracking-widest text-ink transition-colors hover:bg-ink hover:text-acid disabled:opacity-60 ${FOCUS_RING}`}
             >
               <Send size={11} />
-              {submitting ? 'PUBLICANDO…' : errorMsg ? '▶ REINTENTAR' : '▶ PUBLICAR DEFINITIVAMENTE'}
+              {submitting ? 'PUBLICANDO…' : errorMsg ? '▶ REINTENTAR' : updating ? 'ACTUALIZAR PUBLICACIÓN' : 'PUBLICAR AHORA'}
             </button>
           </div>
         </div>

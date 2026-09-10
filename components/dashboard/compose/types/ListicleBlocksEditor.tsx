@@ -27,14 +27,15 @@ import {
 import type { ArticleBlock, MixEmbed } from '@/lib/types'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import { FieldLabelL, TextAreaL, TextFieldL } from '@/components/dashboard/compose/kit/fields'
+import { FormattingTextarea } from '@/components/dashboard/compose/kit/FormattingTextarea'
 import { EmbedListL } from '@/components/dashboard/compose/kit/EmbedListL'
 
 type BlockKind = 'lede' | 'p' | 'divider' | 'track'
 const BLOCK_CHOICES: { kind: BlockKind; label: string; blurb: string }[] = [
-  { kind: 'lede', label: 'LEDE', blurb: 'Párrafo introductorio con drop-cap.' },
-  { kind: 'p', label: 'PÁRRAFO', blurb: 'Prosa normal entre ranks.' },
-  { kind: 'divider', label: 'DIVISOR', blurb: 'Separador ornamental ⋯ ⋯.' },
-  { kind: 'track', label: 'TRACK', blurb: 'Entrada con rank, cover, sources, commentary.' },
+  { kind: 'lede', label: 'Introducción', blurb: 'Abre tu lista con una introducción.' },
+  { kind: 'p', label: 'Texto', blurb: 'Texto entre las entradas.' },
+  { kind: 'divider', label: 'Separador', blurb: 'Separador ornamental ⋯ ⋯.' },
+  { kind: 'track', label: 'Entrada', blurb: 'Una obra con artista, portada, audio y tu comentario.' },
 ]
 
 export function ListicleBlocksEditor({
@@ -119,11 +120,10 @@ export function ListicleBlocksEditor({
       {showEmptyState && (
         <div className="flex flex-col items-center gap-3 border-2 border-dashed border-ink bg-paper p-8 text-center">
           <span className="font-mono text-d13 font-bold tracking-widest text-ink">
-            AÑADE EL CUERPO DE LA LISTA AQUÍ
+            Construye tu selección
           </span>
           <p className="max-w-md font-mono text-d11 leading-relaxed text-ink-soft">
-            Tu lista va en bloques de TRACK (uno por entrada), más LEDEs y
-            párrafos para contextualizar — no en el EXCERPT.
+            Añade una entrada por disco o tema. Después puedes escribir una introducción y ordenar tu selección.
           </p>
           <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
             <AddPrimary onClick={() => addBlock('track')} />
@@ -176,7 +176,7 @@ function AddPrimary({ onClick }: { onClick: () => void }) {
       className={`inline-flex min-h-11 items-center gap-2 border border-ink bg-ink px-4 font-mono text-d11 font-bold tracking-widest text-acid hover:bg-ink-soft md:min-h-9 ${FOCUS_RING}`}
     >
       <Plus size={12} strokeWidth={2.5} aria-hidden />
-      AÑADIR TRACK
+      Añadir entrada
     </button>
   )
 }
@@ -440,7 +440,7 @@ function BlockBodyL({
   if (block.kind === 'lede') {
     return (
       <AutoFocusTextAreaL
-        label="TEXTO DEL LEDE"
+        label="Introducción"
         value={block.text}
         onChange={(text) => onChange({ ...block, text })}
         rows={3}
@@ -456,7 +456,7 @@ function BlockBodyL({
         value={block.text}
         onChange={(text) => onChange({ ...block, text })}
         rows={4}
-        placeholder="Texto de prosa entre ranks…"
+        placeholder="Escribe entre las entradas…"
         autoFocus={autoFocus}
       />
     )
@@ -500,7 +500,7 @@ function BlockBodyL({
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="grid gap-2 sm:grid-cols-[80px_1fr]">
               <TextFieldL
-                label="RANK"
+                label="Posición (opcional)"
                 value={block.rank?.toString() ?? ''}
                 onChange={(v) => patch({ rank: v === '' ? undefined : Number(v) })}
                 type="number"
@@ -519,7 +519,7 @@ function BlockBodyL({
               label="TÍTULO"
               value={block.title}
               onChange={(v) => patch({ title: v })}
-              placeholder="Título del track"
+              placeholder="Título del tema"
             />
           </div>
         </div>
@@ -541,7 +541,7 @@ function BlockBodyL({
             mono
           />
           <TextFieldL
-            label="COVER URL"
+            label="Enlace de la portada"
             value={block.imageUrl ?? ''}
             onChange={(v) => patch({ imageUrl: v })}
             placeholder="/flyers/… o https://…"
@@ -551,6 +551,7 @@ function BlockBodyL({
 
         <TextAreaL
           label="COMENTARIO"
+          formatting
           value={block.commentary ?? ''}
           onChange={(v) => patch({ commentary: v })}
           rows={3}
@@ -559,7 +560,7 @@ function BlockBodyL({
 
         <div>
           <div className="mb-2">
-            <FieldLabelL label="FUENTES (EMBEDS)" />
+            <FieldLabelL label="Audio de esta entrada" />
           </div>
           <EmbedListL
             embeds={block.embeds ?? []}
@@ -625,38 +626,35 @@ function AutoFocusTextAreaL({
   rows?: number
   autoFocus?: boolean
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => {
-    if (autoFocus) ref.current?.focus()
-  }, [autoFocus])
   return (
-    <label className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
       <FieldLabelL label={label} />
-      <textarea
-        ref={ref}
+      <FormattingTextarea
+        aria-label={label}
+        autoFocus={autoFocus}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
         placeholder={placeholder}
         rows={rows ?? 4}
-        className={`min-h-11 border border-ink bg-paper-raised px-3 py-2.5 text-d15 leading-relaxed text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
+        className={`min-h-11 w-full border-0 bg-paper-raised px-3 py-2.5 text-d15 leading-relaxed text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
       />
-    </label>
+    </div>
   )
 }
 
 function labelForKind(kind: ArticleBlock['kind']): string {
   switch (kind) {
-    case 'lede': return 'LEDE'
-    case 'p': return 'PÁRRAFO'
+    case 'lede': return 'Introducción'
+    case 'p': return 'Texto'
     case 'h2': return 'H2'
     case 'h3': return 'H3'
     case 'quote': return 'QUOTE'
     case 'blockquote': return 'BLOCKQUOTE'
     case 'image': return 'IMAGEN'
-    case 'divider': return 'DIVISOR'
+    case 'divider': return 'Separador'
     case 'qa': return 'Q&A'
     case 'list': return 'LISTA'
-    case 'track': return 'TRACK'
+    case 'track': return 'Entrada'
   }
 }
 

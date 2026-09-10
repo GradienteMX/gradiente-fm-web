@@ -124,7 +124,7 @@ export function MixTracklistEditor({
     <div className="flex flex-col gap-2">
       {/* Header row w/ paste toggle */}
       <div className="flex items-center justify-between gap-3">
-        <FieldLabelL label={`TRACKS (${tracks.length})`} />
+        <FieldLabelL label={`TEMAS (${tracks.length})`} />
         <button
           type="button"
           onClick={() => setPasting((p) => !p)}
@@ -217,7 +217,7 @@ export function MixTracklistEditor({
         onClick={add}
         className={`flex min-h-11 items-center gap-2 self-start border border-dashed border-ink px-3 font-mono text-d11 uppercase tracking-widest text-ink hover:bg-ink hover:text-paper md:min-h-9 ${FOCUS_RING}`}
       >
-        <Plus size={12} aria-hidden /> AÑADIR TRACK
+        <Plus size={12} aria-hidden /> Añadir tema
       </button>
     </div>
   )
@@ -282,7 +282,7 @@ function TrackRowL({
         value={track.title}
         onChange={(e) => onChange({ title: e.target.value })}
         onKeyDown={handleKeyDown}
-        placeholder="Título del track"
+        placeholder="Título del tema"
         aria-label={`Tema de la pista ${index + 1}`}
         className={CELL_INPUT}
       />
@@ -302,7 +302,7 @@ function TrackRowL({
       <button
         type="button"
         onClick={onRemove}
-        aria-label="Eliminar track"
+        aria-label="Eliminar tema"
         className={`flex h-11 w-11 items-center justify-center border border-ink text-ink hover:border-sys-red-paper hover:bg-sys-red-paper hover:text-paper md:h-9 md:w-9 ${FOCUS_RING}`}
       >
         <Trash2 size={13} aria-hidden />

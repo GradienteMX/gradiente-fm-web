@@ -1,229 +1,186 @@
 'use client'
 
-// ── ComposeLayout — «EL PLIEGO DE COMPOSICIÓN v2» page chrome ───────────────
-//
-// The full-page light editor shell: breadcrumb + H1 + autosave head + CERRAR,
-// then two columns on ≥lg (section cards flex-1, rail w-80 sticky) and a
-// single column on mobile with the rail stacked after the sections. PURELY
-// PRESENTATIONAL — the type form owns the workbench and passes truth in.
-//
-// Mobile sticky-ACCIONES contract (shared with ComposeRail): the rail slot is
-// `contents` below lg, so ComposeRail's panels become direct children of the
-// column wrapper. That makes the wrapper — which spans the whole form — the
-// containing block for ComposeRail's `sticky bottom-0` ACCIONES panel, so the
-// actions pin to the viewport bottom while the editor scrolls. On ≥lg the
-// slot becomes a real block (sticky top rail) and ComposeRail lays its own
-// panels out in a column.
-//
-// TRUE DATA ONLY: the autosave head renders a timestamp only when the
-// workbench has actually saved (`lastSavedAt` from useDraftWorkbench — ms
-// epoch, stamped on every sessionStorage autosave). Before the first save it
-// states the fact («Se guarda solo») without a fake clock. Motion
-// constitution: no springs, no fades, no exits — the only animation is the
-// sanctioned step-end `blink` on the loading hairline.
-
-import { useEffect, useState, type ReactNode } from 'react'
+import { Children, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import type { ContentItem } from '@/lib/types'
+import type { useDraftWorkbench } from '@/components/dashboard/forms/shared/Fields'
+import type { ComposeRailProps } from '@/components/dashboard/compose/editor/ComposeRail'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
-import { scrollToDashWidget } from '@/components/dashboard/shell/StatusStrip'
+import { composeSteps, isOptionalComposeSection, sectionStep } from '@/lib/composeWorkflow'
+import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
+import { ComposeGuide } from '@/components/dashboard/compose/editor/ComposeGuide'
+import { ComposePreview } from '@/components/dashboard/compose/editor/ComposePreview'
+import { useComposeHistory } from '@/components/dashboard/compose/editor/useComposeHistory'
 
-export interface ComposeLayoutProps {
-  // Display label for the composed type, sentence-case ('Mix', 'Reseña', … —
-  // composeTypeDisplay). The H1 renders it as-is; the breadcrumb uppercases
-  // it via CSS, so both registers come from the one prop.
+interface ComposeLayoutProps {
   typeLabel: string
-  // `?edit=` present → breadcrumb says BORRADORES and the H1 says «Editar».
   isEdit: boolean
-  // ms epoch of the last workbench autosave; null until the first save AFTER
-  // a user edit this session. The type form gates this on its dirty flag —
-  // hydration alone must never surface a timestamp, or a never-touched draft
-  // would claim «Guardado automático · ahora» (fabricated state).
-  lastSavedAt: number | null
-  // ?edit deep-link still waiting for the item cache — show the explicit
-  // «CARGANDO BORRADOR…» hairline instead of empty fields.
-  hydrating: boolean
-  // Lab-aware close (ComposeSheet's handleClose) — powers CERRAR ✕ and the
-  // breadcrumb links (DASHBOARD / BORRADORES both leave the composer).
+  draft: ContentItem
+  setDraft: (item: ContentItem) => void
+  workbench: ReturnType<typeof useDraftWorkbench>
   onClose: () => void
-  // The numbered section cards, in order.
   children: ReactNode
-  // The <ComposeRail /> instance.
-  rail: ReactNode
+  rail: ReactElement<ComposeRailProps>
 }
 
-// ── Autosave head ───────────────────────────────────────────────────────────
-// «● Guardado automático · hace Ns» — live-ticking, coarse (seconds → minutes
-// → hours). Acid dot (sanctioned dot-badge: ≥8px, 1px ink outline) while the
-// save is ≤30s fresh; ink-faint dot once stale; no timestamp claim when
-// nothing has saved yet.
+const button = `min-h-11 border border-ink px-4 py-2 font-mono text-d13 hover:bg-ink hover:text-paper disabled:cursor-wait disabled:opacity-50 ${FOCUS_RING}`
 
-function coarseAge(ageSec: number): string {
-  if (ageSec < 5) return 'ahora'
-  if (ageSec < 60) return `hace ${ageSec}s`
-  if (ageSec < 3600) return `hace ${Math.floor(ageSec / 60)} min`
-  return `hace ${Math.floor(ageSec / 3600)} h`
-}
+export function ComposeLayout({ typeLabel, isEdit, draft, setDraft, workbench, onClose, children, rail }: ComposeLayoutProps) {
+  const [step, setStep] = useState('content')
+  const [busy, setBusy] = useState(false)
+  const [sideMode, setSideMode] = useState<'guide' | 'preview'>('guide')
+  const [closeError, setCloseError] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  const heading = useRef<HTMLHeadingElement>(null)
+  const { confirmingId } = usePublishConfirm()
+  const history = useComposeHistory(draft, setDraft, workbench.hydrated)
+  const event = draft.type === 'evento'
+  const media = draft.type === 'mix' || draft.type === 'listicle'
+  const steps = composeSteps(draft.type)
+  const index = steps.findIndex((s) => s.id === step)
+  const controls = rail.props
+  const sections = Children.toArray(children).filter((child): child is ReactElement<{ number: string }> => isValidElement(child))
+  const missing = controls.checklist.filter((field) => !field.done)
+  const outline = (draft.articleBody ?? []).map((block, i) => block.kind === 'h2' || block.kind === 'h3' ? { title: block.text || 'Sección sin título', index: i } : null).filter((v) => v !== null)
 
-function AutosaveHead({ lastSavedAt }: { lastSavedAt: number | null }) {
-  const [, setTick] = useState(0)
+  useEffect(() => { if (!confirmingId) workbench.resumeSaving() }, [confirmingId, workbench])
+
+  const navigate = (next: string) => {
+    const target = steps.some((candidate) => candidate.id === next) ? next : 'content'
+    setStep(target)
+    setSideMode(target === 'presentation' ? 'preview' : 'guide')
+    requestAnimationFrame(() => {
+      root.current?.closest('[role="dialog"]')?.scrollTo({ top: 0 })
+      heading.current?.focus({ preventScroll: true })
+      if (draft.type === 'noticia' && next !== target) {
+        const optional = root.current?.querySelector<HTMLDetailsElement>('[data-compose-optional]')
+        if (optional) { optional.open = true; optional.scrollIntoView({ block: 'start' }) }
+      }
+    })
+  }
+  const saveAndClose = async () => {
+    if (busy || confirmingId) return
+    if (!workbench.hydrated) { onClose(); return }
+    setBusy(true)
+    const ok = !workbench.hasChanges && workbench.syncState !== 'error' ? true : await workbench.saveDraft()
+    if (ok) { workbench.releaseRecovery(); onClose() }
+    else setCloseError(true)
+    setBusy(false)
+  }
+  const reviewPublish = async () => {
+    if (busy || missing.length) return
+    setBusy(true)
+    if (await workbench.saveDraft()) controls.onPublish()
+    setBusy(false)
+  }
+  const jumpToField = (id: string) => {
+    const element = document.getElementById(id)
+    const number = element?.closest<HTMLElement>('[data-compose-section]')?.dataset.composeSection
+    if (number) setStep(sectionStep(draft.type, number))
+    requestAnimationFrame(() => {
+      // Open optional details containing the invalid field before focusing.
+      let parent = element?.parentElement
+      while (parent) { if (parent instanceof HTMLDetailsElement) parent.open = true; parent = parent.parentElement }
+      element?.scrollIntoView({ block: 'center' })
+      element?.querySelector<HTMLElement>('input, textarea, button')?.focus()
+    })
+  }
   useEffect(() => {
-    if (lastSavedAt === null) return
-    const id = setInterval(() => setTick((t) => t + 1), 5000)
-    return () => clearInterval(id)
-  }, [lastSavedAt])
+    if (confirmingId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
+      if (e.key === 'Escape') { e.preventDefault(); void saveAndClose() }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) history.redo(); else history.undo()
+      }
+      if (e.key === 'Tab') {
+        const nodes = Array.from(root.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, [tabindex="0"]') ?? []).filter((el) => el.getClientRects().length > 0)
+        const first = nodes[0], last = nodes[nodes.length - 1]
+        if (e.shiftKey && (document.activeElement === first || !root.current?.contains(document.activeElement))) { e.preventDefault(); last?.focus() }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
-  const ageSec =
-    lastSavedAt === null ? null : Math.max(0, Math.floor((Date.now() - lastSavedAt) / 1000))
-  const fresh = ageSec !== null && ageSec <= 30
+  const saveLabel = workbench.syncState === 'saving' ? 'Guardando en tu cuenta…'
+    : workbench.syncState === 'saved' ? 'Guardado en tu cuenta'
+    : workbench.syncState === 'error' ? 'No se pudo guardar en tu cuenta'
+    : workbench.hasChanges ? (workbench.localCopy ? 'Copia en esta pestaña · pendiente de guardar' : 'Cambios sin guardar')
+    : isEdit ? 'Borrador abierto' : 'Tu borrador se guardará al escribir'
 
-  return (
-    <p className="flex shrink-0 items-center gap-2 font-mono text-d11 tracking-wide text-ink-faint">
-      <span
-        aria-hidden
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          fresh ? 'border border-ink bg-acid' : 'bg-ink-faint'
-        }`}
-      />
-      {ageSec === null ? (
-        <span>Se guarda solo</span>
-      ) : (
-        <span>Guardado automático · {coarseAge(ageSec)}</span>
-      )}
-    </p>
-  )
-}
-
-// ── Breadcrumb ──────────────────────────────────────────────────────────────
-// DASHBOARD ◂ / BORRADORES|NUEVO / <TYPE>. DASHBOARD and BORRADORES are real
-// onClose-powered links (both leave the composer — the lab-aware close keeps
-// them safe on /lab/*); NUEVO and the type crumb are position, not links.
-// BORRADORES additionally lands the reader AT the drafts: after closing it
-// scrolls to the CULTIVAR widget (retry-driven, so it waits out the grid
-// remount) — guarded by the same /lab pathname check the shell's handleClose
-// uses, because on /lab/* the sheet closes in place and there is no
-// production dashboard grid to scroll.
-
-function Crumb({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-cue="tick"
-      className={`relative shrink-0 whitespace-nowrap underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline ${FOCUS_RING}`}
-    >
-      {label}
-    </button>
-  )
-}
-
-function Breadcrumb({
-  typeLabel,
-  isEdit,
-  onClose,
-}: {
-  typeLabel: string
-  isEdit: boolean
-  onClose: () => void
-}) {
-  return (
-    <nav
-      aria-label="Ruta de composición"
-      className="flex min-w-0 items-center gap-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft"
-    >
-      <Crumb label="DASHBOARD ◂" onClick={onClose} />
-      <span aria-hidden className="shrink-0 text-ink-faint">
-        /
-      </span>
-      {isEdit ? (
-        <Crumb
-          label="BORRADORES"
-          onClick={() => {
-            onClose()
-            // Same lab guard as ComposeSheet.handleClose: on /lab/* the close
-            // is in-place — just close, nothing to scroll to.
-            if (
-              typeof window !== 'undefined' &&
-              window.location.pathname.startsWith('/lab')
-            ) {
-              return
-            }
-            scrollToDashWidget('cultivar')
-          }}
-        />
-      ) : (
-        <span className="shrink-0">NUEVO</span>
-      )}
-      <span aria-hidden className="shrink-0 text-ink-faint">
-        /
-      </span>
-      <span aria-current="page" className="min-w-0 truncate text-ink">
-        {typeLabel}
-      </span>
-    </nav>
-  )
-}
-
-// ── The layout ──────────────────────────────────────────────────────────────
-
-export function ComposeLayout({
-  typeLabel,
-  isEdit,
-  lastSavedAt,
-  hydrating,
-  onClose,
-  children,
-  rail,
-}: ComposeLayoutProps) {
-  return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-6 md:px-8">
-      <header className="mb-6 flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-4">
-          <Breadcrumb typeLabel={typeLabel} isEdit={isEdit} onClose={onClose} />
-          <button
-            type="button"
-            onClick={onClose}
-            data-cue="tick"
-            className={`min-h-11 shrink-0 border border-ink px-3 py-1 font-mono text-d13 tracking-widest text-ink hover:bg-ink hover:text-paper ${FOCUS_RING}`}
-          >
-            CERRAR ✕
-          </button>
+  return <div ref={root} className="min-h-screen pb-24 font-grotesk">
+    <header className="sticky top-0 z-30 border-b border-ink bg-paper">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4 md:px-8">
+        <span className="font-syne text-xl font-extrabold tracking-tight">GRADIENTE FM</span>
+        <span className="border-l border-ink pl-5 font-mono text-d11 uppercase tracking-widest">{isEdit ? 'Editar' : 'Crear'} / {typeLabel}</span>
+        <div className="ml-auto flex items-center gap-3">
+          <button type="button" onClick={() => void saveAndClose()} disabled={busy} className={`min-h-11 px-2 text-d13 underline underline-offset-4 ${FOCUS_RING}`}>{busy ? 'Guardando…' : 'Guardar y salir'}</button>
+          {step !== 'review' && <button type="button" onClick={() => navigate('review')} className={`${button} hidden bg-acid font-bold sm:block`}>Revisar publicación →</button>}
         </div>
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h1 className="min-w-0 break-words font-syne text-d28 font-extrabold text-ink">
-            {isEdit ? 'Editar borrador' : 'Nuevo borrador'}
-            <span className="text-ink-faint"> / </span>
-            {typeLabel}
-          </h1>
-          <AutosaveHead lastSavedAt={lastSavedAt} />
-        </div>
-      </header>
+      </div>
+      <nav aria-label="Pasos de creación" className="mx-auto flex max-w-[1600px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-t border-ink/20 px-4 md:px-8">
+        {steps.map((s, i) => <button key={s.id} type="button" aria-current={step === s.id ? 'step' : undefined} onClick={() => navigate(s.id)} className={`min-h-12 shrink-0 border-b-4 px-4 font-mono text-d13 ${step === s.id ? 'border-ink bg-acid font-bold' : 'border-transparent hover:bg-ink/5'} ${FOCUS_RING}`}><span className="mr-2 text-d11">{String(i + 1).padStart(2, '0')}</span>{s.label}</button>)}
+      </nav>
+    </header>
 
-      {hydrating ? (
-        // ?edit deep-link before the draft/published caches land — an honest
-        // hairline state (§2.6 register: one blink bar, never skeleton
-        // theater), stilled under prefers-reduced-motion.
-        <div
-          role="status"
-          className="flex items-center gap-4 border border-ink bg-paper-raised px-5 py-4"
-        >
-          <span className="shrink-0 font-mono text-d13 font-bold tracking-widest text-ink-soft">
-            CARGANDO BORRADOR…
-          </span>
-          <div
-            aria-hidden
-            className="h-0.5 w-1/3 animate-blink bg-ink motion-reduce:animate-none"
-          />
+    <div className="mx-auto max-w-[1500px] px-4 py-4 md:px-8 md:py-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="mb-1 font-mono text-d11 uppercase tracking-widest">{workbench.isPublished ? 'Cambios a una publicación' : 'Borrador privado'}{event ? ` · Paso ${index + 1} de ${steps.length}` : ''}</p>
+          <h1 ref={heading} tabIndex={-1} className={`max-w-3xl leading-snug focus:outline-none ${event ? 'font-syne text-2xl font-extrabold md:text-d28' : 'text-d18 text-ink-soft'}`}>{steps[index].description}</h1>
         </div>
-      ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-          {/* Main column — numbered section cards, 16px rhythm. */}
-          <div className="flex min-w-0 flex-1 flex-col gap-4">{children}</div>
-          {/* Rail slot — `contents` below lg (see the sticky-ACCIONES contract
-              in the header comment); real sticky block at ≥lg. */}
-          <div className="contents lg:sticky lg:top-6 lg:block lg:w-80 lg:shrink-0">
-            {rail}
+        <div className="max-w-sm text-d13" role="status">
+          <p className={workbench.syncState === 'error' ? 'font-bold text-sys-red-paper' : 'text-ink-soft'}>{saveLabel}</p>
+          {workbench.lastSavedAt && workbench.syncState === 'saved' && <time className="mt-1 block font-mono text-d11" dateTime={new Date(workbench.lastSavedAt).toISOString()}>{new Date(workbench.lastSavedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</time>}
+          {workbench.syncState === 'error' && <button type="button" onClick={() => void workbench.saveDraft()} className={`mt-2 min-h-11 underline ${FOCUS_RING}`}>Reintentar guardado</button>}
+        </div>
+      </div>
+      {(workbench.recovered || closeError) && <p role="status" className="mb-6 border border-ink bg-paper-raised p-4 text-d15">{closeError ? 'No se pudo guardar. Conservamos el editor abierto para que puedas reintentarlo.' : 'Recuperamos los cambios de esta pestaña. Revisa tu borrador y espera a que se guarde en tu cuenta.'}</p>}
+
+      {!workbench.hydrated ? <div role="status" className="border border-ink p-6">{workbench.loadError ? 'No encontramos este borrador. Puedes volver a tus borradores e intentarlo de nuevo.' : 'Abriendo tu borrador…'}</div> : <>
+        <div className={step === 'review' ? 'hidden' : 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-8'}>
+          <div className="min-w-0">
+            <details className="mb-4 border border-ink bg-paper-raised lg:hidden"><summary className={`min-h-11 cursor-pointer px-3 py-3 text-d13 font-bold ${FOCUS_RING}`}>Cómo dar forma a tu {typeLabel.toLowerCase()}</summary><ComposeGuide draft={draft} step={step} onPreview={() => navigate('review')} /></details>
+            {sections.filter((section) => !isOptionalComposeSection(draft.type, section.props.number)).map((section) => <div key={section.props.number} hidden={sectionStep(draft.type, section.props.number) !== step}>{section}</div>)}
+            {draft.type === 'noticia' && <details data-compose-optional className="mt-4 border border-ink/30 bg-paper-raised p-4"><summary className={`min-h-11 cursor-pointer py-2 text-d15 font-bold ${FOCUS_RING}`}>Imagen, resumen y contexto (opcional)</summary><div className="pt-4">{sections.filter((section) => isOptionalComposeSection(draft.type, section.props.number)).map((section) => <div key={section.props.number}>{section}</div>)}</div></details>}
           </div>
+          <aside className="hidden min-w-0 lg:block lg:sticky lg:top-36" aria-label="Ayuda y vista previa">
+            <div className="mb-3 flex border border-ink" role="group" aria-label="Herramientas de apoyo">
+              <button type="button" aria-pressed={sideMode === 'guide'} onClick={() => setSideMode('guide')} className={`min-h-11 flex-1 px-3 text-d13 ${sideMode === 'guide' ? 'bg-ink text-paper' : 'hover:bg-acid'} ${FOCUS_RING}`}>Guía de {typeLabel.toLowerCase()}</button>
+              <button type="button" aria-pressed={sideMode === 'preview'} onClick={() => setSideMode('preview')} className={`min-h-11 flex-1 px-3 text-d13 ${sideMode === 'preview' ? 'bg-ink text-paper' : 'hover:bg-acid'} ${FOCUS_RING}`}>Mi pieza</button>
+            </div>
+            {sideMode === 'guide' ? <ComposeGuide draft={draft} step={step} onPreview={() => setSideMode('preview')} /> : <ComposePreview draft={draft} full={!event && !media && step === 'content'} />}
+            {outline.length > 0 && step === 'content' && <nav aria-label="Secciones de tu pieza" className="mt-4 border border-ink/30 p-4"><p className="mb-2 font-mono text-d11 uppercase tracking-widest">En esta pieza</p>{outline.map((entry) => <button type="button" key={entry.index} onClick={() => document.getElementById(`compose-block-${entry.index}`)?.scrollIntoView({ block: 'center' })} className={`block min-h-11 w-full text-left text-d13 underline-offset-4 hover:underline ${FOCUS_RING}`}>{entry.title}</button>)}</nav>}
+          </aside>
         </div>
-      )}
+        {step === 'review' && <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <ComposePreview draft={draft} full />
+          <aside className="border border-ink bg-paper-raised p-5 lg:sticky lg:top-36">
+            <h2 className="font-syne text-xl font-extrabold">Antes de compartir</h2>
+            <p className="mt-3 text-d15 leading-relaxed">{missing.length ? 'Revisa estos detalles para poder publicar. Tu borrador puede guardarse tal como está.' : 'La información necesaria está completa. Comprueba el texto y la presentación.'}</p>
+            {missing.length > 0 && <ul className="my-4 border-y border-ink/20 py-2">{missing.map((field) => <li key={field.key}><button type="button" onClick={() => jumpToField(field.anchorId)} className={`min-h-11 w-full text-left text-d15 underline ${FOCUS_RING}`}>{field.label} →</button></li>)}</ul>}
+            {!draft.imageUrl && <button type="button" onClick={() => jumpToField('compose-field-cover')} className={`my-3 min-h-11 text-left text-d13 underline ${FOCUS_RING}`}>Añadir portada (opcional) →</button>}
+            {rail}
+            <button type="button" disabled={missing.length > 0 || busy} onClick={() => void reviewPublish()} className={`${button} mt-5 w-full bg-acid font-bold`}>{busy ? 'Guardando…' : workbench.isPublished ? 'Actualizar publicación →' : 'Continuar a publicar →'}</button>
+            <p className="mt-3 text-d13 leading-relaxed text-ink-soft">Confirmarás la publicación en el siguiente paso.</p>
+          </aside>
+        </div>}
+      </>}
     </div>
-  )
+    <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-ink bg-paper px-4 py-3 md:px-8">
+      <div className="mx-auto flex max-w-[1436px] items-center justify-between gap-3">
+        <div className="flex gap-2">
+          <button type="button" disabled={!history.canUndo} onClick={history.undo} className={`min-h-11 px-2 text-d13 disabled:opacity-40 ${FOCUS_RING}`}>↶ Deshacer</button>
+          <button type="button" disabled={!history.canRedo} onClick={history.redo} className={`min-h-11 px-2 text-d13 disabled:opacity-40 ${FOCUS_RING}`}>↷ Rehacer</button>
+        </div>
+        <div className="flex gap-2">
+          {index > 0 && <button type="button" onClick={() => navigate(steps[index - 1].id)} className={`${button} hidden sm:block`}>← Atrás</button>}
+          {index < steps.length - 1 && <button type="button" onClick={() => navigate(steps[index + 1].id)} className={`${button} bg-acid font-bold`}>{index === steps.length - 2 ? 'Revisar →' : 'Continuar →'}</button>}
+          {index === steps.length - 1 && <button type="button" onClick={() => navigate('content')} className={button}>Volver a editar</button>}
+        </div>
+      </div>
+    </footer>
+  </div>
 }

@@ -17,6 +17,7 @@
 
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { newItemId } from '@/lib/drafts'
 import { categoryColorOnLight } from '@/lib/dashboard/palette'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import type { ContentType } from '@/lib/types'
@@ -89,8 +90,13 @@ export function useComposeNav(): (t: ComposeType, editId?: string) => void {
       const path = window.location.pathname
       const params = new URLSearchParams(window.location.search)
       params.set('type', t)
-      if (editId) params.set('edit', editId)
-      else params.delete('edit')
+      if (editId) {
+        params.set('edit', editId)
+        params.delete('draft')
+      } else {
+        params.delete('edit')
+        params.set('draft', newItemId(t))
+      }
       router.push(`${path}?${params.toString()}`)
     },
     [router],

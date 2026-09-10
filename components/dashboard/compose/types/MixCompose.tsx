@@ -1,27 +1,12 @@
 'use client'
 
-// ── MixCompose — «EL PLIEGO DE COMPOSICIÓN v2» light editor for MIX ─────────
-//
-// State/logic preamble copied VERBATIM from the dark MixForm
-// (components/dashboard/forms/MixForm.tsx — DELETED in fase F; this fork is now the only copy):
-// draft useState + patch + slugManuallyEdited effect + useDraftWorkbench with
-// the EXACT draftKey 'gradiente:dashboard:mix-draft' + editItemId from
-// ?edit= + the publish recipe (requestPublish → setCategoryFilter(null) →
-// openConfirm — never saveDraft() first; zombie-draft race). Chrome is the
-// pliego kit: numbered PliegoSection cards inside ComposeLayout + ComposeRail.
-//
-// DELIBERATE OMISSIONS (spec law): no MP3/WAV dropzone (audio file hosting
-// does not exist — mixes are platform embeds), no MD toolbar, no visibility
-// select, no scheduling. PORTADA upgrades the dark form's plain URL field to
-// the shared upload flow (ImageFieldL) — a sanctioned improvement, not drift.
-
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { useAuth } from '@/components/auth/useAuth'
 import type { ContentItem, MixStatus } from '@/lib/types'
-import { slugify, useDraftWorkbench } from '@/components/dashboard/forms/shared/Fields'
+import { patchDraftContent, useDraftWorkbench } from '@/components/dashboard/forms/shared/Fields'
 import {
   composeTypeDisplay,
   composeTypeLabel,
@@ -46,7 +31,7 @@ import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMul
 import { EmbedListL } from '@/components/dashboard/compose/kit/EmbedListL'
 import { LinkListFieldL } from '@/components/dashboard/compose/kit/LinkListFieldL'
 import { PollFieldsetL } from '@/components/dashboard/compose/kit/PollFieldsetL'
-import { MixTracklistEditor } from './MixTracklistEditor'
+import { MixTracklistEditor } from '@/components/dashboard/compose/types/MixTracklistEditor'
 
 const DRAFT_KEY = 'gradiente:dashboard:mix-draft'
 
@@ -114,23 +99,9 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
   }
 
   // Auto-generate slug from title unless user manually edited it.
-  useEffect(() => {
-    if (!slugManuallyEdited && draft.title) {
-      const next = slugify(draft.title)
-      setDraft((d) => (d.slug === next ? d : { ...d, slug: next }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.title, slugManuallyEdited])
 
-  // Autosave-head honesty: `dirty` flips on the FIRST user edit this session.
-  // patch() is the user-edit funnel (hydration goes through setDraft inside
-  // the workbench and stays silent), so the head claims «Guardado automático»
-  // only once the user has actually written something — never on a
-  // hydrated-but-untouched draft.
-  const [dirty, setDirty] = useState(false)
   const patch = (p: Partial<ContentItem>) => {
-    setDirty(true)
-    setDraft((d) => ({ ...d, ...p }))
+    setDraft((d) => patchDraftContent(d, p, slugManuallyEdited))
   }
 
   // Single required-truth source — feeds BOTH the rail checklist and the gate
@@ -140,7 +111,6 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
   const canSubmit = errors.length === 0
 
   // ?edit deep-link still waiting for the draft/published caches.
-  const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   // EDITORIAL is a staff lever (mirror of /api/items: role guide|admin —
   // insider/curator publishes get editorial forced off server-side, so the
@@ -157,8 +127,9 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
     <ComposeLayout
       typeLabel={composeTypeDisplay('mix')}
       isEdit={!!editItemId}
-      lastSavedAt={dirty ? workbench.lastSavedAt : null}
-      hydrating={hydrating}
+      draft={draft}
+      setDraft={setDraft}
+      workbench={workbench}
       onClose={onClose}
       rail={
         <ComposeRail
@@ -186,7 +157,7 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
       }
     >
       <PliegoSection number="01" label="IDENTIDAD" required>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <TextFieldL
             id={COMPOSE_ANCHOR_IDS.title}
             label="TÍTULO"
@@ -195,18 +166,24 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
             placeholder="Título de la pieza"
             required
           />
-          <TextFieldL
-            label="SUBTÍTULO"
-            value={draft.subtitle ?? ''}
-            onChange={(v) => patch({ subtitle: v })}
-          />
         </div>
         <TextFieldL
-          label="ARTISTA / AUTOR"
+          label="Artista o autor"
           value={draft.author ?? ''}
           onChange={(v) => patch({ author: v })}
           placeholder="Nombre o alias"
         />
+
+</PliegoSection>
+
+      <PliegoSection number="meta" label="Subtítulo y enlace (opcional)">
+
+          <TextFieldL
+            label="Subtítulo (opcional)"
+            value={draft.subtitle ?? ''}
+            onChange={(v) => patch({ subtitle: v })}
+          />
+          <div className="grid gap-4 pt-3">
         {/* SlugRow's own default («se-genera-del-titulo») is the honest strip
             — no demo-slug cosplay (judge r6 fix 4). */}
         <SlugRow
@@ -217,9 +194,11 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
             patch({ slug })
           }}
         />
+                </div>
+
       </PliegoSection>
 
-      <PliegoSection number="02" label="FUENTE / AUDIO">
+      <PliegoSection number="02" label="FUENTE / AUDIO" id={COMPOSE_ANCHOR_IDS.audio}>
         <EmbedListL
           embeds={draft.embeds ?? []}
           onChange={(embeds) => patch({ embeds })}
@@ -245,18 +224,24 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
       </PliegoSection>
 
       <PliegoSection number="04" label="COPY">
+
         <TextAreaL
-          label="EXCERPT (UNA LÍNEA)"
+          label="Texto completo"
+          placeholder="Cuenta cómo se grabó la sesión y qué recorrido propones…"
+          value={draft.bodyPreview ?? ''}
+          onChange={(v) => patch({ bodyPreview: v })}
+          rows={6}
+        />
+
+      </PliegoSection>
+
+      <PliegoSection number="summary" label="Resumen para la tarjeta (opcional)">
+        <TextAreaL
+          label="Resumen para la tarjeta"
           value={draft.excerpt ?? ''}
           onChange={(v) => patch({ excerpt: v })}
           rows={2}
           placeholder="Una línea que presenta la pieza…"
-        />
-        <TextAreaL
-          label="CUERPO (PÁRRAFOS SEPARADOS POR LÍNEA EN BLANCO)"
-          value={draft.bodyPreview ?? ''}
-          onChange={(v) => patch({ bodyPreview: v })}
-          rows={6}
         />
       </PliegoSection>
 
@@ -280,7 +265,7 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
 
       <PliegoSection number="06" label="PORTADA">
         <ImageFieldL
-          label="PORTADA (COVER)"
+          label="Imagen de portada"
           value={draft.imageUrl ?? ''}
           onChange={(v) => patch({ imageUrl: v })}
         />
@@ -314,7 +299,7 @@ export function MixCompose({ onClose }: { onClose: () => void }) {
             mono
           />
           <TextFieldL
-            label="KEY"
+            label="Tonalidad (opcional)"
             value={draft.musicalKey ?? ''}
             onChange={(v) => patch({ musicalKey: v })}
             placeholder="D#m"

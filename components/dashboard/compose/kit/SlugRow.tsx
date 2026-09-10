@@ -2,10 +2,10 @@
 
 // ── SlugRow — the quiet mono slug strip under IDENTIDAD ─────────────────────
 //
-//   🔒 fascinoma-anuncia-line-up-2026        EDITAR SLUG ✎
+//   🔒 fascinoma-anuncia-line-up-2026        EDITAR ENLACE ✎
 //
 // Read-mode by default (the slug auto-generates from TÍTULO in the form's
-// own slug-effect — untouched). «EDITAR SLUG ✎» toggles an inline editable
+// own slug-effect — untouched). «EDITAR ENLACE ✎» toggles an inline editable
 // input; every keystroke is re-slugified through the SHARED slugify and
 // handed to the form via `onEdit`, exactly mirroring the dark TextField
 // wiring (`patch({ slug: slugify(v) })` + slugManuallyEdited flag — the
@@ -45,7 +45,7 @@ export function SlugRow({
   return (
     <div
       id={id}
-      className="flex min-h-11 scroll-mt-24 items-center gap-2.5 border border-ink bg-paper px-3"
+      className="flex min-h-11 min-w-0 w-full scroll-mt-24 items-center gap-2.5 border border-ink bg-paper px-3"
     >
       <LockGlyph size={12} aria-hidden className="shrink-0 text-ink-faint" />
       {editing ? (
@@ -55,7 +55,7 @@ export function SlugRow({
           value={slug}
           onChange={(e) => onEdit(slugify(e.target.value))}
           placeholder={placeholder}
-          aria-label="Slug"
+          aria-label="Enlace de la publicación"
           className={`min-w-0 flex-1 self-stretch bg-transparent font-mono text-d13 text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
         />
       ) : (
@@ -71,7 +71,7 @@ export function SlugRow({
         onClick={() => setEditing((e) => !e)}
         className={`relative shrink-0 whitespace-nowrap font-mono text-d11 font-bold uppercase tracking-widest text-ink underline-offset-4 before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] hover:underline ${FOCUS_RING}`}
       >
-        {editing ? 'LISTO ✓' : 'EDITAR SLUG ✎'}
+        {editing ? 'LISTO ✓' : 'EDITAR ENLACE ✎'}
       </button>
     </div>
   )

@@ -1,26 +1,13 @@
 'use client'
 
-// ── EditorialCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for editorial
-//
-// State preamble copied VERBATIM from the dark EditorialForm
-// (components/dashboard/forms/EditorialForm.tsx — DELETED in fase F; this fork is now the only copy):
-// same emptyDraft (editorial defaults TRUE — editorials are editorial-flagged),
-// same DRAFT_KEY, same slug effect, same workbench wiring, same publish
-// recipe. Only the JSX is pliego.
-//
-// The EDITORIAL lever moves to the rail's PUBLICACIÓN panel, staff-gated
-// (guide/admin — app/api/items isStaff; RLS forces it off for anyone else).
-// Editorial is house-voice: no franja attribution row (parity with the dark
-// form, which never mounted FranjaAttributionField here).
-
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { useAuth } from '@/components/auth/useAuth'
 import type { ContentItem } from '@/lib/types'
 import {
-  slugify,
+  patchDraftContent,
   useDraftWorkbench,
 } from '@/components/dashboard/forms/shared/Fields'
 import {
@@ -90,21 +77,9 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
     openConfirm(id, workbench.publishMode)
   }
 
-  useEffect(() => {
-    if (!slugManuallyEdited && draft.title) {
-      const next = slugify(draft.title)
-      setDraft((d) => (d.slug === next ? d : { ...d, slug: next }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.title, slugManuallyEdited])
 
-  // Autosave-head honesty: `dirty` flips on the FIRST user edit this session
-  // (patch() is the user-edit funnel; hydration bypasses it) — the head
-  // claims «Guardado automático» only after the user actually wrote.
-  const [dirty, setDirty] = useState(false)
   const patch = (p: Partial<ContentItem>) => {
-    setDirty(true)
-    setDraft((d) => ({ ...d, ...p }))
+    setDraft((d) => patchDraftContent(d, p, slugManuallyEdited))
   }
 
   // Single required-truth source (dark rules: TÍTULO · SLUG · CUERPO).
@@ -112,7 +87,6 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
   const errors = errorsFrom(checklist)
   const canSubmit = errors.length === 0
 
-  const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   const showEditorial =
     currentUser?.role === 'guide' || currentUser?.role === 'admin'
@@ -125,8 +99,9 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
     <ComposeLayout
       typeLabel={composeTypeDisplay('editorial')}
       isEdit={!!editItemId}
-      lastSavedAt={dirty ? workbench.lastSavedAt : null}
-      hydrating={hydrating}
+      draft={draft}
+      setDraft={setDraft}
+      workbench={workbench}
       onClose={onClose}
       rail={
         <ComposeRail
@@ -154,7 +129,7 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
       }
     >
       <PliegoSection number="01" label="IDENTIDAD" required>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <TextFieldL
             id={COMPOSE_ANCHOR_IDS.title}
             label="TÍTULO"
@@ -163,21 +138,27 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
             placeholder="Título del editorial"
             required
           />
+        </div>
+
+</PliegoSection>
+
+      <PliegoSection number="meta" label="Firma, subtítulo y enlace (opcional)">
+
           <TextFieldL
-            label="SUBTÍTULO / DEK"
+            label="Subtítulo (opcional)"
             value={draft.subtitle ?? ''}
             onChange={(v) => patch({ subtitle: v })}
           />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 pt-3">
+        <div className="grid gap-4">
           <TextFieldL
-            label="FIRMA"
+            label="Firma (opcional)"
             value={draft.author ?? ''}
             onChange={(v) => patch({ author: v })}
             placeholder="Nombre o firma"
           />
           <TextFieldL
-            label="LECTURA (MIN)"
+            label="Minutos de lectura (opcional)"
             value={draft.readTime?.toString() ?? ''}
             onChange={(v) =>
               patch({ readTime: v === '' ? undefined : Number(v) })
@@ -187,6 +168,7 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
             mono
           />
         </div>
+
         {/* SlugRow's own default («se-genera-del-titulo») is the honest strip. */}
         <SlugRow
           id={COMPOSE_ANCHOR_IDS.slug}
@@ -196,24 +178,32 @@ export function EditorialCompose({ onClose }: { onClose: () => void }) {
             patch({ slug })
           }}
         />
+                </div>
+
       </PliegoSection>
 
       <PliegoSection number="02" label="COPY" required>
+
         <TextAreaL
-          label="EXCERPT (UNA LÍNEA)"
+          id={COMPOSE_ANCHOR_IDS.body}
+          label="Texto completo"
+          placeholder="Presenta la idea de la redacción y desarrolla sus argumentos…"
+          value={draft.bodyPreview ?? ''}
+          onChange={(v) => patch({ bodyPreview: v })}
+          required
+          rows={14}
+        />
+
+      </PliegoSection>
+
+      <PliegoSection number="summary" label="Resumen para la tarjeta (opcional)">
+        <TextAreaL
+          label="Resumen para la tarjeta"
           value={draft.excerpt ?? ''}
           onChange={(v) => patch({ excerpt: v })}
           rows={3}
           maxLength={280}
           placeholder="Una línea que presenta el editorial…"
-        />
-        <TextAreaL
-          id={COMPOSE_ANCHOR_IDS.body}
-          label="CUERPO (PÁRRAFOS SEPARADOS POR LÍNEA EN BLANCO)"
-          value={draft.bodyPreview ?? ''}
-          onChange={(v) => patch({ bodyPreview: v })}
-          required
-          rows={14}
         />
       </PliegoSection>
 

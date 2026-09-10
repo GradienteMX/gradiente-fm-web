@@ -1,26 +1,13 @@
 'use client'
 
-// ── EventoCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for evento ─────
-//
-// State preamble + ISO↔datetime-local helpers copied VERBATIM from the dark
-// EventoForm (components/dashboard/forms/EventoForm.tsx:30-74 — DELETED in
-// fase F; this fork is the only copy): same emptyDraft (INCLUDING `attributeFranja: true` — the
-// unique opt-out default for franja-team event publishing), same DRAFT_KEY,
-// same slug effect, same workbench wiring, same publish recipe. Only the JSX
-// is pliego.
-//
-// EDITORIAL and VINCULAR A MI PROMOTORA move to the rail's PUBLICACIÓN panel:
-// editorial lever is staff-only (guide/admin — app/api/items isStaff), the
-// franja stamp is franja-team only (evento is a stamped scene-voice type).
-
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { useAuth } from '@/components/auth/useAuth'
 import type { ContentItem } from '@/lib/types'
 import {
-  slugify,
+  patchDraftContent,
   useDraftWorkbench,
 } from '@/components/dashboard/forms/shared/Fields'
 import {
@@ -42,6 +29,7 @@ import { VibeFieldL } from '@/components/dashboard/compose/kit/VibeFieldL'
 import { VibePriorHintL } from '@/components/dashboard/compose/kit/VibePriorHintL'
 import { GenreMultiSelectL } from '@/components/dashboard/compose/kit/GenreMultiSelectL'
 import { ImageFieldL } from '@/components/dashboard/compose/kit/ImageFieldL'
+import { VenueFieldL } from '@/components/dashboard/compose/kit/VenueFieldL'
 import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMultiSelectL'
 import { StringListFieldL } from '@/components/dashboard/compose/kit/StringListFieldL'
 import { LinkListFieldL } from '@/components/dashboard/compose/kit/LinkListFieldL'
@@ -117,21 +105,9 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
     openConfirm(id, workbench.publishMode)
   }
 
-  useEffect(() => {
-    if (!slugManuallyEdited && draft.title) {
-      const next = slugify(draft.title)
-      setDraft((d) => (d.slug === next ? d : { ...d, slug: next }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.title, slugManuallyEdited])
 
-  // Autosave-head honesty: `dirty` flips on the FIRST user edit this session
-  // (patch() is the user-edit funnel; hydration bypasses it) — the head
-  // claims «Guardado automático» only after the user actually wrote.
-  const [dirty, setDirty] = useState(false)
   const patch = (p: Partial<ContentItem>) => {
-    setDirty(true)
-    setDraft((d) => ({ ...d, ...p }))
+    setDraft((d) => patchDraftContent(d, p, slugManuallyEdited))
   }
 
   // Single required-truth source (dark rules: TÍTULO · SLUG · INICIO).
@@ -139,7 +115,6 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
   const errors = errorsFrom(checklist)
   const canSubmit = errors.length === 0
 
-  const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   const showEditorial =
     currentUser?.role === 'guide' || currentUser?.role === 'admin'
@@ -154,8 +129,9 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
     <ComposeLayout
       typeLabel={composeTypeDisplay('evento')}
       isEdit={!!editItemId}
-      lastSavedAt={dirty ? workbench.lastSavedAt : null}
-      hydrating={hydrating}
+      draft={draft}
+      setDraft={setDraft}
+      workbench={workbench}
       onClose={onClose}
       rail={
         <ComposeRail
@@ -183,21 +159,25 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
       }
     >
       <PliegoSection number="01" label="IDENTIDAD" required>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <TextFieldL
             id={COMPOSE_ANCHOR_IDS.title}
-            label="TÍTULO"
+            label="Nombre del evento"
             value={draft.title}
             onChange={(v) => patch({ title: v })}
             placeholder="Nombre del evento"
             required
           />
+
+        </div>
+        <details className="border-t border-ink/15 pt-1">
+          <summary className="min-h-11 cursor-pointer py-2 text-d13 text-ink-soft">Subtítulo y enlace (opcional)</summary>
+          <div className="grid gap-4 pt-3">
           <TextFieldL
-            label="SUBTÍTULO"
+            label="Subtítulo (opcional)"
             value={draft.subtitle ?? ''}
             onChange={(v) => patch({ subtitle: v })}
           />
-        </div>
         {/* SlugRow's own default («se-genera-del-titulo») is the honest strip. */}
         <SlugRow
           id={COMPOSE_ANCHOR_IDS.slug}
@@ -207,7 +187,9 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
             patch({ slug })
           }}
         />
-      </PliegoSection>
+                </div>
+        </details>
+</PliegoSection>
 
       <PliegoSection number="02" label="FECHAS" required>
         <div className="grid gap-4 md:grid-cols-2">
@@ -220,36 +202,35 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
             mono
             required
           />
+          <details className="self-end" open={draft.endDate ? true : undefined}><summary className="min-h-11 cursor-pointer py-3 text-d13">Añadir hora de cierre (opcional)</summary>
           <TextFieldL
-            label="FIN (OPCIONAL)"
+            id={COMPOSE_ANCHOR_IDS.endDate}
+            label="Cierre (opcional)"
             value={isoToLocal(draft.endDate)}
             onChange={(v) => patch({ endDate: localToIso(v) })}
             type="datetime-local"
             mono
           />
+          </details>
         </div>
         {/* Honest note: <input type="datetime-local"> renders the browser's
             own picker/format — no fake masking on top (judge r6 fix 7). */}
         <p className="font-mono text-d11 tracking-wide text-ink-faint">
-          FORMATO SEGÚN TU NAVEGADOR
+          Usa la hora local del lugar del evento.
         </p>
       </PliegoSection>
 
       <PliegoSection number="03" label="UBICACIÓN">
         <div className="grid gap-4 md:grid-cols-2">
+          <VenueFieldL draft={draft} onChange={patch} />
           <TextFieldL
-            label="VENUE"
-            value={draft.venue ?? ''}
-            onChange={(v) => patch({ venue: v })}
-            placeholder="Nombre del venue"
-          />
-          <TextFieldL
-            label="CIUDAD / DIRECCIÓN"
+            label="Ciudad y dirección"
             value={draft.venueCity ?? ''}
             onChange={(v) => patch({ venueCity: v })}
             placeholder="Ciudad · dirección"
           />
         </div>
+        <details><summary className="min-h-11 cursor-pointer py-3 text-d13">Vincular con un lugar o promotora del catálogo (opcional)</summary><div className="grid gap-4 pt-3">
         {/* Entity links — venue/promotora as first-class scene rows. The
             free-text fields above stay as a fallback for quick drafts and
             legacy events; the CONTEXTO rail prefers these when present. */}
@@ -280,12 +261,13 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
             mono
           />
         </div>
+</div></details>
       </PliegoSection>
 
       <PliegoSection number="04" label="ENTRADAS">
         <div className="grid gap-4 md:grid-cols-2">
           <TextFieldL
-            label="TICKET URL"
+            label="Enlace para conseguir entradas"
             value={draft.ticketUrl ?? ''}
             onChange={(v) => patch({ ticketUrl: v })}
             placeholder="https://boletos.com/..."
@@ -310,11 +292,13 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
       <PliegoSection number="05" label="ARTISTAS">
         {/* Artist entities carry through to the CONTEXTO rail + per-artist
             filter; the free-text list below is the quick-draft fallback. */}
+        <details><summary className="min-h-11 cursor-pointer py-3 text-d13">Vincular artistas del catálogo (opcional)</summary>
         <EntityMultiSelectL
           kind="artist"
           value={draft.entities ?? []}
           onChange={(entities) => patch({ entities })}
         />
+        </details>
         <StringListFieldL
           label="ARTISTAS (TEXTO LIBRE)"
           placeholder="Nombre del artista"
@@ -324,9 +308,9 @@ export function EventoCompose({ onClose }: { onClose: () => void }) {
         />
       </PliegoSection>
 
-      <PliegoSection number="06" label="COPY">
+      <PliegoSection number="06" label="Resumen del evento">
         <TextAreaL
-          label="EXCERPT (UNA LÍNEA)"
+          label="Resumen para la tarjeta"
           value={draft.excerpt ?? ''}
           onChange={(v) => patch({ excerpt: v })}
           rows={3}

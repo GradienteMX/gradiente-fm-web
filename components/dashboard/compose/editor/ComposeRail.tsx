@@ -1,35 +1,8 @@
 'use client'
 
-// ── ComposeRail — the pliego composer's right rail ──────────────────────────
-//
-// Three panels, all TRUE data (spec «EL PLIEGO DE COMPOSICIÓN v2»):
-//
-//   ESTADO DEL BORRADOR  autosave fact + commit flash + COMPLETITUD n/m with
-//                        the slim acid-on-ink bar + the ✓/○ checklist (rows
-//                        scroll to their field via onAnchor).
-//   PUBLICACIÓN          only REAL rows — EDITORIAL (staff-gated) and
-//                        VINCULAR A MI PROMOTORA (franja-team only). Hidden
-//                        when ungated, never disabled decoration. The whole
-//                        panel disappears when no row is real. (No
-//                        «Visibilidad» select, no «Programar» — those don't
-//                        exist in the system; deliberate omissions.)
-//   ACCIONES             GUARDAR BORRADOR (ink-filled) · CONTINUAR DESPUÉS
-//                        (outline) · PUBLICAR <TYPE> (acid fill-block,
-//                        ≥44px). Incomplete work can be saved. Only publishing
-//                        requires every field. Save-and-close awaits server
-//                        acknowledgement; failures preserve the open editor.
-//
-// PRESENTATIONAL: the owning form computes the checklist (requiredFields.ts)
-// and hands down workbench outputs + callbacks. No publishedAt anywhere —
-// the workbench stamps it on every save, so it is NOT an honest date.
-//
-// Mobile contract (shared with ComposeLayout): the root is `contents` below
-// lg, so the panels stack as direct children of the layout's column wrapper
-// after the section cards — which lets the ACCIONES panel `sticky bottom-0`
-// against the whole form's extent (actions pinned while editing). On ≥lg the
-// root is a real flex column inside the sticky w-80 rail slot.
+// Permission-gated attribution controls, shown during publication review.
+// The layout consumes the form validation and action props.
 
-import type { ReactNode } from 'react'
 import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import type { CommitFlash } from '@/components/dashboard/forms/shared/Fields'
 import type { PublishMode } from '@/lib/drafts'
@@ -64,28 +37,6 @@ export interface ComposeRailProps {
   onPublish: () => void
   // Checklist row click — scroll the field with this DOM id into view.
   onAnchor: (anchorId: string) => void
-}
-
-// ── Panel chrome (widget-frame register: eyebrow header + hairline) ─────────
-
-function RailPanel({
-  title,
-  className = '',
-  children,
-}: {
-  title: string
-  className?: string
-  children: ReactNode
-}) {
-  return (
-    <section className={`border border-ink bg-paper-raised ${className}`}>
-      <h3 className="border-b border-ink px-4 py-1.5 font-mono text-d11 font-bold uppercase leading-8 tracking-widest text-ink-soft">
-        {'// '}
-        {title}
-      </h3>
-      <div className="flex flex-col gap-3 p-4">{children}</div>
-    </section>
-  )
 }
 
 // ── Toggle row (light switch — role=switch, 44px, no transitions) ───────────
@@ -133,183 +84,12 @@ function ToggleRow({
 
 // ── The rail ────────────────────────────────────────────────────────────────
 
-export function ComposeRail({
-  checklist,
-  completeness,
-  canSubmit,
-  canSave,
-  flash,
-  isPublished,
-  publishMode,
-  typeLabel,
-  showEditorial,
-  editorialValue,
-  onEditorialChange,
-  showFranja,
-  franjaValue,
-  onFranjaChange,
-  onSave,
-  onSaveAndClose,
-  onPublish,
-  onAnchor,
-}: ComposeRailProps) {
-  const pending = completeness.total - completeness.done
-  const pct =
-    completeness.total === 0
-      ? 100
-      : Math.round((completeness.done / completeness.total) * 100)
-  const faltanLabel = `FALTAN ${pending} ${pending === 1 ? 'CAMPO' : 'CAMPOS'}`
-
-  // Publishing keeps its field gate and cannot race an in-flight save.
-  // Incomplete drafts remain saveable once hydration has finished.
-  const guard = (fn: () => void) => () => {
-    if (canSubmit && canSave) fn()
-  }
-
-  return (
-    <div className="contents lg:flex lg:flex-col lg:gap-4">
-      {/* ── ESTADO DEL BORRADOR ─────────────────────────────────────────── */}
-      <RailPanel title="ESTADO DEL BORRADOR">
-        {/* Autosave fact — the timestamp lives in the layout head; here the
-            rail states the mechanism + the transient commit flashes. */}
-        <div className="flex items-center justify-between gap-3">
-          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-            COPIA LOCAL
-          </span>
-          <span className="flex items-center gap-1.5 font-mono text-d13 tracking-widest text-ink">
-            <span aria-hidden className="h-2 w-2 rounded-full border border-ink bg-acid" />
-            ESTA SESIÓN
-          </span>
-        </div>
-        {flash === 'error' && <p role="alert" className="font-mono text-d13 text-sys-red-paper">No se pudo guardar en tu cuenta. Tu texto sigue aquí; vuelve a intentarlo.</p>}
-        {flash === 'saving' && <p role="status" className="font-mono text-d13 text-ink">Guardando en tu cuenta…</p>}
-        {flash === 'draft' && (
-          <p className="font-mono text-d11 font-bold tracking-widest text-ink" role="status">
-            ◉ BORRADOR GUARDADO
-          </p>
-        )}
-        {flash === 'published' && (
-          <p className="font-mono text-d11 font-bold tracking-widest text-ink" role="status">
-            ◉ PUBLICADO EN FEED
-          </p>
-        )}
-        {isPublished && flash !== 'published' && (
-          <p className="flex items-center gap-1.5 font-mono text-d11 tracking-widest text-ink-soft">
-            <span aria-hidden className="h-2 w-2 rounded-full border border-ink bg-acid" />
-            ESTADO: PUBLICADO
-          </p>
-        )}
-
-        {/* COMPLETITUD n/m + slim acid-on-ink bar. */}
-        <div>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-              COMPLETITUD
-            </span>
-            <span className="font-mono text-d13 tabular-nums tracking-widest text-ink">
-              {completeness.done}/{completeness.total} OBLIGATORIOS
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-label="Campos obligatorios completos"
-            aria-valuemin={0}
-            aria-valuemax={completeness.total}
-            aria-valuenow={completeness.done}
-            className="mt-1.5 h-2 w-full border border-ink bg-ink"
-          >
-            <div className="h-full bg-acid" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-
-        {/* Checklist — one row per required field; click scrolls to it. */}
-        <ul className="flex flex-col">
-          {checklist.map((f) => (
-            <li key={f.key}>
-              <button
-                type="button"
-                onClick={() => onAnchor(f.anchorId)}
-                data-cue="tick"
-                aria-label={`Ir a ${f.label} — ${f.done ? 'completo' : 'pendiente'}`}
-                className={`flex min-h-11 w-full items-center gap-2.5 text-left font-mono text-d13 tracking-widest underline-offset-4 hover:underline lg:min-h-9 ${
-                  f.done ? 'text-ink' : 'text-ink-soft'
-                } ${FOCUS_RING}`}
-              >
-                <span aria-hidden className="w-4 shrink-0 text-center">
-                  {f.done ? '✓' : '○'}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{f.label}</span>
-                {!f.done && (
-                  <span className="shrink-0 font-bold text-sys-red-paper">FALTA</span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </RailPanel>
-
-      {/* ── PUBLICACIÓN — only when at least one REAL row exists ─────────── */}
-      {(showEditorial || showFranja) && (
-        <RailPanel title="PUBLICACIÓN">
-          {showEditorial && (
-            <ToggleRow
-              label="EDITORIAL"
-              hint="BOOSTEA HP INICIAL"
-              value={editorialValue}
-              onChange={onEditorialChange}
-            />
-          )}
-          {showFranja && (
-            <ToggleRow
-              label="VINCULAR A MI PROMOTORA"
-              value={franjaValue}
-              onChange={onFranjaChange}
-            />
-          )}
-        </RailPanel>
-      )}
-
-      {/* ── ACCIONES — sticky at the viewport bottom on mobile ───────────── */}
-      <RailPanel title="ACCIONES" className="sticky bottom-0 z-20 lg:static">
-        <button
-          type="button"
-          onClick={() => { if (canSave) onSave() }}
-          disabled={!canSave}
-          data-cue="tick"
-          className={`flex min-h-11 w-full items-center justify-center border border-ink bg-ink px-4 py-1.5 font-mono text-d13 font-bold tracking-widest text-paper disabled:cursor-wait disabled:opacity-50 ${FOCUS_RING}`}
-        >
-          {flash === 'saving' ? 'GUARDANDO…' : '▣ GUARDAR BORRADOR'}
-        </button>
-        <button type="button" onClick={() => { if (canSave) onSaveAndClose() }} disabled={!canSave} data-cue="tick" className={`flex min-h-11 w-full items-center justify-center border border-ink px-4 font-mono text-d13 tracking-widest text-ink hover:bg-ink hover:text-paper disabled:opacity-50 ${FOCUS_RING}`}>
-          CONTINUAR DESPUÉS
-        </button>
-
-        <div>
-          <button
-            type="button"
-            onClick={guard(onPublish)}
-            aria-disabled={!canSubmit || !canSave}
-            data-cue="tick"
-            className={`flex min-h-12 w-full flex-col items-center justify-center border px-4 py-2 font-mono text-d15 font-bold tracking-widest ${
-              canSubmit
-                ? 'border-ink bg-acid text-ink hover:bg-ink hover:text-acid'
-                : 'cursor-not-allowed border-ink-faint bg-paper-raised text-ink-faint'
-            } ${FOCUS_RING}`}
-          >
-            <span>▶ PUBLICAR {typeLabel}</span>
-            {!canSubmit && (
-              <span className="font-mono text-d11 font-bold tracking-widest text-sys-red-paper">
-                ⚠ {faltanLabel}
-              </span>
-            )}
-          </button>
-          {publishMode === 'edit' && (
-            <p className="mt-1.5 font-mono text-d11 tracking-wide text-ink-faint">
-              Publicar actualiza la pieza existente.
-            </p>
-          )}
-        </div>
-      </RailPanel>
-    </div>
-  )
+export function ComposeRail({ showEditorial, editorialValue, onEditorialChange,
+  showFranja, franjaValue, onFranjaChange }: ComposeRailProps) {
+  if (!showEditorial && !showFranja) return null
+  return <div className="mt-5 border-y border-ink/20 py-3">
+    <p className="mb-2 font-mono text-d11 uppercase tracking-widest">Publicación y firma</p>
+    {showEditorial && <ToggleRow label="Selección editorial" hint="Identifica esta pieza como una selección de redacción." value={editorialValue} onChange={onEditorialChange} />}
+    {showFranja && <ToggleRow label="Publicar con mi franja" hint="La publicación mostrará la atribución de tu equipo." value={franjaValue} onChange={onFranjaChange} />}
+  </div>
 }

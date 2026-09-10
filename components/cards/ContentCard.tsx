@@ -32,7 +32,7 @@ import { useAuth } from '@/components/auth/useAuth'
 import { currentHp } from '@/lib/curation'
 import { GenreChipButton } from '@/components/genre/GenreChipButton'
 import { PollCardCanvas } from '@/components/poll/PollCardCanvas'
-import { SavedBadge } from './SavedBadge'
+import { SavedBadge } from '@/components/cards/SavedBadge'
 
 // ── Fresh-published chrome ─────────────────────────────────────────────────
 //
@@ -834,3 +834,9 @@ function ContentCardImpl({ item, size = 'sm', orientation }: ContentCardProps) {
 // live on MosaicItem (grid style + Framer layout), not here — so the ranking
 // signal (size + position) is fully preserved.
 export const ContentCard = memo(ContentCardImpl)
+
+// Authoring preview: reuse the public poster without navigation, votes,
+// timers, heat reports or engagement handlers.
+export function ContentCardPreview({ item }: { item: ContentItem }) {
+  return <PosterFace item={item} size="lg" artSizes="(max-width: 640px) 90vw, 480px" />
+}

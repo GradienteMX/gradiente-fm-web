@@ -1,5 +1,6 @@
 'use client'
 
+import { InlineEmphasis } from '@/components/content/InlineEmphasis'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
 import { getRelatedByVibe } from '@/lib/itemsCache'
@@ -569,7 +570,7 @@ export function BodyBlocks({
                 >
                   §{String(n).padStart(2, '0')}
                 </span>
-                {b.text}
+                {renderInline(b.text)}
               </h2>
             )
           }
@@ -579,7 +580,7 @@ export function BodyBlocks({
                 key={i}
                 className="mt-4 font-syne text-xl font-bold leading-tight text-ink"
               >
-                {b.text}
+                {renderInline(b.text)}
               </h3>
             )
           case 'quote':
@@ -590,7 +591,7 @@ export function BodyBlocks({
                 className="my-4 border border-ink border-l-4 bg-paper-raised p-5"
               >
                 <p className="font-syne text-xl font-bold leading-snug text-ink md:text-2xl">
-                  &ldquo;{b.text}&rdquo;
+                  &ldquo;{renderInline(b.text)}&rdquo;
                 </p>
                 {b.cite && (
                   <footer className="mt-2 font-mono text-d11 tracking-widest text-ink-faint">
@@ -605,7 +606,7 @@ export function BodyBlocks({
                 key={i}
                 className="border-l border-ink py-1 pl-4 font-grotesk text-[15px] italic text-ink-soft"
               >
-                {b.text}
+                {renderInline(b.text)}
                 {b.cite && (
                   <footer className="mt-1 font-mono text-[10px] tracking-widest text-ink-faint">
                     — {b.cite}
@@ -865,7 +866,7 @@ function TrackBlock({
       {block.commentary && (
         <div className="flex flex-col gap-3 bg-paper-raised p-4 font-grotesk text-[14px] leading-[1.6] text-ink-soft md:p-5 md:text-[15px]">
           {splitParagraphs(block.commentary).map((p, j) => (
-            <p key={j}>{p}</p>
+            <p key={j}>{renderInline(p)}</p>
           ))}
         </div>
       )}
@@ -991,20 +992,11 @@ function ProseLink({ url, label }: { url: string; label: string }) {
 }
 
 function renderBold(text: string, keyPrefix: string): React.ReactNode {
-  const nodes: React.ReactNode[] = []
-  const regex = /\*\*([^*]+)\*\*/g
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  let i = 0
-  while ((match = regex.exec(text)) !== null) {
-    const before = text.slice(lastIndex, match.index)
-    if (before) nodes.push(<span key={`${keyPrefix}-${i++}`}>{before}</span>)
-    nodes.push(<strong key={`${keyPrefix}-${i++}`}>{match[1]}</strong>)
-    lastIndex = match.index + match[0].length
-  }
-  const tail = text.slice(lastIndex)
-  if (tail) nodes.push(<span key={`${keyPrefix}-${i++}`}>{tail}</span>)
-  return nodes
+  return <InlineEmphasis key={keyPrefix} text={text} />
+}
+
+export function InlineProse({ text }: { text: string }) {
+  return <>{renderInline(text)}</>
 }
 
 // ── Rail block — raised-paper plate with a hairline header ──────────────────

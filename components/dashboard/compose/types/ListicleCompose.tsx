@@ -1,23 +1,12 @@
 'use client'
 
-// ── ListicleCompose — «EL PLIEGO DE COMPOSICIÓN v2» light editor for LISTA ──
-//
-// State/logic preamble copied VERBATIM from the dark ListicleForm
-// (components/dashboard/forms/ListicleForm.tsx — DELETED in fase F; this fork is now the only copy):
-// draft useState + patch + slugManuallyEdited effect + useDraftWorkbench with
-// the EXACT draftKey 'gradiente:dashboard:listicle-draft' + editItemId from
-// ?edit= + the publish recipe (requestPublish → setCategoryFilter(null) →
-// openConfirm). The 4-kind block editor lives in ListicleBlocksEditor
-// (colocated pliego port). Required rules come from requiredFields.ts
-// (TÍTULO · SLUG · CUERPO = articleBody non-empty — dark parity).
-
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { useAuth } from '@/components/auth/useAuth'
 import type { ArticleBlock, ContentItem } from '@/lib/types'
-import { slugify, useDraftWorkbench } from '@/components/dashboard/forms/shared/Fields'
+import { patchDraftContent, useDraftWorkbench } from '@/components/dashboard/forms/shared/Fields'
 import {
   composeTypeDisplay,
   composeTypeLabel,
@@ -40,7 +29,7 @@ import { GenreMultiSelectL } from '@/components/dashboard/compose/kit/GenreMulti
 import { EntityMultiSelectL } from '@/components/dashboard/compose/kit/EntityMultiSelectL'
 import { LinkListFieldL } from '@/components/dashboard/compose/kit/LinkListFieldL'
 import { PollFieldsetL } from '@/components/dashboard/compose/kit/PollFieldsetL'
-import { ListicleBlocksEditor } from './ListicleBlocksEditor'
+import { ListicleBlocksEditor } from '@/components/dashboard/compose/types/ListicleBlocksEditor'
 
 const DRAFT_KEY = 'gradiente:dashboard:listicle-draft'
 
@@ -89,22 +78,9 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
     openConfirm(id, workbench.publishMode)
   }
 
-  useEffect(() => {
-    if (!slugManuallyEdited && draft.title) {
-      const next = slugify(draft.title)
-      setDraft((d) => (d.slug === next ? d : { ...d, slug: next }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.title, slugManuallyEdited])
 
-  // Autosave-head honesty: `dirty` flips on the FIRST user edit this session
-  // (patch() is the user-edit funnel — the block editor writes through it too;
-  // hydration bypasses it) — the head claims «Guardado automático» only after
-  // the user actually wrote.
-  const [dirty, setDirty] = useState(false)
   const patch = (p: Partial<ContentItem>) => {
-    setDirty(true)
-    setDraft((d) => ({ ...d, ...p }))
+    setDraft((d) => patchDraftContent(d, p, slugManuallyEdited))
   }
   const blocks = draft.articleBody ?? []
   const setBlocks = (next: ArticleBlock[]) => patch({ articleBody: next })
@@ -114,7 +90,6 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
   const errors = errorsFrom(checklist)
   const canSubmit = errors.length === 0
 
-  const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   // EDITORIAL is a staff lever (mirror of /api/items: role guide|admin).
   // Franja row: franja-team member + stampable type (listicle is).
@@ -129,8 +104,9 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
     <ComposeLayout
       typeLabel={composeTypeDisplay('listicle')}
       isEdit={!!editItemId}
-      lastSavedAt={dirty ? workbench.lastSavedAt : null}
-      hydrating={hydrating}
+      draft={draft}
+      setDraft={setDraft}
+      workbench={workbench}
       onClose={onClose}
       rail={
         <ComposeRail
@@ -158,7 +134,7 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
       }
     >
       <PliegoSection number="01" label="IDENTIDAD" required>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <TextFieldL
             id={COMPOSE_ANCHOR_IDS.title}
             label="TÍTULO"
@@ -167,18 +143,25 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
             placeholder="Título de la lista"
             required
           />
+        </div>
+
+</PliegoSection>
+
+      <PliegoSection number="meta" label="Firma, subtítulo y enlace (opcional)">
+
           <TextFieldL
-            label="SUBTÍTULO / DEK"
+            label="Subtítulo (opcional)"
             value={draft.subtitle ?? ''}
             onChange={(v) => patch({ subtitle: v })}
           />
-        </div>
+          <div className="grid gap-4 pt-3">
         <TextFieldL
-          label="FIRMA"
+          label="Firma (opcional)"
           value={draft.author ?? ''}
           onChange={(v) => patch({ author: v })}
           placeholder="Nombre o firma"
         />
+
         {/* SlugRow's own default («se-genera-del-titulo») is the honest strip. */}
         <SlugRow
           id={COMPOSE_ANCHOR_IDS.slug}
@@ -188,6 +171,8 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
             patch({ slug })
           }}
         />
+                </div>
+
       </PliegoSection>
 
       <PliegoSection
@@ -199,9 +184,9 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
         <ListicleBlocksEditor blocks={blocks} onChange={setBlocks} />
       </PliegoSection>
 
-      <PliegoSection number="03" label="COPY">
+      <PliegoSection number="03" label="Resumen para la tarjeta">
         <TextAreaL
-          label="EXCERPT (UNA LÍNEA) · EL CUERPO VA EN 02"
+          label="Resumen para la tarjeta"
           value={draft.excerpt ?? ''}
           onChange={(v) => patch({ excerpt: v })}
           rows={3}
@@ -230,12 +215,12 @@ export function ListicleCompose({ onClose }: { onClose: () => void }) {
 
       <PliegoSection number="05" label="PORTADA">
         <ImageFieldL
-          label="HERO"
+          label="Imagen de portada"
           value={draft.imageUrl ?? ''}
           onChange={(v) => patch({ imageUrl: v })}
         />
         <TextFieldL
-          label="CAPTION HERO"
+          label="Crédito o contexto de la imagen"
           value={draft.heroCaption ?? ''}
           onChange={(v) => patch({ heroCaption: v })}
           placeholder="Crédito o contexto de la imagen"

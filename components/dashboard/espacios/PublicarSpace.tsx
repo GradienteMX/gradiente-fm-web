@@ -46,7 +46,7 @@ import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { HarvestConfirmModal } from '@/components/dashboard/HarvestConfirmModal'
 import {
   COMPOSE_TYPES,
-  TypeChip,
+  COMPOSE_TYPE_LABELS,
   TypeDot,
   isComposeType,
   useComposeNav,
@@ -58,7 +58,6 @@ import {
   ErrorLine,
   FOCUS_RING,
   InkButton,
-  MarginNote,
   Row,
   Sheet,
   SheetTable,
@@ -286,9 +285,12 @@ export function PublicarSpace() {
         <div className="flex min-w-0 flex-col gap-6">
           {/* 1 · CREAR NUEVO — the space's ONE acid block, ink on top. */}
           {allowed.length > 0 ? (
-            <AcidBlock title="Crear nuevo" note="UNA PIEZA, UN CLIC · SE GUARDA SOLO">
+            <AcidBlock title="Crear nuevo" note="¿QUÉ QUIERES COMPARTIR?">
               {allowed.map((t) => (
-                <TypeChip key={t} type={t} onPick={composeNav} />
+                <button type="button" key={t} onClick={() => composeNav(t)} className={`flex min-h-20 w-full flex-col justify-center border border-ink p-4 text-left hover:bg-ink hover:text-paper sm:w-[calc(50%-8px)] ${FOCUS_RING}`}>
+                  <span className="font-mono text-d13 font-bold">{COMPOSE_TYPE_LABELS[t]}</span>
+                  <span className="mt-1 font-grotesk text-d15">{({ mix: 'Comparte una sesión o selección de audio', evento: 'Anuncia una fecha y un lugar', articulo: 'Desarrolla una historia con texto e imágenes', noticia: 'Cuenta algo que está pasando', review: 'Comparte una lectura crítica de una obra', editorial: 'Publica una pieza de redacción', opinion: 'Expresa una perspectiva personal', listicle: 'Reúne discos o temas con tu comentario' })[t]}</span>
+                </button>
               ))}
             </AcidBlock>
           ) : (
@@ -306,7 +308,7 @@ export function PublicarSpace() {
           {/* 2 · EN CURSO — drafts and publications, one column, no fictions. */}
           <Sheet
             title="En curso"
-            note="BORRADOR Y PUBLICADO — SIN ESTADOS INVENTADOS"
+            note="CONTINÚA O VUELVE A LEER TUS PIEZAS"
             padded={false}
           >
             {bothFailed ? (
@@ -547,20 +549,9 @@ export function PublicarSpace() {
             )}
           </Sheet>
 
-          <Sheet title="El editor no cambia" note="MISMO PLIEGO DE SIEMPRE">
-            <p className="font-grotesk text-d15 leading-snug text-ink">
-              Las fichas de arriba abren el pliego de composición que ya conoces:
-              secciones numeradas, una lista de completitud que te dice exactamente qué
-              falta, guardado automático que solo dice «guardado» cuando de verdad
-              guardó, y una sola confirmación al publicar. Este espacio ordena tu obra;
-              no reemplaza el editor.
-            </p>
+          <Sheet title="Empieza con una idea" note="TU ESPACIO PARA CREAR">
+            <p className="font-grotesk text-d15 leading-relaxed">Puedes guardar una pieza incompleta y continuar después. El editor separa contenido, presentación y revisión: publica solo cuando estés listo.</p>
           </Sheet>
-
-          <MarginNote>
-            SIN «PROGRAMAR» NI «VISIBILIDAD» — NO EXISTEN EN EL SISTEMA. LA HOJA SOLO
-            PROMETE LO QUE HACE.
-          </MarginNote>
         </div>
       </div>
 

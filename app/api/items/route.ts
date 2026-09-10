@@ -1,3 +1,4 @@
+import { requiredFields, errorsFrom } from '@/lib/contentReadiness'
 import { NextResponse, type NextRequest } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
@@ -54,6 +55,10 @@ export async function POST(request: NextRequest) {
   const item = body.item as ContentItem | undefined
   if (!item || typeof item.id !== 'string' || typeof item.slug !== 'string') {
     return NextResponse.json({ error: 'item.id and item.slug required' }, { status: 400 })
+  }
+  if (item.type !== 'franja') {
+    const missing = errorsFrom(requiredFields(item.type, item))
+    if (missing.length) return NextResponse.json({ error: 'incomplete', message: `Revisa: ${missing.join(', ')}` }, { status: 422 })
   }
   // Default to 'edit' so any caller that predates the guard keeps working
   // (the ownership check below still applies to every existing-row write).

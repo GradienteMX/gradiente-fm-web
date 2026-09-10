@@ -1,57 +1,26 @@
 'use client'
 
-// ── ComposeSheet — «EL PLIEGO DE COMPOSICIÓN v2» (light full-page editor) ───
-//
-// The full-viewport compose surface: the pliego light editor ON paper — no
-// press bed, no LivePreview, no dark forms on this path (the dark originals
-// under components/dashboard/forms/** were DELETED in fase F — they had no
-// mount left; /admin uses the pliego forks now).
-// The body is a typed switch over the 8 light composers in ./types/*, each of
-// which owns its workbench (useDraftWorkbench — the reuse seam) and renders
-// itself inside ComposeLayout (breadcrumb / H1 / autosave head / CERRAR /
-// rail) — this file owns only the shell contracts:
-//
-// URL contract: the sheet lives in the /dashboard URL context and the forms
-// read `?edit=` THEMSELVES via useSearchParams — edit-mode derivation,
-// sessionStorage slots, and the OverlayShell EDITAR deep link
-// (`/dashboard?type=X&edit=<id>`) keep resolving. Role gates stay two-layered
-// OUTSIDE this file: `canCreateContent` filters CrearZone's chips (layer 1)
-// and app/dashboard/page.tsx's URL guard bounces unauthorized `?type=`
-// (layer 2) — the page only mounts this sheet for an authorized type.
-//
-// The grid is UNMOUNTED beneath (the page renders this sheet INSTEAD of the
-// grid branch, so grid rAF/observer work stops by construction).
-// Belt-and-braces on top of that: this module exports a module-scope
-// compose-open signal (subscribe pattern, useSyncExternalStore-compatible)
-// that CultivarWidget forwards to the JARDÍN DE SEÑAL as its `frozen` prop —
-// the garden freezes even in a future wiring where both trees mount at once.
-// HarvestGarden itself never imports this module; the signal travels as a
-// prop.
-//
-// Publish stays exactly ONE confirm: the rail's «PUBLICAR» → the shared
-// PublishConfirmOverlay (app/layout.tsx mount, byte-untouched) →
-// `/?fresh=<id>`. This file adds no confirm of its own; Close (X / Esc)
-// returns to /dashboard with grid state intact — autosave already ran
-// (useDraftWorkbench), and the layout's autosave head says so.
+// Full-page shell for the eight content composers. URL identity keys each
+// workbench; ComposeLayout owns guarded exit and the shared publish review.
+// Permission checks remain in the dashboard route and creation controls.
 
 import { useCallback, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
-import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { CUT_IN_DURATION, stepEase } from '@/components/dashboard/grid/useGridDrag'
 import {
   composeTypeLabel,
   type ComposeType,
 } from '@/components/dashboard/widgets/cultivar/CrearZone'
 
-import { MixCompose } from './types/MixCompose'
-import { ListicleCompose } from './types/ListicleCompose'
-import { ArticuloCompose } from './types/ArticuloCompose'
-import { EventoCompose } from './types/EventoCompose'
-import { ReviewCompose } from './types/ReviewCompose'
-import { EditorialCompose } from './types/EditorialCompose'
-import { OpinionCompose } from './types/OpinionCompose'
-import { NoticiaCompose } from './types/NoticiaCompose'
+import { MixCompose } from '@/components/dashboard/compose/types/MixCompose'
+import { ListicleCompose } from '@/components/dashboard/compose/types/ListicleCompose'
+import { ArticuloCompose } from '@/components/dashboard/compose/types/ArticuloCompose'
+import { EventoCompose } from '@/components/dashboard/compose/types/EventoCompose'
+import { ReviewCompose } from '@/components/dashboard/compose/types/ReviewCompose'
+import { EditorialCompose } from '@/components/dashboard/compose/types/EditorialCompose'
+import { OpinionCompose } from '@/components/dashboard/compose/types/OpinionCompose'
+import { NoticiaCompose } from '@/components/dashboard/compose/types/NoticiaCompose'
 
 // ── Compose-open signal (module scope — the garden-freeze subscribe) ────────
 // Consumed via useSyncExternalStore:
@@ -97,11 +66,7 @@ export interface ComposeSheetProps {
 
 export function ComposeSheet({ type, onClose }: ComposeSheetProps) {
   const router = useRouter()
-  // The shared PublishConfirmOverlay (byte-untouched, layout-level) closes on
-  // Escape via its own window listener — while it is open, Esc belongs to it
-  // alone. Without this guard one keypress would dismiss the confirm AND
-  // eject the composer (unmounting the form mid-publish).
-  const { confirmingId } = usePublishConfirm()
+  const search = useSearchParams()
   const reducedMotion = useReducedMotion()
   const rootRef = useRef<HTMLElement | null>(null)
 
@@ -125,6 +90,7 @@ export function ComposeSheet({ type, onClose }: ComposeSheetProps) {
       const params = new URLSearchParams(window.location.search)
       params.delete('type')
       params.delete('edit')
+      params.delete('draft')
       const qs = params.toString()
       router.replace(
         qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
@@ -133,17 +99,6 @@ export function ComposeSheet({ type, onClose }: ComposeSheetProps) {
     }
     onClose()
   }, [onClose, router])
-
-  // Esc closes. Autosave already ran — closing is consequence-free.
-  // Suspended while the publish confirm holds the keyboard (see above).
-  useEffect(() => {
-    if (confirmingId) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') handleClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [handleClose, confirmingId])
 
   // Move focus into the dialog on open (the chip that opened it is gone —
   // the grid unmounted beneath us).
@@ -169,7 +124,7 @@ export function ComposeSheet({ type, onClose }: ComposeSheetProps) {
       transition={{ opacity: { duration: CUT_IN_DURATION, ease: stepEase } }}
       className="dash-shell fixed inset-0 z-[60] overflow-y-auto overflow-x-hidden bg-paper text-ink focus:outline-none"
     >
-      <FormForType type={type} onClose={handleClose} />
+      <FormForType key={`${type}:${search?.get('edit') ?? search?.get('draft') ?? 'new'}`} type={type} onClose={handleClose} />
     </motion.section>
   )
 }

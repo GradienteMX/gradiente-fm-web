@@ -1,27 +1,13 @@
 'use client'
 
-// ── NoticiaCompose — «EL PLIEGO DE COMPOSICIÓN v2» light form for noticia ───
-//
-// State preamble copied VERBATIM from the dark NoticiaForm
-// (components/dashboard/forms/NoticiaForm.tsx — DELETED in fase F; this fork is now the only copy):
-// same emptyDraft, same DRAFT_KEY, same slug effect, same workbench wiring,
-// same publish recipe (requestPublish → setCategoryFilter(null) → openConfirm).
-// Only the JSX is pliego: numbered PliegoSection cards inside ComposeLayout
-// with the ComposeRail (checklist + gated PUBLICACIÓN rows + ACCIONES).
-//
-// EDITORIAL and VINCULAR A MI PROMOTORA move from the dark IDENTIDAD section
-// to the rail's PUBLICACIÓN panel — same gates as production: the editorial
-// lever is staff-only (guide/admin — app/api/items/route.ts isStaff), the
-// franja toggle is franja-team only on stamped types (noticia qualifies).
-
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useVibe } from '@/context/VibeContext'
 import { usePublishConfirm } from '@/components/publish/usePublishConfirm'
 import { useAuth } from '@/components/auth/useAuth'
 import type { ContentItem } from '@/lib/types'
 import {
-  slugify,
+  patchDraftContent,
   useDraftWorkbench,
 } from '@/components/dashboard/forms/shared/Fields'
 import {
@@ -89,21 +75,9 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
     openConfirm(id, workbench.publishMode)
   }
 
-  useEffect(() => {
-    if (!slugManuallyEdited && draft.title) {
-      const next = slugify(draft.title)
-      setDraft((d) => (d.slug === next ? d : { ...d, slug: next }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.title, slugManuallyEdited])
 
-  // Autosave-head honesty: `dirty` flips on the FIRST user edit this session
-  // (patch() is the user-edit funnel; hydration bypasses it) — the head
-  // claims «Guardado automático» only after the user actually wrote.
-  const [dirty, setDirty] = useState(false)
   const patch = (p: Partial<ContentItem>) => {
-    setDirty(true)
-    setDraft((d) => ({ ...d, ...p }))
+    setDraft((d) => patchDraftContent(d, p, slugManuallyEdited))
   }
 
   // Single required-truth source — feeds the rail checklist AND the gate
@@ -113,7 +87,6 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
   const canSubmit = errors.length === 0
 
   // ?edit deep-link before the item caches land → explicit hairline state.
-  const hydrating = !!editItemId && workbench.lastSavedAt === null && !draft.title
 
   // Rail gates — REAL rows only. Editorial lever is staff (guide/admin,
   // mirrors app/api/items isStaff); the franja stamp is franja-team on
@@ -131,8 +104,9 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
     <ComposeLayout
       typeLabel={composeTypeDisplay('noticia')}
       isEdit={!!editItemId}
-      lastSavedAt={dirty ? workbench.lastSavedAt : null}
-      hydrating={hydrating}
+      draft={draft}
+      setDraft={setDraft}
+      workbench={workbench}
       onClose={onClose}
       rail={
         <ComposeRail
@@ -168,6 +142,12 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
           placeholder="Titular de la noticia"
           required
         />
+
+</PliegoSection>
+
+      <PliegoSection number="meta" label="Enlace de la noticia (opcional)">
+
+          <div className="grid gap-4 pt-3">
         {/* SlugRow's own default («se-genera-del-titulo») is the honest strip. */}
         <SlugRow
           id={COMPOSE_ANCHOR_IDS.slug}
@@ -177,21 +157,30 @@ export function NoticiaCompose({ onClose }: { onClose: () => void }) {
             patch({ slug })
           }}
         />
+                </div>
+
       </PliegoSection>
 
       <PliegoSection number="02" label="COPY">
+
         <TextAreaL
-          label="LEAD (1–2 líneas)"
+          id={COMPOSE_ANCHOR_IDS.body}
+          label="Texto completo"
+          placeholder="Cuenta el hecho principal: qué pasó, quién participa, cuándo y dónde…"
+          value={draft.bodyPreview ?? ''}
+          onChange={(v) => patch({ bodyPreview: v })}
+          rows={6}
+        />
+
+      </PliegoSection>
+
+      <PliegoSection number="summary" label="Resumen para la tarjeta (opcional)">
+        <TextAreaL
+          label="Resumen para la tarjeta"
           value={draft.excerpt ?? ''}
           onChange={(v) => patch({ excerpt: v })}
           rows={2}
           placeholder="Una o dos líneas que resumen la noticia…"
-        />
-        <TextAreaL
-          label="NOTA (cuerpo breve)"
-          value={draft.bodyPreview ?? ''}
-          onChange={(v) => patch({ bodyPreview: v })}
-          rows={6}
         />
       </PliegoSection>
 
