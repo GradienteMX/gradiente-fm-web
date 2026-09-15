@@ -59,24 +59,24 @@ function FranjaCard({ item }: { item: ContentItem }) {
       className={`block w-full text-left ${FOCUS_RING}`}
       aria-label={`Abrir ${item.title}`}
     >
-      <article className="group border border-ink">
+      <article className="group">
         {/* Logo zone — ink ground so any logo (light or dark) reads. */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-panel">
+        <div className="relative aspect-[4/3] overflow-hidden bg-paper-raised">
           {item.imageUrl ? (
             <SmartImage
               src={item.imageUrl}
               alt={item.title}
               sizes="(max-width: 1023px) 40vw, 120px"
-              className="object-contain p-2"
+              className="object-contain"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center font-mono text-d18 font-bold uppercase tracking-widest text-panel-text">
+            <span className="flex h-full w-full items-center justify-center font-mono text-d18 font-bold uppercase tracking-widest text-ink">
               {item.title.slice(0, 2)}
             </span>
           )}
         </div>
         {/* Footer bar on paper — name + kind chip. Hover = fill inversion. */}
-        <div className="border-t border-ink bg-paper-raised px-1.5 py-1 transition-colors group-hover:bg-ink">
+        <div className="bg-paper-raised px-1.5 py-1 transition-colors group-hover:bg-ink">
           <h3 className="truncate font-grotesk text-d13 font-bold text-ink transition-colors group-hover:text-paper">
             {item.title}
           </h3>

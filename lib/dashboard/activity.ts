@@ -29,7 +29,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { setRealUsers } from '@/lib/userOverrides'
 import { trophyByKey } from '@/lib/trophies'
-import type { User } from '@/lib/types'
+import type { ContentType, User } from '@/lib/types'
+import { resolveActivityItem, type ActivityItemRef } from '@/lib/dashboard/activityTargets'
 
 // What happened — drives the widget's Spanish verb copy.
 export type ActivityKind =
@@ -55,6 +56,8 @@ export interface ActivityRow {
   actorId: string | null
   targetTitle: string // item title / thread subject / listing title / trophy name
   excerpt?: string // short body excerpt for comment-shaped rows
+  imageUrl?: string
+  itemType?: ContentType
   // Deep-link payload. itemSlug → open in place via lib/dashboard/openItem
   // (`/dashboard?item=<slug>&comment=<id>`); threadId → `/foro?thread=` (the
   // sanctioned page exception); listingId → MERCADO inline thread.
@@ -81,7 +84,7 @@ type CommentRow = {
   created_at: string
 }
 
-type ItemRef = { id: string; slug: string; title: string }
+type ItemRef = ActivityItemRef
 
 function excerptOf(body: string): string {
   const flat = body.replace(/\s+/g, ' ').trim()
@@ -122,7 +125,7 @@ export async function fetchActivity(userId: string): Promise<ActivityRow[]> {
     await Promise.all([
       supabase
         .from('items')
-        .select('id, slug, title')
+        .select('id, slug, title, image_url, type')
         .eq('created_by' as never, userId as never)
         .eq('published', true),
       supabase
@@ -204,7 +207,15 @@ export async function fetchActivity(userId: string): Promise<ActivityRow[]> {
         : Promise.resolve({ data: [] as unknown, error: null }),
     ])
 
+  for (const result of [myItemsRes, myCommentsRes, myThreadsRes, myRepliesRes, myTrophiesRes,
+    onMyItemsRes, toMyCommentsRes, reactionsRes, inMyThreadsRes, quotingMeRes]) {
+    if (result.error) throw result.error
+  }
   const rows: ActivityRow[] = []
+  const commentItems = new Map(myCommentItemById)
+  for (const comment of [...(onMyItemsRes.data ?? []) as CommentRow[], ...(toMyCommentsRes.data ?? []) as CommentRow[]]) {
+    commentItems.set(comment.id, comment.item_id)
+  }
   const seenCommentIds = new Set<string>()
   const missingItemIds = new Set<string>()
 
@@ -326,26 +337,17 @@ export async function fetchActivity(userId: string): Promise<ActivityRow[]> {
   if (missingItemIds.size > 0) {
     const { data } = await supabase
       .from('items')
-      .select('id, slug, title')
+      .select('id, slug, title, image_url, type')
       .in('id', Array.from(missingItemIds))
       .eq('published', true)
     for (const it of (data ?? []) as unknown as ItemRef[]) {
       myItemById.set(it.id, it)
     }
   }
-  for (const row of rows) {
-    if (row.kind === 'reply_to_comment' || row.kind === 'reaction') {
-      const itemId = row.commentId ? myCommentItemById.get(row.commentId) : undefined
-      const item = itemId ? myItemById.get(itemId) : undefined
-      if (item) {
-        row.targetTitle = row.targetTitle || item.title
-        row.itemSlug = item.slug
-      }
-    }
-  }
+  const resolved = rows.map((row) => resolveActivityItem(row, myItemById, commentItems))
 
-  rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
-  const merged = rows.slice(0, ROW_LIMIT)
+  resolved.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
+  const merged = resolved.slice(0, ROW_LIMIT)
 
   // Resolve actor identities through the public-read users table into the
   // existing userOverrides cache — the widget renders via useResolvedUser,
@@ -376,14 +378,14 @@ export async function fetchOfertaActivity(
   const supabase = createClient()
   const { data, error } = await supabase
     .from('listing_comments')
-    .select('id, listing_id, author_id, created_at')
+    .select('id, listing_id, author_id, body, created_at')
     .in('listing_id', Array.from(unansweredListingIds))
     .order('created_at', { ascending: false })
   if (error) {
     console.error('[fetchOfertaActivity]', error)
     return []
   }
-  type Row = { id: string; listing_id: string; author_id: string | null; created_at: string }
+  type Row = { id: string; listing_id: string; author_id: string | null; body: string; created_at: string }
   // Rows are created_at-desc: first row seen per listing is its latest comment.
   const latestByListing = new Map<string, Row>()
   for (const r of (data ?? []) as Row[]) {
@@ -397,6 +399,7 @@ export async function fetchOfertaActivity(
       source: 'OFERTA',
       actorId: r.author_id,
       targetTitle: listingTitleById.get(listingId) ?? '',
+      excerpt: excerptOf(r.body),
       listingId,
       createdAt: r.created_at,
     })

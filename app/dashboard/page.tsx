@@ -34,7 +34,7 @@ import type { WidgetId } from '@/lib/dashboard/layout'
 import { DashboardDataProvider, useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { DashMasthead } from '@/components/dashboard/shell/DashMasthead'
 import { IdentitySpine } from '@/components/dashboard/shell/IdentitySpine'
-import { StatusStrip, scrollToDashWidget } from '@/components/dashboard/shell/StatusStrip'
+import { scrollToDashWidget } from '@/components/dashboard/shell/StatusStrip'
 import { MiniTransport } from '@/components/dashboard/shell/MiniTransport'
 import { DashOverlayHost } from '@/components/dashboard/overlayhost/DashOverlayHost'
 import { WidgetGrid } from '@/components/dashboard/grid/WidgetGrid'
@@ -44,11 +44,10 @@ import { DashTabBar } from '@/components/dashboard/shell/DashTabBar'
 import { PublicarSpace } from '@/components/dashboard/espacios/PublicarSpace'
 import { FranjaSpace } from '@/components/dashboard/espacios/FranjaSpace'
 import { MercadoSpace } from '@/components/dashboard/espacios/MercadoSpace'
-import { ReceptionSpace } from '@/components/dashboard/espacios/ReceptionSpace'
+import { ActivitySpace } from '@/components/dashboard/espacios/ActivitySpace'
 import {
   DEFAULT_ESPACIO,
   ESPACIO_PARAM,
-  espacioHref,
   resolveEspacio,
   visibleEspacios,
   type EspacioId,
@@ -224,6 +223,7 @@ function DashboardPageInner() {
     }
     const params = new URLSearchParams(search?.toString() ?? '')
     params.delete('section')
+    if (rawSection === 'drafts') params.set('collection', 'drafts')
     if (target.espacio && target.espacio !== DEFAULT_ESPACIO) {
       params.set(ESPACIO_PARAM, target.espacio)
     } else if (target.espacio === DEFAULT_ESPACIO) {
@@ -251,8 +251,12 @@ function DashboardPageInner() {
     // Autosave already ran (useDraftWorkbench) — closing is consequence-free.
     // Return to the space the user composed FROM: PUBLICAR and FRANJA both
     // open the sheet, and landing back on PANEL would lose their place.
-    router.push(espacioHref(lastEspacioRef.current))
-  }, [router])
+    const params = new URLSearchParams(search.toString())
+    for (const key of ['type', 'edit', 'draft']) params.delete(key)
+    if (lastEspacioRef.current === DEFAULT_ESPACIO) params.delete(ESPACIO_PARAM)
+    else params.set(ESPACIO_PARAM, lastEspacioRef.current)
+    router.push(params.size ? `/dashboard?${params}` : '/dashboard', { scroll: false })
+  }, [router, search])
 
   if (!hydrated) return null
 
@@ -276,9 +280,8 @@ function DashboardPageInner() {
         // §4: the grid is UNMOUNTED beneath the sheet (no background rAF).
         <ComposeSheet type={composeType} editingId={editingId} onClose={closeCompose} />
       ) : (
-        <div className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
+        <div className="mx-auto w-full max-w-[1920px] px-4 md:px-8 xl:px-12">
           <IdentitySpine />
-          <StatusStrip />
           <DashTabBar
             espacios={espacios}
             active={espacio}
@@ -312,7 +315,7 @@ function DashboardPageInner() {
               // RECEPCIÓN closes the chain: `resolveEspacio` has already
               // narrowed the value to a granted id, so the tail is the last
               // space rather than a fallback that could render the wrong sheet.
-              <ReceptionSpace />
+              <ActivitySpace />
             )}
           </section>
 

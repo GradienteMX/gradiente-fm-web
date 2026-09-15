@@ -1,68 +1,7 @@
 'use client'
 
-// ── RECEPCIÓN — cómo se recibió lo que hiciste (PLIEGO fase D) ──────────────
-//
-// The fifth space, and the only read-only one. PUBLICAR is where you write,
-// MERCADO is where you sell; this is the mirror you look into afterwards.
-// There is no lever on this sheet — no button that changes a number, no
-// setting, no lift, no boost. Everything here is a reading of what already
-// happened, and the only control is the window it is read over.
-//
-// TWO SUB-TABS, IN THIS ORDER, AND THE ORDER IS THE ARGUMENT
-//   PRESENCIA  the creator-side ledger (user_hp_events), retained since May
-//              2026 — four months of real rows. The space opens on it.
-//   OBRA       the per-item ledger (hp_events via creator_reception()), born
-//              at LEDGER_EPOCH and hours old.
-//   If OBRA led, a brand-new creator would meet this space as an empty chart
-//   and read it as "nobody came". Presence first, then the pieces.
-//
-// THE ONE RULE THIS SURFACE EXISTS TO KEEP: **proportions and counts, never
-// weights.** Not a multiplier, not a nominal, not a «× 4.0» ladder anywhere.
-// A creator handed a price list optimises for the price list, and the honest
-// thing to optimise is the work. This is also why components/admin/kit's
-// KindBreakdown — which prints the «× 0.5» column by design, under the admin
-// instrument exemption — is deliberately NOT reused here; only its geometry
-// primitives (BarMeter, Sparkline) are.
-//
-// THE OTHER LAWS, in the order it would be tempting to break them:
-//   · NO IDENTITIES. Never who saved, opened, reacted or commented. Saves are
-//     anonymous by design; migration 0050 §1 revoked user_hp_events
-//     .attribution_key from `authenticated` precisely so this surface could
-//     not reach the saver ids even by accident. Do not route around it.
-//   · NO LEADERBOARD. No rank, no percentile, no comparison to another
-//     creator. Pieces are ordered by publication date, never by how well they
-//     did — sorting a creator's own work by score is a leaderboard of one.
-//     The HP scalar is private per [[project_user_hp_visibility]]: trophies,
-//     frames and firma are the public half of progression, not this number.
-//   · NO ADVICE. The sheet never says how to earn more. Describing what
-//     happened is a mirror; prescribing what to do next is the farm-the-metric
-//     failure mode wearing a mirror's clothes.
-//   · HONEST STATES. ShimmerLine while loading, ErrorLine on failure,
-//     EmptyLine for a real absence, MarginNote for a real limit of the system.
-//   · NO ACID. Acid is the fill of a creative own-action, and this space has
-//     none — nothing here is an action at all. Zero acid blocks, on purpose.
-//
-// TWO ZEROS THAT MEAN OPPOSITE THINGS, and the single subtlest thing in this
-// file. On the PRESENCIA side `events` is a row count, so 0 is a true zero and
-// prints «0» — the route emits every canonical kind even at zero on purpose
-// (a gesture that exists and has never paid out is a true thing to show). On
-// the OBRA side `events` counts only hp_events rows carrying base_weight, so a
-// slice reporting 0 holds real HL from rows written before that column
-// existed: the count is UNKNOWABLE, not absent, and prints «—». Never let
-// these two share a formatter.
-//
-// NO PROPS, AND NO «VER PERFIL PÚBLICO» LINK. The brief offered this space a
-// `username` prop for one; DashTabBar already renders a byte-identical «VER
-// PERFIL PÚBLICO ↗» on the strip directly above every space, so a second copy
-// sixty pixels below it is the decorative chrome this project cuts on sight.
-// The space is self-contained instead, which is the other half of that ask.
-//
-// DATA — GET /api/users/me/reception?dias=N, fetched here on mount and on
-// every window change (the sibling spaces own their own reads; MERCADO's
-// ListingThread is the pattern). The payload's two halves are independent:
-// `obra` can be absent with `obraEstado: 'migracion_pendiente'` while
-// `presencia` is complete, and that state is a MarginNote — a backend half
-// that is not installed yet is neither a failure nor a zero.
+// Private HP details within Actividad. Keep real ledger windows and source
+// proportions, with no rankings or identities of people who saved content.
 
 import { useEffect, useMemo, useState } from 'react'
 import { format, parseISO } from 'date-fns'
@@ -94,8 +33,6 @@ import { hlBracket } from '@/lib/dashboard/hl'
 import {
   TYPE_DISPLAY_LABELS,
   categoryColorOnLight,
-  typeCode,
-  typeDisplayLabel,
 } from '@/lib/dashboard/palette'
 import {
   KIND_CODES,
@@ -105,6 +42,10 @@ import {
   type HpEventKind,
 } from '@/lib/hp/kinds'
 import type { ContentType } from '@/lib/types'
+import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
+import { SmartImage } from '@/components/SmartImage'
+import { publicationTint } from '@/components/dashboard/widgets/CrearWidget'
+import { publicationLabel } from '@/lib/dashboard/publications'
 
 type ReceptionTab = 'presencia' | 'obra'
 
@@ -148,8 +89,8 @@ interface KindFace {
 
 const PRESENCE_KINDS: Record<string, KindFace> = {
   publish: { label: 'PUBLICASTE', code: 'PU', color: '#3F6212' },
-  item_saved: { label: 'GUARDARON TU PIEZA', code: 'GP', color: '#9A3412' },
-  comment_received: { label: 'COMENTARON TU PIEZA', code: 'CP', color: '#5B21B6' },
+  item_saved: { label: 'GUARDARON TU PUBLICACIÓN', code: 'GP', color: '#9A3412' },
+  comment_received: { label: 'COMENTARON TU PUBLICACIÓN', code: 'CP', color: '#5B21B6' },
   comment_saved: { label: 'GUARDARON TU COMENTARIO', code: 'GC', color: '#155E75' },
   reaction_received: { label: 'REACCIONARON A TU COMENTARIO', code: 'RC', color: '#A81A5B' },
   vibe_check_cast: { label: 'MARCASTE UNA VIBRA', code: 'VM', color: '#57534E' },
@@ -240,9 +181,6 @@ function WindowLatch({ dias, onChange }: { dias: number; onChange: (n: number) =
       aria-label="Ventana de lectura"
       className="flex flex-wrap items-stretch border border-ink bg-paper-raised"
     >
-      <span className="flex min-h-11 items-center px-3 font-mono text-d11 uppercase tracking-widest text-ink-faint">
-        VENTANA
-      </span>
       {WINDOWS.map((n) => {
         const on = n === dias
         return (
@@ -285,14 +223,14 @@ function ShareRow({
 }) {
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink/15 py-2 last:border-b-0">
-      <span className="flex min-w-0 flex-1 items-center gap-2 font-mono text-d11 uppercase tracking-widest text-ink">
+      <span className="flex min-w-[12rem] flex-1 items-center gap-2 font-mono text-d13 uppercase tracking-wide text-ink">
         <span
           aria-hidden
           className="inline-block h-2 w-2 shrink-0 border border-ink"
           style={{ backgroundColor: color }}
         />
-        <span className="shrink-0 text-ink-faint">{code}</span>
-        <span className="truncate">{label}</span>
+        <span className="sr-only">{code}</span>
+        <span>{label}</span>
       </span>
       {count !== undefined && (
         <span className="w-16 shrink-0 text-right font-mono text-d13 tabular-nums text-ink">
@@ -323,7 +261,7 @@ function PresenciaPanel({ block, dias }: { block: ReceptionPresencia; dias: numb
     // Order comes from the route (share desc, canonical index breaking ties)
     // and is deliberately not re-sorted here: two sorts on one list is how the
     // order starts shuffling between polls.
-    () => block.kinds.map((row) => ({ ...row, ...presenceFace(row.kind) })),
+    () => block.kinds.filter((row) => row.events > 0 || row.share > 0).map((row) => ({ ...row, ...presenceFace(row.kind) })),
     [block.kinds],
   )
 
@@ -334,12 +272,9 @@ function PresenciaPanel({ block, dias }: { block: ReceptionPresencia; dias: numb
 
   return (
     <div className="flex flex-col gap-6">
-      <Sheet title="De dónde viene tu presencia" note={`VENTANA ${dias}D`}>
+      <Sheet title={`HP ganado en ${dias} días`}>
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-            HP GANADO EN LOS ÚLTIMOS {dias} DÍAS
-          </span>
-          <span className="font-grotesk text-d28 font-bold tabular-nums text-hp">
+          <span className="font-grotesk text-5xl font-bold tabular-nums text-hp">
             {total > 0 ? '+' : ''}
             {NUM.format(total)}
             <span className="ml-1.5 font-mono text-d13 font-bold tracking-widest">HP</span>
@@ -348,21 +283,20 @@ function PresenciaPanel({ block, dias }: { block: ReceptionPresencia; dias: numb
               balance. Saying so costs one line and stops the number from being
               read as a score. */}
           <span className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink-soft">
-            {'ESTO ES LO GANADO DENTRO DE LA VENTANA, NO TU TOTAL ACUMULADO.'}
+            {'HP recibido durante este período.'}
           </span>
         </div>
       </Sheet>
 
       <Sheet
-        title="Por dónde llegó"
-        note={`${NUM.format(block.events)} ${block.events === 1 ? 'EVENTO' : 'EVENTOS'}`}
+        title="De dónde viene"
         padded={false}
       >
         {block.events === 0 ? (
           // A single kind reading zero is worth printing — it says the gesture
           // exists and has not happened. A table where EVERY row is zero is not
           // a reading at all, and would be a wall of fake precision.
-          <EmptyLine>{'AÚN NO HAY PRESENCIA REGISTRADA EN ESTA VENTANA.'}</EmptyLine>
+          <EmptyLine>{'Todavía no hay actividad de HP en este período.'}</EmptyLine>
         ) : (
           <ul className="flex flex-col px-4 py-2">
             {rows.map((r) => (
@@ -380,12 +314,12 @@ function PresenciaPanel({ block, dias }: { block: ReceptionPresencia; dias: numb
         )}
       </Sheet>
 
-      <Sheet title="Día a día" note={`${block.serie.length} DÍAS`}>
+      <Sheet title="Día a día">
         {block.serie.length === 0 ? (
           <EmptyLine>{'SIN DÍAS QUE DIBUJAR EN ESTA VENTANA.'}</EmptyLine>
         ) : (
           <div className="flex flex-col gap-2">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto [&_svg]:h-28 [&_svg]:w-full">
               <Sparkline
                 values={block.serie.map((d) => d.value)}
                 label={`HP ganado por día en los últimos ${dias} días`}
@@ -402,7 +336,7 @@ function PresenciaPanel({ block, dias }: { block: ReceptionPresencia; dias: numb
       </Sheet>
 
       <MarginNote>
-        {'TU HP ES PRESENCIA: SE GANA POR CÓMO OTRAS PERSONAS SE ENCONTRARON CON TU TRABAJO. ESTE NÚMERO ES PRIVADO — NADIE MÁS LO VE, NO SE COMPARA CON EL DE NADIE Y NO EXISTE NINGUNA TABLA DE POSICIONES. LO ÚNICO PÚBLICO DE TU PROGRESO SON LOS TROFEOS, MARCOS Y FIRMA QUE VA DESBLOQUEANDO.'}
+        {'Tu HP es privado. Tus trofeos aparecen en tu perfil público.'}
       </MarginNote>
     </div>
   )
@@ -411,6 +345,8 @@ function PresenciaPanel({ block, dias }: { block: ReceptionPresencia; dias: numb
 // ── OBRA ────────────────────────────────────────────────────────────────────
 
 function ObraItem({ row }: { row: ReceptionItem }) {
+  const { published } = useDashboardData()
+  const publication = published.find((item) => item.id === row.id)
   const type = asContentType(row.item_type)
   const slices = byShare(row.kinds)
 
@@ -435,11 +371,14 @@ function ObraItem({ row }: { row: ReceptionItem }) {
   }, [row, type])
 
   return (
-    <li className="border-b border-ink/15 px-4 py-4 last:border-b-0">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+    <li className="grid gap-4 border-b border-ink/15 p-4 last:border-b-0 sm:grid-cols-[144px_minmax(0,1fr)]">
+      <div className={`relative aspect-square ${type ? publicationTint(type) : 'bg-paper'}`}>
+        {publication?.imageUrl && <SmartImage src={publication.imageUrl} alt={row.title} sizes="(max-width: 640px) 100vw, 144px" className="object-cover" />}
+      </div>
+      <div><div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
         {type ? (
           <Chip swatch={categoryColorOnLight(type)}>
-            {typeCode(type)} · {typeDisplayLabel(type)}
+            {publicationLabel(type)}
           </Chip>
         ) : (
           <Chip>{'TIPO DESCONOCIDO'}</Chip>
@@ -467,7 +406,7 @@ function ObraItem({ row }: { row: ReceptionItem }) {
         // Not a row of zeros: no slice means nothing was recorded, which is a
         // different statement from "cero personas" and must read as one.
         <p className="mt-3 font-mono text-d11 uppercase tracking-widest text-ink-faint">
-          {'SIN RECEPCIÓN REGISTRADA EN ESTA VENTANA.'}
+          {'Sin actividad registrada en este período.'}
         </p>
       ) : (
         <ul className="mt-3 flex flex-col">
@@ -478,11 +417,11 @@ function ObraItem({ row }: { row: ReceptionItem }) {
               code={KIND_CODES[s.kind]}
               label={readerCountPhrase(s.kind, s.events)}
               share={s.share}
-              meterLabel={`${KIND_LABELS[s.kind]}: ${NUM.format(s.share)}% de la HL de esta pieza`}
+              meterLabel={`${KIND_LABELS[s.kind]}: ${NUM.format(s.share)}% de la HL de esta publicación`}
             />
           ))}
         </ul>
-      )}
+      )}</div>
     </li>
   )
 }
@@ -514,7 +453,7 @@ function ObraPanel({
     <div className="flex flex-col gap-6">
       <Sheet title="Cómo te encontraron" note={`VENTANA ${dias}D`} padded={false}>
         {totalRows.length === 0 ? (
-          <EmptyLine>{'AÚN NO HAY RECEPCIÓN REGISTRADA EN ESTA VENTANA.'}</EmptyLine>
+          <EmptyLine>{'Todavía no hay actividad registrada en este período.'}</EmptyLine>
         ) : (
           <>
             {dominance && (
@@ -540,7 +479,7 @@ function ObraPanel({
       </Sheet>
 
       <Sheet
-        title="Pieza por pieza"
+        title="Por publicación"
         note={`${items.length} ${items.length === 1 ? 'PUBLICADA' : 'PUBLICADAS'}`}
         padded={false}
       >
@@ -556,14 +495,14 @@ function ObraPanel({
       </Sheet>
 
       <MarginNote>
-        {`LA RECEPCIÓN POR PIEZA SÓLO EXISTE DESDE EL ${dateLabel(LEDGER_EPOCH)}: ANTES DE ESA FECHA EL ROLLUP BORRABA LOS EVENTOS AL PROCESARLOS Y NO QUEDÓ NADA QUE LEER.`}
+        {`Historial disponible desde el ${dateLabel(LEDGER_EPOCH)}.`}
         {blind > 0 && (
           <>
             {' '}
-            {`LOS PRIMEROS ${blind} ${blind === 1 ? 'DÍA' : 'DÍAS'} DE ESTA VENTANA SON CIEGOS, Y CIEGO NO ES CERO.`}
+            {`Faltan datos de los primeros ${blind} ${blind === 1 ? 'día' : 'días'} de este período.`}
           </>
         )}{' '}
-        {'AQUÍ NUNCA VERÁS QUIÉN GUARDÓ, ABRIÓ O COMENTÓ: LOS GUARDADOS SON ANÓNIMOS POR DISEÑO Y EL SERVIDOR NO DEVUELVE NINGUNA IDENTIDAD.'}
+        {'Los guardados permanecen anónimos.'}
       </MarginNote>
     </div>
   )
@@ -572,9 +511,9 @@ function ObraPanel({
 /** The route's `migracion_pendiente`: a backend half that is not installed. */
 function ObraPendiente() {
   return (
-    <Sheet title="Pieza por pieza" note="SIN INSTALAR">
+    <Sheet title="Por publicación">
       <MarginNote>
-        {'LA LECTURA POR PIEZA TODAVÍA NO EXISTE EN ESTA BASE DE DATOS: LA MIGRACIÓN 0050 NO ESTÁ APLICADA. NO ES UN ERROR Y NO ES UN CERO — ES UNA MITAD DEL SISTEMA QUE AÚN NO SE INSTALA. TU PRESENCIA SÍ ESTÁ COMPLETA.'}
+        {'EL HISTORIAL POR PUBLICACIÓN NO ESTÁ DISPONIBLE. PUEDES CONSULTAR TU PRESENCIA EN LA PESTAÑA ANTERIOR.'}
       </MarginNote>
     </Sheet>
   )
@@ -582,7 +521,7 @@ function ObraPendiente() {
 
 // ── The space ───────────────────────────────────────────────────────────────
 
-export function ReceptionSpace() {
+export function ReceptionSpace({ embedded = false }: { embedded?: boolean }) {
   const [tab, setTab] = useState<ReceptionTab>('presencia')
   const [dias, setDias] = useState<number>(DEFAULT_WINDOW)
   const [reload, setReload] = useState(0)
@@ -621,18 +560,14 @@ export function ReceptionSpace() {
 
   const tabs: readonly SubTab<ReceptionTab>[] = [
     { id: 'presencia', label: 'PRESENCIA' },
-    { id: 'obra', label: 'OBRA', count: obra ? published.length : undefined },
+    { id: 'obra', label: 'PUBLICACIONES' },
   ]
 
-  const sheetTitle = tab === 'presencia' ? 'Presencia' : 'Obra'
+  const sheetTitle = tab === 'presencia' ? 'Presencia' : 'Publicaciones'
 
   return (
     <div className="flex flex-col gap-6">
-      <SpaceHead
-        title="Recepción"
-        eyebrow="CÓMO SE RECIBIÓ LO QUE HICISTE"
-        chips={<Chip>{'SÓLO LECTURA'}</Chip>}
-      />
+      {!embedded && <SpaceHead title="Actividad" eyebrow="HP" />}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <WindowLatch dias={dias} onChange={setDias} />
@@ -644,7 +579,7 @@ export function ReceptionSpace() {
         )}
       </div>
 
-      <SubTabs tabs={tabs} active={tab} onChange={setTab} ariaLabel="Secciones de recepción" />
+      <SubTabs tabs={tabs} active={tab} onChange={setTab} ariaLabel="Secciones de actividad HP" />
 
       <div className="pt-2">
         {state.phase === 'loading' ? (
@@ -657,7 +592,7 @@ export function ReceptionSpace() {
             note={`VENTANA ${dias}D`}
             action={<InkButton onClick={() => setReload((n) => n + 1)}>REINTENTAR</InkButton>}
           >
-            <ErrorLine>{'NO SE PUDO LEER TU RECEPCIÓN.'}</ErrorLine>
+            <ErrorLine>{'NO SE PUDO CARGAR TU ACTIVIDAD DE HP.'}</ErrorLine>
           </Sheet>
         ) : tab === 'presencia' ? (
           <PresenciaPanel block={state.data.presencia} dias={state.data.days} />
@@ -674,7 +609,7 @@ export function ReceptionSpace() {
           // obraEstado said 'ok' but no payload came with it — a malformed read,
           // which is a failure and not an absence.
           <Sheet title={sheetTitle} note={`VENTANA ${dias}D`}>
-            <ErrorLine>{'NO SE PUDO LEER LA RECEPCIÓN POR PIEZA.'}</ErrorLine>
+            <ErrorLine>{'NO SE PUDO CARGAR EL HISTORIAL DE PUBLICACIONES.'}</ErrorLine>
           </Sheet>
         )}
       </div>

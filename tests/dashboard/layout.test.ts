@@ -17,6 +17,7 @@ import {
   ALL_WIDGET_IDS,
   COMPACT_H,
   DEFAULT_DESKTOP_LAYOUT,
+  LEGACY_DESKTOP_LAYOUT,
   DEFAULT_MOBILE_ORDER,
   DESKTOP_COLS,
   TABLET_COLS,
@@ -71,10 +72,11 @@ function shuffle<T>(input: readonly T[], seed: number): T[] {
 // ── Registry + defaults ──────────────────────────────────────────────────────
 
 describe('registry and defaults', () => {
-  it('every widget declares 2–6 allowed sizes within grid bounds', () => {
+  it('every widget declares unique allowed sizes within grid bounds', () => {
     for (const id of ALL_WIDGET_IDS) {
       const sizes = WIDGET_DEFS[id].allowedSizes
-      assert.ok(sizes.length >= 2 && sizes.length <= 6, `${id} has ${sizes.length} states`)
+      assert.ok(sizes.length >= 2, `${id} has multiple size choices`)
+      assert.equal(new Set(sizes.map((size) => `${size.w}:${size.h}`)).size, sizes.length)
       for (const size of sizes) {
         assert.ok(size.w >= 1 && size.w <= DESKTOP_COLS, `${id} width in bounds`)
         assert.ok(size.h >= 1, `${id} height positive`)
@@ -113,8 +115,8 @@ describe('registry and defaults', () => {
   })
 
   it('defaultSize is the first declared state', () => {
-    assert.deepEqual(defaultSize('cultivar'), { w: 8, h: 3 })
-    assert.deepEqual(defaultSize('mapa'), { w: 4, h: 3 })
+    assert.deepEqual(defaultSize('cultivar'), { w: 9, h: 5 })
+    assert.deepEqual(defaultSize('mapa'), { w: 3, h: 2 })
   })
 
   it('nextAllowedSize cycles the declared states and wraps', () => {
@@ -204,7 +206,7 @@ describe('packer', () => {
   })
 
   it('packedHeight reports the bottom edge', () => {
-    assert.equal(packedHeight(DEFAULT_DESKTOP_LAYOUT), 11)
+    assert.equal(packedHeight(DEFAULT_DESKTOP_LAYOUT), 12)
     assert.equal(packedHeight([]), 0)
   })
 })
@@ -213,11 +215,11 @@ describe('packer', () => {
 
 describe('tablet remap', () => {
   it('halves widths with a floor of 3, fits 6 cols, no overlap', () => {
-    const remapped = remapToTablet(DEFAULT_DESKTOP_LAYOUT)
-    assert.equal(remapped.length, DEFAULT_DESKTOP_LAYOUT.length)
+    const remapped = remapToTablet(LEGACY_DESKTOP_LAYOUT)
+    assert.equal(remapped.length, LEGACY_DESKTOP_LAYOUT.length)
     assertNoOverlap(remapped, TABLET_COLS)
     for (const entry of remapped) {
-      const original = DEFAULT_DESKTOP_LAYOUT.find((e) => e.id === entry.id)
+      const original = LEGACY_DESKTOP_LAYOUT.find((e) => e.id === entry.id)
       assert.ok(original)
       const expectedW = Math.min(
         TABLET_COLS,
@@ -245,13 +247,13 @@ describe('mobileOrder', () => {
   it('derives reading order (y, then x) from a layout', () => {
     assert.deepEqual(deriveMobileOrder(DEFAULT_DESKTOP_LAYOUT), [
       'crear',
-      'cultivar',
-      'guardados',
-      'mapa',
       'reproductor',
-      'novedades',
-      'agenda',
+      'cultivar',
       'actividad',
+      'guardados',
+      'agenda',
+      'mapa',
+      'novedades',
       'mercado',
     ])
   })
@@ -308,6 +310,10 @@ describe('normalizeLayoutMeta', () => {
     const cultivar = meta.layout.find((e) => e.id === 'cultivar')
     assert.deepEqual({ x: cultivar?.x, y: cultivar?.y }, { x: 0, y: 0 })
     for (const entry of meta.layout) {
+      if (entry.id === 'cultivar') {
+        assert.deepEqual({ w: entry.w, h: entry.h }, { w: 8, h: 3 }, 'preserves the existing custom size')
+        continue
+      }
       const size = defaultSize(entry.id)
       assert.deepEqual({ w: entry.w, h: entry.h }, size, `${entry.id} at default size`)
     }
@@ -415,10 +421,10 @@ describe('applyCompactModes', () => {
     const guardados = entries.find((e) => e.id === 'guardados')
     assert.equal(guardados?.h, COMPACT_H)
     assertNoOverlap(entries, DESKTOP_COLS)
-    // The row below the collapsed band floats up by the freed height.
-    const novedades = entries.find((e) => e.id === 'novedades')
-    assert.equal(novedades?.y, 4)
-    assert.ok(packedHeight(entries) < packedHeight(DEFAULT_DESKTOP_LAYOUT))
+    // The activity card moves up when the player collapses; full-width
+    // sections may still be held down by a populated neighboring column.
+    assert.equal(entries.find((entry) => entry.id === 'actividad')?.y, 1)
+    assert.ok(packedHeight(entries) <= packedHeight(DEFAULT_DESKTOP_LAYOUT))
   })
 
   it('never compacts CREAR (the chips are unconditional content)', () => {
@@ -426,11 +432,40 @@ describe('applyCompactModes', () => {
       crear: false,
     })
     assert.equal(compact.size, 0)
-    assert.equal(entries.find((e) => e.id === 'crear')?.h, 3)
+    assert.equal(entries.find((e) => e.id === 'crear')?.h, defaultSize('crear').h)
   })
 
   it('treats undefined presence as has-data (no compaction on unknown)', () => {
     const { entries, compact } = applyCompactModes(DEFAULT_DESKTOP_LAYOUT, {})
+    assert.equal(compact.size, 0)
+    assert.deepEqual(entries, DEFAULT_DESKTOP_LAYOUT)
+  })
+})
+
+describe('garden layout migration', () => {
+  it('upgrades the previous default while preserving hidden widgets and mobile order', () => {
+    const mobileOrder = [...DEFAULT_MOBILE_ORDER].reverse()
+    const result = normalizeLayoutMeta({ v: 4, layout: [...LEGACY_DESKTOP_LAYOUT].reverse(), hidden: ['mapa'], mobileOrder })
+    assert.deepEqual(result.layout, DEFAULT_DESKTOP_LAYOUT)
+    assert.deepEqual(result.hidden, ['mapa'])
+    assert.deepEqual(result.mobileOrder, mobileOrder)
+    assert.deepEqual(normalizeLayoutMeta(result), result, 'migration is idempotent')
+  })
+
+  it('preserves a customized previous layout instead of resetting it', () => {
+    const custom = LEGACY_DESKTOP_LAYOUT.map((entry) => entry.id === 'crear' ? { ...entry, w: 3 } : { ...entry })
+    const result = normalizeLayoutMeta({ v: 4, layout: custom, hidden: [], mobileOrder: DEFAULT_MOBILE_ORDER })
+    assert.deepEqual(result.layout, packLayout(custom, DESKTOP_COLS))
+  })
+
+  it('migrates accounts without a marketplace widget', () => {
+    const registry = ALL_WIDGET_IDS.filter((id) => id !== 'mercado')
+    const result = normalizeLayoutMeta({ v: 4, layout: LEGACY_DESKTOP_LAYOUT.filter((entry) => entry.id !== 'mercado') }, registry)
+    assert.deepEqual(result.layout, DEFAULT_DESKTOP_LAYOUT.filter((entry) => entry.id !== 'mercado'))
+  })
+
+  it('keeps publications, activity and franja discovery available with empty slices', () => {
+    const { entries, compact } = applyCompactModes(DEFAULT_DESKTOP_LAYOUT, { crear: false, cultivar: false, actividad: false, novedades: false })
     assert.equal(compact.size, 0)
     assert.deepEqual(entries, DEFAULT_DESKTOP_LAYOUT)
   })

@@ -1,23 +1,8 @@
 'use client'
 
-// ── IdentitySpine — the page's identity document (revision-2 points 2/6/7/9) ─
-//
-// Chrome: not draggable, not removable, not a grid cell. The PERFIL widget is
-// retired — its info lives HERE now (point 6): avatar (≤2-click upload),
-// @handle (no greeting — point 2), badge, and the direct-edit fields (NOMBRE
-// · CIUDAD · BIO · FIRMA) in the document-at-rest register: set ink text at
-// rest, underline + EDITAR whisper on hover/focus, ONE debounced PATCH
-// /api/users/me 600ms after the last edit (the legacy pendingRef pattern).
-// The trophy strip moved up here too (point 9).
-//
-// Right: the HP block — big «HP · HUMAN PRESENCE» in the HP blue (point 7),
-// the raw scalar (owner's own panel — still the only place it renders), the
-// próximo-hito progress, and the words-only VIBE PERSONAL readout absorbed
-// from the retired widget. No PRIVADO framing line, no boxes — clean type on
-// paper with one hairline.
-//
-// `userOverride` is the LAB-BOUNDARY injection — only app/lab/dashboard
-// passes it; edits are disabled without a real session.
+// Compact profile, trophies, personal HP and vibe. Edit mode reveals the
+// existing autosave fields; avatar uploads keep the existing upload limits.
+// userOverride is confined to the development fixture harness.
 
 import {
   useCallback,
@@ -26,7 +11,6 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
-import Link from 'next/link'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData, type VibeSelfCheck } from '@/components/dashboard/DashboardDataProvider'
 import type { User } from '@/lib/types'
@@ -249,7 +233,7 @@ function VibePersonalLine({ checks }: { checks: VibeSelfCheck[] }) {
         </span>
       ) : (
         <span className="font-mono text-d13 text-ink-soft">
-          SEÑAL INSUFICIENTE · {count}/{VIBE_CHECK_THRESHOLD} CHECKS
+          {count}/{VIBE_CHECK_THRESHOLD} CHECKS PARA TU VIBE
         </span>
       )}
     </div>
@@ -266,6 +250,7 @@ export function IdentitySpine({ userOverride }: { userOverride?: User } = {}) {
 
   // Direct-edit state (real session only — the lab override reads static).
   const canEdit = !!authedUser
+  const [editingProfile, setEditingProfile] = useState(false)
   const [fields, setFields] = useState<FieldState>(() => fieldsFromUser(currentUser))
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -379,188 +364,41 @@ export function IdentitySpine({ userOverride }: { userOverride?: User } = {}) {
   const progress = hp !== null ? presenceProgress(hp) : null
   const nextLabel = progress?.next ? trophyByKey(progress.next.key)?.label ?? '—' : null
 
-  return (
-    <section
-      aria-label="Panel de usuario"
-      className="flex flex-col gap-8 py-8 lg:flex-row lg:items-start lg:justify-between"
-    >
-      {/* ── Left: the identity document (PERFIL absorbed — point 6) ───────── */}
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <div className="flex items-start gap-5">
-          {/* Avatar plate — ≤2-click upload; QUITAR overlays on hover/focus. */}
-          <div className="group/avatar relative h-24 w-24 shrink-0">
-            <button
-              type="button"
-              onClick={() => canEdit && fileInputRef.current?.click()}
-              disabled={avatarUploading || !canEdit}
-              aria-label={currentUser.avatarUrl ? 'Cambiar avatar' : 'Subir avatar'}
-              className={`group relative block h-24 w-24 overflow-hidden border border-ink bg-paper-raised ${FOCUS_RING}`}
-              style={frame}
-            >
-              {currentUser.avatarUrl ? (
-                <SmartImage
-                  src={currentUser.avatarUrl}
-                  alt={`@${handle}`}
-                  className="object-cover"
-                  sizes="96px"
-                />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center font-syne text-d28 font-extrabold uppercase text-ink">
-                  {handle.slice(0, 1)}
-                </span>
-              )}
-              {avatarUploading ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-ink/80 font-mono text-d11 tracking-widest text-paper motion-safe:animate-blink">
-                  SUBIENDO
-                </span>
-              ) : (
-                canEdit && (
-                  <span className="absolute inset-x-0 bottom-0 hidden min-h-6 items-center justify-center bg-ink py-0.5 font-mono text-d11 tracking-widest text-paper group-hover:flex group-focus-visible:flex">
-                    {currentUser.avatarUrl ? 'CAMBIAR' : 'SUBIR'}
-                  </span>
-                )
-              )}
-            </button>
-            {canEdit && currentUser.avatarUrl && (
-              <button
-                type="button"
-                onClick={() => void patch({ avatar_url: null })}
-                disabled={avatarUploading}
-                className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex min-h-9 items-center justify-center border-b border-ink bg-paper font-mono text-d11 tracking-widest text-ink opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover/avatar:pointer-events-auto group-hover/avatar:opacity-100 group-focus-within/avatar:pointer-events-auto group-focus-within/avatar:opacity-100 hover:underline ${FOCUS_RING}`}
-              >
-                QUITAR
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFileChange}
-            />
+  return <section aria-label="Panel de usuario" className="flex flex-col gap-4 py-4">
+    <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+      <div className="flex min-w-0 flex-1 items-start gap-4">
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canEdit || avatarUploading} aria-label={currentUser.avatarUrl ? 'Cambiar avatar' : 'Subir avatar'} style={frame} className={`relative h-20 w-20 shrink-0 overflow-hidden border border-ink bg-paper-raised ${FOCUS_RING}`}>
+          {currentUser.avatarUrl ? <SmartImage src={currentUser.avatarUrl} alt={`@${handle}`} sizes="80px" className="object-cover"/> : <span className="font-syne text-3xl font-bold">{handle[0]}</span>}
+          {avatarUploading && <span className="absolute inset-0 flex items-center justify-center bg-ink/80 font-mono text-d11 text-paper">SUBIENDO</span>}
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange}/>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <h1 className="break-words font-syne text-3xl font-extrabold leading-tight text-ink md:text-4xl">@{handle}</h1>
+            <span className="border border-ink/30 px-1.5 py-0.5 font-mono text-[10px] tracking-widest">{badge.label}</span>
+            {canEdit && <button type="button" onClick={() => setEditingProfile((value) => !value)} aria-expanded={editingProfile} aria-controls="dashboard-profile-fields" className={`min-h-9 font-mono text-d11 hover:underline ${FOCUS_RING}`}>{editingProfile ? 'LISTO' : 'EDITAR PERFIL'}</button>}
+            <SaveIndicator status={status} error={error}/>
           </div>
-
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            {/* The one display moment — no greeting (point 2). */}
-            <h1 className="min-w-0 break-words font-syne text-display font-extrabold leading-none text-ink">
-              @{handle}
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="inline-flex items-center gap-1.5 border border-ink px-2 py-0.5 font-mono text-d11 font-bold tracking-widest text-ink">
-                <span
-                  aria-hidden
-                  className="h-2 w-2 border border-ink"
-                  style={{ backgroundColor: badge.color }}
-                />
-                {badge.label}
-              </span>
-              {/* Fase E door: the owner's route to their printed expediente.
-                  ↗ = leaves the dashboard surface (house glyph law). */}
-              {handle && (
-                <Link
-                  href={`/u/${handle}`}
-                  className={`inline-flex min-h-11 items-center font-mono text-d11 font-bold tracking-widest text-ink underline-offset-2 hover:underline ${FOCUS_RING}`}
-                >
-                  VER PERFIL PÚBLICO ↗
-                </Link>
-              )}
-              <SaveIndicator status={status} error={error} />
-            </div>
-          </div>
+          <p className="my-1 line-clamp-2 font-grotesk text-d13 leading-snug text-ink-soft">{[fields.location, fields.bio].filter(Boolean).join(' · ')}</p>
+          <TrophyStrip compact/>
         </div>
-
-        {/* Direct-edit fields — document at rest, zero chrome until touched. */}
-        <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-          <EditField
-            label="NOMBRE"
-            value={fields.displayName}
-            placeholder="Cómo aparece tu firma"
-            maxLength={MAX_DISPLAY_NAME_LEN}
-            onChange={(v) => update('displayName', v)}
-          />
-          <EditField
-            label="CIUDAD"
-            value={fields.location}
-            placeholder="CDMX, MTY, GDL…"
-            maxLength={MAX_LOCATION_LEN}
-            onChange={(v) => update('location', v)}
-          />
-          <div className="sm:col-span-2">
-            <EditArea
-              label="BIO"
-              value={fields.bio}
-              placeholder="Qué cubres, qué escena, qué firma."
-              maxLength={MAX_BIO_LEN}
-              rows={2}
-              onChange={(v) => update('bio', v)}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <EditArea
-              label="FIRMA"
-              value={fields.firma}
-              placeholder="Pie editorial al final de los textos largos."
-              maxLength={MAX_FIRMA_LEN}
-              rows={1}
-              onChange={(v) => update('firma', v)}
-            />
-          </div>
-        </div>
-
-        {/* Trophies — moved up beside the profile (point 9). */}
-        <TrophyStrip />
       </div>
-
-      {/* ── Right: HP · HUMAN PRESENCE (point 7) + vibe words ─────────────── */}
-      <div className="flex w-full max-w-sm shrink-0 flex-col gap-4 border-ink pl-0 lg:border-l lg:pl-6">
-        <div className="flex items-end gap-3">
-          <span className="font-syne text-display font-extrabold leading-none text-hp">
-            HP
-          </span>
-          <span className="pb-1 font-mono text-d13 font-bold uppercase tracking-widest text-hp">
-            HUMAN
-            <br />
-            PRESENCE
-          </span>
+      <div className="grid shrink-0 grid-cols-2 gap-5 border-ink/25 lg:w-[360px] lg:border-l lg:pl-5">
+        <div>
+          <div className="flex items-baseline gap-2 text-hp"><span className="font-syne text-d18 font-extrabold">HP</span><span className="font-grotesk text-3xl font-bold tabular-nums">{hp !== null ? hp.toFixed(1) : '—'}</span></div>
+          {hp !== null && <p className="font-mono text-[10px] tracking-widest text-ink-soft">HUMAN PRESENCE · {hlBracket(hp)}</p>}
+          {progress?.next && <div className="mt-2 h-1 w-full bg-ink/10" role="progressbar" aria-label={`Próximo trofeo: ${nextLabel}`} aria-valuenow={hp ?? 0} aria-valuemin={progress.prev} aria-valuemax={progress.target}><div className="h-full bg-hp" style={{width: `${progress.pct}%`}}/></div>}
+          {errors.engagement && hp === null && <p role="status" className="font-mono text-d11">No se pudo cargar tu HP.</p>}
         </div>
-
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="font-grotesk text-d28 font-bold tabular-nums text-hp">
-            {hp !== null ? hp.toFixed(1) : '—'}
-          </span>
-          {hp !== null && (
-            <span className="font-mono text-d13 tracking-widest text-ink">
-              ◇ {hlBracket(hp)}
-            </span>
-          )}
-        </div>
-
-        {errors.engagement && hp === null ? (
-          <p className="font-mono text-d13 text-ink">
-            SEÑAL INTERRUMPIDA — se reintenta con el próximo sondeo.
-          </p>
-        ) : progress && progress.next ? (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between font-mono text-d11 tracking-widest">
-              <span className="text-ink-soft">PRÓXIMO HITO</span>
-              <span className="text-ink">{nextLabel}</span>
-            </div>
-            <div className="h-1.5 w-full border border-ink bg-paper">
-              <div className="h-full bg-hp" style={{ width: `${progress.pct}%` }} />
-            </div>
-            <div className="flex justify-between font-mono text-d11 text-ink-faint tabular-nums">
-              <span>{progress.prev} ◇</span>
-              <span>{progress.target} ◇</span>
-            </div>
-          </div>
-        ) : progress ? (
-          <p className="font-mono text-d13 text-ink-soft">
-            TODOS LOS UMBRALES DE PRESENCIA CRUZADOS.
-          </p>
-        ) : null}
-
-        <VibePersonalLine checks={vibeSelf} />
+        <VibePersonalLine checks={vibeSelf}/>
       </div>
-    </section>
-  )
+    </div>
+    <div id="dashboard-profile-fields" className={`${editingProfile ? 'grid' : 'hidden'} max-w-3xl grid-cols-1 gap-x-6 gap-y-2 border-t border-ink/25 pt-4 sm:grid-cols-2`}>
+      <EditField label="NOMBRE" value={fields.displayName} placeholder="Cómo aparece tu firma" maxLength={MAX_DISPLAY_NAME_LEN} onChange={(value) => update('displayName', value)}/>
+      <EditField label="CIUDAD" value={fields.location} placeholder="CDMX, MTY, GDL…" maxLength={MAX_LOCATION_LEN} onChange={(value) => update('location', value)}/>
+      <div className="sm:col-span-2"><EditArea label="BIO" value={fields.bio} placeholder="Qué cubres, qué escena, qué firma." maxLength={MAX_BIO_LEN} rows={2} onChange={(value) => update('bio', value)}/></div>
+      <div className="sm:col-span-2"><EditArea label="FIRMA" value={fields.firma} placeholder="Pie editorial al final de los textos largos." maxLength={MAX_FIRMA_LEN} rows={1} onChange={(value) => update('firma', value)}/></div>
+      {currentUser.avatarUrl && <button type="button" onClick={() => void patch({avatar_url: null})} disabled={avatarUploading} className={`min-h-11 text-left font-mono text-d11 underline ${FOCUS_RING}`}>QUITAR AVATAR</button>}
+    </div>
+  </section>
 }

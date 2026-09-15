@@ -62,6 +62,13 @@ const config: Config = {
         hp: '#1D4ED8',
         panel: '#111111',
         'panel-text': '#EDEBE3',
+        'publication-mix': '#B9D8F3',
+        'publication-list': '#EDC7DC',
+        'publication-event': '#F0B6A3',
+        'publication-review': '#EAD199',
+        'publication-text': '#CEC8E8',
+        'publication-news': '#BFDCC8',
+        cultivate: '#35643A',
       },
       fontSize: {
         // Dashboard closed type scale — six sizes, nothing arbitrary.

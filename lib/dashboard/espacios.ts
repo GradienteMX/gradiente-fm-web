@@ -43,7 +43,7 @@ export const ESPACIO_LABELS: Record<EspacioId, string> = {
   publicar: 'PUBLICAR',
   franja: 'FRANJA',
   mercado: 'MERCADO',
-  recepcion: 'RECEPCIÓN',
+  recepcion: 'ACTIVIDAD',
 }
 
 /**

@@ -113,6 +113,11 @@ export function OverlayShell({
   // default so the overlay reads as a single surface until the reader asks
   // for discussion. Disabled on mobile (split is impractical < sm).
   const [commentsOpen, setCommentsOpen] = useState(focusedCommentId !== null)
+  // Client-side opens can mount before Next's search-parameter mirror catches
+  // up. Follow the address when it arrives, not only the first render.
+  useEffect(() => {
+    if (focusedCommentId) setCommentsOpen(true)
+  }, [focusedCommentId, item.id])
 
   // Lift comment fetching to the shell so the count is available to the rail
   // button + any child overlay (metadata row, footer legend) before the

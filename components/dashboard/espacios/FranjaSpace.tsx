@@ -1,49 +1,7 @@
 'use client'
 
-// ── FRANJA — the franja team's desk (PLIEGO fase D) ─────────────────────────
-//
-// The third of the four ESPACIOS, and the one with a job the other three do
-// not have: it is the FIRST UI for backend that has been live and unreachable.
-// /api/franjas/[id]/team has carried four working methods since migration
-// 0033 with zero callers, and PATCH /api/franjas/[id] lost its consumer when
-// MiFranjaSection was retired. Everything drawn here is wired to one of them.
-//
-// The two authorities this sheet has to keep straight, because the server
-// does:
-//   · TEAM MEMBER   reads the roster, publishes as the franja, edits the
-//                   franja's public profile.
-//   · FRANJA ADMIN  additionally adds, promotes and retires team-mates.
-// Every write affordance in EQUIPO is gated on `canManageFranjaTeam` — the
-// exact predicate the route's gate uses — and HIDDEN, not disabled, when it
-// is false. A greyed button the server would answer with 403 is the dead
-// affordance the house bans.
-//
-// Laws, in the order it would be tempting to break them:
-//   · TWO STATES. BORRADOR and PUBLICADO. No scheduling, no visibility
-//     levels, no «archivado» flag — ARCHIVO is a VIEW over published rows,
-//     not a state, and it says so.
-//   · ATTRIBUTION NEVER HIDES THE AUTHOR. The PUBLICACIONES table prints the
-//     real writer beside the franja stamp. Trust here is mediated by
-//     transparent attribution, not by anonymity — that is the whole reason
-//     the //PRESENTA mark is worth anything.
-//   · NO ENGAGEMENT, NO VANITY. No follower counts, no views, no numeric
-//     vibe, no HP for anyone but the viewer (and the viewer's HP lives on the
-//     identity spine, not here). «EQUIPO · N» is an operational roster size,
-//     not a popularity number.
-//   · ACID IS A FILL. One AcidBlock — publishing as the franja — with ink on
-//     top. Destructive work (RETIRAR) is sys-red-paper.
-//   · HONEST STATES. EmptyLine names what is absent, ErrorLine names what
-//     failed, ShimmerLine is the only load motion. Never a spinner.
-//
-// Declared limits, drawn as MarginNotes rather than hidden:
-//   · The dashboard's data layer carries the VIEWER's published work plus the
-//     GLOBAL upcoming-events pool. There is no franja-scoped items endpoint
-//     (getItemsByFranja is server-only, with no route in front of it), so a
-//     team-mate's past articles are not listed here. Said out loud, not faked.
-//   · The team route's projection has no avatar_url, so the roster enriches
-//     it separately and falls back to a monogram plate — never a stock face.
-//   · The franja slice carries no `verified` flag, so no VERIFICADA mark is
-//     drawn. MERCADO ACTIVO/INACTIVO is drawn, because that one IS backed.
+// The Franja workspace: publication gallery, agenda, profile and team.
+// Existing profile autosave and team permission gates remain authoritative.
 
 import {
   useCallback,
@@ -52,7 +10,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type ReactNode,
 } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -61,7 +18,6 @@ import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { isComposeType, useComposeNav } from '@/components/dashboard/widgets/cultivar/CrearZone'
 import {
-  AcidBlock,
   Chip,
   EmptyLine,
   ErrorLine,
@@ -70,17 +26,16 @@ import {
   MarginNote,
   Row,
   Sheet,
-  SheetTable,
   ShimmerLine,
-  SubTabs,
-  Td,
-  type SubTab,
 } from '@/components/dashboard/espacios/kit'
 import { usePrompt } from '@/components/prompt/usePrompt'
 import { SmartImage } from '@/components/SmartImage'
-import { ESPACIO_PARAM } from '@/lib/dashboard/espacios'
-import { categoryColorOnLight, typeDisplayLabel } from '@/lib/dashboard/palette'
-import { franjaAttributionPrefix } from '@/lib/franjaAttribution'
+import { useOpenItem } from '@/lib/dashboard/openItem'
+import { publicationTint } from '@/components/dashboard/widgets/CrearWidget'
+import { publicationLabel } from '@/lib/dashboard/publications'
+import { setPublishedItemLocal } from '@/lib/publishedItemsCache'
+import { useFranjaPublications } from '@/components/dashboard/espacios/useFranjaPublications'
+import { useSearchParams } from 'next/navigation'
 import { compressAndUploadImage } from '@/lib/imageUpload'
 import {
   FRANJA_PUBLISHABLE_TYPES,
@@ -96,9 +51,9 @@ import {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-type FranjaTab = 'resumen' | 'publicaciones' | 'archivo' | 'equipo'
-
-const PUBLICACIONES_HEAD = ['TÍTULO', 'TIPO', 'AUTOR', 'ESTADO', 'ACCIONES'] as const
+type FranjaView = 'publicaciones' | 'equipo' | 'perfil'
+type CollectionFilter = 'all' | 'published' | 'draft' | 'upcoming' | 'past'
+type CollectionSort = 'date' | 'title' | 'type'
 
 const DEBOUNCE_MS = 600
 const MAX_DESC_LEN = 600
@@ -158,16 +113,6 @@ function dateLabel(iso: string | undefined | null): string {
   }
 }
 
-/**
- * The item overlay contract. `?item=<slug>` resolves in place — DashOverlayHost
- * on a cold link, OverlayRouter off the warm cache the provider primes — and
- * `?espacio=franja` rides along so closing the overlay lands back on THIS
- * sheet instead of dumping the reader on PANEL.
- */
-function itemHref(slug: string): string {
-  return `/dashboard?${ESPACIO_PARAM}=franja&item=${encodeURIComponent(slug)}`
-}
-
 function kindOf(raw: string | null | undefined): FranjaKind | null {
   return raw && (FRANJA_KINDS as readonly string[]).includes(raw) ? (raw as FranjaKind) : null
 }
@@ -182,13 +127,12 @@ function startOfTodayMs(): number {
 /**
  * The author line. `item.author` is the free-text byline the composer writes;
  * when it is missing but the row is demonstrably the viewer's own (created_by
- * matches), the viewer's handle is the true answer. Otherwise «—»: an unknown
- * author is stated, never invented.
+ * matches), use the viewer's handle. Omit unknown bylines.
  */
 function authorLabel(item: ContentItem, me: User | null): string {
   if (item.author) return item.author
   if (me && item.createdById && item.createdById === me.id) return `@${me.username}`
-  return '—'
+  return ''
 }
 
 // ── Monogram plate ──────────────────────────────────────────────────────────
@@ -222,126 +166,32 @@ function Plate({
   )
 }
 
-// ── Filter chip — the Chip register, made pressable ─────────────────────────
-
-function FilterChip({
-  on,
-  onClick,
-  swatch,
-  children,
-}: {
-  on: boolean
-  onClick: () => void
-  swatch?: string
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      data-cue="latch"
-      className={`inline-flex min-h-9 items-center gap-1.5 border px-2 py-1 font-mono text-d11 font-bold uppercase tracking-widest ${FOCUS_RING} ${
-        on ? 'border-ink bg-ink text-paper' : 'border-ink text-ink hover:bg-ink hover:text-paper'
-      }`}
-    >
-      {swatch && (
-        <span
-          aria-hidden
-          className="inline-block h-2 w-2 shrink-0"
-          style={{ backgroundColor: swatch }}
-        />
-      )}
-      {children}
-    </button>
-  )
-}
-
-// ── Row model ───────────────────────────────────────────────────────────────
-
-type ObraState = 'draft' | 'published'
-
 interface ObraRow {
   key: string
-  id: string
-  slug?: string
-  title: string
-  type: ContentType
-  author: string
-  state: ObraState
+  item: ContentItem
+  state: 'draft' | 'published'
   at: number
-  /** An evento still to come — it belongs to PRÓXIMOS, not to ARCHIVO. */
   upcoming: boolean
 }
 
-// ── Identity head ───────────────────────────────────────────────────────────
-//
-// SpaceHead's exact register (Syne d28 extrabold over an ink hairline, mono
-// d11 chrome) with the mockup's logo plate seated in it. Built here rather
-// than bent out of SpaceHead because this head carries a 96px plate and a
-// location line the shared banner has no slot for — the TYPE is the kit's,
-// the anatomy is this space's.
-
-function IdentityHead({
-  title,
-  slug,
-  imageUrl,
-  kind,
-  location,
-  marketplaceEnabled,
-}: {
-  title: string
-  slug: string
-  imageUrl: string
-  kind: FranjaKind | null
-  location: string | null
-  marketplaceEnabled: boolean
+function IdentityHead({ title, slug, imageUrl, kind, location, onEdit }: {
+  title: string; slug: string; imageUrl: string; kind: FranjaKind | null
+  location: string | null; onEdit: () => void
 }) {
-  return (
-    <div className="flex flex-wrap items-start gap-x-6 gap-y-4 border-b border-ink py-4">
-      <Plate
-        src={imageUrl}
-        alt={title}
-        label={title}
-        size="h-24 w-24"
-        sizes="96px"
-      />
-      <div className="flex min-w-0 flex-col gap-2">
-        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-          ESPACIO · FRANJA
-        </span>
-        <h1 className="min-w-0 break-words font-syne text-d28 font-extrabold uppercase text-ink">
-          {title}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {kind && (
-            <Chip swatch={categoryColorOnLight('franja')}>{FRANJA_KIND_LABELS[kind]}</Chip>
-          )}
-          {/* Backed by franja.marketplaceEnabled. The lever that flips it
-              lives in MERCADO — this is a readout, not a switch. */}
-          <Chip filled={marketplaceEnabled}>
-            MERCADO · {marketplaceEnabled ? 'ACTIVO' : 'INACTIVO'}
-          </Chip>
-        </div>
-        {location && (
-          <span className="font-mono text-d13 uppercase tracking-widest text-ink-soft">
-            {location}
-          </span>
-        )}
-      </div>
-      <div className="ml-auto flex flex-col items-start gap-1 sm:items-end">
-        <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-          EQUIPO ACTIVO
-        </span>
-        <span className="font-mono text-d13 font-bold uppercase tracking-widest text-ink">
-          {title}
-        </span>
-        <InkButton href={`/f/${slug}`} external>
-          VER /F/{slug.toUpperCase()}
-        </InkButton>
-      </div>
+  return <header className="flex flex-wrap items-center gap-4 border-b border-ink/30 pb-5 md:gap-6">
+    <div className="relative h-20 w-20 shrink-0 sm:h-28 sm:w-28">
+      {imageUrl ? <SmartImage src={imageUrl} alt={title} className="object-contain" sizes="112px" />
+        : <span className="flex h-full items-center justify-center bg-publication-news font-syne text-4xl font-bold">{title.charAt(0)}</span>}
     </div>
-  )
+    <div className="min-w-0 flex-1">
+      <h2 className="break-words font-syne text-d28 font-extrabold uppercase leading-tight md:text-4xl">{title}</h2>
+      <p className="mt-2 font-mono text-d13 text-ink-soft">{[kind && FRANJA_KIND_LABELS[kind], location].filter(Boolean).join(' · ')}</p>
+    </div>
+    <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+      <InkButton href={`/f/${slug}`} external>VER FRANJA</InkButton>
+      <InkButton onClick={onEdit}>EDITAR PERFIL</InkButton>
+    </div>
+  </header>
 }
 
 // ── Profile editor ──────────────────────────────────────────────────────────
@@ -604,6 +454,9 @@ function PerfilEditor({
       const file = e.target.files?.[0]
       e.target.value = ''
       if (!file || !userId) return
+      if (file.type === 'image/gif' && file.size > 10 * 1024 * 1024) {
+        setError('EL GIF DEBE PESAR HASTA 10 MB.'); setStatus('error'); return
+      }
       setUploading(true)
       setError(null)
       try {
@@ -626,8 +479,7 @@ function PerfilEditor({
 
   return (
     <Sheet
-      title="// PERFIL DE LA FRANJA"
-      note="SE PUBLICA EN /F"
+      title="PERFIL DE LA FRANJA"
       action={<SaveIndicator status={status} error={error} />}
     >
       <div className="flex flex-col gap-4">
@@ -660,13 +512,13 @@ function PerfilEditor({
             src={imageUrl}
             alt={title}
             label={title}
-            size="h-16 w-16"
-            sizes="64px"
+            size="h-28 w-28"
+            sizes="112px"
           />
           <div className="flex min-w-0 flex-col gap-1">
             <span className="font-mono text-d11 tracking-widest text-ink-soft">LOGO</span>
             <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-              {uploading ? 'SUBIENDO…' : 'JPG · PNG · WEBP'}
+              {uploading ? 'SUBIENDO…' : 'JPG · PNG · WEBP · GIF HASTA 10 MB'}
             </span>
           </div>
           <div className="ml-auto">
@@ -683,11 +535,7 @@ function PerfilEditor({
           />
         </div>
 
-        {/* A real limit of the route, not decoration: PATCH rejects an empty
-            image_url, so a franja can replace its logo but never go blank. */}
-        <MarginNote>
-          EL LOGO SE PUEDE REEMPLAZAR, NO VACIAR — LA FRANJA SIEMPRE LLEVA MARCA.
-        </MarginNote>
+
       </div>
     </Sheet>
   )
@@ -766,9 +614,7 @@ function AddMemberRow({
       {notice && (
         <p className="font-mono text-d11 uppercase tracking-widest text-ink-soft">{notice}</p>
       )}
-      <p className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink-faint">
-        SE BUSCA POR @USUARIO EXACTO — NO HAY BUSCADOR DE CUENTAS PARA LA FRANJA.
-      </p>
+
     </div>
   )
 }
@@ -833,7 +679,7 @@ function MemberRow({
           // Own row: retiring or demoting yourself locks you out of the desk
           // you are standing in, so the controls are not drawn at all.
           <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-            {canWrite && isSelf ? 'TU PROPIA FILA' : '—'}
+            {canWrite && isSelf ? 'TÚ' : ''}
           </span>
         )}
       </div>
@@ -845,517 +691,170 @@ function MemberRow({
 
 export function FranjaSpace() {
   const { currentUser } = useAuth()
-  const { franja, published, drafts, events, loaded, errors, afterMutation } =
-    useDashboardData()
+  const { franja, published, drafts, events, loaded, errors, afterMutation } = useDashboardData()
   const composeNav = useComposeNav()
+  const openItem = useOpenItem()
+  const [unavailable, setUnavailable] = useState(false)
+  const openPublication = async (slug: string) => {
+    setUnavailable(false)
+    if (!await openItem(slug)) setUnavailable(true)
+  }
+  const search = useSearchParams()
   const { confirm } = usePrompt()
-
-  const [tab, setTab] = useState<FranjaTab>('resumen')
-  const [archiveType, setArchiveType] = useState<ContentType | null>(null)
-
+  const view: FranjaView = search.get('franjaView') === 'equipo' ? 'equipo' : search.get('franjaView') === 'perfil' ? 'perfil' : 'publicaciones'
+  const filter = (search.get('franjaFilter') ?? 'all') as CollectionFilter
+  const sort = (search.get('franjaSort') ?? 'date') as CollectionSort
   const franjaId = franja?.id ?? null
+  const history = useFranjaPublications(franjaId, published)
   const team = useFranjaTeam(franjaId)
   const canWriteTeam = canManageFranjaTeam(currentUser, franjaId ?? '')
-
   const onSaved = useCallback(() => afterMutation('franja'), [afterMutation])
+  const select = (key: string, value: string) => {
+    const params = new URLSearchParams(window.location.search)
+    params.set(key, value)
+    window.history.replaceState(null, '', `${window.location.pathname}?${params}`)
+  }
 
-  // ── The franja's body of work, from the slices the provider carries ──────
   const rows = useMemo<ObraRow[]>(() => {
     if (!franjaId) return []
     const today = startOfTodayMs()
-    const seen = new Set<string>()
-    const out: ObraRow[] = []
-
-    const pushItem = (item: ContentItem) => {
-      if (seen.has(item.id)) return
-      seen.add(item.id)
-      const upcoming = item.type === 'evento' && tsOf(item.date) >= today
-      out.push({
-        key: `p:${item.id}`,
-        id: item.id,
-        slug: item.slug,
-        title: item.title || 'Sin título',
-        type: item.type,
-        author: authorLabel(item, currentUser),
-        state: 'published',
-        at: upcoming ? tsOf(item.date) : tsOf(item.publishedAt),
-        upcoming,
-      })
+    const byId = new Map<string, ObraRow>()
+    for (const item of [...history.items, ...published, ...events]) {
+      if (item.franjaId !== franjaId || item.type === 'franja') continue
+      byId.set(item.id, { key: item.id, item, state: 'published', at: tsOf(item.publishedAt),
+        upcoming: item.type === 'evento' && tsOf(item.endDate || item.date) >= today })
     }
+    for (const item of drafts) {
+      if (item._draftState !== 'draft' || (item.franjaId !== franjaId && item.attributeFranja !== true)) continue
+      byId.set(item.id, { key: item.id, item, state: 'draft', at: tsOf(item._updatedAt), upcoming: false })
+    }
+    return [...byId.values()]
+  }, [franjaId, history.items, published, drafts, events])
 
-    // The viewer's own published work, franja-stamped by /api/items.
-    published.filter((i) => i.franjaId === franjaId).forEach(pushItem)
-    // The GLOBAL upcoming-events pool, narrowed to this franja — the one
-    // slice that carries team-mates' work as well as the viewer's own.
-    events.filter((i) => i.franjaId === franjaId).forEach(pushItem)
-
-    // Drafts have no franja_id yet: /api/items stamps attribution at publish
-    // time. `attributeFranja === true` is the composer's real, stored
-    // intention to stamp — the honest signal that this draft is franja work.
-    drafts
-      .filter(
-        (d) =>
-          d._draftState === 'draft' && (d.franjaId === franjaId || d.attributeFranja === true),
-      )
-      .forEach((d) => {
-        if (seen.has(d.id)) return
-        seen.add(d.id)
-        out.push({
-          key: `d:${d.id}`,
-          id: d.id,
-          title: d.title || 'Sin título',
-          type: d.type,
-          author: authorLabel(d, currentUser),
-          state: 'draft',
-          at: tsOf(d._updatedAt),
-          upcoming: false,
-        })
-      })
-
-    // Drafts first — they are the only rows that still need a decision —
-    // then everything else newest first.
-    return out.sort((a, b) => {
-      if (a.state !== b.state) return a.state === 'draft' ? -1 : 1
-      return b.at - a.at
-    })
-  }, [currentUser, drafts, events, franjaId, published])
-
-  const upcomingEvents = useMemo(
-    () => rows.filter((r) => r.upcoming).sort((a, b) => a.at - b.at),
-    [rows],
-  )
-
-  const archivo = useMemo(
-    () => rows.filter((r) => r.state === 'published' && !r.upcoming),
-    [rows],
-  )
-
-  const archivoTypes = useMemo(() => {
-    const set = new Set<ContentType>()
-    archivo.forEach((r) => set.add(r.type))
-    return Array.from(set)
-  }, [archivo])
-
-  const archivoRows = useMemo(
-    () => (archiveType ? archivo.filter((r) => r.type === archiveType) : archivo),
-    [archivo, archiveType],
-  )
-
-  // A filter chip whose type has left the archive must not stay latched.
-  useEffect(() => {
-    if (archiveType && !archivoTypes.includes(archiveType)) setArchiveType(null)
-  }, [archiveType, archivoTypes])
-
-  // The feed preview's representative piece: the newest published thing the
-  // franja actually has. Real attribution, real artwork — not a mock card.
-  const previewItem = useMemo<ContentItem | null>(() => {
-    if (!franjaId) return null
-    const pool = [
-      ...published.filter((i) => i.franjaId === franjaId),
-      ...events.filter((i) => i.franjaId === franjaId),
-    ]
-    if (pool.length === 0) return null
-    const byId = new Map(pool.map((i) => [i.id, i]))
-    return (
-      Array.from(byId.values()).sort(
-        (a, b) => tsOf(b.publishedAt) - tsOf(a.publishedAt),
-      )[0] ?? null
-    )
-  }, [events, franjaId, published])
-
-  const composableTypes = useMemo(
-    () =>
-      FRANJA_PUBLISHABLE_TYPES.filter(
-        (t) => isComposeType(t) && canCreateContent(currentUser, t),
-      ),
-    [currentUser],
-  )
-
-  const handleToggleAdmin = useCallback(
-    async (member: FranjaTeamMember) => {
-      await team.setAdmin(member.id, !member.franjaAdmin)
-    },
-    [team],
-  )
-
-  const handleRemove = useCallback(
-    async (member: FranjaTeamMember) => {
-      const ok = await confirm({
-        title: `RETIRAR A @${member.username}`,
-        body: `@${member.username} deja de formar parte del equipo y pierde el acceso a este espacio. Su trabajo publicado sigue atribuido a la franja.`,
-        confirmLabel: 'RETIRAR',
-        cancelLabel: 'CANCELAR',
-        destructive: true,
-      })
-      if (!ok) return
-      await team.removeMember(member.id)
-    },
-    [confirm, team],
-  )
-
-  // ── Slice-level honest states ────────────────────────────────────────────
-  if (errors.franja) {
-    return (
-      <section className="flex flex-col gap-4 pb-10">
-        <ErrorLine>NO SE PUDO CARGAR LA FRANJA — SE REINTENTA EN EL PRÓXIMO SONDEO.</ErrorLine>
-      </section>
-    )
-  }
-  if (!franja) {
-    return (
-      <section className="flex flex-col gap-4 pb-10">
-        {loaded.franja ? (
-          <EmptyLine>NO PERTENECES A NINGUNA FRANJA.</EmptyLine>
-        ) : (
-          <ShimmerLine />
-        )}
-      </section>
-    )
+  const upcoming = rows.filter((row) => row.upcoming).sort((a, b) => tsOf(a.item.date) - tsOf(b.item.date))
+  const visible = rows.filter((row) => filter === 'draft' ? row.state === 'draft'
+    : filter === 'published' ? row.state === 'published' : filter === 'upcoming' ? row.upcoming
+    : filter === 'past' ? row.state === 'published' && row.item.type === 'evento' && !row.upcoming : true)
+    .sort((a, b) => (sort === 'title' ? a.item.title.localeCompare(b.item.title, 'es')
+      : sort === 'type' ? publicationLabel(a.item.type).localeCompare(publicationLabel(b.item.type), 'es')
+      : b.at - a.at) || a.key.localeCompare(b.key))
+  const choices = (['mix', 'listicle', 'evento', 'opinion', 'noticia'] as const)
+    .filter((type) => FRANJA_PUBLISHABLE_TYPES.includes(type) && canCreateContent(currentUser, type))
+  const [page, setPage] = useState(1)
+  useEffect(() => setPage(1), [filter, sort, franjaId])
+  const removeMember = async (member: FranjaTeamMember) => {
+    if (await confirm({ title: `RETIRAR A @${member.username}`,
+      body: `@${member.username} dejará de tener acceso a la franja. Sus publicaciones seguirán atribuidas a ella.`,
+      confirmLabel: 'RETIRAR', cancelLabel: 'CANCELAR', destructive: true })) await team.removeMember(member.id)
   }
 
-  const kind = kindOf(franja.franjaKind)
-  const stampPrefix = kind ? franjaAttributionPrefix(kind) : 'PRESENTA'
+  if (!franja) return <div className="py-5">
+    {errors.franja ? <><ErrorLine>No se pudo cargar la franja.</ErrorLine><InkButton onClick={() => void onSaved()}>REINTENTAR</InkButton></>
+      : loaded.franja ? <EmptyLine>No perteneces a ninguna franja.</EmptyLine> : <ShimmerLine />}
+  </div>
 
-  const tabs: readonly SubTab<FranjaTab>[] = [
-    { id: 'resumen', label: 'RESUMEN' },
-    { id: 'publicaciones', label: 'PUBLICACIONES', count: rows.length },
-    { id: 'archivo', label: 'ARCHIVO', count: archivo.length },
-    {
-      id: 'equipo',
-      label: 'EQUIPO',
-      count: team.status === 'ready' ? team.team.length : undefined,
-    },
-  ]
+  const teamContent = team.status === 'loading' ? <ShimmerLine /> : team.status === 'error'
+    ? <><ErrorLine>{team.error ?? 'No se pudo cargar el equipo.'}</ErrorLine><InkButton onClick={() => void team.reload()}>REINTENTAR</InkButton></>
+    : !team.team.length ? <EmptyLine>El equipo está vacío.</EmptyLine> : team.team.slice(0, 5).map((member) =>
+      <div key={member.id} className="flex items-center gap-3 border-b border-ink/15 py-4 last:border-b-0">
+        <Plate src={member.avatarUrl} alt={`@${member.username}`} label={member.username} size="h-14 w-14" sizes="56px" />
+        <div className="min-w-0"><p className="truncate font-grotesk text-d18 font-bold">@{member.username}</p>
+          <p className="mt-1 font-mono text-d11 text-ink-soft">{member.franjaAdmin ? 'Administrador' : 'Miembro'}</p></div>
+      </div>)
 
-  return (
-    <section className="flex flex-col gap-6 pb-10">
-      <IdentityHead
-        title={franja.title}
-        slug={franja.slug}
-        imageUrl={franja.imageUrl}
-        kind={kind}
-        location={franja.marketplaceLocation}
-        marketplaceEnabled={franja.marketplaceEnabled}
-      />
-
-      <SubTabs tabs={tabs} active={tab} onChange={setTab} ariaLabel="Secciones de la franja" />
-
-      {/* ── RESUMEN ─────────────────────────────────────────────────────── */}
-      {tab === 'resumen' && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="flex flex-col gap-6">
-            <AcidBlock
-              title="Publicar como franja"
-              note="EL SELLO //PRESENTA VIAJA CON LA PIEZA"
-            >
-              {composableTypes.length > 0 ? (
-                composableTypes.map((t) => (
-                  <InkButton key={t} onClick={() => isComposeType(t) && composeNav(t)}>
-                    <span
-                      aria-hidden
-                      className="inline-block h-2 w-2 shrink-0 border border-ink"
-                      style={{ backgroundColor: categoryColorOnLight(t) }}
-                    />
-                    {typeDisplayLabel(t)}
-                  </InkButton>
-                ))
-              ) : (
-                <span className="font-mono text-d11 uppercase tracking-widest text-ink-soft">
-                  TU CUENTA NO PUEDE PUBLICAR TODAVÍA.
-                </span>
-              )}
-            </AcidBlock>
-
-            <Sheet title="Próximos eventos" note="FUENTE · AGENDA PÚBLICA">
-              {!loaded.events && upcomingEvents.length === 0 ? (
-                <ShimmerLine />
-              ) : errors.events ? (
-                <ErrorLine>NO SE PUDO LEER LA AGENDA.</ErrorLine>
-              ) : upcomingEvents.length === 0 ? (
-                <EmptyLine>SIN EVENTOS PRÓXIMOS ATRIBUIDOS A LA FRANJA.</EmptyLine>
-              ) : (
-                upcomingEvents.slice(0, 6).map((r, i, arr) => (
-                  <Row key={r.key} last={i === arr.length - 1}>
-                    <span className="font-mono text-d11 uppercase tracking-widest tabular-nums text-ink-faint">
-                      {dateLabel(new Date(r.at).toISOString())}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-grotesk text-d15 text-ink">
-                      {r.title}
-                    </span>
-                    {r.slug && (
-                      <InkButton href={itemHref(r.slug)} cue="tick">
-                        VER
-                      </InkButton>
-                    )}
-                  </Row>
-                ))
-              )}
-            </Sheet>
+  return <section className="flex flex-col gap-5 pb-10">
+    <IdentityHead title={franja.title} slug={franja.slug} imageUrl={franja.imageUrl}
+      kind={kindOf(franja.franjaKind)} location={franja.marketplaceLocation}
+      onEdit={() => select('franjaView', view === 'perfil' ? 'publicaciones' : 'perfil')} />
+    {unavailable && <p role="status" className="font-grotesk text-d15 text-sys-red-paper">No se pudo abrir esta publicación. Inténtalo de nuevo.</p>}
+    {view !== 'publicaciones' && <div><InkButton onClick={() => select('franjaView', 'publicaciones')}>← PUBLICACIONES</InkButton></div>}
+    {/* Keep pending autosaves alive when returning to the gallery or team. */}
+    <div hidden={view !== 'perfil'} className="max-w-3xl"><PerfilEditor key={franja.id} franjaId={franja.id} title={franja.title} imageUrl={franja.imageUrl}
+      fieldsSource={franja} userId={currentUser?.id ?? null} onSaved={onSaved} /></div>
+    {view === 'equipo' && <Sheet title="EQUIPO">
+      {team.status === 'error' || team.status === 'loading' ? teamContent : team.team.map((member, index) =>
+        <MemberRow key={member.id} member={member} isSelf={member.id === currentUser?.id} canWrite={canWriteTeam}
+          busy={team.busyId === member.id} onToggleAdmin={() => void team.setAdmin(member.id, !member.franjaAdmin)}
+          onRemove={() => void removeMember(member)} last={index === team.team.length - 1} />)}
+      {team.writeError && <ErrorLine>{team.writeError}</ErrorLine>}
+      {canWriteTeam && team.status === 'ready' && <AddMemberRow franjaId={franja.id} team={team} />}
+    </Sheet>}
+    {view === 'publicaciones' && <>
+      <section className="flex flex-col gap-3 border-b border-ink/30 pb-5" aria-label="Publicar en la franja">
+        <h2 className="font-syne text-d18 font-extrabold uppercase md:text-d28">PUBLICAR EN {franja.title}</h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {choices.map((type) => <button key={type} type="button" onClick={() => composeNav(type)}
+            className={`min-h-16 border border-ink/15 px-3 py-4 font-syne text-d18 font-extrabold transition-transform hover:-translate-y-1 hover:border-ink motion-reduce:transform-none ${publicationTint(type)} ${FOCUS_RING}`}>{publicationLabel(type)}</button>)}
+        </div>
+      </section>
+      <div className="grid items-start gap-6 lg:grid-cols-4">
+        <section className="min-w-0 lg:col-span-3" aria-label="Publicaciones de la franja">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-syne text-[clamp(1rem,5vw,1.75rem)] font-extrabold sm:text-d28">PUBLICACIONES</h2>
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              <label className="min-w-0 flex-1 sm:flex-none"><span className="sr-only">Mostrar publicaciones</span>
+                <select value={filter} onChange={(event) => select('franjaFilter', event.target.value)} className={`min-h-11 w-full border border-ink/30 bg-paper-raised px-3 font-mono text-d13 ${FOCUS_RING}`}>
+                  <option value="all">Todas</option><option value="published">Publicadas</option><option value="draft">Borradores</option><option value="upcoming">Próximos eventos</option><option value="past">Eventos pasados</option>
+                </select></label>
+              <label className="min-w-0 flex-1 sm:flex-none"><span className="sr-only">Ordenar publicaciones</span>
+                <select value={sort} onChange={(event) => select('franjaSort', event.target.value)} className={`min-h-11 w-full border border-ink/30 bg-paper-raised px-3 font-mono text-d13 ${FOCUS_RING}`}>
+                  <option value="date">{filter === 'draft' ? 'Última edición' : 'Fecha de publicación'}</option><option value="title">Orden alfabético</option><option value="type">Tipo de publicación</option>
+                </select></label>
+            </div>
           </div>
-
-          <div className="flex flex-col gap-6">
-            <Sheet
-              title="// ASÍ SE VE EN EL FEED PÚBLICO"
-              note="ATRIBUCIÓN REAL · NO ES UNA MAQUETA"
-            >
-              {previewItem ? (
-                <div className="border border-ink bg-paper">
-                  <span className="relative block aspect-[4/3] w-full overflow-hidden border-b border-ink bg-paper-raised">
-                    {previewItem.imageUrl ? (
-                      <SmartImage
-                        src={previewItem.imageUrl}
-                        alt={previewItem.title}
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 100vw, 400px"
-                      />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center font-mono text-d11 uppercase tracking-widest text-ink-faint">
-                        SIN IMAGEN
-                      </span>
-                    )}
-                  </span>
-                  <div className="flex flex-col gap-2 p-3">
-                    <span className="font-mono text-[10px] font-bold tracking-widest text-sys-red-paper">
-                      {'//'}
-                      {stampPrefix} · {franja.title.toUpperCase()}
-                    </span>
-                    <span className="font-syne text-d18 font-extrabold uppercase leading-tight text-ink">
-                      {previewItem.title}
-                    </span>
-                    <div>
-                      <Chip swatch={categoryColorOnLight(previewItem.type)}>
-                        {typeDisplayLabel(previewItem.type)}
-                      </Chip>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <EmptyLine>AÚN NO HAY PIEZA ATRIBUIDA QUE PREVISUALIZAR.</EmptyLine>
-              )}
-            </Sheet>
-
-            <Sheet
-              title="Equipo"
-              note={team.status === 'ready' ? `· ${team.team.length}` : undefined}
-              action={
-                <InkButton onClick={() => setTab('equipo')} cue="latch">
-                  GESTIONAR →
-                </InkButton>
-              }
-            >
-              {team.status === 'loading' ? (
-                <ShimmerLine />
-              ) : team.status === 'error' ? (
-                <ErrorLine>{team.error ?? 'NO SE PUDO LEER EL EQUIPO.'}</ErrorLine>
-              ) : team.team.length === 0 ? (
-                <EmptyLine>EL EQUIPO ESTÁ VACÍO.</EmptyLine>
-              ) : (
-                team.team.slice(0, 5).map((m, i, arr) => (
-                  <Row key={m.id} last={i === arr.length - 1}>
-                    <Plate
-                      src={m.avatarUrl}
-                      alt={`@${m.username}`}
-                      label={m.username}
-                      size="h-8 w-8"
-                      sizes="32px"
-                    />
-                    <span className="min-w-0 flex-1 truncate font-mono text-d13 tracking-widest text-ink">
-                      @{m.username}
-                    </span>
-                    {m.franjaAdmin && <Chip filled>ADMIN</Chip>}
-                  </Row>
-                ))
-              )}
-            </Sheet>
-
-            <PerfilEditor
-              franjaId={franja.id}
-              title={franja.title}
-              imageUrl={franja.imageUrl}
-              fieldsSource={{
-                marketplaceDescription: franja.marketplaceDescription,
-                marketplaceLocation: franja.marketplaceLocation,
-                franjaUrl: franja.franjaUrl,
-              }}
-              userId={currentUser?.id ?? null}
-              onSaved={onSaved}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── PUBLICACIONES ───────────────────────────────────────────────── */}
-      {tab === 'publicaciones' && (
-        <div className="flex flex-col gap-4">
-          <Sheet title="Publicaciones" note="CON EL SELLO DE LA FRANJA" padded={false}>
-            {!loaded.published && !loaded.events && rows.length === 0 ? (
-              <div className="p-4">
-                <ShimmerLine />
-              </div>
-            ) : rows.length === 0 ? (
-              <EmptyLine>LA FRANJA NO TIENE PIEZAS ATRIBUIDAS TODAVÍA.</EmptyLine>
-            ) : (
-              <ObraTable rows={rows} composeNav={composeNav} />
-            )}
+          {history.error && <div className="mb-4 flex flex-wrap items-center gap-3"><p role="status" className="font-grotesk text-d13">No se pudo actualizar el historial de la franja.</p><InkButton onClick={history.retry}>REINTENTAR</InkButton></div>}
+          {!visible.length ? history.loading ? <ShimmerLine /> : <EmptyLine>{filter === 'all' ? 'Tus publicaciones aparecerán aquí.' : 'No hay publicaciones en esta vista.'}</EmptyLine>
+            : <div className="grid gap-4 sm:grid-cols-2">{visible.slice(0, page * 12).map((row) =>
+              <FranjaPublicationCard key={row.key} row={row} me={currentUser} composeNav={composeNav} onOpen={openPublication} />)}</div>}
+          {visible.length > page * 12 && <div className="mt-5"><InkButton onClick={() => setPage((value) => value + 1)}>VER MÁS</InkButton></div>}
+        </section>
+        <aside className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+          <Sheet title="AGENDA">
+            {errors.events ? <><ErrorLine>No se pudo actualizar la agenda.</ErrorLine><InkButton onClick={() => void afterMutation()}>REINTENTAR</InkButton></>
+              : !loaded.events && !upcoming.length ? <ShimmerLine />
+              : !upcoming.length ? <p className="py-5 font-grotesk text-d15 text-ink-soft">Sin próximos eventos.</p>
+              : upcoming.slice(0, 4).map(({ item }) => <button type="button" key={item.id} onClick={() => void openPublication(item.slug)}
+                className={`flex w-full gap-3 border-b border-ink/15 py-3 text-left ${FOCUS_RING}`}>
+                <div className="relative h-16 w-16 shrink-0 bg-publication-event">{item.imageUrl && <SmartImage src={item.imageUrl} alt="" sizes="64px" className="object-cover" />}</div>
+                <div className="min-w-0"><p className="font-grotesk text-d15 font-bold">{item.title}</p><p className="mt-1 font-mono text-d11 text-ink-soft">{dateLabel(item.date)}</p></div>
+              </button>)}
+            {choices.includes('evento') && <button type="button" onClick={() => composeNav('evento')} className={`mt-3 min-h-11 w-full bg-publication-event px-4 font-mono text-d13 ${FOCUS_RING}`}>CREAR EVENTO</button>}
           </Sheet>
-          <MarginNote>
-            ESTA MESA LEE TU OBRA PUBLICADA MÁS LA AGENDA PÚBLICA DE LA FRANJA. NO EXISTE UN
-            ENDPOINT POR FRANJA, ASÍ QUE LOS TEXTOS ANTIGUOS DE OTRAS PERSONAS DEL EQUIPO NO
-            APARECEN AQUÍ — SE VEN EN /F/{franja.slug.toUpperCase()}.
-          </MarginNote>
-        </div>
-      )}
-
-      {/* ── ARCHIVO ─────────────────────────────────────────────────────── */}
-      {tab === 'archivo' && (
-        <div className="flex flex-col gap-4">
-          <Sheet
-            title="Archivo"
-            note="PUBLICADO · SIN EVENTOS POR VENIR"
-            padded={false}
-            action={
-              archivoTypes.length > 1 ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <FilterChip on={archiveType === null} onClick={() => setArchiveType(null)}>
-                    TODO
-                  </FilterChip>
-                  {archivoTypes.map((t) => (
-                    <FilterChip
-                      key={t}
-                      on={archiveType === t}
-                      swatch={categoryColorOnLight(t)}
-                      onClick={() => setArchiveType(t)}
-                    >
-                      {typeDisplayLabel(t)}
-                    </FilterChip>
-                  ))}
-                </div>
-              ) : undefined
-            }
-          >
-            {archivoRows.length === 0 ? (
-              <EmptyLine>
-                {archivo.length === 0
-                  ? 'EL ARCHIVO DE LA FRANJA ESTÁ VACÍO.'
-                  : 'NINGUNA PIEZA DE ESE TIPO EN EL ARCHIVO.'}
-              </EmptyLine>
-            ) : (
-              <ObraTable rows={archivoRows} composeNav={composeNav} />
-            )}
-          </Sheet>
-          <MarginNote>
-            ARCHIVO ES UNA VISTA, NO UN ESTADO: SON LAS PIEZAS PUBLICADAS QUE YA NO ESTÁN POR
-            VENIR. NO EXISTE ARCHIVAR NI DESARCHIVAR EN ESTE SISTEMA.
-          </MarginNote>
-        </div>
-      )}
-
-      {/* ── EQUIPO ──────────────────────────────────────────────────────── */}
-      {tab === 'equipo' && (
-        <div className="flex flex-col gap-4">
-          <Sheet
-            title="Equipo"
-            note={canWriteTeam ? 'PUEDES GESTIONAR ESTE EQUIPO' : 'SOLO LECTURA'}
-          >
-            {team.status === 'loading' ? (
-              <ShimmerLine />
-            ) : team.status === 'error' ? (
-              <ErrorLine>{team.error ?? 'NO SE PUDO LEER EL EQUIPO.'}</ErrorLine>
-            ) : team.team.length === 0 ? (
-              <EmptyLine>EL EQUIPO ESTÁ VACÍO.</EmptyLine>
-            ) : (
-              <div className="flex flex-col">
-                {team.team.map((m, i, arr) => (
-                  <MemberRow
-                    key={m.id}
-                    member={m}
-                    isSelf={m.id === currentUser?.id}
-                    canWrite={canWriteTeam}
-                    busy={team.busyId === m.id}
-                    onToggleAdmin={() => void handleToggleAdmin(m)}
-                    onRemove={() => void handleRemove(m)}
-                    last={i === arr.length - 1}
-                  />
-                ))}
-              </div>
-            )}
-
-            {team.writeError && <ErrorLine>{team.writeError}</ErrorLine>}
-
-            {canWriteTeam && team.status !== 'error' && (
-              <AddMemberRow franjaId={franja.id} team={team} />
-            )}
-          </Sheet>
-
-          {!canWriteTeam && (
-            <MarginNote>
-              SOLO LA ADMINISTRACIÓN DE LA FRANJA PUEDE AÑADIR, PROMOVER O RETIRAR GENTE. EL
-              SERVIDOR APLICA LA MISMA REGLA, ASÍ QUE AQUÍ NO SE DIBUJAN BOTONES QUE NO
-              FUNCIONARÍAN.
-            </MarginNote>
-          )}
-        </div>
-      )}
-    </section>
-  )
+          <Sheet title="EQUIPO">{teamContent}<button type="button" onClick={() => select('franjaView', 'equipo')}
+            className={`mt-4 min-h-11 w-full border border-ink/40 px-3 font-mono text-d13 ${FOCUS_RING}`}>{canWriteTeam ? 'GESTIONAR EQUIPO' : 'VER EQUIPO'} ↗</button></Sheet>
+        </aside>
+      </div>
+    </>}
+  </section>
 }
 
-// ── The shared obra table (PUBLICACIONES + ARCHIVO) ─────────────────────────
-//
-// One table, two views. AUTOR is a first-class column and never collapses into
-// the franja: the //PRESENTA stamp says who PRESENTS the piece, this column
-// says who WROTE it, and the desk shows both.
-
-function ObraTable({
-  rows,
-  composeNav,
-}: {
-  rows: ObraRow[]
-  composeNav: ReturnType<typeof useComposeNav>
+function FranjaPublicationCard({ row, me, composeNav, onOpen }: {
+  row: ObraRow; me: User | null; composeNav: ReturnType<typeof useComposeNav>; onOpen: (slug: string) => Promise<void>
 }) {
-  return (
-    <SheetTable head={PUBLICACIONES_HEAD}>
-      {rows.map((r) => (
-        <tr key={r.key}>
-          <Td mono={false}>
-            <span className="block max-w-[28ch] truncate" title={r.title}>
-              {r.title}
-            </span>
-          </Td>
-          <Td>
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden
-                className="inline-block h-2 w-2 shrink-0 border border-ink"
-                style={{ backgroundColor: categoryColorOnLight(r.type) }}
-              />
-              {typeDisplayLabel(r.type)}
-            </span>
-          </Td>
-          <Td>
-            <span className="block max-w-[20ch] truncate" title={r.author}>
-              {r.author}
-            </span>
-          </Td>
-          <Td>
-            <Chip filled={r.state === 'published'}>
-              {r.state === 'published' ? 'PUBLICADO' : 'BORRADOR'}
-            </Chip>
-          </Td>
-          <Td right>
-            <span className="inline-flex flex-wrap items-center justify-end gap-2">
-              {isComposeType(r.type) && (
-                <InkButton onClick={() => isComposeType(r.type) && composeNav(r.type, r.id)}>
-                  EDITAR
-                </InkButton>
-              )}
-              {r.state === 'published' && r.slug && (
-                <InkButton href={itemHref(r.slug)}>VER</InkButton>
-              )}
-            </span>
-          </Td>
-        </tr>
-      ))}
-    </SheetTable>
-  )
+  const { item } = row
+  const byline = authorLabel(item, me)
+  const stateLabel = row.state === 'draft' ? 'BORRADOR' : item.type === 'evento' && !row.upcoming ? 'PASADO' : ''
+  // The publish route permits site admins, authors, and the attributed team.
+  const editable = !!me && isComposeType(item.type) && canCreateContent(me, item.type) &&
+    (me.role === 'admin' || item.createdById === me.id || item.franjaId === me.franjaId || row.state === 'draft')
+  const edit = () => {
+    if (!isComposeType(item.type)) return
+    if (row.state === 'published') setPublishedItemLocal(item)
+    composeNav(item.type, item.id)
+  }
+  return <article className="flex min-w-0 flex-col border border-ink/25 bg-paper-raised">
+    <div className={`relative aspect-[5/4] overflow-hidden ${publicationTint(item.type)}`}>
+      {item.imageUrl ? <SmartImage src={item.imageUrl} alt={item.title} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 640px" className="object-cover" />
+        : <span className="flex h-full items-center justify-center font-syne text-3xl font-extrabold">{publicationLabel(item.type)}</span>}
+    </div>
+    <div className="flex flex-1 flex-col gap-2 p-4">
+      <span className="flex items-center gap-2 font-mono text-d11 tracking-widest"><span aria-hidden className={`h-3 w-3 ${publicationTint(item.type)}`} />{publicationLabel(item.type)}</span>
+      <h3 className="font-grotesk text-d18 font-bold leading-snug md:text-xl">{item.title || 'Sin título'}</h3>
+      {(byline || stateLabel) && <p className="font-mono text-d11 text-ink-soft">{[byline ? `Por ${byline}` : '', stateLabel].filter(Boolean).join(' · ')}</p>}
+      <div className="mt-auto flex flex-wrap gap-5 border-t border-ink/20 pt-2">
+        {row.state === 'published' && item.slug && <button type="button" onClick={() => void onOpen(item.slug)} className={`flex min-h-11 items-center font-mono text-d13 ${FOCUS_RING}`}>VER ↗</button>}
+        {editable && <button type="button" onClick={edit} className={`min-h-11 font-mono text-d13 ${FOCUS_RING}`}>{row.state === 'draft' ? 'CONTINUAR' : 'EDITAR'}</button>}
+      </div>
+    </div>
+  </article>
 }

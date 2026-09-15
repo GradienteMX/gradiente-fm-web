@@ -117,7 +117,12 @@ export function useDraftWorkbench<T extends ContentItem>({
       if (cancelled || done) return
       done = true
       const { _draftState, _createdAt, _updatedAt, ...content } = existing ?? {} as DraftItem
-      const base = existing ? { ...emptyFn(), ...content } as T : emptyFn()
+      const base = existing ? { ...emptyFn(), ...content } as T : {
+        ...emptyFn(),
+        // A new publication opened from the team's workspace starts with its
+        // attribution selected. Existing drafts and recovery keep their choice.
+        ...(search?.get('espacio') === 'franja' && currentUser?.franjaId ? { attributeFranja: true } : {}),
+      } as T
       // Only unsynced recovery supersedes an account copy. Acknowledged local
       // copies must not overwrite changes made on another device.
       const useRecovery = recovery && (!existing || recovery.pending) ? recovery : null

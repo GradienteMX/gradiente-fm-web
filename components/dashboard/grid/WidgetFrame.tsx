@@ -1,34 +1,15 @@
 'use client'
 
-// ── WidgetFrame — the widget chrome anatomy (revision-2 standard) ───────────
-//
-//   NOMBRE DEL WIDGET          3 ●          [una acción]
-//   ─────────────────────────────────────────── (hairline)
-//   content register (d15 body / d28 numerals)
-//
-// Revision-2 header law (Iker point 5): the title is a BIG BOLD Syne line —
-// the CREAR NUEVO register — clean, no '//' prefix anywhere on the panel
-// (point 1). d28's 32px line-height keeps the SCALE-PASS chrome arithmetic
-// intact (header line = 32px, total chrome = 87px), so every existing
-// content budget still holds.
-//
-// Headers carry AT MOST: title, one true count/badge, ONE working action —
-// no gears, no collapse carets, no refresh buttons (the props make more
-// impossible). Compact mode (§2.5 data-aware boot) collapses the frame to a
-// single 1-row teaching strip. Loading is one hairline shimmer bar — never
-// skeleton theater (§2.6).
-//
-// `tone: 'acid'` paints the WHOLE frame acid (revision-2 point 3 — the CREAR
-// NUEVO widget owns the block color; §1.1 legal use #1: acid fill with ink
-// on top). No inner boxes ride on it — the frame IS the block.
+// Shared paper frame: compact headings leave space for artwork and controls.
+// At most one header action; loading and empty states use the same frame.
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { WidgetId } from '@/lib/dashboard/layout'
 
 export const WIDGET_LABELS: Record<WidgetId, string> = {
-  crear: 'CREAR NUEVO',
-  cultivar: 'CULTIVAR',
+  crear: 'CREAR PUBLICACIÓN',
+  cultivar: 'PUBLICACIONES',
   actividad: 'ACTIVIDAD',
   guardados: 'GUARDADOS',
   reproductor: 'REPRODUCTOR',
@@ -84,7 +65,7 @@ function FrameTitle({ title, compact }: { title: string; compact?: boolean }) {
   return (
     <h3
       className={`shrink-0 whitespace-nowrap font-syne font-bold uppercase leading-8 text-ink ${
-        compact ? 'text-d18' : 'text-d28'
+        compact ? 'text-d15' : 'text-d18'
       }`}
     >
       {title}
@@ -158,7 +139,7 @@ export function WidgetFrame({
     return (
       <section
         data-cue={cue}
-        className={`flex h-full min-h-11 items-center gap-4 border border-ink px-5 ${ground}`}
+        className={`flex h-full min-h-11 flex-wrap items-center gap-x-3 gap-y-1 border border-ink/25 px-3 py-2 ${ground}`}
       >
         <FrameTitle title={title} compact />
         {typeof count === 'number' && <CountBadge count={count} accent={accent} />}
@@ -179,12 +160,12 @@ export function WidgetFrame({
   //     h4 → 4×96 + 3×24 − 87 = 369px
   //   Design fixed portions (S1) to these numbers; never to overflow.
   return (
-    <section data-cue={cue} className={`flex h-full flex-col border border-ink ${ground}`}>
+    <section data-cue={cue} className={`flex h-full flex-col border border-ink/25 ${ground}`}>
       {/* ONE standardized header line: eyebrow · count · action on a shared
           baseline inside a 32px line (S5). flex-wrap: when the frame is
           narrow the action drops to its own line — never overlaps and never
           crushes the eyebrow. */}
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink px-5 py-1.5">
+      <header className="flex shrink-0 flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-ink/25 px-3 py-1.5">
         <FrameTitle title={title} />
         {typeof count === 'number' && <CountBadge count={count} accent={accent} />}
         <div className="flex-1" />
@@ -192,7 +173,7 @@ export function WidgetFrame({
       </header>
       {/* content register padding 20px on every side (S5); stack gaps inside
           the widget are the 12/16px rhythm, owned by the widget itself */}
-      <div className="min-h-0 flex-1 overflow-hidden p-5">
+      <div className="min-h-0 flex-1 overflow-hidden p-3">
         {loading ? <ShimmerBar /> : children}
       </div>
     </section>

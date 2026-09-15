@@ -27,13 +27,13 @@ export type WidgetId =
 
 export const ALL_WIDGET_IDS: readonly WidgetId[] = [
   'crear',
-  'cultivar',
-  'guardados',
-  'mapa',
   'reproductor',
-  'novedades',
-  'agenda',
+  'cultivar',
   'actividad',
+  'guardados',
+  'agenda',
+  'mapa',
+  'novedades',
   'mercado',
 ]
 
@@ -62,6 +62,7 @@ export const WIDGET_DEFS: Record<WidgetId, WidgetDef> = {
   // is a whole widget now. Chips are law-visible, so it never compacts.
   crear: {
     allowedSizes: [
+      { w: 9, h: 1 },
       { w: 4, h: 3 }, { w: 3, h: 3 }, { w: 4, h: 2 }, { w: 6, h: 2 }, { w: 12, h: 2 },
     ],
     neverCompact: true,
@@ -69,40 +70,50 @@ export const WIDGET_DEFS: Record<WidgetId, WidgetDef> = {
   // CULTIVAR — the publications carousel (the garden retired, point 8).
   cultivar: {
     allowedSizes: [
+      { w: 9, h: 5 }, { w: 9, h: 4 },
       { w: 8, h: 3 }, { w: 12, h: 3 }, { w: 8, h: 4 }, { w: 12, h: 4 },
       { w: 6, h: 3 }, { w: 8, h: 2 },
     ],
+    neverCompact: true,
   },
   actividad: {
+    neverCompact: true,
     allowedSizes: [
+      { w: 3, h: 5 }, { w: 3, h: 4 },
       { w: 4, h: 3 }, { w: 4, h: 4 }, { w: 4, h: 2 }, { w: 6, h: 3 },
       { w: 6, h: 4 }, { w: 3, h: 3 },
     ],
   },
   guardados: {
     allowedSizes: [
+      { w: 3, h: 2 },
       { w: 4, h: 3 }, { w: 7, h: 3 }, { w: 12, h: 3 }, { w: 4, h: 2 },
       { w: 7, h: 2 }, { w: 12, h: 2 },
     ],
   },
   reproductor: {
     allowedSizes: [
+      { w: 3, h: 3 },
       { w: 4, h: 3 }, { w: 5, h: 3 }, { w: 6, h: 3 }, { w: 4, h: 2 }, { w: 5, h: 2 },
     ],
   },
   novedades: {
+    neverCompact: true,
     allowedSizes: [
+      { w: 12, h: 2 },
       { w: 4, h: 3 }, { w: 5, h: 3 }, { w: 6, h: 3 }, { w: 4, h: 2 }, { w: 5, h: 2 },
     ],
   },
   agenda: {
     allowedSizes: [
+      { w: 3, h: 2 },
       { w: 4, h: 3 }, { w: 4, h: 4 }, { w: 6, h: 3 }, { w: 4, h: 2 }, { w: 6, h: 2 },
     ],
   },
   // MAPA — a static screenshot door to /mapa (point 15); center of row 2.
   mapa: {
     allowedSizes: [
+      { w: 3, h: 2 },
       { w: 4, h: 3 }, { w: 3, h: 3 }, { w: 4, h: 2 }, { w: 6, h: 3 }, { w: 8, h: 4 },
     ],
   },
@@ -148,7 +159,7 @@ export type DashboardLayoutMeta = {
 
 // ── Committed defaults (§2.5 — RESTABLECER restores exactly this) ────────────
 
-export const DEFAULT_DESKTOP_LAYOUT: readonly LayoutEntry[] = [
+export const LEGACY_DESKTOP_LAYOUT: readonly LayoutEntry[] = [
   // Row 1: the acid CREAR block beside the publications carousel.
   { id: 'crear', x: 0, y: 0, w: 4, h: 3 },
   { id: 'cultivar', x: 4, y: 0, w: 8, h: 3 },
@@ -165,6 +176,19 @@ export const DEFAULT_DESKTOP_LAYOUT: readonly LayoutEntry[] = [
 ]
 
 // Mobile stack default (§2.5) — intentionally NOT the desktop reading order.
+// Garden composition. Customized layouts retain their existing geometry.
+export const DEFAULT_DESKTOP_LAYOUT: readonly LayoutEntry[] = [
+  { id: 'crear', x: 0, y: 0, w: 9, h: 1 },
+  { id: 'reproductor', x: 9, y: 0, w: 3, h: 3 },
+  { id: 'cultivar', x: 0, y: 1, w: 9, h: 5 },
+  { id: 'actividad', x: 9, y: 3, w: 3, h: 5 },
+  { id: 'guardados', x: 0, y: 6, w: 3, h: 2 },
+  { id: 'agenda', x: 3, y: 6, w: 3, h: 2 },
+  { id: 'mapa', x: 6, y: 6, w: 3, h: 2 },
+  { id: 'novedades', x: 0, y: 8, w: 12, h: 2 },
+  { id: 'mercado', x: 0, y: 10, w: 6, h: 2 },
+]
+
 export const DEFAULT_MOBILE_ORDER: readonly WidgetId[] = [
   'crear',
   'cultivar',
@@ -267,6 +291,18 @@ export function packedHeight(entries: readonly LayoutEntry[]): number {
 // ── Tablet remap (§2.1 — derived, never stored) ──────────────────────────────
 
 export function remapToTablet(layout: readonly LayoutEntry[]): LayoutEntry[] {
+  // The wide garden splits into two equal support columns below its artwork.
+  // This is render-only: personalized desktop geometry is never overwritten.
+  if (layout.some((entry) => entry.id === 'crear' && entry.w === 9) && layout.some((entry) => entry.id === 'cultivar' && entry.w === 9)) {
+    const positions: Record<WidgetId, { x: number; y: number; w: number }> = {
+      crear: { x: 0, y: 0, w: 6 }, cultivar: { x: 0, y: 1, w: 6 },
+      reproductor: { x: 0, y: 6, w: 3 }, actividad: { x: 3, y: 6, w: 3 },
+      guardados: { x: 0, y: 11, w: 3 }, agenda: { x: 3, y: 11, w: 3 },
+      mapa: { x: 0, y: 13, w: 3 }, novedades: { x: 0, y: 15, w: 6 },
+      mercado: { x: 0, y: 17, w: 6 },
+    }
+    return packLayout(layout.map((entry) => ({ ...entry, ...positions[entry.id] })), TABLET_COLS)
+  }
   const halved = layout.map((entry) => {
     const w = Math.min(TABLET_COLS, Math.max(TABLET_MIN_W, Math.ceil(entry.w / 2)))
     const x = Math.min(Math.max(0, Math.floor(entry.x / 2)), TABLET_COLS - w)
@@ -293,6 +329,15 @@ export function normalizeLayoutMeta(
 ): DashboardLayoutMeta {
   const allowed = new Set(widgets)
   if (!isRecord(raw) || raw.v !== 4) return defaultLayoutMeta(widgets)
+
+  // Upgrade the untouched previous default, preserving visibility and mobile order.
+  const previousDefault = LEGACY_DESKTOP_LAYOUT.filter((entry) => allowed.has(entry.id))
+  const saved = asArray(raw.layout)
+  if (saved.length === previousDefault.length && previousDefault.every((entry) =>
+    saved.some((value) => isRecord(value) && ['id', 'x', 'y', 'w', 'h'].every((key) => value[key] === entry[key as keyof LayoutEntry]))
+  )) {
+    return normalizeLayoutMeta({ ...raw, layout: DEFAULT_DESKTOP_LAYOUT.filter((entry) => allowed.has(entry.id)) }, widgets)
+  }
 
   const seen = new Set<WidgetId>()
   const layout: LayoutEntry[] = []

@@ -21,9 +21,10 @@ import { ComposeSheet } from '@/components/dashboard/compose/ComposeSheet'
 import { isComposeType } from '@/components/dashboard/widgets/cultivar/CrearZone'
 import { DashMasthead } from '@/components/dashboard/shell/DashMasthead'
 import { IdentitySpine } from '@/components/dashboard/shell/IdentitySpine'
-import { StatusStrip } from '@/components/dashboard/shell/StatusStrip'
 import { MiniTransport } from '@/components/dashboard/shell/MiniTransport'
 import { DashOverlayHost } from '@/components/dashboard/overlayhost/DashOverlayHost'
+import { ActivitySpace } from '@/components/dashboard/espacios/ActivitySpace'
+import { MercadoSpace } from '@/components/dashboard/espacios/MercadoSpace'
 import { WidgetGrid } from '@/components/dashboard/grid/WidgetGrid'
 import { DASH_WIDGETS } from '@/components/dashboard/widgetRegistry'
 import {
@@ -112,6 +113,7 @@ export default function DashboardLabPage() {
   const rawType = search?.get('type') ?? null
   const labComposeType = rawType && isComposeType(rawType) ? rawType : null
   const labEditId = search?.get('edit') ?? null
+  const labSpace = search?.get('space') ?? 'panel'
   // Client-only render: fixtures stamp load-relative dates, so SSR HTML can
   // never match the client pass. Dev-only harness — no SSR value to lose.
   const [mounted, setMounted] = useState(false)
@@ -205,15 +207,14 @@ export default function DashboardLabPage() {
               onEditPanel={() => setEditing((e) => !e)}
               userOverride={active.user}
             />
-            <div className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
+            <div className="mx-auto w-full max-w-[1920px] px-4 md:px-8 xl:px-12">
               <IdentitySpine userOverride={active.user} />
-              <StatusStrip />
               <section className="min-h-[32rem] py-6">
-                <WidgetGrid
+                {labSpace === 'actividad' ? <ActivitySpace /> : labSpace === 'mercado' ? <MercadoSpace /> : <WidgetGrid
                   widgets={DASH_WIDGETS}
                   editing={editing}
                   onEditingChange={setEditing}
-                />
+                />}
               </section>
             </div>
             <MiniTransport />

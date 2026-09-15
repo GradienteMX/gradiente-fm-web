@@ -318,6 +318,10 @@ function ImagesField({
     setError(null)
     const added: string[] = []
     for (const file of Array.from(files)) {
+      if (file.type === 'image/gif' && file.size > 10 * 1024 * 1024) {
+        setError('EL GIF DEBE PESAR HASTA 10 MB.')
+        continue
+      }
       const result = await compressAndUploadImage(file, uid)
       if (result.ok) added.push(result.url)
       else setError(result.error.toUpperCase())
@@ -332,9 +336,9 @@ function ImagesField({
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-3">
           {value.map((src, index) => (
-            <li key={`${src}-${index}`} className="flex w-20 flex-col gap-1">
-              <span className="relative block h-20 w-20 overflow-hidden border border-ink bg-paper">
-                <SmartImage src={src} alt="" className="object-cover" sizes="80px" />
+            <li key={`${src}-${index}`} className="flex w-40 max-w-full flex-col gap-1 sm:w-52">
+              <span className="relative block aspect-square w-full overflow-hidden border border-ink/25 bg-paper">
+                <SmartImage src={src} alt="" className="object-cover" sizes="208px" />
               </span>
               {index === 0 ? (
                 <span className="text-center font-mono text-d11 font-bold uppercase tracking-widest text-ink">
@@ -345,7 +349,7 @@ function ImagesField({
                   type="button"
                   onClick={() => onChange([src, ...value.filter((_, i) => i !== index)])}
                   data-cue="tick"
-                  className={`font-mono text-d11 uppercase tracking-widest text-ink-soft underline-offset-4 hover:underline ${FOCUS_RING}`}
+                  className={`min-h-11 font-mono text-d11 uppercase tracking-widest text-ink-soft underline-offset-4 hover:underline ${FOCUS_RING}`}
                 >
                   HACER PORTADA
                 </button>
@@ -354,7 +358,7 @@ function ImagesField({
                 type="button"
                 onClick={() => onChange(value.filter((_, i) => i !== index))}
                 data-cue="tick"
-                className={`font-mono text-d11 uppercase tracking-widest text-sys-red-paper underline-offset-4 hover:underline ${FOCUS_RING}`}
+                className={`min-h-11 font-mono text-d11 uppercase tracking-widest text-sys-red-paper underline-offset-4 hover:underline ${FOCUS_RING}`}
               >
                 QUITAR
               </button>
@@ -367,9 +371,7 @@ function ImagesField({
           {uploading ? 'SUBIENDO…' : value.length === 0 ? 'SUBIR PORTADA' : 'AÑADIR IMAGEN'}
         </InkButton>
         <Hint>
-          {value.length === 0
-            ? 'SIN IMAGEN LA PIEZA SALE CON EL MARCADOR DE CATEGORÍA'
-            : 'LA PRIMERA IMAGEN ES LA PORTADA'}
+          JPG · PNG · WEBP · GIF HASTA 10 MB
         </Hint>
       </div>
       <input
@@ -434,7 +436,7 @@ export function ListingForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <FormSection number="01" label="PIEZA">
+      <FormSection number="01" label="PUBLICACIÓN">
         <ImagesField
           value={draft.images}
           onChange={(images) => onChange({ images })}
@@ -496,7 +498,7 @@ export function ListingForm({
             onChange={(price) => onChange({ price })}
             placeholder="0"
           />
-          <Hint>SIN PRECIO SE PUBLICA EN $0 · GRADIENTE NO COBRA</Hint>
+          <Hint>Si lo dejas vacío, se muestra $0.</Hint>
         </div>
         <SelectL
           label="ENTREGA"
@@ -538,7 +540,7 @@ export function ListingForm({
       <FormSection number="03" label="CONTACTO DE VENTA" id={LISTING_ANCHOR_IDS.contact}>
         <div className="sm:col-span-2">
           <Hint>
-            {'GRADIENTE NO PROCESA PAGOS: EL TRATO SE CIERRA POR ESTAS VÍAS O EN EL HILO DE LA PIEZA.'}
+            {'Elige cómo pueden contactarte para acordar la compra.'}
           </Hint>
         </div>
         <TextFieldL
@@ -574,7 +576,7 @@ export function ListingForm({
               ? 'PUBLICANDO…'
               : 'GUARDANDO…'
             : mode === 'create'
-              ? 'PUBLICAR PIEZA'
+              ? 'PUBLICAR'
               : 'GUARDAR CAMBIOS'}
         </InkButton>
         <InkButton onClick={onCancel} disabled={busy}>

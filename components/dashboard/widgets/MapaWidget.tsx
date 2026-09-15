@@ -33,7 +33,7 @@ export function MapaWidget({ compact }: DashboardWidgetProps) {
           action={{ label: 'ABRIR MAPA', onClick: goMapa, external: true, cue: 'tick' }}
         >
           <p className="min-w-0 font-mono text-d13 text-ink-soft">
-            El terreno de señales de la ciudad.
+            Explora las publicaciones de la ciudad.
           </p>
         </WidgetFrame>
       </div>
@@ -49,11 +49,11 @@ export function MapaWidget({ compact }: DashboardWidgetProps) {
           onClick={goMapa}
           data-cue="tick"
           aria-label="Abrir el mapa"
-          className={`group relative block h-full w-full overflow-hidden border border-ink bg-panel text-left ${FOCUS_RING}`}
+          className={`group relative block h-full min-h-40 w-full overflow-hidden border border-ink bg-panel text-left md:min-h-0 ${FOCUS_RING}`}
         >
           <SmartImage
             src={MAPA_SHOT}
-            alt="Vista del mapa de señales"
+            alt="Vista del mapa de publicaciones"
             className="object-cover opacity-90 transition-opacity group-hover:opacity-100"
             sizes="600px"
           />

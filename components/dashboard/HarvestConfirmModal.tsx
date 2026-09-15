@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle, X } from 'lucide-react'
 import { currentHp } from '@/lib/curation'
 import { removePublishedItemLocal } from '@/lib/publishedItemsCache'
@@ -58,6 +59,41 @@ export function HarvestConfirmModal({
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [actualEcho, setActualEcho] = useState<number | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  const statusRef = useRef(status)
+  closeRef.current = onClose
+  statusRef.current = status
+
+  useEffect(() => {
+    if (!open) return
+    const previous = document.activeElement
+    const dialog = dialogRef.current
+    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex="0"]') ?? [])
+    focusable()[0]?.focus({ preventScroll: true })
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (statusRef.current !== 'submitting') closeRef.current()
+      } else if (event.key === 'Tab') {
+        const nodes = focusable()
+        const first = nodes[0]
+        const last = nodes[nodes.length - 1]
+        if (!nodes.length) { event.preventDefault(); dialog?.focus() }
+        else if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
+          event.preventDefault(); last?.focus()
+        } else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) {
+          event.preventDefault(); first?.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true })
+    }
+  }, [open])
 
   // Reset state when the modal opens against a fresh item.
   useEffect(() => {
@@ -100,13 +136,18 @@ export function HarvestConfirmModal({
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 p-4"
       onClick={status === 'submitting' ? undefined : onClose}
     >
       <div
-        className="relative w-full max-w-md border border-ink bg-paper p-5 text-ink shadow-lift selection:bg-acid selection:text-ink"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Cultivar ${item.title}`}
+        tabIndex={-1}
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto border border-ink bg-paper p-5 text-ink shadow-lift selection:bg-acid selection:text-ink"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
@@ -136,7 +177,7 @@ export function HarvestConfirmModal({
               Has cosechado tu publicación. Los puntos llegan a tu presencia en la próxima sincronización (≤ 5 min).
             </p>
             <p className="font-mono text-d11 leading-relaxed text-ink-faint">
-              El sello se ha roto. El post decaerá ahora a 1.7× su velocidad normal.
+              La publicación decaerá ahora a 1.7× su velocidad normal.
             </p>
             <button
               type="button"
@@ -170,15 +211,13 @@ export function HarvestConfirmModal({
                 <AlertTriangle size={12} strokeWidth={1.5} className="mt-px shrink-0" />
                 <span>
                   Esta acción es <strong>permanente</strong>. Sólo puedes cosechar cada publicación una vez.
-                  Tras cosechar, el post conservará {projectedRemainder.toFixed(2)} ◇ pero decaerá a <strong>{HARVEST_MULTIPLIER}×</strong> la velocidad normal.
+                  Tras cosechar, la publicación conservará {projectedRemainder.toFixed(2)} ◇ pero decaerá a <strong>{HARVEST_MULTIPLIER}×</strong> la velocidad normal.
                 </span>
               </p>
             </div>
 
             <p className="font-mono text-d11 leading-relaxed text-ink-faint">
-              Cosechar temprano = ganancia pequeña pero cierras la puerta a HL futuro.
-              Cosechar tarde = más HL acumulado pero el post ya empezó a decaer.
-              No cosechar es también una opción válida — el post hace su trabajo democrático.
+              Puedes dejar que tu publicación siga circulando y cosecharla más adelante.
             </p>
 
             {error && (
@@ -219,6 +258,7 @@ export function HarvestConfirmModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

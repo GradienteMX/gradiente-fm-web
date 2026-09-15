@@ -1,22 +1,8 @@
 'use client'
 
-// ── REPRODUCTOR — transport + saved-mix carousel (revision-2 point 12) ──────
-//
-// The saved mixes live HERE (GUARDADOS dropped its mixes lens). The list is
-// now a CAROUSEL: one mix at a time — cover, title, author — with ‹ › and an
-// honest n/N readout. PLAY fires audio.playQueue(queue, index) SYNCHRONOUSLY
-// inside the click gesture (platform-iframe law); the queue stays the FULL
-// playable facet, ContentItems verbatim. ABRIR opens the mix's overlay in
-// place (the popup — same openItem recipe as every widget). Link-out rows
-// (Mixcloud/Bandcamp) render ABRIR FUENTE ↗, never a play glyph.
-//
-// The MINI VIBE FADER (Iker point 12) is the REAL VibeFader component,
-// byte-reused — drag-to-commit friction intact (vibe-check law: never soften
-// the gesture) — seated on a slim black faceplate band (its grips and meter
-// are calibrated for dark grounds), bound to the carousel's focused mix.
-//
-// TransportCore stays the ONE useAudioPlayer subscriber leaf for progress
-// ticks; playback state is never duplicated here.
+// Saved mixes in a warm hi-fi deck with shared selection in the expanded player.
+// Playback uses the real audio provider; changing the browsed cover is separate
+// from playing. External-only sources link out; the slider is real playback time.
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -330,6 +316,8 @@ function CompactContent() {
 // ── Carousel host — subscribes for the rarely-changing transport bits ───────
 
 function CarouselHost({
+  selectedId,
+  setSelectedId,
   rows,
   queue,
   showFader,
@@ -341,11 +329,12 @@ function CarouselHost({
   showFader: boolean
   expanded: boolean
   onClose: () => void
+  selectedId: string | null
+  setSelectedId: (id: string) => void
 }) {
   const { playQueue, primePlatform, currentItem, activePlatform, isPlaying, toggle } =
     useAudioPlayer()
   const openItem = useOpenItem()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Platform priming on mount (the getDisplayMedia prompt must never sit
   // between click and sound).
@@ -369,7 +358,7 @@ function CarouselHost({
     (dir: 1 | -1) => {
       if (rows.length) setSelectedId(rows[(clamped + dir + rows.length) % rows.length].item.id)
     },
-    [rows, clamped],
+    [rows, clamped, setSelectedId],
   )
 
   // Play fires playQueue SYNCHRONOUSLY inside the click gesture; an active
@@ -445,9 +434,79 @@ function CarouselHost({
 
 // ── The widget ──────────────────────────────────────────────────────────────
 
+const DECK_FOCUS = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-[#f2ede1]'
+const DECK_KEY = `flex min-h-11 min-w-0 items-center justify-center rounded-[2px] border border-[#776e60] bg-gradient-to-b from-[#fffdf7] to-[#ded6c7] text-ink shadow-[inset_0_1px_0_#fff,0_2px_2px_#40372b26] enabled:hover:from-white enabled:active:translate-y-px enabled:active:shadow-none disabled:cursor-not-allowed disabled:opacity-35 ${DECK_FOCUS}`
+const DECK_SEEK = `block h-11 w-full min-w-0 cursor-pointer appearance-none bg-transparent disabled:cursor-default ${DECK_FOCUS}
+  [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:border [&::-webkit-slider-runnable-track]:border-[#aca393] [&::-webkit-slider-runnable-track]:bg-[#c9c0b1] [&::-webkit-slider-runnable-track]:shadow-[inset_0_1px_2px_#51463930,0_1px_0_#fff]
+  [&::-webkit-slider-thumb]:-mt-[9px] [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#776e60] [&::-webkit-slider-thumb]:bg-[linear-gradient(135deg,#fffdf8_0%,#bdb5a6_46%,#f9f5ec_60%,#c8bfaf_100%)] [&::-webkit-slider-thumb]:shadow-[0_2px_3px_#40372b40]
+  [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:border [&::-moz-range-track]:border-[#aca393] [&::-moz-range-track]:bg-[#c9c0b1]
+  [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-[#776e60] [&::-moz-range-thumb]:bg-[linear-gradient(135deg,#fffdf8_0%,#bdb5a6_46%,#f9f5ec_60%,#c8bfaf_100%)] [&::-moz-range-thumb]:shadow-[0_2px_3px_#40372b40]`
+
+function HiFiDeck({ rows, queue, onExpand, selectedId, setSelectedId, short }: { rows: MixRowModel[]; queue: ContentItem[]; onExpand: () => void; selectedId: string | null; setSelectedId: (id: string) => void; short: boolean }) {
+  const audio = useAudioPlayer()
+  const openItem = useOpenItem()
+  const index = Math.max(0, rows.findIndex((row) => row.item.id === selectedId))
+  const row = rows[index]
+  const source = row?.source
+  const primePlatform = audio.primePlatform
+  const active = !!row && audio.currentItem?.id === row.item.id && audio.activePlatform !== null
+  useEffect(() => {
+    if (source) primePlatform(source.platform, source.url)
+  }, [source, primePlatform])
+  if (!row) return null
+  const step = (direction: number) => setSelectedId(rows[(index + direction + rows.length) % rows.length].item.id)
+  const play = () => {
+    if (active) audio.toggle()
+    else {
+      const queueIndex = queue.findIndex((item) => item.id === row.item.id)
+      if (queueIndex >= 0) audio.playQueue(queue, queueIndex)
+    }
+  }
+  const platform = row.source ? PLATFORM_LABEL[row.source.platform] : row.openPlatform ? PLATFORM_LABEL[row.openPlatform] : 'MIX'
+  const playing = active && audio.isPlaying
+  return <section aria-label="Reproductor" className="relative flex h-full min-h-80 flex-col gap-3 rounded-[3px] border border-[#61594d] bg-[linear-gradient(135deg,#fcf9f0_0%,#f2ede1_56%,#e2dacb_100%)] p-3 text-ink shadow-[inset_0_0_0_2px_#fffaf080,0_3px_4px_#40372b26] [container-type:inline-size] md:min-h-0">
+    <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[#776e60]">
+      <h2 className="min-w-0 font-syne text-[clamp(12px,4.2cqw,18px)] font-extrabold">REPRODUCTOR</h2>
+      <button type="button" onClick={onExpand} className={`min-h-11 shrink-0 font-mono text-d11 underline-offset-4 hover:underline ${DECK_FOCUS}`}>ABRIR ↗</button>
+    </header>
+    <div className={`grid min-h-0 flex-1 grid-cols-[42%_minmax(0,1fr)] items-center gap-3 ${short ? 'md:grid-cols-[64px_minmax(0,1fr)_156px]' : ''}`}>
+      <button type="button" onClick={() => void openItem(row.item.slug)} aria-label={`Ver ${row.item.title}`} className={`relative aspect-square max-h-full w-full overflow-hidden rounded-[1px] border border-[#776e60] bg-[#e4dfd3] ${DECK_FOCUS}`}>
+        {row.item.imageUrl ? <SmartImage src={row.item.imageUrl} alt="" sizes="(max-width: 767px) 42vw, 240px" className="object-contain" />
+          : <span className="font-syne text-d18 font-bold">MIX</span>}
+      </button>
+      <div className={`flex min-h-0 min-w-0 flex-col justify-between gap-3 self-stretch py-1 ${short ? 'md:contents' : ''}`}>
+        <div className="min-w-0">
+          <div className="flex items-start gap-2">
+            <p title={row.item.title} className={`line-clamp-2 min-w-0 flex-1 font-grotesk text-[clamp(16px,5cqw,23px)] font-bold leading-tight ${short ? 'md:line-clamp-1 md:text-d15' : ''}`}>{row.item.title}</p>
+            <span aria-hidden className={`mt-1 h-3 w-3 shrink-0 rounded-full border border-[#b9563a] shadow-[inset_0_1px_1px_#fff9] ${playing ? 'bg-[#ff693f]' : 'bg-[#e4ab93]'}`} />
+          </div>
+          <p className="mt-2 font-mono text-d11 tracking-wide">{platform} · {index + 1}/{rows.length}</p>
+          {row.item.author && <p className="mt-1 truncate font-mono text-d11 text-ink-soft">{row.item.author}</p>}
+        </div>
+        <div className={`grid grid-cols-[1fr_1.2fr_1fr] gap-1.5 border-t border-[#776e60] pt-3 ${short ? 'md:border-t-0 md:pt-0' : ''}`}>
+          <button type="button" disabled={rows.length < 2} onClick={() => step(-1)} aria-label="Mix anterior" className={DECK_KEY}><SkipBack size={18} fill="currentColor" /></button>
+          {row.source ? <button type="button" onClick={play} aria-label={playing ? 'Pausar mix' : 'Reproducir mix'}
+            className={`flex min-h-12 min-w-0 items-center justify-center rounded-[2px] border border-[#a44329] bg-gradient-to-b from-[#ff8057] to-[#f25e36] text-ink shadow-[inset_0_0_0_2px_#ffb09588,0_2px_2px_#40372b40] hover:from-[#ff926f] active:translate-y-px active:shadow-none ${DECK_FOCUS}`}>
+            {playing ? <Pause size={25} fill="currentColor" /> : <Play size={25} fill="currentColor" />}
+          </button> : row.openUrl ? <a href={row.openUrl} target="_blank" rel="noreferrer" className={`${DECK_KEY} whitespace-nowrap px-0.5 font-mono text-[10px]`}>FUENTE ↗</a>
+            : <span className="flex items-center justify-center text-center font-mono text-d11 text-ink-soft">SIN FUENTE</span>}
+          <button type="button" disabled={rows.length < 2} onClick={() => step(1)} aria-label="Siguiente mix" className={DECK_KEY}><SkipForward size={18} fill="currentColor" /></button>
+        </div>
+      </div>
+    </div>
+    <div className="flex shrink-0 items-center gap-3 font-mono text-d11 tabular-nums">
+      <span>{fmtTime(active ? audio.currentTime : 0)}</span>
+      <input type="range" aria-label="Posición del mix" aria-valuetext={active ? `${fmtTime(audio.currentTime)} de ${fmtTime(audio.duration)}` : 'Sin reproducción'} min={0} max={active ? audio.duration || 1 : 1} step={1} value={active ? Math.min(audio.currentTime, audio.duration || 1) : 0} disabled={!active || audio.duration <= 0} onChange={(event) => audio.seek(Number(event.target.value))} className={DECK_SEEK} />
+      <span className="shrink-0">{active && audio.duration > 0 ? fmtTime(audio.duration) : row.source ? 'LISTO' : 'EXTERNO'}</span>
+    </div>
+    {audio.currentItem && audio.currentItem.id !== row.item.id && <button type="button" onClick={onExpand} className={`shrink-0 truncate text-left font-mono text-d11 text-ink-soft ${DECK_FOCUS}`}>EN EL REPRODUCTOR: {audio.currentItem.title} →</button>}
+  </section>
+}
+
 export function ReproductorWidget({ size, compact }: DashboardWidgetProps) {
   const { saves, loaded } = useDashboardData()
   const [expanded, setExpanded] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const closeExpanded = useCallback(() => setExpanded(false), [])
 
   // Saved mixes, truly most-recently-saved first.
@@ -486,6 +545,10 @@ export function ReproductorWidget({ size, compact }: DashboardWidgetProps) {
 
   return (
     <div ref={anchorRef} id={dashWidgetDomId('reproductor')} className="h-full scroll-mt-14">
+      {rows.length > 0 ? <>
+        <HiFiDeck rows={rows} queue={queue} selectedId={selectedId} setSelectedId={setSelectedId} short={size.h < 3} onExpand={() => setExpanded(true)}/>
+        {expanded && <CarouselHost rows={rows} queue={queue} selectedId={selectedId} setSelectedId={setSelectedId} showFader expanded onClose={closeExpanded}/>}
+      </> :
       <WidgetFrame
         title="REPRODUCTOR"
         action={!compact && rows.length > 0 ? { label: 'EXPANDIR', onClick: () => setExpanded(true) } : undefined}
@@ -503,11 +566,12 @@ export function ReproductorWidget({ size, compact }: DashboardWidgetProps) {
                 <EmptyMixes />
               </div>
             ) : (
-              <CarouselHost rows={rows} queue={queue} showFader={size.h >= 3} expanded={expanded} onClose={closeExpanded} />
+              <CarouselHost rows={rows} queue={queue} selectedId={selectedId} setSelectedId={setSelectedId} showFader={size.h >= 3} expanded={expanded} onClose={closeExpanded} />
             )}
           </div>
         )}
       </WidgetFrame>
+      }
     </div>
   )
 }

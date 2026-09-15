@@ -1,177 +1,58 @@
 'use client'
 
-// ── CREAR NUEVO — its own acid widget (revision-2 points 3, 4, 10) ──────────
-//
-// Split out of CULTIVAR: the WHOLE frame is the acid block (WidgetFrame
-// tone='acid'), title in the big Syne register, no '//' anywhere, and the
-// «una pieza nueva, un clic» line is gone. Content = the role-gated type
-// chips (1 click → compose sheet) + ONE filled BORRADORES button (ink fill —
-// the "otro color" against the acid ground) that opens a popup listing the
-// drafts exactly as the old CONTINUAR rows drew them: type dot · title ·
-// «BORRADOR · HACE N» · CONTINUAR. No CONTINUAR zone anywhere else (point
-// 10), and no teaching copy when empty — the popup just says SIN BORRADORES.
-//
-// Gates unchanged: chips filter through canCreateContent (layer 1); the
-// `?type=` URL guard in app/dashboard/page.tsx stays layer 2. Draft resume
-// keeps the exact compose deep-link contract (`?type=<t>&edit=<id>` on the
-// CURRENT surface — the lab never ejects to prod).
-
-import { useMemo, useState } from 'react'
 import { useAuth } from '@/components/auth/useAuth'
 import { canCreateContent } from '@/lib/permissions'
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
+import { dashboardTextType } from '@/lib/dashboard/creationTypes'
+import type { ContentType } from '@/lib/types'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
-import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
-import { DashPopup } from '@/components/dashboard/DashPopup'
+import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
-import type { DraftItem } from '@/lib/drafts'
-import {
-  COMPOSE_TYPES,
-  TypeChip,
-  TypeDot,
-  isComposeType,
-  useComposeNav,
-} from './cultivar/CrearZone'
+import { useComposeNav, type ComposeType } from '@/components/dashboard/widgets/cultivar/CrearZone'
 
-// Short honest relative time in the mono register («HACE 2 H») — the old
-// DraftRows helper, now living with its only consumer.
+// One color per choice. Legacy text types remain editable through their URLs.
+const CHOICES: { type: ComposeType; label: string; color: string }[] = [
+  { type: 'mix', label: 'MIX', color: 'bg-publication-mix' },
+  { type: 'listicle', label: 'LISTA', color: 'bg-publication-list' },
+  { type: 'evento', label: 'EVENTO', color: 'bg-publication-event' },
+  { type: 'review', label: 'RESEÑA', color: 'bg-publication-review' },
+  { type: 'articulo', label: 'TEXTO', color: 'bg-publication-text' },
+  { type: 'noticia', label: 'NOTICIA', color: 'bg-publication-news' },
+]
+
+export function publicationTint(type: ContentType): string {
+  const key = type === 'editorial' || type === 'opinion' ? 'articulo' : type
+  return CHOICES.find((choice) => choice.type === key)?.color ?? 'bg-paper-raised'
+}
+
 export function relTimeShort(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime()
-  if (!Number.isFinite(ms)) return '—'
-  const min = Math.floor(ms / 60_000)
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (!Number.isFinite(min)) return '—'
   if (min < 1) return 'AHORA'
   if (min < 60) return `HACE ${min} MIN`
-  const h = Math.floor(min / 60)
-  if (h < 24) return `HACE ${h} H`
-  return `HACE ${Math.floor(h / 24)} D`
+  if (min < 1440) return `HACE ${Math.floor(min / 60)} H`
+  return `HACE ${Math.floor(min / 1440)} D`
 }
 
-// One draft row — the old-version composition (dot · title / BORRADOR · HACE
-// N · CONTINUAR), hairline-separated inside the popup.
-function DraftRow({ draft, onResume }: { draft: DraftItem; onResume: (d: DraftItem) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onResume(draft)}
-      data-cue="tick"
-      className={`group flex w-full min-w-0 flex-col justify-center gap-0.5 border-b border-ink py-2 text-left last:border-b-0 ${FOCUS_RING}`}
-    >
-      <span className="flex w-full min-w-0 items-center gap-2">
-        <TypeDot type={draft.type} />
-        <span className="min-w-0 flex-1 truncate font-grotesk text-d15 text-ink">
-          {draft.title || 'Sin título'}
-        </span>
-      </span>
-      <span className="flex w-full items-baseline justify-between gap-2 pl-4">
-        <span className="truncate font-mono text-d11 tabular-nums text-ink-faint">
-          BORRADOR · {relTimeShort(draft._updatedAt)}
-        </span>
-        <span className="shrink-0 font-mono text-d13 tracking-widest text-ink underline-offset-4 group-hover:underline">
-          CONTINUAR
-        </span>
-      </span>
-    </button>
-  )
-}
-
-export function CrearWidget({ compact }: DashboardWidgetProps) {
+export function CrearWidget({ size, full = false }: DashboardWidgetProps & { full?: boolean }) {
   const { currentUser } = useAuth()
-  const { drafts } = useDashboardData()
   const composeNav = useComposeNav()
-  const [draftsOpen, setDraftsOpen] = useState(false)
-
-  const allowed = COMPOSE_TYPES.filter((t) => canCreateContent(currentUser, t))
-
-  // Real DB drafts only, newest edit first (the old DraftRows filter).
-  const rows = useMemo(
-    () =>
-      drafts
-        .filter((d) => d._draftState === 'draft' && isComposeType(d.type))
-        .sort((a, b) => b._updatedAt.localeCompare(a._updatedAt)),
-    [drafts],
-  )
-
-  const resume = (d: DraftItem) => {
-    if (isComposeType(d.type)) {
-      setDraftsOpen(false)
-      composeNav(d.type, d.id)
-    }
-  }
-
-  // The filled button — ink on acid (the "otro color, relleno" of point 4).
-  const borradoresButton = (
-    <button
-      type="button"
-      onClick={() => setDraftsOpen(true)}
-      data-cue="latch"
-      className={`flex min-h-11 shrink-0 items-center gap-2 border border-ink bg-ink px-3 font-mono text-d13 font-bold tracking-widest text-paper hover:bg-paper hover:text-ink md:min-h-9 ${FOCUS_RING}`}
-    >
-      BORRADORES
-      <span className="tabular-nums">{rows.length}</span>
-    </button>
-  )
-
-  const popup = draftsOpen && (
-    <DashPopup title="BORRADORES" count={rows.length} onClose={() => setDraftsOpen(false)}>
-      {rows.length === 0 ? (
-        <p className="font-mono text-d13 text-ink-soft">SIN BORRADORES.</p>
-      ) : (
-        <div className="flex flex-col">
-          {rows.map((d) => (
-            <DraftRow key={d.id} draft={d} onResume={resume} />
+  const textType = dashboardTextType(currentUser)
+  const choices = CHOICES.flatMap((choice) => choice.type === 'articulo'
+    ? textType ? [{ ...choice, type: textType }] : []
+    : canCreateContent(currentUser, choice.type) ? [choice] : [])
+  return (
+    <section id={dashWidgetDomId('crear')} className={`flex scroll-mt-14 flex-col gap-3 ${full ? '' : 'h-full'}`} aria-label="Crear publicación">
+      <h2 className={`font-syne font-extrabold text-ink ${full ? 'text-d18 md:text-d28' : 'text-d15 leading-6 md:text-d18'}`}>CREAR PUBLICACIÓN</h2>
+      {choices.length ? (
+        <div className={`grid min-h-0 flex-1 gap-2 ${size.w >= 6 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6' : 'grid-cols-2'}`}>
+          {choices.map(({ type, label, color }) => (
+            <button key={type} type="button" onClick={() => composeNav(type)}
+              className={`border border-ink/20 px-2 py-3 font-syne font-extrabold tracking-wide text-ink transition-transform hover:-translate-y-1 hover:border-ink motion-reduce:transform-none ${full ? 'min-h-16 text-d15 md:text-d18' : 'min-h-14 text-d13 md:text-d15'} ${color} ${FOCUS_RING}`}>
+              {label}
+            </button>
           ))}
         </div>
-      )}
-    </DashPopup>
-  )
-
-  if (allowed.length === 0) {
-    // Honest permissions state — paper tone: no acid celebration for a
-    // surface the role cannot use.
-    return (
-      <div id={dashWidgetDomId('crear')} className="h-full scroll-mt-14">
-        <WidgetFrame title="CREAR NUEVO" compact={compact}>
-          <p className="font-grotesk text-d13 leading-snug text-ink">
-            Tu rol no compone contenido publicable. Los lectores leen, comentan y
-            participan en el foro; la composición editorial está reservada a
-            redacción. Un admin puede ajustar tu rol.
-          </p>
-        </WidgetFrame>
-      </div>
-    )
-  }
-
-  if (compact) {
-    return (
-      <div id={dashWidgetDomId('crear')} className="h-full scroll-mt-14">
-        <WidgetFrame title="CREAR NUEVO" tone="acid" compact>
-          <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
-            {allowed.map((t) => (
-              <TypeChip key={t} type={t} onPick={(picked) => composeNav(picked)} />
-            ))}
-            {borradoresButton}
-          </div>
-        </WidgetFrame>
-        {popup}
-      </div>
-    )
-  }
-
-  return (
-    <div id={dashWidgetDomId('crear')} className="h-full scroll-mt-14">
-      <WidgetFrame title="CREAR NUEVO" tone="acid">
-        <div className="flex h-full min-h-0 flex-col gap-3">
-          {/* Chips — law-visible, 1 click to the compose sheet. */}
-          <div className="flex flex-wrap content-start gap-2">
-            {allowed.map((t) => (
-              <TypeChip key={t} type={t} onPick={(picked) => composeNav(picked)} />
-            ))}
-          </div>
-          {/* BORRADORES — the one other affordance in this space (point 4). */}
-          <div className="mt-auto flex shrink-0">{borradoresButton}</div>
-        </div>
-      </WidgetFrame>
-      {popup}
-    </div>
+      ) : <p className="font-grotesk text-d15 text-ink-soft">La publicación está disponible para los perfiles de redacción.</p>}
+    </section>
   )
 }

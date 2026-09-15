@@ -17,6 +17,7 @@
 import { useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { fetchFranjaRefsByItemIds } from '@/lib/franjaRefs'
+import { overlayTargetUrl } from '@/lib/overlay/targetUrl'
 import { getItemBySlugSync, recordItems } from '@/lib/itemsCache'
 import { useOverlay, type OverlayOrigin } from '@/components/overlay/useOverlay'
 import type { ContentItem } from '@/lib/types'
@@ -188,12 +189,11 @@ export async function ensureItemBySlug(slug: string): Promise<ContentItem | null
 // comments column open. Written with the same history.replaceState idiom as
 // useOverlay's slug sync, BEFORE open() so the shell's useSearchParams
 // mirror sees both params in one entry.
-function writeCommentParam(commentId: string | null) {
+function writeCommentParam(slug: string, commentId: string | null) {
   if (typeof window === 'undefined') return
-  const url = new URL(window.location.href)
-  if (commentId) url.searchParams.set('comment', commentId)
-  else url.searchParams.delete('comment')
-  window.history.replaceState(window.history.state, '', url.toString())
+  // Next 14 copies its navigation state for external writes. Passing the
+  // existing __NA state bypasses that bridge and leaves useSearchParams stale.
+  window.history.replaceState(null, '', overlayTargetUrl(window.location.href, slug, commentId))
 }
 
 export interface OpenItemOptions {
@@ -210,7 +210,7 @@ export function useOpenItem(): (slug: string, opts?: OpenItemOptions) => Promise
     async (slug: string, opts?: OpenItemOptions) => {
       const item = await ensureItemBySlug(slug)
       if (!item) return false
-      writeCommentParam(opts?.commentId ?? null)
+      writeCommentParam(slug, opts?.commentId ?? null)
       open(slug, opts?.origin)
       return true
     },

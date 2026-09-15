@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
+import { Menu, Search, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '@/components/auth/useAuth'
 import { useSearch } from '@/components/search/useSearch'
 import { SystemObject } from '@/components/brand/SystemObject'
@@ -53,10 +55,11 @@ export function DashMasthead({
   const currentUser = authedUser ?? userOverride ?? null
   const username = authedUser ? authedName : null
   const isAdmin = canAssignRoles(currentUser)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <header className="sticky top-0 z-40 h-12 border-b border-ink bg-panel">
-      <div className="mx-auto flex h-full w-full max-w-[1440px] items-center gap-4 px-4 md:px-8">
+      <div className="mx-auto flex h-full w-full max-w-[1920px] items-center gap-1 px-4 sm:gap-4 md:px-8 xl:px-12">
         {/* Wordmark lockup — SystemObject is canvas-2D (zero GL). null signal
             = its documented calm baseline; the dashboard has no feed pulse. */}
         <Link
@@ -65,7 +68,7 @@ export function DashMasthead({
           aria-label="Inicio"
         >
           <SystemObject signalStrength={null} size={28} />
-          <span className="font-syne text-d18 font-extrabold tracking-tight text-panel-text">
+          <span className="font-syne text-d13 font-extrabold tracking-tight text-panel-text sm:text-d18">
             GRADIENTE
           </span>
         </Link>
@@ -80,7 +83,7 @@ export function DashMasthead({
             narrow viewports (no page horizontal scroll). */}
         <nav
           aria-label="Navegación"
-          className="flex h-full min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap"
+          className="hidden h-full min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap lg:flex"
         >
           {NAV_LINKS.map((link) => (
             <Link
@@ -93,15 +96,17 @@ export function DashMasthead({
             </Link>
           ))}
         </nav>
+        <div className="flex-1 lg:hidden" />
+        <button type="button" aria-label="Menú de navegación" aria-expanded={menuOpen} aria-controls="dashboard-mobile-navigation" onClick={() => setMenuOpen((value) => !value)} className={`flex h-11 w-9 shrink-0 items-center justify-center text-panel-text lg:hidden ${FOCUS_ON_PANEL}`}><Menu size={18}/></button>
 
         <button
           type="button"
           onClick={openSearch}
           aria-label="Buscar"
-          className={`flex h-full shrink-0 items-center font-mono text-d13 tracking-widest text-panel-text hover:underline hover:underline-offset-4 ${FOCUS_ON_PANEL}`}
+          className={`flex h-full w-9 shrink-0 items-center justify-center font-mono text-d13 tracking-widest text-panel-text hover:underline hover:underline-offset-4 sm:w-auto ${FOCUS_ON_PANEL}`}
           data-cue="tick"
         >
-          BUSCAR
+          <Search size={18} className="sm:hidden"/><span className="hidden sm:inline">BUSCAR</span>
         </button>
 
         {/* Settings gear = EDITAR PANEL — the same action, nothing else (§3.0). */}
@@ -109,16 +114,18 @@ export function DashMasthead({
           <button
             type="button"
             onClick={onEditPanel}
+            aria-label={editing ? 'Terminar edición del panel' : 'Editar panel'}
             className={`flex h-full shrink-0 items-center ${FOCUS_ON_PANEL}`}
             data-cue="latch"
           >
             <span
-              className={`border border-panel-text px-2 py-1 font-mono text-d13 tracking-widest ${
+              className={`hidden border border-panel-text px-2 py-1 font-mono text-d13 tracking-widest sm:inline ${
                 editing ? 'bg-paper text-ink' : 'text-panel-text'
               }`}
             >
               {editing ? 'LISTO' : 'EDITAR PANEL'}
             </span>
+            <span className="flex h-11 w-9 items-center justify-center text-panel-text sm:hidden"><SlidersHorizontal size={18}/></span>
           </button>
         )}
 
@@ -127,7 +134,7 @@ export function DashMasthead({
             type="button"
             // The identity document lives at the top of the page now (the
             // PERFIL widget was absorbed into the spine — revision-2 point 6).
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() => document.querySelector('.dash-shell')?.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })}
             aria-label={`Perfil de @${username ?? currentUser.username}`}
             className={`flex h-full shrink-0 items-center ${FOCUS_ON_PANEL}`}
             data-cue="tick"
@@ -149,6 +156,7 @@ export function DashMasthead({
           </button>
         )}
       </div>
+      {menuOpen && <nav id="dashboard-mobile-navigation" aria-label="Navegación móvil" className="absolute inset-x-0 top-12 grid grid-cols-2 gap-2 border-b border-panel-text bg-panel p-4 lg:hidden">{NAV_LINKS.map((link) => <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center font-mono text-d13 text-panel-text ${FOCUS_ON_PANEL}`}>{link.label}</Link>)}</nav>}
     </header>
   )
 }

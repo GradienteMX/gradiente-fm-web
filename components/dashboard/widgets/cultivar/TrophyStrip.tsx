@@ -7,14 +7,14 @@ import { TROPHY_CATALOG } from '@/lib/trophies'
 import { TrophyGlyph } from '@/components/trophies/TrophyGlyphs'
 
 /** Canonical glyphs remain visible; their conditions are inspectable in place. */
-export function TrophyStrip() {
+export function TrophyStrip({ compact = false }: { compact?: boolean }) {
   const { trophies } = useDashboardData()
   const [hovered, setHovered] = useState<string | null>(null)
   const [focused, setFocused] = useState<string | null>(null)
   const descriptionId = useId()
   const active = TROPHY_CATALOG.find((t) => t.key === (hovered ?? focused))
   return (
-    <div className="relative flex min-w-0 flex-wrap items-center gap-3 border-t border-ink pt-2" onMouseLeave={() => setHovered(null)}>
+    <div className={`relative flex min-w-0 flex-wrap items-center gap-3 ${compact ? '' : 'border-t border-ink pt-2'}`} onMouseLeave={() => setHovered(null)}>
       <span className="shrink-0 font-mono text-d11 font-bold tracking-widest text-ink-soft">TROFEOS</span>
       <div className="flex flex-wrap items-center gap-1">
         {TROPHY_CATALOG.map((t) => {

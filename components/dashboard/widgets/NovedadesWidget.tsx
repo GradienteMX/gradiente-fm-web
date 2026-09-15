@@ -1,84 +1,30 @@
 'use client'
 
-// ── FRANJAS (né NOVEDADES) — explicit follows, mechanical feed ──────────────
-//
-// Revision-2 point 13: the widget is FRANJAS — contents from who you follow —
-// and the header action opens the FRANJAS popup: your followed franjas as
-// rows linking to their franja page (/p/<slug>, the franja page), plus the
-// picker to follow more. The feed stays the same mechanical lens.
-//
-// Follows are EXPLICIT {kind:'franja'|'genre', key} choices in localStorage
-// (lib/dashboard/localState — private-class, per-uid). The widget WRITES
-// follows through localState (addFollow/removeFollow); the provider's
-// `follows` mirror updates through its subscription, and the feed is a pure
-// mechanical lens (filterByFollows) over the provider's global `novedades`
-// pool — no scoring, no weights, no «recomendado para ti», and the affinity
-// table is never imported (grep gate).
-//
-// The empty state IS the picker: with zero follows the widget boots in the
-// grid's compact teaching row, and that row carries the real chip rail
-// inline — one tap = followed (CUE/STAMP), feed materializes from the
-// already-fetched pool the moment a follow matches. Follow ≤2 clicks
-// including discovery (the chips ARE the discovery). Once populated, the
-// «SIGUIENDO: N» header chip re-opens the same picker inline.
-//
-// «N NUEVOS» derives from the single lastSeenActivity watermark (state, not
-// a second ledger) — the same key ACTIVIDAD advances; this widget only reads.
-//
-// SCALE PASS (S1/S2/S3/S4) — fixed portions, no internal feed scroll, 48px
-// thumbs. The feed renders a DESIGN-FIXED number of whole 52px rows; overflow
-// is declared by ONE foot affordance (VerRow «VER MOSAICO ↗» → '/', the home
-// mosaic — surface-leaving, so ↗). Follow mechanics untouched; the picker
-// panel keeps its own scroll (FINAL_SPEC §3.5 mandates the FULL real franja
-// + genre catalogues inline — a chooser the user explicitly opened, not a
-// content portion).
-//
-// Portion arithmetic ({5,3} default, content budget h3 = 249px; h2 = 129px —
-// WidgetFrame chrome math). Rows are h-[52px] box-border (border-b inside);
-// VerRow 44 (+ mt-2 8); footnote line 16 (+ pt-2 8):
-//   h3, feed ≤ 4:  4×52 + 24 = 232 ≤ 249            → all rows, no VerRow
-//   h3, feed > 4:  3×52 + 8 + 44 + 24 = 232 ≤ 249    → 3 rows + VER MOSAICO
-//   h2, feed ≤ 2:  2×52 + 24 = 128 ≤ 129             → all rows, no VerRow
-//   h2, feed > 2:  1×52 + 8 + 44 + 24 = 128 ≤ 129    → 1 row + VER MOSAICO
-// (The spec's ideal «exactly 4» portion holds whenever the feed fits whole;
-// with overflow, 4×52 + 44 = 252 > 249 — three whole rows + the affordance is
-// the honest maximum, stated here rather than slicing the VerRow.)
+// Clean franja logos on the panel; the popup contains explicit follow controls
+// and the chronological feed from those follows. No recommendation ranking.
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth/useAuth'
 import { DashPopup } from '@/components/dashboard/DashPopup'
 import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
-import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { FOCUS_RING } from '@/components/dashboard/grid/WidgetFrame'
 import { useOpenItem } from '@/lib/dashboard/openItem'
 import {
-  countNewSince,
   filterByFollows,
   type FranjaOption,
 } from '@/lib/dashboard/novedades'
 import {
   addFollow,
-  readLastSeenActivity,
   removeFollow,
-  subscribeLastSeenActivity,
   type DashboardFollow,
 } from '@/lib/dashboard/localState'
 import { categoryColorOnLight, typeCode } from '@/lib/dashboard/palette'
 import { getRootGenres } from '@/lib/genres'
 import { SmartImage } from '@/components/SmartImage'
 import type { ContentItem } from '@/lib/types'
-
-// ── Watermark (read-only here — ACTIVIDAD owns advancement) ─────────────────
-
-function useActivityWatermark(uid: string | null): string | null {
-  const getSnapshot = useCallback(
-    () => (uid ? readLastSeenActivity(uid) : null),
-    [uid],
-  )
-  return useSyncExternalStore(subscribeLastSeenActivity, getSnapshot, () => null)
-}
 
 // ── Honest short timestamps (mono system voice) ─────────────────────────────
 
@@ -292,208 +238,39 @@ function NovedadRow({
 
 // ── The widget ──────────────────────────────────────────────────────────────
 
-export function NovedadesWidget({ size, compact }: DashboardWidgetProps) {
+export function NovedadesWidget({ size }: DashboardWidgetProps) {
   const { currentUser } = useAuth()
   const uid = currentUser?.id ?? null
   const ctx = useDashboardData()
-  const openItem = useOpenItem()
   const router = useRouter()
-  const [franjasOpen, setFranjasOpen] = useState(false)
-  const [deadSlug, setDeadSlug] = useState<string | null>(null)
-  const watermark = useActivityWatermark(uid)
-
-  // Followed franjas resolved against the real catalogue — each one links
-  // to its franja page (/p/<slug>, the franja page). Genre follows have no
-  // page; they list as removable chips.
-  const followedFranjas = useMemo(() => {
-    const keys = new Set(
-      ctx.follows.filter((f) => f.kind === 'franja').map((f) => f.key),
-    )
-    return ctx.franjaOptions.filter((p) => keys.has(p.id))
-  }, [ctx.follows, ctx.franjaOptions])
-
-  const feed = useMemo(
-    () => filterByFollows(ctx.novedades, ctx.follows),
-    [ctx.novedades, ctx.follows],
-  )
-  const newCount = useMemo(() => countNewSince(feed, watermark), [feed, watermark])
-
-  const loading = !ctx.loaded.novedades && !ctx.errors.novedades
-  const failed = ctx.errors.novedades === true
-
-  const handleOpen = useCallback(
-    async (slug: string) => {
-      const ok = await openItem(slug)
-      if (!ok) setDeadSlug(slug)
-    },
-    [openItem],
-  )
-
-  const retry = useCallback(() => void ctx.afterMutation(), [ctx])
-
-  // ── Compact teaching row — the row IS the picker (§3.5 + §2.6) ────────────
-  if (compact) {
-    return (
-      <WidgetFrame title="FRANJAS" compact loading={loading}>
-        {failed ? (
-          <ErrorLine onRetry={retry} />
-        ) : (
-          <div className="flex min-w-0 items-center gap-3">
-            <p className="shrink-0 text-d15 text-ink">
-              {ctx.follows.length === 0
-                ? 'Sigue colectivos y géneros:'
-                : 'Tus señales no han publicado en 30 días.'}
-            </p>
-            <FollowPicker
-              layout="rail"
-              uid={uid}
-              follows={ctx.follows}
-              franjaOptions={ctx.franjaOptions}
-            />
-          </div>
-        )}
-      </WidgetFrame>
-    )
-  }
-
-  // ── Full widget ───────────────────────────────────────────────────────────
-  const showPicker = !loading && !failed && feed.length === 0
-
-  // Fixed portion (S1 — header arithmetic): when the feed fits whole it all
-  // renders (≤ cap); when it overflows, one row-slot yields to the VerRow.
-  // Computed from counts at design-time rules — never from measurement.
-  const slotCap = size.h >= 3 ? 4 : 2
-  const slots = feed.length > slotCap ? slotCap - 1 : slotCap
-  const visibleFeed = feed.slice(0, slots)
-  const feedOverflow = feed.length > visibleFeed.length
-
-  return (
-    <div id={dashWidgetDomId('novedades')} className="h-full scroll-mt-14">
-    <WidgetFrame
-      title="FRANJAS"
-      count={newCount > 0 ? newCount : undefined}
-      accent
-      loading={loading}
-      action={{
-        label: `SEGUIDOS · ${ctx.follows.length}`,
-        onClick: () => setFranjasOpen(true),
-        cue: 'latch',
-      }}
-    >
-      {failed ? (
-        <ErrorLine onRetry={retry} />
-      ) : showPicker ? (
-        <FollowPicker
-          layout="panel"
-          uid={uid}
-          follows={ctx.follows}
-          franjaOptions={ctx.franjaOptions}
-        />
-      ) : (
-        <div className="flex h-full min-h-0 flex-col">
-          {/* Fixed portion — whole rows only, NO internal scroll (S1). */}
-          <div className="shrink-0">
-            {visibleFeed.map((item) => (
-              <NovedadRow
-                key={item.id}
-                item={item}
-                isNew={watermark === null || item.publishedAt > watermark}
-                dead={deadSlug === item.slug}
-                onOpen={() => void handleOpen(item.slug)}
-              />
-            ))}
-          </div>
-          {feedOverflow && (
-            // S4 foot affordance — the remainder lives in the home mosaic;
-            // surface-leaving, so ↗.
-            <div className="mt-2 shrink-0">
-              <VerRow label="VER MOSAICO" href="/" external />
-            </div>
-          )}
-        </div>
-      )}
-    </WidgetFrame>
-
-    {/* ── The FRANJAS popup (point 13): who you follow, each franja row a
-        door to its franja page, plus the picker to follow more. ─────────── */}
-    {franjasOpen && (
-      <DashPopup
-        title="FRANJAS"
-        count={ctx.follows.length}
-        onClose={() => setFranjasOpen(false)}
-      >
-        <div className="flex flex-col gap-5">
-          {followedFranjas.length > 0 && (
-            <section>
-              <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-                TUS FRANJAS
-              </h4>
-              <div className="flex flex-col">
-                {followedFranjas.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex min-h-12 items-center gap-3 border-b border-ink py-1.5 last:border-b-0"
-                  >
-                    <span
-                      aria-hidden
-                      className="relative block h-8 w-8 shrink-0 overflow-hidden border border-ink bg-paper-raised"
-                    >
-                      {p.imageUrl && (
-                        <SmartImage src={p.imageUrl} alt="" sizes="32px" className="object-cover" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-grotesk text-d15 font-medium text-ink">
-                      {p.title}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFranjasOpen(false)
-                        router.push(`/f/${p.slug}`)
-                      }}
-                      data-cue="tick"
-                      className={`flex min-h-11 shrink-0 items-center gap-1.5 font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline md:min-h-0 ${FOCUS_RING}`}
-                    >
-                      VER FRANJA <span aria-hidden>↗</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          <section>
-            <h4 className="mb-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
-              SEGUIR
-            </h4>
-            <FollowPicker
-              layout="panel"
-              uid={uid}
-              follows={ctx.follows}
-              franjaOptions={ctx.franjaOptions}
-            />
-          </section>
-        </div>
-      </DashPopup>
-    )}
-    </div>
-  )
+  const openItem = useOpenItem()
+  const [open, setOpen] = useState(false)
+  const [notice, setNotice] = useState(false)
+  const keys = new Set(ctx.follows.filter((follow) => follow.kind === 'franja').map((follow) => follow.key))
+  const followed = ctx.franjaOptions.filter((franja) => keys.has(franja.id))
+  const franjas = followed.length ? followed : ctx.franjaOptions
+  const feed = filterByFollows(ctx.novedades, ctx.follows)
+  return <section id={dashWidgetDomId('novedades')} className="flex h-full scroll-mt-14 flex-col gap-3 border-t border-ink/25 pt-3">
+    <header className="flex shrink-0 items-center justify-between gap-3">
+      <h2 className="font-syne text-d18 font-extrabold">FRANJAS</h2>
+      <button type="button" onClick={() => setOpen(true)} className={`min-h-9 font-mono text-d11 hover:underline ${FOCUS_RING}`}>EXPLORAR / SEGUIR →</button>
+    </header>
+    {ctx.errors.novedades ? <ErrorLine onRetry={() => void ctx.afterMutation()}/> : !ctx.loaded.novedades ? <p role="status" className="font-mono text-d13">Cargando franjas…</p> : !franjas.length ? <p className="font-grotesk text-d15 text-ink-soft">Todavía no hay franjas disponibles.</p> : <div className="flex min-h-0 flex-1 items-stretch gap-6 overflow-x-auto pb-2">
+      {franjas.map((franja) => <button key={franja.id} type="button" onClick={() => router.push(`/f/${franja.slug}`)} aria-label={`Ver franja ${franja.title}`} className={`flex w-36 shrink-0 flex-col items-center justify-center gap-2 ${FOCUS_RING}`}>
+        <span className={`relative block w-full ${size.h >= 3 ? 'h-40' : 'h-20'}`}>{franja.imageUrl ? <SmartImage src={franja.imageUrl} alt="" sizes="160px" className="object-contain"/> : <span className="font-syne text-xl font-bold">{franja.title}</span>}</span>
+        <span className="max-w-full truncate font-mono text-d11">{franja.title}</span>
+      </button>)}
+    </div>}
+    {open && <DashPopup title="FRANJAS" onClose={() => setOpen(false)} width="lg">
+      <div className="flex flex-col gap-6">
+        <FollowPicker layout="panel" uid={uid} follows={ctx.follows} franjaOptions={ctx.franjaOptions}/>
+        {notice && <p role="status">No se pudo abrir esta publicación.</p>}
+        {feed.length > 0 && <section><h3 className="mb-3 font-syne text-d18 font-bold">PUBLICACIONES RECIENTES</h3>{feed.map((item) => <NovedadRow key={item.id} item={item} isNew={false} dead={false} onOpen={() => { void openItem(item.slug).then((ok) => { if (ok) setOpen(false); else setNotice(true) }) }}/>)}</section>}
+      </div>
+    </DashPopup>}
+  </section>
 }
 
-// Honest failure state — designed copy + a working retry, never fake rows.
 function ErrorLine({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="flex min-h-11 items-center gap-3">
-      <p className="font-mono text-d13 font-bold uppercase tracking-widest text-ink">
-        {'SEÑAL INTERRUMPIDA'}
-      </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        data-cue="tick"
-        className={`min-h-11 font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
-      >
-        REINTENTAR
-      </button>
-    </div>
-  )
+  return <div className="flex items-center gap-3"><p className="font-mono text-d13">No se pudieron cargar las franjas.</p><button type="button" onClick={onRetry} className={`min-h-11 font-mono text-d11 underline ${FOCUS_RING}`}>REINTENTAR</button></div>
 }

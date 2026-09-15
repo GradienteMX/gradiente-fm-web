@@ -32,6 +32,7 @@ import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import {
   DESKTOP_COLS,
   TABLET_COLS,
+  WIDGET_DEFS,
   applyCompactModes,
   defaultLayoutMeta,
   remapToTablet,
@@ -265,7 +266,7 @@ export function WidgetGrid({ widgets, editing, onEditingChange }: WidgetGridProp
           {order.map((id, index) => {
             const stored = storedById.get(id)
             if (!stored) return null
-            const isCompact = data.dataPresence[id] === false
+            const isCompact = data.dataPresence[id] === false && !WIDGET_DEFS[id].neverCompact
             return (
               <motion.div
                 key={id}

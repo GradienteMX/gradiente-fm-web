@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createInspectArm } from '@/lib/overlay/inspectArm'
+import { overlayTargetUrl } from '@/lib/overlay/targetUrl'
 
 const PARAM = 'item'
 
@@ -67,10 +68,7 @@ const OverlayContext = createContext<OverlayContextValue | null>(null)
 
 function writeSlugToUrl(slug: string | null) {
   if (typeof window === 'undefined') return
-  const url = new URL(window.location.href)
-  if (slug) url.searchParams.set(PARAM, slug)
-  else url.searchParams.delete(PARAM)
-  window.history.replaceState(window.history.state, '', url.toString())
+  window.history.replaceState(null, '', overlayTargetUrl(window.location.href, slug))
 }
 
 /** Strip `?inspect=1` in place — it is consumed on the open it arrived with. */

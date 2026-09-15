@@ -403,9 +403,9 @@ export function GuardadosWidget({ size, compact }: DashboardWidgetProps) {
             ) : (
               <>
                 <div
-                  className={`grid min-h-0 flex-1 grid-cols-2 gap-3 ${
+                  className={`grid min-h-0 flex-1 gap-3 ${railEntries.length === 1 ? 'grid-cols-1' : `grid-cols-2 ${
                     cols === 6 ? 'md:grid-cols-6' : cols === 4 ? 'md:grid-cols-4' : 'md:grid-cols-2'
-                  }`}
+                  }`}`}
                 >
                   {railEntries.slice(0, cols).map((entry, index) =>
                     entry.kind === 'undo' ? (

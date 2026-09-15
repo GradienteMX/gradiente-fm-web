@@ -51,7 +51,7 @@ export function DashTabBar({
   return (
     <nav
       aria-label="Espacios del panel"
-      className="flex flex-wrap items-stretch gap-x-1 border-b-2 border-ink bg-paper-raised"
+      className="flex items-stretch gap-x-1 overflow-x-auto border-b-2 border-ink bg-paper-raised"
     >
       {espacios.map((id) => {
         const on = id === active
@@ -67,7 +67,7 @@ export function DashTabBar({
               onSelect(id)
             }}
             data-cue="latch"
-            className={`flex min-h-[44px] items-center gap-2 px-4 font-mono text-d13 uppercase tracking-widest ${FOCUS_RING} ${
+            className={`flex min-h-[44px] shrink-0 items-center gap-2 px-4 font-mono text-d13 uppercase tracking-widest ${FOCUS_RING} ${
               on ? 'bg-ink font-bold text-paper' : 'text-ink hover:bg-ink/5'
             }`}
           >
@@ -94,7 +94,7 @@ export function DashTabBar({
       {profileHref && (
         <Link
           href={profileHref}
-          className={`ml-auto flex min-h-[44px] items-center gap-2 px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink hover:underline hover:underline-offset-4 ${FOCUS_RING}`}
+          className={`ml-auto flex min-h-[44px] shrink-0 items-center gap-2 px-4 font-mono text-d13 font-bold uppercase tracking-widest text-ink hover:underline hover:underline-offset-4 ${FOCUS_RING}`}
           data-cue="tick"
         >
           VER PERFIL PÚBLICO

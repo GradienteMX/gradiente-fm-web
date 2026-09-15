@@ -6,8 +6,39 @@ import { composeSteps, isOptionalComposeSection, sectionStep } from '@/lib/compo
 import { DraftSaveQueue } from '@/lib/draftSaveQueue'
 import { requiredFields, errorsFrom, completeness, meaningfulBlock, usableUrl } from '@/lib/contentReadiness'
 import type { ContentItem } from '@/lib/types'
+import type { User } from '@/lib/types'
+import { dashboardTextType } from '@/lib/dashboard/creationTypes'
+import { selectPublications } from '@/lib/dashboard/publications'
 
 const draft: ContentItem = { id: 'draft-test', type: 'articulo', title: 'Una pieza', slug: 'una-pieza', vibeMin: 3, vibeMax: 6, genres: [], tags: [], publishedAt: '2026-09-09T00:00:00Z' }
+
+describe('publications collection', () => {
+  const user: User = { id: 'writer', username: 'writer', displayName: 'Writer', role: 'user', joinedAt: '2026-01-01' }
+  it('keeps text creation within the existing role grants', () => {
+    assert.equal(dashboardTextType(null), null)
+    assert.equal(dashboardTextType(user), null)
+    assert.equal(dashboardTextType({ ...user, role: 'curator' }), null)
+    assert.equal(dashboardTextType({ ...user, franjaId: 'club' }), 'opinion')
+    assert.equal(dashboardTextType({ ...user, role: 'guide' }), 'articulo')
+  })
+  it('groups legacy text formats without changing their editing types or mixing in franjas', () => {
+    const rows = (['opinion', 'articulo', 'editorial', 'mix', 'franja'] as const).map((type, i) => ({ item: { ...draft, id: String(i), type }, date: draft.publishedAt }))
+    const selected = selectPublications(rows, 'type', 'articulo')
+    assert.deepEqual(selected.map(({ item }) => item.type), ['opinion', 'articulo', 'editorial'])
+    assert.equal(selectPublications(rows, 'type', 'all').length, 4)
+    assert.equal(rows.length, 5)
+  })
+  it('sorts publication and edit dates chronologically, with stable missing-date placement', () => {
+    const rows = [
+      { item: { ...draft, id: 'a', title: 'Zeta' }, date: '2026-09-12T00:00:00-06:00' },
+      { item: { ...draft, id: 'b', title: 'Alfa' }, date: '2026-09-12T02:00:00Z' },
+      { item: { ...draft, id: 'c', title: 'Beta' }, date: '' },
+    ]
+    assert.deepEqual(selectPublications(rows, 'date', 'all').map(({ item }) => item.id), ['a', 'b', 'c'])
+    assert.deepEqual(selectPublications(rows, 'title', 'all').map(({ item }) => item.id), ['b', 'c', 'a'])
+    assert.deepEqual(rows.map(({ item }) => item.id), ['a', 'b', 'c'])
+  })
+})
 
 describe('account autosave sequencing', () => {
   it('serializes changes made during a save and waits for the newest acknowledgement', async () => {

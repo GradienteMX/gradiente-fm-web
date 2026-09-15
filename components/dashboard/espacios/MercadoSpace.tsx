@@ -1,70 +1,24 @@
 'use client'
 
-// ── MERCADO — el escritorio de tienda de la franja (PLIEGO fase D) ─────────
-//
-// The fourth space. Its whole reason to exist: the listing-management
-// backend has been complete and UNREACHABLE. PATCH and DELETE on
-// /api/franjas/[id]/listings/[lid] had zero consumers — a seller could
-// publish a piece and then never change its price, never mark it sold,
-// never take it down. This space is the missing hand on those routes.
-//
-// THREE SUB-TABS
-//   CATÁLOGO  the storefront desk: create, edit, re-price, re-state and
-//             delete. ESTADO is an inline select, so «marcar vendido» is
-//             one gesture — the single most common thing a seller does.
-//   OFERTAS   the buyer threads over /api/listings/[lid]/comments, with the
-//             widget's exact reply semantics (a seller reply inside a
-//             thread clears its unanswered flag; the inbox route stays the
-//             authority, so every reply ends in afterMutation('franja')).
-//   AJUSTES   the self-service storefront switch, the currency label, and
-//             the sale-contact fields.
-//
-// GOVERNANCE — marketplace_enabled is SELF-SERVICE. The franja team turns
-// its own storefront on and off here (the PATCH /api/franjas/[id] whitelist
-// already allowed it; only the UI was missing). The old admin approval
-// queue retires from the dashboard; site admins keep an abuse kill-switch
-// on /admin. The switch says exactly what it does — hides the storefront on
-// /marketplace and the home rail — and states out loud that nothing is
-// deleted by turning it off.
-//
-// HONESTY LAWS HELD HERE
-//   · No orders, no checkout, no payments, no revenue: Gradiente processes
-//     no money and an offer is a conversation. OFERTAS says so in its head.
-//   · `views` is never surfaced — no counts, no trends, no popularity.
-//   · Listing comments stay their own system, never merged into the
-//     editorial comments model.
-//   · Empty → EmptyLine, failure → ErrorLine, loading → ShimmerLine. Never
-//     a spinner, never a fabricated row.
-//   · Acid appears only as the AcidBlock fill and the completitud bar.
-//     Destructive is sys-red-paper.
-//   · Freshness is declared: the provider polls the franja slice on a
-//     ≥5-min floor, so the sheet prints «SONDEO CADA 5 MIN».
-//
-// DIVERGENCE FROM THE MOCKUP (deliberate, schema-checked):
-//   · NO inventory column and NO «alerta de inventario» panel —
-//     marketplace_listings (0010 + 0032 + 0033) has no stock/quantity
-//     column of any kind. The mockup invented it.
-//   · NO «PUBLICADO / AGOTADO / BORRADOR» states — status is exactly
-//     available | reserved | sold → DISPONIBLE · RESERVADO · VENDIDO.
-//
-// Every mutation in this file ends with `await afterMutation('franja')` —
-// the project's one post-mutation recipe. No hand-rolled cache updates.
+// The Franja catalog and buyer conversations. Existing mutation routes and
+// availability states remain unchanged; no payment or order processing.
 
 import {
-  Fragment,
   useCallback,
   useEffect,
   useMemo,
   useState,
+  useRef,
   type FormEvent,
 } from 'react'
 import { formatDistanceToNowStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale/es'
+import { useSearchParams } from 'next/navigation'
+import { ActivityRowView } from '@/components/dashboard/widgets/ActividadWidget'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { SmartImage } from '@/components/SmartImage'
 import {
-  AcidBlock,
   Chip,
   EmptyLine,
   ErrorLine,
@@ -72,12 +26,7 @@ import {
   InkButton,
   MarginNote,
   Sheet,
-  SheetTable,
   ShimmerLine,
-  SpaceHead,
-  SubTabs,
-  Td,
-  type SubTab,
 } from '@/components/dashboard/espacios/kit'
 import {
   CATEGORY_LABEL,
@@ -88,7 +37,6 @@ import {
   emptyListingDraft,
   formatPrice,
   listingChecklist,
-  listingCompleteness,
   listingMissingRequired,
   newListingId,
   parsePrice,
@@ -146,10 +94,21 @@ async function readError(res: Response, fallback: string): Promise<string> {
 // ── The space ───────────────────────────────────────────────────────────────
 
 export function MercadoSpace() {
+  const search = useSearchParams()
   const { currentUser } = useAuth()
-  const { franja, loaded, errors, afterMutation } = useDashboardData()
+  const { franja, activity, loaded, errors, afterMutation } = useDashboardData()
 
-  const [tab, setTab] = useState<MercadoTab>('catalogo')
+  const tab: MercadoTab = search.get('tab') === 'ofertas' ? 'ofertas' : search.get('tab') === 'ajustes' ? 'ajustes' : 'catalogo'
+  const statusFilter = search.get('marketStatus') ?? 'all'
+  const editorHeading = useRef<HTMLHeadingElement>(null)
+  const editorTrigger = useRef<HTMLElement | null>(null)
+  const navigate = (tab: MercadoTab, listing?: string) => {
+    const params = new URLSearchParams(window.location.search)
+    params.set('tab', tab)
+    if (listing) params.set('listing', listing)
+    else params.delete('listing')
+    window.history.replaceState(null, '', `${window.location.pathname}?${params}`)
+  }
   const [editor, setEditor] = useState<EditorState>(null)
   const [draft, setDraft] = useState<ListingDraft>(emptyListingDraft())
   const [formBusy, setFormBusy] = useState(false)
@@ -189,7 +148,6 @@ export function MercadoSpace() {
   }, [editingId, listings])
 
   const checklist = useMemo(() => listingChecklist(draft), [draft])
-  const completeness = useMemo(() => listingCompleteness(checklist), [checklist])
   const missingRequired = useMemo(() => listingMissingRequired(checklist), [checklist])
 
   const patchDraft = useCallback((patch: Partial<ListingDraft>) => {
@@ -197,6 +155,7 @@ export function MercadoSpace() {
   }, [])
 
   const openCreate = useCallback(() => {
+    editorTrigger.current = document.activeElement as HTMLElement | null
     setEditor({ mode: 'create' })
     setDraft(emptyListingDraft())
     setFormError(null)
@@ -204,6 +163,7 @@ export function MercadoSpace() {
   }, [])
 
   const openEdit = useCallback((listing: MarketplaceListing) => {
+    editorTrigger.current = document.activeElement as HTMLElement | null
     setEditor({ mode: 'edit', id: listing.id })
     setDraft(draftFromListing(listing))
     setFormError(null)
@@ -213,7 +173,12 @@ export function MercadoSpace() {
   const closeEditor = useCallback(() => {
     setEditor(null)
     setFormError(null)
+    editorTrigger.current?.focus()
   }, [])
+
+  useEffect(() => {
+    if (editor) { editorHeading.current?.focus(); editorHeading.current?.scrollIntoView({ block: 'start' }) }
+  }, [editor])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -311,284 +276,102 @@ export function MercadoSpace() {
     [afterMutation, editingId, franjaId],
   )
 
-  // ── Head ──────────────────────────────────────────────────────────────────
+  const visible = listings.filter((listing) => statusFilter === 'all' || listing.status === statusFilter)
+  const offers = activity.filter((row) => row.kind === 'oferta')
+  const [page, setPage] = useState(1)
+  useEffect(() => setPage(1), [statusFilter, franjaId])
 
-  const head = (
-    <SpaceHead
-      eyebrow="ESPACIO"
-      title={
-        franja ? (
-          <>
-            MERCADO <span className="text-ink-faint">/</span> {franja.title}
-          </>
-        ) : (
-          'MERCADO'
-        )
-      }
-      chips={<Chip>CATÁLOGO DE FRANJA</Chip>}
-      right={
-        <span className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink-faint">
-          {'VENTA DE PRODUCTOS OFICIALES · GRADIENTE NO PROCESA PAGOS'}
-        </span>
-      }
-    />
-  )
-
-  const foot = (
-    <p className="pt-4 font-mono text-d11 uppercase tracking-widest text-ink-faint">
-      {'CATÁLOGO Y OFERTAS · SONDEO CADA 5 MIN'}
-    </p>
-  )
-
-  // ── Slice states — honest before anything else renders ───────────────────
-
-  if (!franja) {
-    return (
-      <div className="flex w-full flex-col">
-        {head}
-        <div className="pt-4">
-          {errors.franja ? (
-            <div className="flex flex-col items-center gap-2">
-              <ErrorLine>{'SEÑAL INTERRUMPIDA — EL MERCADO NO CARGÓ.'}</ErrorLine>
-              <InkButton onClick={() => void afterMutation('franja')}>REINTENTAR</InkButton>
-            </div>
-          ) : !loaded.franja ? (
-            <ShimmerLine />
-          ) : (
-            <EmptyLine>{'NO ADMINISTRAS NINGUNA FRANJA: NO HAY CATÁLOGO QUE ABRIR.'}</EmptyLine>
-          )}
-        </div>
-        {foot}
+  return <section className="flex min-w-0 flex-col gap-5 pb-10">
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div><h2 className="font-syne text-[clamp(1.75rem,8vw,3rem)] font-extrabold md:text-5xl">MERCADO</h2>
+        {franja && <p className="mt-1 font-grotesk text-xl font-bold">{franja.title}</p>}</div>
+      {franja && <button type="button" onClick={() => navigate('ajustes')}
+        className={`min-h-11 font-mono text-d13 text-ink-soft ${FOCUS_RING}`}>{franja.marketplaceEnabled ? 'TIENDA VISIBLE' : 'TIENDA OCULTA'} ↗</button>}
+    </header>
+    {!franja ? <div>{errors.franja ? <><ErrorLine>No se pudo cargar el mercado.</ErrorLine><InkButton onClick={() => void afterMutation('franja')}>REINTENTAR</InkButton></>
+      : !loaded.franja ? <ShimmerLine /> : <EmptyLine>No tienes una franja con catálogo.</EmptyLine>}</div>
+    : <>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/30 pb-2">
+        <nav aria-label="Secciones de mercado" className="flex flex-wrap">
+          {([['catalogo', 'CATÁLOGO'], ['ofertas', 'OFERTAS'], ['ajustes', 'AJUSTES']] as const).map(([key, label]) =>
+            <button key={key} type="button" onClick={() => navigate(key)} aria-pressed={tab === key}
+              className={`min-h-11 border border-ink/25 px-4 font-mono text-d13 sm:px-8 ${tab === key ? 'bg-ink text-paper' : 'bg-paper-raised text-ink hover:bg-ink/5'} ${FOCUS_RING}`}>{label}</button>)}
+        </nav>
+        {tab === 'catalogo' && <label><span className="sr-only">Filtrar por disponibilidad</span>
+          <select value={statusFilter} onChange={(event) => {
+            const params = new URLSearchParams(window.location.search)
+            params.set('marketStatus', event.target.value)
+            window.history.replaceState(null, '', `${window.location.pathname}?${params}`)
+          }} className={`min-h-11 max-w-full border border-ink/30 bg-paper-raised px-3 font-mono text-d13 ${FOCUS_RING}`}>
+            <option value="all">Todos los estados</option>{STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABEL[status]}</option>)}
+          </select></label>}
       </div>
-    )
-  }
-
-  const tabs: readonly SubTab<MercadoTab>[] = [
-    { id: 'catalogo', label: 'CATÁLOGO', count: listings.length },
-    {
-      id: 'ofertas',
-      label: 'OFERTAS',
-      // The only true number the provider carries: listings whose newest
-      // buyer thread is still waiting on the seller (the inbox route's own
-      // computation). Never a fabricated «offers received» total.
-      count: unanswered.size,
-      dot: unanswered.size > 0,
-    },
-    { id: 'ajustes', label: 'AJUSTES' },
-  ]
-
-  return (
-    <div className="flex w-full flex-col">
-      {head}
-      <SubTabs
-        tabs={tabs}
-        active={tab}
-        onChange={setTab}
-        ariaLabel="Secciones de mercado"
-      />
-
-      {tab === 'catalogo' && (
-        <div className="flex flex-col gap-4 pt-4 lg:flex-row lg:items-start lg:gap-6">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <AcidBlock
-              title="Nueva publicación"
-              note="UNA PIEZA A LA VENTA EN TU FRANJA"
-            >
-              <InkButton
-                onClick={() => (editor?.mode === 'create' ? closeEditor() : openCreate())}
-                cue="latch"
-              >
-                {editor?.mode === 'create' ? 'CERRAR' : 'PUBLICAR PIEZA'}
-              </InkButton>
-            </AcidBlock>
-
-            {editor?.mode === 'create' && (
-              <Sheet title="NUEVA PIEZA" note="SE PUBLICA AL GUARDAR">
-                <ListingForm
-                  mode="create"
-                  draft={draft}
-                  onChange={patchDraft}
-                  currency={currency}
-                  uid={uid}
-                  busy={formBusy}
-                  error={formError}
-                  canSubmit={missingRequired.length === 0}
-                  missing={missingRequired}
-                  onSubmit={() => void submitListing()}
-                  onCancel={closeEditor}
-                />
-              </Sheet>
-            )}
-
-            <Sheet
-              title="CATÁLOGO"
-              note={`${listings.length} ${listings.length === 1 ? 'PIEZA' : 'PIEZAS'}`}
-              padded={false}
-            >
-              {listings.length === 0 ? (
-                <EmptyLine>{'AÚN NO HAY PIEZAS PUBLICADAS EN ESTA FRANJA.'}</EmptyLine>
-              ) : (
-                <SheetTable
-                  head={['PRODUCTO', 'CATEGORÍA', 'PRECIO', 'ESTADO', 'ACCIONES']}
-                >
-                  {listings.map((listing) => (
-                    <Fragment key={listing.id}>
-                      <tr>
-                        <Td mono={false}>
-                          <div className="flex items-center gap-3">
-                            <span className="relative block h-11 w-11 shrink-0 overflow-hidden border border-ink bg-paper">
-                              {listing.images[0] ? (
-                                <SmartImage
-                                  src={listing.images[0]}
-                                  alt={listing.title}
-                                  className="object-cover"
-                                  sizes="44px"
-                                />
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center font-mono text-d11 font-bold text-ink-faint">
-                                  {CATEGORY_LABEL[listing.category]?.slice(0, 2) ?? '··'}
-                                </span>
-                              )}
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block font-grotesk text-d15 font-medium text-ink">
-                                {listing.title}
-                              </span>
-                              <span className="block font-mono text-d11 uppercase tracking-widest text-ink-faint">
-                                {listing.condition}
-                                {listing.subcategory ? ` · ${listing.subcategory}` : ''}
-                                {unanswered.has(listing.id) ? ' · OFERTA SIN RESPONDER' : ''}
-                              </span>
-                            </span>
-                          </div>
-                        </Td>
-                        <Td>{CATEGORY_LABEL[listing.category] ?? listing.category}</Td>
-                        <Td>
-                          <span className="tabular-nums">
-                            {formatPrice(listing.price, currency)}
-                          </span>
-                        </Td>
-                        <Td>
-                          <StatusPicker
-                            listing={listing}
-                            busy={rowBusyId === listing.id}
-                            onChange={(status) => void changeStatus(listing, status)}
-                          />
-                        </Td>
-                        <Td right>
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <InkButton
-                              cue="latch"
-                              onClick={() =>
-                                editingId === listing.id ? closeEditor() : openEdit(listing)
-                              }
-                            >
-                              {editingId === listing.id ? 'CERRAR' : 'EDITAR'}
-                            </InkButton>
-                            <InkButton
-                              tone="red"
-                              onClick={() =>
-                                setConfirmDeleteId((cur) =>
-                                  cur === listing.id ? null : listing.id,
-                                )
-                              }
-                            >
-                              BORRAR
-                            </InkButton>
-                          </div>
-                        </Td>
-                      </tr>
-
-                      {rowError?.id === listing.id && (
-                        <tr>
-                          <td
-                            colSpan={5}
-                            className="border-b border-ink/15 px-4 pb-3 text-right"
-                          >
-                            <span
-                              role="status"
-                              className="font-mono text-d11 font-bold uppercase tracking-widest text-sys-red-paper"
-                            >
-                              ⚠ {rowError.message}
-                            </span>
-                          </td>
-                        </tr>
-                      )}
-
-                      {confirmDeleteId === listing.id && (
-                        <tr>
-                          <td colSpan={5} className="border-b border-ink bg-paper px-4 py-4">
-                            <DeleteConfirm
-                              listing={listing}
-                              busy={rowBusyId === listing.id}
-                              onCancel={() => setConfirmDeleteId(null)}
-                              onConfirm={() => void deleteListing(listing)}
-                            />
-                          </td>
-                        </tr>
-                      )}
-
-                      {editingId === listing.id && (
-                        <tr>
-                          <td colSpan={5} className="border-b border-ink px-4 py-4">
-                            <ListingForm
-                              mode="edit"
-                              draft={draft}
-                              onChange={patchDraft}
-                              currency={currency}
-                              uid={uid}
-                              busy={formBusy}
-                              error={formError}
-                              canSubmit={missingRequired.length === 0}
-                              missing={missingRequired}
-                              onSubmit={() => void submitListing()}
-                              onCancel={closeEditor}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  ))}
-                </SheetTable>
-              )}
-            </Sheet>
-          </div>
-
-          {/* Right rail — the completitud of the announcement being edited. */}
-          <div className="lg:sticky lg:top-6 lg:w-80 lg:shrink-0">
-            <CompletitudRail
-              open={editor !== null}
-              checklist={checklist}
-              completeness={completeness}
-            />
-          </div>
+      {errors.franja && <div className="flex flex-wrap items-center gap-3"><p role="status">No se pudo actualizar el catálogo.</p><InkButton onClick={() => void afterMutation('franja')}>REINTENTAR</InkButton></div>}
+      {tab === 'catalogo' && <>
+        {editor && <section className="scroll-mt-5 border border-ink/30 bg-paper-raised p-4 md:p-6" aria-label="Editor de publicación">
+          <h3 ref={editorHeading} tabIndex={-1} className="mb-5 font-syne text-d28 font-extrabold outline-none">{editor.mode === 'create' ? 'NUEVA PUBLICACIÓN' : 'EDITAR PUBLICACIÓN'}</h3>
+          <ListingForm mode={editor.mode} draft={draft} onChange={patchDraft} currency={currency} uid={uid} busy={formBusy}
+            error={formError} canSubmit={missingRequired.length === 0} missing={missingRequired}
+            onSubmit={() => void submitListing()} onCancel={closeEditor} />
+        </section>}
+        <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <button type="button" onClick={openCreate} disabled={formBusy} aria-label="Nueva publicación en el mercado"
+            className={`flex min-h-64 flex-col items-center justify-center gap-5 border border-ink/15 bg-publication-news px-6 py-10 transition-colors hover:border-ink sm:min-h-96 ${FOCUS_RING}`}>
+            <span aria-hidden className="font-grotesk text-8xl leading-none">+</span>
+            <span className="max-w-full font-syne text-d18 font-extrabold leading-tight sm:text-xl">NUEVA<br />PUBLICACIÓN</span>
+          </button>
+          {visible.slice(0, page * 12).map((listing) => <article key={listing.id} className="flex min-w-0 flex-col border border-ink/25 bg-paper-raised">
+            <a href={`/marketplace?franja=${encodeURIComponent(franja.slug)}&listing=${encodeURIComponent(listing.id)}`}
+              className={`relative block aspect-square overflow-hidden bg-publication-news/30 ${FOCUS_RING}`} aria-label={`Ver ${listing.title}`}>
+              {listing.images[0] ? <SmartImage src={listing.images[0]} alt={listing.title} sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 480px" className="object-cover" />
+                : <span className="flex h-full items-center justify-center font-syne text-d28 font-bold">{CATEGORY_LABEL[listing.category]}</span>}
+            </a>
+            <div className="flex flex-1 flex-col gap-3 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="font-grotesk text-d18 font-bold leading-snug">{listing.title}</h3>
+                <span className="font-mono text-d11 text-ink-soft">{listing.subcategory || CATEGORY_LABEL[listing.category]}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-mono text-d18 tabular-nums">{formatPrice(listing.price, currency)}</p>
+                <StatusPicker listing={listing} busy={rowBusyId !== null} onChange={(status) => void changeStatus(listing, status)} />
+              </div>
+              {unanswered.has(listing.id) && <button type="button" onClick={() => navigate('ofertas', listing.id)} className={`min-h-11 text-left font-mono text-d11 underline ${FOCUS_RING}`}>OFERTA SIN RESPONDER ↗</button>}
+              <div className="mt-auto flex items-center gap-5 border-t border-ink/20 pt-1">
+                <a href={`/marketplace?franja=${encodeURIComponent(franja.slug)}&listing=${encodeURIComponent(listing.id)}`}
+                  className={`flex min-h-11 items-center font-mono text-d13 ${FOCUS_RING}`}>VER ↗</a>
+                <button type="button" onClick={() => openEdit(listing)} disabled={formBusy} className={`min-h-11 font-mono text-d13 ${FOCUS_RING}`}>EDITAR</button>
+                <details className="group relative ml-auto">
+                  <summary aria-label={`Más opciones para ${listing.title}`} className={`flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center text-xl [&::-webkit-details-marker]:hidden ${FOCUS_RING}`}>⋮</summary>
+                  <div className="absolute bottom-full right-0 z-10 mb-1 w-48 border border-ink bg-paper-raised p-2">
+                    <button type="button" onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); navigate('ofertas', listing.id) }}
+                      className={`min-h-11 w-full px-3 text-left font-mono text-d13 ${FOCUS_RING}`}>VER OFERTAS</button>
+                    <button type="button" disabled={rowBusyId !== null} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); setConfirmDeleteId(listing.id) }}
+                      className={`min-h-11 w-full px-3 text-left font-mono text-d13 text-sys-red-paper ${FOCUS_RING}`}>ELIMINAR</button>
+                  </div>
+                </details>
+              </div>
+              {rowError?.id === listing.id && <p role="status" className="font-grotesk text-d13 text-sys-red-paper">{rowError.message}</p>}
+              {confirmDeleteId === listing.id && <DeleteConfirm listing={listing} busy={rowBusyId === listing.id}
+                onCancel={() => setConfirmDeleteId(null)} onConfirm={() => void deleteListing(listing)} />}
+            </div>
+          </article>)}
+          {!visible.length && <div className="flex items-center justify-center border-y border-ink/15 px-6 py-10 sm:min-h-64 xl:col-span-3">
+            <p role="status" className="max-w-sm text-center font-grotesk text-d18 text-ink-soft">{!listings.length ? 'Tu catálogo empieza con una publicación.' : 'No hay publicaciones con este estado.'}</p>
+          </div>}
         </div>
-      )}
-
-      {tab === 'ofertas' && (
-        <OfertasTab
-          listings={listings}
-          unanswered={unanswered}
-          currency={currency}
-          franjaSlug={franja.slug}
-          onReplied={() => void afterMutation('franja')}
-        />
-      )}
-
-      {tab === 'ajustes' && (
-        <AjustesTab
-          franjaId={franja.id}
-          franjaSlug={franja.slug}
-          enabled={franja.marketplaceEnabled}
-          currency={currency}
-          listings={listings}
-          afterMutation={afterMutation}
-        />
-      )}
-
-      {foot}
-    </div>
-  )
+        {visible.length > page * 12 && <div><InkButton onClick={() => setPage((value) => value + 1)}>VER MÁS</InkButton></div>}
+        {offers.length > 0 && <section className="border-t border-ink/30 pt-4" aria-label="Ofertas recientes">
+          <h3 className="mb-3 font-syne text-d28 font-extrabold">OFERTAS</h3>
+          {offers.slice(0, 3).map((row) => <ActivityRowView key={row.key} row={row} large onUnavailable={() => navigate('ofertas', row.listingId)} />)}
+        </section>}
+        <p className="font-grotesk text-d13 text-ink-soft">Acuerda la compra directamente con la otra persona.</p>
+      </>}
+      {tab === 'ofertas' && <OfertasTab key={search.get('listing') ?? 'inbox'} initialListingId={search.get('listing')} listings={listings}
+        unanswered={unanswered} currency={currency} franjaSlug={franja.slug} onReplied={() => void afterMutation('franja')} />}
+      {tab === 'ajustes' && <AjustesTab franjaId={franja.id} franjaSlug={franja.slug} enabled={franja.marketplaceEnabled}
+        currency={currency} listings={listings} afterMutation={afterMutation} />}
+    </>}
+  </section>
 }
 
 // ── ESTADO — the inline state picker (the one-gesture «marcar vendido») ────
@@ -609,7 +392,7 @@ function StatusPicker({
         value={listing.status}
         disabled={busy}
         onChange={(e) => onChange(e.target.value as MarketplaceListingStatus)}
-        className={`min-h-[44px] cursor-pointer border border-ink bg-paper px-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING}`}
+        className={`min-h-[44px] max-w-full cursor-pointer border border-ink/25 px-2 font-mono text-d11 font-bold uppercase tracking-widest text-ink disabled:cursor-not-allowed disabled:opacity-40 ${listing.status === 'available' ? 'bg-publication-news/50' : listing.status === 'reserved' ? 'bg-publication-review/50' : 'bg-publication-event/50'} ${FOCUS_RING}`}
       >
         {STATUSES.map((status) => (
           <option key={status} value={status}>
@@ -641,16 +424,14 @@ function DeleteConfirm({
   return (
     <div className="flex flex-col gap-3 border border-sys-red-paper p-4">
       <p className="font-mono text-d13 font-bold uppercase tracking-widest text-sys-red-paper">
-        {'BORRAR NO ES ARCHIVAR'}
+        {'ELIMINAR PUBLICACIÓN'}
       </p>
       <p className="font-grotesk text-d15 text-ink">
         {'Se elimina «'}
         {listing.title}
-        {'» de la base de datos, junto con los hilos de compradores de esa pieza. No hay papelera ni deshacer.'}
+        {'» y sus conversaciones. Esta acción es permanente.'}
       </p>
-      <p className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink-faint">
-        {'SI SOLO QUIERES DEJAR DE VENDERLA, MÁRCALA COMO VENDIDA O APAGA LA TIENDA EN AJUSTES: ESO NO BORRA NADA.'}
-      </p>
+
       <div className="flex flex-wrap gap-2">
         <InkButton tone="red" cue="stamp" onClick={onConfirm} disabled={busy}>
           {busy ? 'BORRANDO…' : 'BORRAR DEFINITIVAMENTE'}
@@ -663,131 +444,41 @@ function DeleteConfirm({
   )
 }
 
-// ── Rail — «// COMPLETITUD DEL ANUNCIO» ────────────────────────────────────
-//
-// The compose pliego's rail pattern: ✓/○ rows that scroll to their field, an
-// acid-on-ink progress bar, and an honest «FALTAN n CAMPOS». What it does
-// NOT do is lie about the gate — only TÍTULO is required by the API, and the
-// note says so instead of dressing the rest as obligations.
-
-function CompletitudRail({
-  open,
-  checklist,
-  completeness,
-}: {
-  open: boolean
-  checklist: ReturnType<typeof listingChecklist>
-  completeness: { done: number; total: number }
-}) {
-  const pending = completeness.total - completeness.done
-  const pct =
-    completeness.total === 0
-      ? 0
-      : Math.round((completeness.done / completeness.total) * 100)
-
-  return (
-    <section className="border border-ink bg-paper-raised">
-      <h3 className="border-b border-ink px-4 py-1.5 font-mono text-d11 font-bold uppercase leading-8 tracking-widest text-ink-soft">
-        {'// COMPLETITUD DEL ANUNCIO'}
-      </h3>
-      <div className="flex flex-col gap-3 p-4">
-        {!open ? (
-          <EmptyLine>{'NINGÚN ANUNCIO ABIERTO.'}</EmptyLine>
-        ) : (
-          <>
-            <div>
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">
-                  {pending === 0 ? 'ANUNCIO COMPLETO' : `FALTAN ${pending} ${pending === 1 ? 'CAMPO' : 'CAMPOS'}`}
-                </span>
-                <span className="font-mono text-d13 tabular-nums tracking-widest text-ink">
-                  {completeness.done}/{completeness.total}
-                </span>
-              </div>
-              <div
-                role="progressbar"
-                aria-label="Campos completos del anuncio"
-                aria-valuemin={0}
-                aria-valuemax={completeness.total}
-                aria-valuenow={completeness.done}
-                className="mt-1.5 h-2 w-full border border-ink bg-ink"
-              >
-                <div className="h-full bg-acid" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-
-            <ul className="flex flex-col">
-              {checklist.map((field) => (
-                <li key={field.key}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      document.getElementById(field.anchorId)?.scrollIntoView({ block: 'start' })
-                    }
-                    data-cue="tick"
-                    aria-label={`Ir a ${field.label} — ${field.done ? 'completo' : 'pendiente'}`}
-                    className={`flex min-h-11 w-full items-center gap-2.5 text-left font-mono text-d13 uppercase tracking-widest underline-offset-4 hover:underline lg:min-h-9 ${
-                      field.done ? 'text-ink' : 'text-ink-soft'
-                    } ${FOCUS_RING}`}
-                  >
-                    <span aria-hidden className="w-4 shrink-0 text-center">
-                      {field.done ? '✓' : '○'}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{field.label}</span>
-                    {field.required && !field.done && (
-                      <span className="shrink-0 font-bold text-sys-red-paper">FALTA</span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <MarginNote>
-              {'SOLO EL TÍTULO ES OBLIGATORIO. EL RESTO COMPLETA EL ANUNCIO: SIN PRECIO SE PUBLICA EN $0 Y SIN VÍA DE CONTACTO EL COMPRADOR SOLO PUEDE ESCRIBIR EN EL HILO.'}
-            </MarginNote>
-          </>
-        )}
-      </div>
-    </section>
-  )
-}
-
 // ── OFERTAS — the buyer-thread inbox ───────────────────────────────────────
 
 function OfertasTab({
+  initialListingId,
   listings,
   unanswered,
   currency,
   franjaSlug,
   onReplied,
 }: {
+  initialListingId?: string | null
   listings: MarketplaceListing[]
   unanswered: ReadonlySet<string>
   currency: string | null
   franjaSlug: string
   onReplied: () => void
 }) {
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [showAll, setShowAll] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(initialListingId ?? null)
+  const [showAll, setShowAll] = useState(!!initialListingId)
 
   const waiting = listings.filter((l) => unanswered.has(l.id))
   const rows = showAll ? listings : waiting
 
   return (
     <div className="flex flex-col gap-4 pt-4">
-      <MarginNote>
-        {'HILOS DE COMPRADORES — NO «PEDIDOS»: AQUÍ NADIE COBRA TODAVÍA. LO QUE SE ACUERDE SE CIERRA FUERA DE GRADIENTE.'}
-      </MarginNote>
+      <p className="font-grotesk text-d13 text-ink-soft">Acuerda la compra directamente con la otra persona.</p>
 
       <Sheet
         title={showAll ? 'TODOS LOS HILOS' : 'ESPERAN RESPUESTA'}
-        note={`${rows.length} ${rows.length === 1 ? 'PIEZA' : 'PIEZAS'}`}
         action={
           listings.length > 0 ? (
             <InkButton cue="latch" onClick={() => setShowAll((v) => !v)}>
               {showAll
-                ? `SOLO SIN RESPONDER · ${waiting.length}`
-                : `VER TODAS LAS PIEZAS · ${listings.length}`}
+                ? 'SIN RESPONDER'
+                : 'TODAS LAS CONVERSACIONES'}
             </InkButton>
           ) : undefined
         }
@@ -795,7 +486,7 @@ function OfertasTab({
       >
         {listings.length === 0 ? (
           <EmptyLine>
-            {'NO HAY PIEZAS PUBLICADAS: NADIE PUEDE ESCRIBIRTE TODAVÍA.'}
+            {'Publica un objeto para recibir consultas y ofertas.'}
           </EmptyLine>
         ) : rows.length === 0 ? (
           <EmptyLine>{'NINGÚN COMPRADOR ESPERA RESPUESTA.'}</EmptyLine>
@@ -810,15 +501,15 @@ function OfertasTab({
                     onClick={() => setOpenId((cur) => (cur === listing.id ? null : listing.id))}
                     aria-expanded={open}
                     data-cue="tick"
-                    className={`flex min-h-[52px] w-full items-center gap-3 px-4 py-2 text-left ${FOCUS_RING}`}
+                    className={`flex min-h-28 w-full flex-wrap items-center gap-4 px-4 py-4 text-left ${FOCUS_RING}`}
                   >
-                    <span className="relative block h-11 w-11 shrink-0 overflow-hidden border border-ink bg-paper">
+                    <span className="relative block h-20 w-20 shrink-0 overflow-hidden bg-paper sm:h-28 sm:w-28">
                       {listing.images[0] ? (
                         <SmartImage
                           src={listing.images[0]}
                           alt={listing.title}
                           className="object-cover"
-                          sizes="44px"
+                          sizes="112px"
                         />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center font-mono text-d11 font-bold text-ink-faint">
@@ -827,7 +518,7 @@ function OfertasTab({
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-grotesk text-d15 font-medium text-ink">
+                      <span className="block font-grotesk text-d18 font-bold text-ink">
                         {listing.title}
                       </span>
                       <span className="block truncate font-mono text-d11 uppercase tracking-widest text-ink-faint">
@@ -836,10 +527,11 @@ function OfertasTab({
                         {formatPrice(listing.price, currency)}
                       </span>
                     </span>
+                    <span className="font-mono text-d13">{open ? 'CERRAR' : 'VER'} ↗</span>
                     {unanswered.has(listing.id) && (
                       <span className="flex shrink-0 items-center gap-1.5 font-mono text-d11 font-bold uppercase tracking-widest text-ink">
                         <span aria-hidden className="h-2 w-2 border border-ink bg-acid" />
-                        ESPERA RESPUESTA
+                        SIN RESPONDER
                       </span>
                     )}
                   </button>
@@ -966,11 +658,11 @@ function ListingThread({
         <ShimmerLine />
       ) : state.phase === 'error' ? (
         <div className="flex flex-col items-center gap-2">
-          <ErrorLine>{'SEÑAL INTERRUMPIDA — EL HILO NO CARGÓ.'}</ErrorLine>
+          <ErrorLine>{'No se pudo cargar la conversación.'}</ErrorLine>
           <InkButton onClick={() => void load()}>REINTENTAR</InkButton>
         </div>
       ) : comments.length === 0 ? (
-        <EmptyLine>{'NADIE HA ESCRITO EN ESTA PIEZA TODAVÍA.'}</EmptyLine>
+        <EmptyLine>{'Todavía no hay mensajes sobre esta publicación.'}</EmptyLine>
       ) : (
         <ul className="flex max-h-72 flex-col gap-3 overflow-y-auto">
           {comments.map((c) => (
@@ -994,7 +686,7 @@ function ListingThread({
         <form onSubmit={(e) => void send(e)} className="flex items-end gap-2">
           <label className="flex min-h-11 min-w-0 flex-1 flex-col justify-end">
             <span className="sr-only">
-              {openThread ? `Responder a @${openThread.username}` : 'Comentar esta pieza'}
+              {openThread ? `Responder a @${openThread.username}` : 'Comentar esta publicación'}
             </span>
             <textarea
               value={body}
@@ -1004,7 +696,7 @@ function ListingThread({
               placeholder={
                 openThread
                   ? `Responder a @${openThread.username}…`
-                  : 'Escribir en el hilo de esta pieza…'
+                  : 'Escribir un mensaje…'
               }
               className={`w-full resize-none border border-ink bg-paper-raised p-2 font-grotesk text-d15 text-ink placeholder:text-ink-faint ${FOCUS_RING}`}
             />
@@ -1075,19 +767,17 @@ function AjustesTab({
   )
 
   return (
-    <div className="flex flex-col gap-4 pt-4">
+    <div className="grid items-start gap-5 pt-2 lg:grid-cols-2">
       <TiendaSwitch
         enabled={enabled}
-        franjaSlug={franjaSlug}
-        listingCount={listings.length}
         patchFranja={patchFranja}
       />
       <MonedaSheet currency={currency} patchFranja={patchFranja} />
-      <ContactoSheet
+      <div className="lg:col-span-2"><ContactoSheet
         franjaId={franjaId}
         listings={listings}
         afterMutation={afterMutation}
-      />
+      /></div>
     </div>
   )
 }
@@ -1101,13 +791,9 @@ function AjustesTab({
 
 function TiendaSwitch({
   enabled,
-  franjaSlug,
-  listingCount,
   patchFranja,
 }: {
   enabled: boolean
-  franjaSlug: string
-  listingCount: number
   patchFranja: (body: Record<string, unknown>) => Promise<string | null>
 }) {
   const [busy, setBusy] = useState(false)
@@ -1129,7 +815,7 @@ function TiendaSwitch({
   }
 
   return (
-    <Sheet title="TIENDA PÚBLICA" note="LO DECIDE TU EQUIPO, NO GRADIENTE">
+    <Sheet title="VISIBILIDAD">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-4">
           <button
@@ -1154,21 +840,18 @@ function TiendaSwitch({
               />
             </span>
             <span className="font-mono text-d13 font-bold uppercase tracking-widest text-ink">
-              {busy ? 'GUARDANDO…' : on ? 'TIENDA ENCENDIDA' : 'TIENDA APAGADA'}
+              {busy ? 'GUARDANDO…' : on ? 'TIENDA VISIBLE' : 'TIENDA OCULTA'}
             </span>
           </button>
-          <Chip filled={on}>{on ? 'VISIBLE EN /MARKETPLACE' : 'OCULTA'}</Chip>
         </div>
 
         <p className="font-grotesk text-d15 text-ink">
           {on
-            ? `Tu catálogo aparece en /marketplace y en el riel de la portada, bajo /${franjaSlug}.`
-            : 'Tu catálogo no aparece en /marketplace ni en el riel de la portada.'}
+            ? 'Tu catálogo aparece en Mercado y en la portada.'
+            : 'Solo tu equipo puede ver el catálogo.'}
         </p>
 
-        <MarginNote>
-          {`APAGAR LA TIENDA OCULTA ${listingCount} ${listingCount === 1 ? 'PIEZA' : 'PIEZAS'}: NO BORRA NADA. LAS PIEZAS, SUS IMÁGENES Y SUS HILOS SIGUEN AQUÍ Y VUELVEN A VERSE AL ENCENDERLA. BORRAR UNA PIEZA ES OTRA COSA, Y VIVE EN CATÁLOGO.`}
-        </MarginNote>
+        <p className="font-grotesk text-d13 text-ink-soft">Ocultar la tienda conserva tus publicaciones y conversaciones.</p>
 
         {error && (
           <p
@@ -1223,7 +906,7 @@ function MonedaSheet({
   const dirty = value.trim().toUpperCase() !== (currency ?? '')
 
   return (
-    <Sheet title="MONEDA" note="ETIQUETA, NO CONVERSIÓN">
+    <Sheet title="MONEDA">
       <form onSubmit={(e) => void save(e)} className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1.5">
@@ -1251,7 +934,7 @@ function MonedaSheet({
           )}
         </div>
         <p className="font-mono text-d11 uppercase leading-relaxed tracking-widest text-ink-faint">
-          {'SE IMPRIME JUNTO A CADA PRECIO. VACÍA, EL CATÁLOGO DICE MXN. GRADIENTE NO CONVIERTE NI COBRA.'}
+          {'La moneda aparece junto al precio. Si la dejas vacía, se usa MXN.'}
         </p>
         {error && (
           <p
@@ -1321,8 +1004,8 @@ function ContactoSheet({
         ),
       )
       const ok = settled.filter((s) => s.status === 'fulfilled').length
-      setResult(`APLICADO A ${ok} DE ${targets.length} ${targets.length === 1 ? 'PIEZA' : 'PIEZAS'}`)
-      if (ok < targets.length) setError('ALGUNAS PIEZAS NO SE PUDIERON ESCRIBIR')
+      setResult(`APLICADO A ${ok} DE ${targets.length} ${targets.length === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES'}`)
+      if (ok < targets.length) setError('ALGUNAS PUBLICACIONES NO SE PUDIERON ESCRIBIR')
       setConfirming(false)
       await afterMutation('franja')
     } catch {
@@ -1335,20 +1018,18 @@ function ContactoSheet({
   const control = `min-h-11 w-full border border-ink bg-paper-raised px-3 font-mono text-d13 text-ink placeholder:text-ink-faint ${FOCUS_RING}`
 
   return (
-    <Sheet title="CONTACTO DE VENTA" note="VIVE EN CADA PIEZA">
+    <Sheet title="CONTACTO DE VENTA">
       <div className="flex flex-col gap-4">
-        <MarginNote>
-          {'EL ESQUEMA NO GUARDA UN CONTACTO POR FRANJA: WHATSAPP, E-MAIL Y ENLACE SON CAMPOS DE CADA PIEZA. LO QUE ESCRIBAS AQUÍ SE COPIA A LAS PIEZAS QUE ELIJAS; LOS CAMPOS VACÍOS NO SE TOCAN.'}
-        </MarginNote>
+        <p className="font-grotesk text-d15 text-ink-soft">Aplica tus datos a las publicaciones sin contacto. Los campos vacíos conservan su valor.</p>
 
         {listings.length === 0 ? (
-          <EmptyLine>{'AÚN NO HAY PIEZAS A LAS QUE APLICAR UN CONTACTO.'}</EmptyLine>
+          <EmptyLine>{'AÚN NO HAY PUBLICACIONES A LAS QUE APLICAR UN CONTACTO.'}</EmptyLine>
         ) : (
           <>
             <p className="font-mono text-d13 uppercase tracking-widest text-ink">
               {without.length === 0
-                ? 'TODAS LAS PIEZAS TIENEN AL MENOS UNA VÍA DE CONTACTO.'
-                : `${without.length} DE ${listings.length} ${listings.length === 1 ? 'PIEZA' : 'PIEZAS'} SIN NINGUNA VÍA DE CONTACTO.`}
+                ? 'TODAS LAS PUBLICACIONES TIENEN AL MENOS UNA VÍA DE CONTACTO.'
+                : `${without.length} DE ${listings.length} ${listings.length === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES'} SIN NINGUNA VÍA DE CONTACTO.`}
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1398,14 +1079,14 @@ function ContactoSheet({
                 className="h-4 w-4 shrink-0 accent-black"
               />
               <span className="font-mono text-d11 uppercase tracking-widest text-ink">
-                {'TAMBIÉN SOBRESCRIBIR LAS PIEZAS QUE YA TIENEN CONTACTO'}
+                {'TAMBIÉN SOBRESCRIBIR LAS PUBLICACIONES QUE YA TIENEN CONTACTO'}
               </span>
             </label>
 
             {confirming && (
               <div className="flex flex-col gap-3 border border-sys-red-paper p-4">
                 <p className="font-grotesk text-d15 text-ink">
-                  {`Vas a sobrescribir el contacto de ${targets.length} ${targets.length === 1 ? 'pieza' : 'piezas'}, incluidas las que ya tenían uno. El valor anterior se pierde.`}
+                  {`Vas a sobrescribir el contacto de ${targets.length} ${targets.length === 1 ? 'publicación' : 'publicaciones'}, incluidas las que ya tenían uno. El valor anterior se pierde.`}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <InkButton tone="red" cue="stamp" onClick={() => void apply()} disabled={busy}>
@@ -1431,7 +1112,7 @@ function ContactoSheet({
                 >
                   {busy
                     ? 'APLICANDO…'
-                    : `APLICAR A ${targets.length} ${targets.length === 1 ? 'PIEZA' : 'PIEZAS'}`}
+                    : `APLICAR A ${targets.length} ${targets.length === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES'}`}
                 </InkButton>
                 {!filled && (
                   <span className="font-mono text-d11 uppercase tracking-widest text-ink-faint">

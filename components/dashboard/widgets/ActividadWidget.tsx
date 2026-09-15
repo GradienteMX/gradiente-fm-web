@@ -1,31 +1,20 @@
 'use client'
 
-// ── ACTIVIDAD — the sole inbox (revision-2 point 11) ────────────────────────
-//
-// One merged reverse-chron list from the provider's `activity` slice. The
-// widget only renders; it never fetches, never opens channels.
-//
-// Revision-2: the register is SMALLER (d13 sentence / 24px identity block /
-// 40px rows) so MORE of what happened is visible per size; rows carry the
-// actor's NAME but NO date (Iker: «con nombres sin fecha»); the SONDEO and
-// DM-futuro footnotes are gone. A row click opens the target content as the
-// in-place overlay popup — comment rows land with the comments column
-// addressed (`?comment=`), so the reply happens right there.
-//
-// Exposed rows become seen individually after 2s. Explicit mark-all retains
-// the legacy watermark. StatusStrip uses the same combined unread rule.
+// Unified activity from the provider, filtered locally. Comment actions open
+// the publication and addressed comment together; offers open their thread.
+// Exposed rows become seen after two seconds; mark-all preserves the watermark.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/components/auth/useAuth'
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider'
 import { SmartImage } from '@/components/SmartImage'
-import { FOCUS_RING, VerRow, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
+import { FOCUS_RING, WidgetFrame } from '@/components/dashboard/grid/WidgetFrame'
 import type { DashboardWidgetProps } from '@/components/dashboard/grid/WidgetGrid'
 import { dashWidgetDomId } from '@/components/dashboard/shell/StatusStrip'
 import {
   countUnreadActivity,
-  scrollToDashWidget,
 } from '@/components/dashboard/shell/StatusStrip'
 import {
   markActivityRowSeen,
@@ -40,9 +29,12 @@ import { useOpenItem } from '@/lib/dashboard/openItem'
 import type { User } from '@/lib/types'
 import { useResolvedUser } from '@/lib/userOverrides'
 import { trophyByKey } from '@/lib/trophies'
+import { TrophyGlyph } from '@/components/trophies/TrophyGlyphs'
+import { publicationTint, relTimeShort } from '@/components/dashboard/widgets/CrearWidget'
+
+export type ActivityFilter = 'all' | 'comments' | 'reactions' | 'offers'
 
 const DWELL_MS = 2_000
-const NOTICE_MS = 4_000
 
 const SOURCE_LABEL: Record<ActivityRow['source'], string> = {
   COMENTARIO: 'COMENTARIO',
@@ -65,8 +57,8 @@ function rowSentence(row: ActivityRow, actorName: string): string {
         : `${actorName} respondió a tu comentario`
     case 'reaction': {
       const n = row.count ?? 1
-      const noun = n === 1 ? '1 reacción' : `${n} reacciones`
-      return t ? `${noun} a tu comentario en ${t}` : `${noun} a tu comentario`
+      const people = n === 1 ? `${actorName} reaccionó` : `${actorName} y otras personas reaccionaron`
+      return t ? `${people} a tu comentario en ${t}` : `${people} a tu comentario`
     }
     case 'foro_reply':
       return t ? `${actorName} respondió en tu hilo ${t}` : `${actorName} respondió en tu hilo`
@@ -115,17 +107,24 @@ function RowIdentityBlock({ row, actor }: { row: ActivityRow; actor: User | unde
 
 // ── Single row — 40px, d13, no timestamp ────────────────────────────────────
 
-function ActivityRowView({
+export function ActivityRowView({
   row,
   onUnavailable,
+  large = false,
 }: {
   row: ActivityRow
   onUnavailable: () => void
+  large?: boolean
 }) {
   const router = useRouter()
   const openItem = useOpenItem()
   const actor = useResolvedUser(row.actorId ?? undefined)
-  const actorName = actor ? actor.displayName || `@${actor.username}` : 'Alguien'
+  const actorName = actor ? large ? `@${actor.username}` : actor.displayName || `@${actor.username}` : 'Alguien'
+  const { published, saves, events, franja } = useDashboardData()
+  const publication = [...published, ...saves, ...events].find((item) => item.slug === row.itemSlug)
+  const cover = row.imageUrl || publication?.imageUrl || franja?.listings.find((listing) => listing.id === row.listingId)?.images[0]
+  const type = row.itemType ?? publication?.type
+  const trophy = trophyByKey(row.trophyKey ?? '')
   const sentence = rowSentence(row, actorName)
 
   const target: 'item' | 'foro' | 'mercado' | null = row.itemSlug
@@ -136,24 +135,37 @@ function ActivityRowView({
         ? 'mercado'
         : null
 
-  const body = (
+  const body = large ? <>
+    <span aria-hidden className={`relative flex h-full min-h-24 w-full items-center justify-center overflow-hidden sm:min-h-36 ${type ? publicationTint(type) : row.kind === 'oferta' ? 'bg-publication-news/40' : 'bg-paper'}`}>
+      {cover ? <SmartImage src={cover} alt="" sizes="(max-width: 640px) 80px, 220px" className="object-cover" />
+        : row.kind === 'logro' && trophy ? <span className="flex h-14 w-14 items-center justify-center border border-ink"><TrophyGlyph trophyKey={trophy.key} /></span>
+        : <RowIdentityBlock row={row} actor={actor} />}
+    </span>
+    <span className="flex min-w-0 flex-col justify-center gap-2 py-3">
+      <span className="font-mono text-d11 tracking-widest text-ink-soft">{SOURCE_LABEL[row.source]}</span>
+      <span className="font-grotesk text-d15 font-bold leading-snug sm:text-d18">{sentence}</span>
+      {row.excerpt && <span className="line-clamp-3 font-grotesk text-d13 leading-relaxed text-ink sm:text-d15">{row.excerpt}</span>}
+      <time dateTime={row.createdAt} className="font-mono text-d11 text-ink-soft">{relTimeShort(row.createdAt)}</time>
+    </span>
+    {target && <span className="col-start-2 mb-2 font-mono text-d13 font-bold sm:col-start-auto sm:mb-0 sm:px-3">VER ↗</span>}
+  </> : (
     <>
       <RowIdentityBlock row={row} actor={actor} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-grotesk text-d13 text-ink">{sentence}</p>
+        <p className="line-clamp-2 font-grotesk text-d13 leading-snug text-ink">{sentence}</p>
         {row.excerpt && (
           <p className="truncate font-grotesk text-d11 text-ink-faint">{row.excerpt}</p>
         )}
       </div>
-      <span className="shrink-0 border border-ink px-1 font-mono text-d11 uppercase tracking-widest text-ink-soft">
-        {SOURCE_LABEL[row.source]}
+      <span className="shrink-0 font-mono text-d11 font-bold uppercase tracking-widest text-ink-soft">
+        {target ? 'VER' : SOURCE_LABEL[row.source]}
       </span>
     </>
   )
 
   if (!target) {
     // Informational row — no destination exists, so no control.
-    return <div className="flex min-h-10 items-center gap-2.5 py-0.5">{body}</div>
+    return <div className={large ? "grid grid-cols-[72px_minmax(0,1fr)] gap-x-4 sm:grid-cols-[160px_minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)]" : "flex min-h-10 items-center gap-2.5 py-0.5"}>{body}</div>
   }
 
   const onClick = () => {
@@ -162,7 +174,7 @@ function ActivityRowView({
       return
     }
     if (target === 'mercado') {
-      scrollToDashWidget('mercado')
+      router.push(`/dashboard?espacio=mercado&tab=ofertas${row.listingId ? `&listing=${encodeURIComponent(row.listingId)}` : ''}`)
       return
     }
     if (row.itemSlug) {
@@ -179,7 +191,8 @@ function ActivityRowView({
       type="button"
       onClick={onClick}
       data-cue="tick"
-      className={`flex min-h-10 w-full items-center gap-2.5 py-0.5 text-left hover:bg-paper ${FOCUS_RING}`}
+      aria-label={`${sentence}. Ver`}
+      className={`${large ? 'grid grid-cols-[72px_minmax(0,1fr)] gap-x-4 sm:grid-cols-[160px_minmax(0,1fr)_auto] lg:grid-cols-[200px_minmax(0,1fr)_auto]' : 'flex min-h-14 items-center gap-2.5 py-2'} w-full text-left hover:bg-paper ${FOCUS_RING}`}
     >
       {body}
     </button>
@@ -187,7 +200,7 @@ function ActivityRowView({
 }
 
 // Read only the row actually exposed, including clipping inside the list.
-function ActivityExposure({ row, uid, unread, children }: { row: ActivityRow; uid: string | null; unread: boolean; children: ReactNode }) {
+function ActivityExposure({ row, uid, unread, children, large = false }: { row: ActivityRow; uid: string | null; unread: boolean; children: ReactNode; large?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!uid || !unread || !ref.current) return
@@ -202,7 +215,7 @@ function ActivityExposure({ row, uid, unread, children }: { row: ActivityRow; ui
     document.addEventListener('visibilitychange', update)
     return () => { observer.disconnect(); clearTimeout(timer); document.removeEventListener('visibilitychange', update) }
   }, [uid, unread, row.key, row.createdAt])
-  return <div ref={ref} className="flex items-center gap-2 border-b border-ink/15 last:border-b-0">
+  return <div ref={ref} className={`flex items-center gap-2 border-b border-ink/20 last:border-b-0 ${large ? `py-3 ${unread ? 'bg-publication-text/15' : ''}` : ''}`}>
     <span aria-label={unread ? 'Sin leer' : 'Leído'} className={`h-1.5 w-1.5 shrink-0 ${unread ? 'border border-ink bg-acid' : 'bg-transparent'}`} />
     <div className="min-w-0 flex-1">{children}</div>
   </div>
@@ -210,145 +223,59 @@ function ActivityExposure({ row, uid, unread, children }: { row: ActivityRow; ui
 
 // ── The widget ──────────────────────────────────────────────────────────────
 
-export function ActividadWidget({ size, compact }: DashboardWidgetProps) {
+export function ActividadWidget({ size, full = false, embedded = false, activityFilter }: DashboardWidgetProps & { full?: boolean; embedded?: boolean; activityFilter?: ActivityFilter }) {
   const router = useRouter()
   const { currentUser } = useAuth()
-  const { activity, loaded, errors, afterMutation } = useDashboardData()
+  const { activity, engagement, loaded, errors, afterMutation } = useDashboardData()
   const uid = currentUser?.id ?? null
-
+  const [localFilter, setFilter] = useState<ActivityFilter>('all')
+  const filter = activityFilter ?? localFilter
   const [seen, setSeen] = useState<SeenActivity>({})
   const [watermark, setWatermark] = useState<string | null>(null)
   useEffect(() => {
-    if (!uid) {
-      setWatermark(null)
-      setSeen({})
-      return
-    }
+    if (!uid) { setWatermark(null); setSeen({}); return }
     const sync = () => { setWatermark(readLastSeenActivity(uid)); setSeen(readSeenActivity(uid)) }
     sync()
     return subscribeLastSeenActivity(sync)
   }, [uid])
+  const unread = countUnreadActivity(activity, watermark, seen)
+  const latestTs = latestActivityTimestamp(activity)
+  const [notice, setNotice] = useState(false)
+  const filtered = activity.filter((row) => filter === 'comments' ? ['COMENTARIO', 'FORO'].includes(row.source)
+    : filter === 'reactions' ? row.source === 'REACCION' : filter === 'offers' ? row.source === 'OFERTA' : true)
+  const cap = full ? filtered.length : size.h >= 4 ? 4 : 2
+  const visible = filtered.slice(0, cap)
+  const action = full && unread > 0 && uid && latestTs
+    ? { label: 'MARCAR VISTO', onClick: () => advanceLastSeenActivity(uid, latestTs) }
+    : { label: 'VER TODO', onClick: () => router.push('/dashboard?espacio=recepcion') }
 
-  const unread = useMemo(
-    () => countUnreadActivity(activity, watermark, seen),
-    [activity, watermark, seen],
-  )
-  const latestTs = useMemo(() => latestActivityTimestamp(activity), [activity])
-
-  const [notice, setNotice] = useState<string | null>(null)
-  useEffect(() => {
-    if (!notice) return
-    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS)
-    return () => window.clearTimeout(timer)
-  }, [notice])
-
-  const goCrear = () => router.push('/dashboard?section=nuevo')
-
-  // Fixed portion from the stored height — 40px rows against the frame
-  // budgets (h2 129 / h3 249 / h4 369, minus the 44px VerRow when needed).
-  const visibleCap = size.h >= 4 ? 8 : size.h >= 3 ? 5 : 2
-  const [wantsExpanded, setWantsExpanded] = useState(false)
-  const overflowCount = Math.max(0, activity.length - visibleCap)
-  const expanded = wantsExpanded && overflowCount > 0
-
-  const visibleRows = useMemo(
-    () => (expanded ? activity : activity.slice(0, visibleCap)),
-    [activity, expanded, visibleCap],
-  )
-  const isLoading = loaded.activity !== true && !errors.activity && activity.length === 0
-  const isError = !!errors.activity && activity.length === 0
-  const isEmpty = loaded.activity === true && !errors.activity && activity.length === 0
-
-  const markSeenAction =
-    !compact && unread > 0 && uid && latestTs
-      ? {
-          label: 'MARCAR TODO VISTO',
-          cue: 'stamp',
-          onClick: () => advanceLastSeenActivity(uid, latestTs),
-        }
-      : undefined
-
-  if (compact) {
-    return (
-      <div id={dashWidgetDomId('actividad')} className="h-full scroll-mt-14">
-        <WidgetFrame
-          title="ACTIVIDAD"
-          compact
-          loading={isLoading}
-          action={{ label: 'CREAR', onClick: goCrear }}
-        >
-          <p className="min-w-0 font-mono text-d13 text-ink-soft">
-            SIN SEÑALES — las respuestas llegan aquí.
-          </p>
-        </WidgetFrame>
-      </div>
-    )
-  }
-
-  return (
-    <div id={dashWidgetDomId('actividad')} className="h-full scroll-mt-14">
-      <WidgetFrame
-        title="ACTIVIDAD"
-        count={unread > 0 ? unread : undefined}
-        accent
-        action={markSeenAction}
-        loading={isLoading}
-      >
-        <div className="flex h-full min-h-0 flex-col">
-          {notice && (
-            <p className="pb-1 font-grotesk text-d13 text-ink">
-              NO DISPONIBLE — ese contenido ya no está publicado.
-            </p>
-          )}
-
-          {isError ? (
-            <div className="flex flex-1 flex-col items-start justify-center gap-2">
-              <p className="font-grotesk text-d13 text-ink">SEÑAL INTERRUMPIDA</p>
-              <button
-                type="button"
-                onClick={() => void afterMutation()}
-                data-cue="tick"
-                className={`min-h-11 font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
-              >
-                REINTENTAR
-              </button>
-            </div>
-          ) : isEmpty ? (
-            <div className="flex flex-1 flex-col items-start justify-center gap-2">
-              <p className="font-mono text-d13 text-ink-soft">
-                SIN SEÑALES AÚN — publica o comenta; las respuestas aparecen aquí.
-              </p>
-              <button
-                type="button"
-                onClick={goCrear}
-                data-cue="tick"
-                className={`min-h-11 font-mono text-d13 uppercase tracking-widest text-ink underline-offset-4 hover:underline ${FOCUS_RING}`}
-              >
-                CREAR
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className={expanded ? 'min-h-0 flex-1 overflow-y-auto' : 'shrink-0'}>
-                {visibleRows.map((row) => (
-                  <ActivityExposure key={row.key} row={row} uid={uid} unread={isActivityUnread(row, watermark, seen)}>
-                    <ActivityRowView row={row} onUnavailable={() => setNotice('unavailable')} />
-                  </ActivityExposure>
-                ))}
-              </div>
-              {overflowCount > 0 && (
-                <div className="mt-1 shrink-0">
-                  <VerRow
-                    label={expanded ? 'MOSTRAR MENOS' : 'MOSTRAR ANTERIORES'}
-                    count={expanded ? undefined : overflowCount}
-                    onClick={() => setWantsExpanded(!expanded)}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </WidgetFrame>
+  const feed = <div className="flex min-h-0 flex-col gap-2">
+    {embedded && unread > 0 && uid && latestTs && <div className="flex justify-end"><button type="button" onClick={() => advanceLastSeenActivity(uid, latestTs)} className={`min-h-11 font-mono text-d11 underline ${FOCUS_RING}`}>MARCAR TODO COMO VISTO</button></div>}
+    {notice && <p role="status" className="font-mono text-d13">No se pudo abrir esta publicación. Inténtalo de nuevo.</p>}
+    <div className={full ? '' : 'min-h-0 flex-1 overflow-y-auto'}>
+      {visible.map((row) => <ActivityExposure key={row.key} row={row} uid={uid} unread={isActivityUnread(row, watermark, seen)} large={embedded}>
+        <ActivityRowView row={row} large={embedded} onUnavailable={() => setNotice(true)} />
+      </ActivityExposure>)}
+      {!visible.length && <p role="status" className="py-12 font-grotesk text-d15 text-ink-soft">{!loaded.activity && !errors.activity ? 'Cargando actividad…' : errors.activity ? 'No se pudo cargar la actividad.' : 'Todavía no hay actividad en esta sección.'}</p>}
+      {errors.activity && <button type="button" onClick={() => void afterMutation()} className={`min-h-11 font-mono text-d13 underline ${FOCUS_RING}`}>REINTENTAR</button>}
     </div>
-  )
+  </div>
+  if (embedded) return <section aria-label="Actividad reciente" className="min-w-0">{feed}</section>
+
+  return <div id={dashWidgetDomId('actividad')} className="h-full scroll-mt-14">
+    <WidgetFrame title="ACTIVIDAD" count={unread || undefined} accent action={full && !unread ? undefined : action}>
+      <div className="flex h-full min-h-0 flex-col gap-2">
+        <nav className="flex shrink-0 flex-wrap gap-x-3" aria-label="Filtrar actividad">
+          {([['all', 'TODO'], ['comments', 'COMENTARIOS'], ['reactions', 'REACCIONES'], ['offers', 'OFERTAS']] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={`min-h-9 border-b-2 font-mono text-d11 ${filter === key ? 'border-ink font-bold text-ink' : 'border-transparent text-ink-soft'} ${FOCUS_RING}`}>{label}</button>)}
+          <Link href="/dashboard?espacio=recepcion&activity=hp" className={`flex min-h-9 items-center font-mono text-d11 text-hp ${FOCUS_RING}`}>HP</Link>
+          <Link href="/dashboard?espacio=recepcion&activity=sales" className={`flex min-h-9 items-center font-mono text-d11 ${FOCUS_RING}`}>VENTAS</Link>
+        </nav>
+        {filter === 'all' && engagement && <Link href="/dashboard?espacio=recepcion&activity=hp" className={`flex min-h-14 items-center justify-between gap-3 border-b border-ink/15 py-2 ${FOCUS_RING}`}>
+          <span className="font-grotesk text-d13 text-ink">Tu presencia <strong className="ml-2 font-mono text-hp">{engagement.hp.toFixed(1)} HP</strong></span><span className="font-mono text-d11 font-bold">VER</span>
+        </Link>}
+        <div className="min-h-0 flex-1 overflow-y-auto">{feed}</div>
+        {!full && filtered.length > cap && <Link href="/dashboard?espacio=recepcion" className={`flex min-h-9 shrink-0 items-center justify-between border-t border-ink/25 font-mono text-d11 ${FOCUS_RING}`}>VER TODA LA ACTIVIDAD <span>→</span></Link>}
+      </div>
+    </WidgetFrame>
+  </div>
 }
