@@ -633,8 +633,11 @@ select regrant_items_update();
 --   · PATCH /api/franjas/[id]        — session client. Writes title, bio,
 --     image_url, marketplace_*, franja_last_updated. None protected.
 --   · PATCH /api/admin/franjas/[id]  — session client. Same column set.
---   · POST  /api/items               — createAdminClient (service_role), and
---     already strips all five columns on edit anyway.
+--   · POST  /api/items               — ⚠ WRONG as first written: the upsert
+--     runs on the SESSION client (the admin client there only does the
+--     existence lookup), and the create path re-sent `hp: null`, which put hp
+--     in the upsert's DO UPDATE SET list → every NEW publish 403'd (42501).
+--     Fixed in the route 2026-09-22 by not sending hp on create.
 --   · POST  /api/admin/events        — createAdminClient (service_role).
 -- service_role and the SECURITY DEFINER writers (apply_hp_rollup,
 -- harvest_item, admin_adjust_item_hp) run as owner and are unaffected, so

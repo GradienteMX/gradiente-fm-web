@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-09-22 · INGEST · Every NEW publish 403'd since 0049 §6 — `hp: null` in the create upsert · [[Publication Readiness]] · [[HL Ledger]]
+
+Reported by @alo (staff): «No tienes permiso para editar este ítem» publishing a new reseña. Not ownership, not RLS (staff pass `items_staff_insert`). `POST /api/items` upserts on the **session** client and the create path sent `hp: null`; PostgREST turns every payload key into `ON CONFLICT DO UPDATE SET`, and Postgres checks UPDATE privilege on those columns at executor start even when no conflict occurs. 0049 §6 revoked UPDATE on the five HP columns from `authenticated` → `permission denied for table items` (42501) → 403, for every role, on every type. Edits were unaffected (no hp in payload); `/api/admin/events` was unaffected (service_role). 0049's «VERIFIED SAFE» note had misread the route as service_role.
+
+- Fix (uncommitted): the create branch no longer sends `hp` — no column default, so rows still land hp NULL (spawn default). Same convention as `/api/admin/events`. 0049 comment corrected.
+- **Rule:** any session-client upsert on `items` must never carry `hp`, `hp_last_updated_at`, `hp_decay_multiplier`, `harvested_at`, `harvested_amount` — not even as null.
+- **Confirmed in prod 2026-09-22** (ikerio, SQL editor): `select has_column_privilege('authenticated','public.items','hp','UPDATE');` → `false` — §6 is live, so this was the cause. Other session-client writers to `items` (franja PATCHes, admin franja insert, portada toggle) checked — none carry an HP column.
+
+---
+
 ## 2026-09-10 · INGEST · Portada carousel + admin feed toggle · HL lever feed presets
 
 - [[Pinned Hero]] **decision reversed** (pending lead sign-off): portada = carousel of every pinned item, any type but franja (`getPortada`, `HeroCarousel`, type-aware `HeroCard` byline). Single-slot unpin rule removed. «Fijar en portada» on all eight composers (staff).

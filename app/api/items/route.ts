@@ -206,8 +206,13 @@ export async function POST(request: NextRequest) {
       ? {}
       : { pinned: false, elevated: false }
 
-  // create → stamp published_at=now + spawn HP (null → curation spawn default),
-  //          seed=false, published=true.
+  // create → stamp published_at=now, seed=false, published=true. `hp` is NOT
+  //          sent: the column has no default, so the row still lands with
+  //          hp NULL (→ curation spawn default). Sending `hp: null` put hp in
+  //          PostgREST's ON CONFLICT DO UPDATE SET list, and Postgres checks
+  //          UPDATE privilege on every SET column up front — even when no
+  //          conflict happens. 0049 §6 revoked UPDATE on the HP columns from
+  //          `authenticated`, so every NEW publish failed 42501 → 403.
   // edit   → omit hp / hp_last_updated_at / published_at / seed / published so
   //          the existing row KEEPS its accrued HP, decay clock, harvest state,
   //          original publish time (no feed bump), and seed flag (a seed row
@@ -216,7 +221,6 @@ export async function POST(request: NextRequest) {
     ? {}
     : {
         published_at: new Date().toISOString(),
-        hp: null,
         published: true,
         seed: false,
       }
