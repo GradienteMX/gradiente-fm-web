@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 // doesn't waste a fetch cycle.
 
 export async function GET() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

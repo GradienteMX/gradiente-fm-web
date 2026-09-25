@@ -1,0 +1,23 @@
+.seguir {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.seguir[data-full] {
+  display: flex;
+  align-items: stretch;
+}
+
+/* Private information wears cobalt: the colour of "solo tú ves esto". */
+.private {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cobalt, var(--ink-2));
+}

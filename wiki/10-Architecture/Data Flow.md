@@ -1,6 +1,6 @@
 ---
 type: architecture
-status: current
+status: stale
 tags: [data-flow, curation, rendering]
 updated: 2026-04-22
 ---

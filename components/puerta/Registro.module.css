@@ -1,0 +1,313 @@
+/* Registro — a ruled sheet: mono labels, hairline ledger of clauses. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px 24px 22px;
+  border: 1px solid var(--rule, var(--ink));
+  border-radius: var(--r-panel);
+  background: var(--paper-2, var(--obs-1));
+}
+
+/* The livery head runs edge to edge, over the panel's padding. */
+.cabeza {
+  margin: -24px -24px 0;
+}
+
+.index {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 112, 'wght' 380;
+  font-size: clamp(28px, 2.6vw, 38px);
+  line-height: 1;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+
+.lead {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.lead b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.going {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.terms {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.termsHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.termsDate {
+  color: var(--ink-3);
+}
+
+.termsSub {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.termsSub em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.clauses {
+  max-height: 248px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--rule, var(--ink));
+  border-bottom: 1px solid var(--rule, var(--ink));
+  background: var(--paper, var(--obs-0));
+}
+
+.clauses > li {
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.clauses > li:last-child {
+  border-bottom: 0;
+}
+
+.preamble,
+.closing {
+  padding: 12px 12px;
+  font-family: var(--font-read);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.clause summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.clause summary::-webkit-details-marker {
+  display: none;
+}
+
+.clause summary:hover {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.clause[open] summary {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.cn {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  padding-top: 1px;
+}
+
+.ct {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ct b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ct span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.ct em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cbody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 12px 14px 50px;
+}
+
+.cbody p {
+  font-family: var(--font-read);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.accept {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.accept[data-error] {
+  border-color: var(--red-ink, var(--ink));
+  outline: 1px solid var(--red-ink, var(--ink));
+}
+
+.accept input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--ink);
+}
+
+.accept em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.err {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--red-ink, var(--ink));
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Creating an identity is a creation act: the one acid block on the sheet. */
+.create {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: var(--r-piece);
+  background: var(--acid, var(--paper-3));
+  color: var(--ink);
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.create:hover,
+.create:active {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.create[aria-disabled='true'] {
+  background: var(--paper-3, var(--obs-2));
+  color: var(--ink-3);
+  border-color: var(--hair-3);
+}
+
+.create:focus-visible {
+  outline: 1.5px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.alt {
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.altLink {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.altLink:hover {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+  text-decoration: none;
+}
+
+@media (max-width: 520px) {
+  .panel {
+    padding: 20px 16px;
+  }
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -22,9 +22,10 @@ type Row = {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // /api/items/[id]/harvest
 // POST → the COSECHAR gesture. One per item, ever. The DB function
@@ -23,9 +25,10 @@ const ERROR_STATUS: Record<string, number> = {
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -45,8 +48,16 @@ export async function POST(
   const result = data as unknown as { ok: boolean; error?: string; echo?: number }
   if (!result.ok) {
     const status = ERROR_STATUS[result.error ?? ''] ?? 400
-    return NextResponse.json({ error: result.error ?? 'harvest_failed' }, { status })
+    return NextResponse.json({ error: result.error ?? 'harvest_failed', message: HARVEST_MESSAGE[result.error ?? ''] }, { status })
   }
 
+  // The piece's HL, its decay and its «cosechada» mark are public.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ ok: true, echo: result.echo })
+}
+
+const HARVEST_MESSAGE: Record<string, string> = {
+  item_not_found: 'Esa pieza ya no está.',
+  not_publisher: 'Solo quien publicó la pieza puede cosecharla.',
+  already_harvested: 'Esta pieza ya se cosechó.',
 }

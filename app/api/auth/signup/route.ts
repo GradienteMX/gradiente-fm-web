@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient as createSsrClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { inviteCodeCandidates, usernameProblemEs } from '@/lib/identity'
+import { WORLD_TAG } from '@/lib/data/world'
+import { getStickerCatalog, STICKERS_TAG } from '@/lib/data/stickers'
+import { STICKERS_BETA } from '@/lib/stickers/beta'
+import { grantBetaKit, type StickerDb } from '@/lib/stickers/store'
+import type { Role } from '@/lib/types'
 
 // POST /api/auth/signup
 // Body: { email, password, username, inviteCode }
@@ -127,7 +133,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Sign in via the SSR client to set the session cookie.
-  const ssr = createSsrClient()
+  const ssr = await createSsrClient()
   const { error: signInErr } = await ssr.auth.signInWithPassword({ email, password })
   if (signInErr) {
     // The account exists and the invite code is spent by now — retrying the
@@ -140,6 +146,23 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     )
+  }
+
+  // The newcomer shows up for every member now (the public world is cached),
+  // and arrives with the closed beta's sticker kit — best effort: a missing
+  // table (0052 not applied yet) or any other failure never blocks a signup.
+  revalidateTag(WORLD_TAG, { expire: 0 })
+  if (STICKERS_BETA) {
+    try {
+      const db = createAdminClient() as unknown as StickerDb
+      const { data: row } = await db.from('users').select('id, role, franja_id').eq('id', created.user.id).maybeSingle()
+      if (row) {
+        await grantBetaKit(db, row as { id: string; role: Role; franja_id: string | null }, await getStickerCatalog())
+        revalidateTag(STICKERS_TAG, { expire: 0 })
+      }
+    } catch (err) {
+      console.warn('[signup] beta sticker kit not granted:', err instanceof Error ? err.message : err)
+    }
   }
 
   return NextResponse.json({ ok: true, userId: created.user.id })

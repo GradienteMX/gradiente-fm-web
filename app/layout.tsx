@@ -1,103 +1,110 @@
-import type { Metadata } from 'next'
-import { Syne, Space_Grotesk, Space_Mono } from 'next/font/google'
-import { Suspense } from 'react'
+import type { Metadata, Viewport } from 'next'
+import { Anybody, Newsreader, Space_Grotesk, Space_Mono } from 'next/font/google'
+import { WorldProvider } from '@/lib/store/world'
+import { emptyPublicWorld, type PrivateWorld, type PublicWorld } from '@/lib/store/snapshot'
+import { createClient } from '@/lib/supabase/server'
+import { loadPrivateWorld, loadPublicWorld } from '@/lib/data/world'
+import { getPublicStickers } from '@/lib/data/stickers'
+import { isDevOpen } from '@/lib/devOpen'
+import { Stage } from '@/components/stage/Stage'
+import { Trama } from '@/components/trama/Trama'
+import { Shell } from '@/components/shell/Shell'
 import './globals.css'
-import { Navigation } from '@/components/Navigation'
-import { VibeSlider } from '@/components/VibeSlider'
-import { GlobalPlayerBar } from '@/components/audio/GlobalPlayerBar'
-import { ChromeFrame } from '@/components/ChromeFrame'
-import { PaperGround } from '@/components/chrome/PaperGround'
-import { VibeProvider } from '@/context/VibeContext'
-import { OverlayProvider } from '@/components/overlay/useOverlay'
-import { OverlayRouter } from '@/components/overlay/OverlayRouter'
-import { AuthProvider } from '@/components/auth/useAuth'
-import { LoginOverlay } from '@/components/auth/LoginOverlay'
-import { PublishConfirmProvider } from '@/components/publish/usePublishConfirm'
-import { PublishConfirmOverlay } from '@/components/publish/PublishConfirmOverlay'
-import { PromptProvider } from '@/components/prompt/usePrompt'
-import { PromptOverlay } from '@/components/prompt/PromptOverlay'
-import { SearchProvider } from '@/components/search/useSearch'
-import { SearchOverlay } from '@/components/search/SearchOverlay'
-import { AudioPlayerProvider } from '@/components/audio/AudioPlayerProvider'
-import { MobileNotice } from '@/components/MobileNotice'
-import { FooterColophon } from '@/components/chrome/FooterColophon'
 
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-syne',
+const anybody = Anybody({
+  subsets: ['latin', 'latin-ext'],
+  axes: ['wdth'],
+  variable: '--f-anybody',
   display: 'swap',
 })
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-space-grotesk',
+const grotesk = Space_Grotesk({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--f-grotesk',
   display: 'swap',
 })
 
-const spaceMono = Space_Mono({
-  subsets: ['latin'],
+const mono = Space_Mono({
+  subsets: ['latin', 'latin-ext'],
   weight: ['400', '700'],
-  variable: '--font-space-mono',
+  variable: '--f-mono',
+  display: 'swap',
+})
+
+const newsreader = Newsreader({
+  subsets: ['latin', 'latin-ext'],
+  axes: ['opsz'],
+  style: ['normal', 'italic'],
+  variable: '--f-newsreader',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
   title: {
-    default: 'GRADIENTE',
+    default: 'GRADIENTE — energía, no género',
     template: '%s · GRADIENTE',
   },
   description:
-    'Música electrónica, eventos, mixes y cultura desde adentro de la escena mexicana.',
-  keywords: ['música electrónica', 'CDMX', 'techno', 'rave', 'underground México'],
+    'Infraestructura y memoria para la escena underground de música y arte sonoro en México. Navegas por energía, no por género.',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const viewport: Viewport = {
+  themeColor: '#edebe3',
+  colorScheme: 'light',
+}
+
+/**
+ * Who is looking, and the world they may see. Signed in: the shared public
+ * snapshot (cached server-side) plus their own rows (read as them, RLS).
+ * Anonymous: nothing — they only reach La Puerta and La espera, which work
+ * without a world. The development preview (lib/devOpen.ts) serves the
+ * public world with nobody signed in.
+ *
+ * A database that can't be read never takes the site down: the page renders
+ * with an empty world and the error goes to the server log.
+ */
+async function readWorld(): Promise<{ pub: PublicWorld; priv: PrivateWorld | null }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user && !isDevOpen()) return { pub: emptyPublicWorld(Date.now()), priv: null }
+  const [pub, stickers, priv] = await Promise.all([
+    loadPublicWorld().catch((err: unknown) => {
+      console.error('[world] no se pudo leer la instantánea pública:', err)
+      return emptyPublicWorld(Date.now())
+    }),
+    // Cached apart (tag 'stickers'): pressing a sticker doesn't rebuild the world.
+    getPublicStickers().catch((err: unknown) => {
+      console.error('[world] no se pudieron leer los calcos:', err)
+      return { placements: [], stickerSerials: {} }
+    }),
+    user
+      ? loadPrivateWorld(user.id).catch((err: unknown) => {
+          console.error('[world] no se pudieron leer tus filas:', err)
+          return null
+        })
+      : Promise.resolve(null),
+  ])
+  return { pub: { ...pub, ...stickers }, priv }
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The client clock starts at this instant and walks on after hydration, so
+  // the organism keeps aging in real time. A server component: read once per
+  // render on the server, then passed down as data.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now()
+  const { pub, priv } = await readWorld()
   return (
-    <html lang="es" className={`${syne.variable} ${spaceGrotesk.variable} ${spaceMono.variable}`}>
-      <body className="bg-base text-primary">
-        <AuthProvider>
-        <PromptProvider>
-        <PublishConfirmProvider>
-        <VibeProvider>
-          <OverlayProvider>
-          <SearchProvider>
-          <AudioPlayerProvider>
-              <Suspense fallback={null}>
-                {/* Ground flip — ONE mount, self-driving off PAPER_ROUTES. */}
-                <PaperGround />
-                <ChromeFrame>
-                  <Navigation />
-                  <VibeSlider />
-                </ChromeFrame>
-                <main className="mx-auto max-w-screen-2xl px-4 pb-24 pt-4 md:px-8">
-                  {children}
-                </main>
-                {/* Bottom player faceplate — fixed bar + in-flow spacer; nulls on the
-                    full-bleed routes via ChromeFrame and on /dashboard internally
-                    (MiniTransport owns that surface). */}
-                <ChromeFrame>
-                  <GlobalPlayerBar />
-                </ChromeFrame>
-                {/* Footer — printed colophon (pliego register) */}
-                <ChromeFrame>
-                  <FooterColophon />
-                </ChromeFrame>
-                <OverlayRouter />
-                <LoginOverlay />
-                <PublishConfirmOverlay />
-                <PromptOverlay />
-                <SearchOverlay />
-                <MobileNotice />
-              </Suspense>
-          </AudioPlayerProvider>
-          </SearchProvider>
-          </OverlayProvider>
-        </VibeProvider>
-        </PublishConfirmProvider>
-        </PromptProvider>
-        </AuthProvider>
+    <html lang="es" className={`${anybody.variable} ${grotesk.variable} ${mono.variable} ${newsreader.variable}`}>
+      <body>
+        <WorldProvider now={now} publicWorld={pub} privateWorld={priv}>
+          <Stage />
+          {/* Before the Shell so the engine is mounted when pages ask for gestures. */}
+          <Trama />
+          <Shell>{children}</Shell>
+        </WorldProvider>
       </body>
     </html>
   )

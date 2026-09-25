@@ -9,9 +9,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params: paramsP }: { params: Promise<{ itemId: string }> }
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -23,6 +24,8 @@ export async function POST(
     .from('user_saves')
     .insert({ user_id: user.id, item_id: params.itemId })
 
+  // 23503: the piece is gone.
+  if (error?.code === '23503') return NextResponse.json({ error: 'Esa pieza ya no está.' }, { status: 404 })
   if (error && error.code !== '23505') {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -31,9 +34,10 @@ export async function POST(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params: paramsP }: { params: Promise<{ itemId: string }> }
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

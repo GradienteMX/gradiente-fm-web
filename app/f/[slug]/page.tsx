@@ -1,52 +1,33 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { getItemBySlug, getItemsByFranja } from '@/lib/data/items'
-import { FranjaProfile } from '@/components/franja/FranjaProfile'
+import { loadPublicWorld } from '@/lib/data/world'
+import { FranjaPage } from '@/components/franja/FranjaPage'
 
-// Full franja profile page — the deep destination reached from the
-// [ENTRAR AL PERFIL DE FRANJA] CTA in the rail overlay. Franjas are
-// identity hubs (like /e/[slug] entities + /u/[username] profiles), so they
-// get a real, shareable, indexable route. See project_franja_page_revamp.
-//
-// Fase F flips this route to the paper ground: the body is the printed franja
-// EXPEDIENTE (sibling of /u/[username]).
-// the ground itself flips from lib/chrome/paperRoutes: <PaperGround /> is
-// mounted ONCE in app/layout.tsx and drives itself off PAPER_ROUTES, so a
-// route needs no mount of its own.
-// PAPER_ROUTES in lib/chrome/paperRoutes.ts so Navigation picks the paper
-// masthead here — that file is shared and is not edited by this pass.
-export const dynamic = 'force-dynamic'
+/**
+ * /f/[slug] — a franja's dossier. Franjas are identity hubs (like /u/ and
+ * /e/), so they get a real, shareable route; the page itself is a client
+ * surface over the world store (the server snapshot + what this session
+ * just did).
+ */
 
-interface PageProps {
-  params: { slug: string }
+interface Props {
+  params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
-  const franja = await getItemBySlug(decodeURIComponent(params.slug))
-  if (!franja || franja.type !== 'franja') {
-    return { title: 'Franja no encontrado' }
-  }
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const s = decodeURIComponent(slug)
+  // The cached public world (the layout reads the same one): no extra query.
+  const franja = await loadPublicWorld()
+    .then((w) => w.items.find((i) => i.type === 'franja' && i.slug === s) ?? null)
+    .catch(() => null)
+  if (!franja) return { title: 'Franja' }
   return {
     title: franja.title,
-    description:
-      franja.excerpt ??
-      franja.marketplaceDescription ??
-      `${franja.title} en Gradiente.`,
+    description: franja.excerpt ?? franja.marketplaceDescription ?? `${franja.title} en el dial de Gradiente: su catálogo, su archivo y su tienda.`,
   }
 }
 
-export default async function FranjaProfilePage({ params }: PageProps) {
-  const slug = decodeURIComponent(params.slug)
-  const franja = await getItemBySlug(slug)
-  if (!franja || franja.type !== 'franja') notFound()
-
-  const attributedItems = await getItemsByFranja(franja.id)
-
-  return (
-    <>
-      <FranjaProfile franja={franja} attributedItems={attributedItems} />
-    </>
-  )
+export default async function Page({ params }: Props) {
+  const { slug } = await params
+  return <FranjaPage slug={decodeURIComponent(slug)} />
 }

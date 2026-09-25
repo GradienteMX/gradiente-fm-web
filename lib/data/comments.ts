@@ -41,7 +41,7 @@ export function rowToComment(row: CommentWithReactions): Comment {
 }
 
 export async function getCommentsForItem(itemId: string): Promise<Comment[]> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('comments')
     .select('*, comment_reactions(*)')

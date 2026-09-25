@@ -39,7 +39,7 @@ export function rowToUser(row: UserRow): User {
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -50,7 +50,7 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function getUserByUsername(username: string): Promise<User | null> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -63,7 +63,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 export async function getUsersByIds(ids: readonly string[]): Promise<Map<string, User>> {
   const out = new Map<string, User>()
   if (ids.length === 0) return out
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -78,7 +78,7 @@ export async function getUsersByIds(ids: readonly string[]): Promise<Map<string,
 // shaped for one-shot SSR. Returns 'normie' when the user has no
 // received-reaction rows in the view (which is the same default).
 export async function getUserRankServer(userId: string): Promise<UserRank> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data } = await supabase
     .from('user_rank_signals')
     .select('signal_count, prov_count')
@@ -93,7 +93,7 @@ export async function getUserRankServer(userId: string): Promise<UserRank> {
 // metadata. Public-read RLS on user_trophies (migration 0019) means anyone
 // can fetch any user's trophies.
 export async function getTrophyKeysByUserId(userId: string): Promise<{ key: string; earnedAt: string }[]> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('user_trophies')
     .select('trophy_key, earned_at')
@@ -107,7 +107,7 @@ export async function getTrophyKeysByUserId(userId: string): Promise<{ key: stri
 }
 
 export async function listUsers(): Promise<User[]> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('users')
     .select('*')

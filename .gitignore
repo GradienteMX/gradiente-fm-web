@@ -64,3 +64,6 @@ wiki/.trash/
 
 # Migration squash safety net (kept locally only)
 supabase/migrations.bak/
+
+# V2
+.claude/scheduled_tasks.lock

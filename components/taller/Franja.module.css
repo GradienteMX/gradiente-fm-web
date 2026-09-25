@@ -1,0 +1,320 @@
+.franja {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+/* ── identity head ──────────────────────────────────────────────────── */
+
+.head {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+}
+
+.logo {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: var(--on-well);
+  background: var(--well);
+}
+
+.logoImg {
+  object-fit: cover;
+}
+
+.logoInitial {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 90, 'wght' 800;
+  font-size: 40px;
+}
+
+.headText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* The band stripe: franja attribution's own pictogram. */
+.band {
+  width: 16px;
+  height: 6px;
+  border: 1px solid var(--ink);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 4.2vw, 60px);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.n {
+  margin-left: 2px;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── publish as the franja ──────────────────────────────────────────── */
+
+.tipos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
+}
+
+.tipos li {
+  display: flex;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Creation: acid is its ground, and only here. */
+.tipo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+.tipo:hover,
+.tipo:focus-visible {
+  background: var(--acid);
+}
+
+.tipo:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.tipoGlyph {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--ink);
+}
+
+.tipoName {
+  margin-top: 10px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 108, 'wght' 560;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.tipoHint {
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.tipo:active .tipoName,
+.tipo:active .tipoHint {
+  color: var(--paper);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionHead {
+  color: var(--ink-3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 24px 16px;
+}
+
+/* ── team ───────────────────────────────────────────────────────────── */
+
+.team {
+  display: flex;
+  flex-direction: column;
+  margin: -6px -18px 0;
+}
+
+.member {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto minmax(190px, auto);
+  gap: 14px;
+  align-items: center;
+  padding: 12px 18px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.team li:first-child {
+  border-top: 0;
+}
+
+.memberText {
+  min-width: 0;
+}
+
+.memberName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.memberHandle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.you {
+  padding: 1px 5px;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+
+.memberMeta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.memberBadges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adminChip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+.memberActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.sumar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.sumar > :first-child {
+  flex: 1;
+}
+
+.sumar > button {
+  margin-top: 25px;
+}
+
+/* ── profile ────────────────────────────────────────────────────────── */
+
+.perfilWrap {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) minmax(0, 280px);
+  gap: 36px;
+  align-items: start;
+}
+
+.perfil {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.perfilActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .head {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .logo {
+    width: 72px;
+    height: 72px;
+  }
+  .headActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .member {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+  .memberBadges,
+  .memberActions {
+    grid-column: 2;
+  }
+  .memberActions {
+    justify-content: flex-start;
+  }
+  .perfilWrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

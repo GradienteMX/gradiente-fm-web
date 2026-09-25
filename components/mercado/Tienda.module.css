@@ -1,0 +1,268 @@
+.tienda {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  min-height: 100%;
+}
+
+/* ── identity + ledger ─────────────────────────────────────────────────── */
+
+.id {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 26px 24px 28px 26px;
+  border-right: 1px solid var(--rule, var(--hair-2));
+  min-height: 100%;
+}
+
+.idHead {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.placa {
+  width: 84px;
+}
+
+.idText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kind {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 86, 'wght' 760;
+  font-size: 26px;
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.desc {
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* The ledger: a hairline table of catalog facts. */
+.ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--rule, var(--hair-2));
+  box-shadow: 0 0 0 1px var(--rule, var(--hair-2));
+}
+
+.ledger div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 12px;
+  background: var(--paper-2, var(--obs-2));
+}
+
+.ledger dt {
+  order: 2;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ledger dd {
+  order: 1;
+  margin: 0;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 72, 'wght' 720;
+  font-size: 24px;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.facts div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+}
+
+.facts dt {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.web {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 11px;
+  overflow-wrap: normal;
+  word-break: break-word;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.note {
+  padding: 12px 14px;
+  border-radius: var(--r-piece);
+  border: 1px dashed var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.note b {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-weight: 400;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* ── shelf ─────────────────────────────────────────────────────────────── */
+
+.shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 26px 28px 40px;
+}
+
+.shelfHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule, var(--hair-2));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.count {
+  color: var(--ink-3);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--rule, var(--hair-3));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.chip i {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.chip:hover {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.chip[data-on] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.chip[data-on] i {
+  color: inherit;
+  opacity: 0.6;
+}
+
+.crate {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 20px 14px;
+}
+
+.empty {
+  padding: 40px 0;
+  font-family: var(--font-read);
+  font-size: 16px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 860px) {
+  .tienda {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .id {
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule, var(--hair-2));
+    padding: 20px 16px;
+  }
+  .shelf {
+    padding: 20px 16px 40px;
+  }
+  .crate {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

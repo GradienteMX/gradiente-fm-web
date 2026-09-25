@@ -1,0 +1,632 @@
+/* ── the slot: a transparent window the stage draws the card into ──────── */
+
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* A horizontal drag turns the case; a vertical one still scrolls the page. */
+.slot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1586 / 1000;
+  container-type: inline-size;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Placing a sticker: drags move it (no page pan), the pointer is a sight. */
+.slot[data-placing] {
+  touch-action: none;
+}
+
+/* The GL window: the slot and a margin round it, so a case turned by hand
+   isn't clipped (GL_BLEED_X/Y in geometry.ts; set from there on mount).
+   Transparent; the stage draws behind. */
+.gl {
+  position: absolute;
+  inset: -50% -10%;
+  pointer-events: none;
+}
+
+/* The whole object answers: card and case (the case's outline in the slot;
+   set from geometry.ts on mount). You can take it and turn it. */
+.hit {
+  position: absolute;
+  left: 5.359%;
+  top: 2.64%;
+  width: 89.281%;
+  height: 94.72%;
+  border-radius: var(--r-piece);
+  cursor: grab;
+  z-index: 2;
+}
+
+.slot[data-hand],
+.slot[data-hand] .hit {
+  cursor: grabbing;
+}
+
+.slot[data-cursor='pick'] .hit {
+  cursor: pointer;
+}
+
+.slot[data-cursor='place'] .hit {
+  cursor: crosshair;
+}
+
+.hit:focus-visible {
+  outline: 1.5px solid var(--ink);
+  outline-offset: 6px;
+}
+
+.hint {
+  margin-top: 2px;
+  text-align: center;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  /* Back once the sling has landed (the case swells over it while turned). */
+  transition: opacity 160ms steps(3, jump-end) 900ms;
+}
+
+/* A case turned by hand reaches past its slot: the hint steps aside. */
+.slot[data-hand] + .hint {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint {
+    transition: none;
+  }
+}
+
+/* ── the CSS card: first paint, and the whole card without WebGL ───────── */
+
+/* The board's colour comes in as --stock / --on / --core (the role's
+   livery, set inline); the card's inks are tones of --on on it. */
+.card2d {
+  --u: calc(80cqw / 1586);
+  --c-ink: var(--on, var(--ink));
+  --c-ink-2: color-mix(in oklab, var(--c-ink) 80%, var(--stock, var(--paper-2)));
+  --c-ink-3: color-mix(in oklab, var(--c-ink) 62%, var(--stock, var(--paper-2)));
+  --c-ink-4: color-mix(in oklab, var(--c-ink) 45%, var(--stock, var(--paper-2)));
+  position: absolute;
+  left: 10%;
+  top: 10%;
+  width: 80%;
+  height: 80%;
+  perspective: 1800px;
+  transition: opacity var(--t-base) ease;
+  pointer-events: none;
+}
+
+/* The case, flat: a clear slab a margin larger than the card (92/1000 of
+   the card's height on every side), the hairline of its outline, a clear
+   lip, the frosted band round the pocket (sandblasted: milky and grainy),
+   the pocket's rim, and the light shadow a clear thing casts. It sits
+   behind the card (the GL case lays its gloss over the card; flat, we keep
+   the print clean). */
+.case2d {
+  position: absolute;
+  top: -9.2%;
+  bottom: -9.2%;
+  left: calc(-9.2% * 1000 / 1586);
+  right: calc(-9.2% * 1000 / 1586);
+  border: 1px solid color-mix(in oklab, var(--ink) 34%, transparent);
+  border-radius: calc(75 * var(--u));
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0) 30%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    rgb(250 250 247 / 0.72);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 0 0 calc(33 * var(--u)) rgb(236 240 238 / 0.35),
+    4px 4px 0 0 rgb(17 17 17 / 0.16);
+  transform: translateZ(-2px);
+}
+
+/* the pocket's rim, just outside the card */
+.case2d::after {
+  content: '';
+  position: absolute;
+  inset: calc(84 * var(--u));
+  border: 1px solid color-mix(in oklab, var(--ink) 22%, transparent);
+  border-radius: calc(14 * var(--u));
+}
+
+.slot[data-css='off'] .card2d {
+  opacity: 0;
+}
+
+/* In hand it follows the drag at once (--dyaw); let go, it settles. */
+.tilt {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--py, 0) * -7deg)) rotateY(calc(var(--px, 0) * 10deg + var(--dyaw, 0deg)));
+  transition: transform var(--t-base) var(--ease-resorte);
+}
+
+.slot[data-hand] .tilt {
+  transition: none;
+}
+
+.card2d[data-arrive] .tilt {
+  animation: arrive 1.3s var(--ease-materia) 0.1s backwards;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateZ(-700px) rotateY(-180deg) scale(0.6);
+  }
+}
+
+.inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 900ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.card2d[data-flipped] .inner {
+  transform: rotateY(180deg);
+}
+
+/* A printed card lifted off the page: square, the one hard shadow. The
+   board in its livery with its cotton grain and cloudy formation (grey
+   noise under soft-light), the cut a shade deeper. */
+.face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--r-piece);
+  border: 1px solid color-mix(in oklab, var(--stock, var(--paper-2)) 72%, var(--ink));
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  color: var(--c-ink);
+  background-color: var(--stock, var(--paper-2));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.9' intercept='0.05'/%3E%3CfeFuncG type='linear' slope='0.9' intercept='0.05'/%3E%3CfeFuncB type='linear' slope='0.9' intercept='0.05'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='m' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0125' numOctaves='3' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.55' intercept='0.225'/%3E%3CfeFuncG type='linear' slope='0.55' intercept='0.225'/%3E%3CfeFuncB type='linear' slope='0.55' intercept='0.225'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='480' height='480' filter='url(%23m)'/%3E%3C/svg%3E");
+  background-size: calc(220 * var(--u)) calc(220 * var(--u)), calc(900 * var(--u)) calc(900 * var(--u));
+  background-blend-mode: soft-light, soft-light;
+  box-shadow: var(--lift, 4px 4px 0 0 var(--ink));
+}
+
+/* The dye isn't even (as on the GL print): a fade where light reached it,
+   a deeper pool where the colour settled. */
+.face::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 95% at 0% 0%, rgb(255 251 238 / 0.3), rgb(255 251 238 / 0.08) 45%, transparent 75%),
+    radial-gradient(55% 60% at 78% 82%, rgb(0 0 0 / 0.1), transparent 70%);
+  pointer-events: none;
+}
+
+.back::before {
+  background:
+    radial-gradient(120% 95% at 100% 0%, rgb(255 251 238 / 0.3), rgb(255 251 238 / 0.08) 45%, transparent 75%),
+    radial-gradient(55% 60% at 25% 80%, rgb(0 0 0 / 0.1), transparent 70%);
+}
+
+/* the back is mirrored in 3D, so its offset is too — it lands on the same side */
+.back {
+  transform: rotateY(180deg);
+  background-color: color-mix(in oklab, var(--stock, var(--paper-2)) 95%, #000);
+  background-position: calc(-211 * var(--u)) calc(-137 * var(--u));
+  box-shadow: -4px 4px 0 0 var(--ink);
+}
+
+.foil {
+  color: var(--c-ink);
+}
+
+/* front */
+
+.fTop {
+  position: absolute;
+  left: calc(76 * var(--u));
+  right: calc(80 * var(--u));
+  top: calc(96 * var(--u));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.wordmark {
+  display: inline-flex;
+  font-family: var(--font-display);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: var(--c-ink);
+}
+
+.kind {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(10 * var(--u));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(19 * var(--u));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.kind b {
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+.kind span {
+  font-size: calc(16 * var(--u));
+  font-weight: 600;
+  color: var(--c-ink-3);
+}
+
+.seal {
+  position: absolute;
+  left: calc(1258 * var(--u));
+  top: calc(332 * var(--u));
+  width: calc(248 * var(--u));
+  height: calc(248 * var(--u));
+  color: var(--c-ink-3);
+}
+
+.identity {
+  position: absolute;
+  left: calc(76 * var(--u));
+  right: calc(380 * var(--u));
+  bottom: calc(325 * var(--u));
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-family: var(--font-display);
+  line-height: 0.95;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c-ink);
+}
+
+.handle {
+  margin-top: calc(18 * var(--u));
+  padding-left: calc(4 * var(--u));
+  font-size: calc(36 * var(--u));
+  font-weight: 500;
+  line-height: 1;
+  color: var(--c-ink-2);
+}
+
+.handle[data-empty] {
+  color: var(--c-ink-4);
+  font-weight: 400;
+}
+
+.badges {
+  margin-top: calc(46 * var(--u));
+  padding-left: calc(4 * var(--u));
+  display: flex;
+  align-items: center;
+  gap: calc(16 * var(--u));
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  height: calc(48 * var(--u));
+  padding: 0 calc(20 * var(--u));
+  border-radius: 0;
+  border: calc(2 * var(--u)) solid var(--c-ink);
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(20 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badgeSigil {
+  width: calc(26 * var(--u));
+  height: calc(26 * var(--u));
+  color: var(--c-ink);
+}
+
+.flag {
+  display: inline-flex;
+  align-items: center;
+  height: calc(40 * var(--u));
+  padding: 0 calc(15 * var(--u));
+  border-radius: 0;
+  border: calc(2 * var(--u)) dashed var(--c-ink-2);
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(17 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--c-ink);
+}
+
+.team {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(17 * var(--u));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.fields {
+  position: absolute;
+  left: calc(80 * var(--u));
+  right: calc(80 * var(--u));
+  top: calc(780 * var(--u));
+  padding-top: calc(40 * var(--u));
+  border-top: 1px solid var(--c-ink);
+  display: grid;
+  grid-template-columns: calc(540 * var(--u)) calc(340 * var(--u)) minmax(0, 1fr);
+}
+
+.fields > span {
+  display: flex;
+  flex-direction: column;
+  gap: calc(16 * var(--u));
+  min-width: 0;
+}
+
+.fields i {
+  font-style: normal;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(17 * var(--u));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--c-ink-2);
+  white-space: nowrap;
+}
+
+.fields b {
+  font-family: var(--font-mono, var(--font-ui));
+  font-weight: 700;
+  font-size: calc(46 * var(--u));
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fields b.serial {
+  font-variant-numeric: tabular-nums;
+}
+
+.fields b.code {
+  font-size: calc(36 * var(--u));
+  letter-spacing: 0.04em;
+}
+
+.fields b.firma {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: normal;
+  font-size: calc(38 * var(--u));
+}
+
+.fields b.url {
+  font-weight: 400;
+  font-size: calc(24 * var(--u));
+  color: var(--c-ink-2);
+  padding-top: calc(10 * var(--u));
+}
+
+/* back */
+
+.bTop {
+  position: absolute;
+  left: calc(80 * var(--u));
+  right: calc(80 * var(--u));
+  top: calc(98 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bLabel {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(22 * var(--u));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(19 * var(--u));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.bLabel b {
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+.bLabel span {
+  color: var(--c-ink-2);
+}
+
+.pins {
+  position: absolute;
+  left: calc(80 * var(--u));
+  right: calc(80 * var(--u));
+  top: calc(190 * var(--u));
+  bottom: calc(210 * var(--u));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  row-gap: calc(30 * var(--u));
+}
+
+.pins[data-rows='2'] {
+  padding: 0 calc(40 * var(--u));
+}
+
+.pin {
+  width: calc(262 * var(--u));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.pinDisc {
+  width: calc(144 * var(--u));
+  height: calc(144 * var(--u));
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--stock, var(--paper-2)) 94%, var(--c-ink));
+  border: calc(2 * var(--u)) solid var(--c-ink);
+}
+
+.pinSigil {
+  width: calc(75 * var(--u));
+  height: calc(75 * var(--u));
+  color: var(--c-ink);
+}
+
+.pin b {
+  margin-top: calc(26 * var(--u));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(15 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--c-ink);
+  line-height: 1.15;
+}
+
+.pin i {
+  margin-top: calc(8 * var(--u));
+  font-style: normal;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(14 * var(--u));
+  letter-spacing: 0.12em;
+  color: var(--c-ink-3);
+}
+
+.bEmpty {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(380 * var(--u));
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: calc(26 * var(--u));
+}
+
+.bEmpty p {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 125, 'wght' 300;
+  font-size: calc(58 * var(--u));
+  line-height: 1;
+  color: var(--c-ink-2);
+}
+
+.bEmpty span {
+  font-size: calc(25 * var(--u));
+  color: var(--c-ink-3);
+}
+
+.bInvite {
+  position: absolute;
+  left: calc(76 * var(--u));
+  right: calc(80 * var(--u));
+  top: calc(318 * var(--u));
+  display: flex;
+  flex-direction: column;
+}
+
+.bCode {
+  font-family: var(--font-mono, var(--font-ui));
+  font-weight: 700;
+  font-size: calc(108 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.bLine {
+  margin-top: calc(40 * var(--u));
+  font-size: calc(30 * var(--u));
+  font-weight: 500;
+  color: var(--c-ink-2);
+}
+
+.bSub {
+  margin-top: calc(14 * var(--u));
+  font-size: calc(24 * var(--u));
+  color: var(--c-ink-3);
+}
+
+.bNote {
+  margin-top: calc(90 * var(--u));
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: calc(34 * var(--u));
+  line-height: 1.35;
+  color: var(--c-ink-3);
+}
+
+.bFoot {
+  position: absolute;
+  left: calc(80 * var(--u));
+  right: calc(80 * var(--u));
+  top: calc(800 * var(--u));
+  padding-top: calc(56 * var(--u));
+  border-top: 1px solid var(--c-ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(20 * var(--u));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: calc(19 * var(--u));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.bFoot span {
+  color: var(--c-ink-2);
+}
+
+.bFoot b {
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+/* stickers, flat (the CSS card) */
+
+.calcos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.calco {
+  position: absolute;
+  display: block;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}

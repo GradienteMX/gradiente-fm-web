@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Sign in via the SSR client to set the session cookie.
-  const ssr = createSsrClient()
+  const ssr = await createSsrClient()
   const { error } = await ssr.auth.signInWithPassword({ email, password })
   if (error) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })

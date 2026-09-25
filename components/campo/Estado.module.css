@@ -1,0 +1,88 @@
+.estado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink-3);
+}
+
+.index {
+  color: var(--ink);
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.name {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--chip, var(--ink));
+  color: var(--chip-on, var(--paper));
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background-color 200ms steps(4, jump-end),
+    color 200ms steps(4, jump-end);
+}
+
+.what {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.clears {
+  display: flex;
+}
+
+.clears button {
+  height: 22px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 10px;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+  margin-left: -1px;
+}
+
+.clears button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.rule {
+  font-size: 10px;
+  color: var(--ink-4);
+}
+
+@media (max-width: 700px) {
+  .rule {
+    display: none;
+  }
+}

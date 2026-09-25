@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 // only mounted inside the dashboard, which itself is auth-gated.
 
 export async function GET() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },

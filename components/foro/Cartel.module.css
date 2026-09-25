@@ -1,0 +1,341 @@
+/* ── the poster: art (a well) on top, a paper caption block beneath ───────
+   TRAMA tokens with fallbacks to the previous palette:
+   paper-2 raised · rule 1px ink · well = media frame · mono = codes/chips. */
+
+.cartel {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cartel:focus-visible {
+  outline: none;
+}
+
+.paper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-piece);
+  background: var(--paper-2, var(--obs-1));
+  box-shadow: 0 0 0 1px var(--hair-3);
+  transform: translate(var(--rise, 0px), var(--rise, 0px));
+  transition: transform 240ms var(--ease-materia);
+}
+
+/* Lifted = the one hard offset shadow of the system. */
+.cartel:hover .paper,
+.cartel:focus-visible .paper {
+  --rise: -2px;
+  box-shadow:
+    0 0 0 1px var(--rule, var(--ink)),
+    var(--lift, 4px 4px 0 var(--ink));
+}
+
+.cartel:focus-visible .paper {
+  box-shadow:
+    0 0 0 2px var(--rule, var(--ink)),
+    var(--lift, 4px 4px 0 var(--ink));
+}
+
+.art {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 56%;
+  overflow: hidden;
+  background: var(--well, var(--obs-2));
+}
+
+.img {
+  object-fit: cover;
+  transition: filter 900ms var(--ease-enfriar), opacity 900ms var(--ease-enfriar);
+}
+
+.plate {
+  position: absolute;
+  inset: 0;
+}
+
+/* codes: the slot it holds, its reply count — boxed, mono */
+
+.top {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--rule, var(--ink));
+  background: var(--paper, var(--obs-0));
+  color: var(--ink);
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.code[data-edge] {
+  background: var(--rule, var(--ink));
+  color: var(--paper, var(--obs-0));
+}
+
+.edgeNote {
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+/* hover strip: genres and author, a paper block sliding up over the art */
+
+.peek {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 7px 8px;
+  background: var(--paper-2, var(--obs-1));
+  border-top: 1px solid var(--rule, var(--ink));
+  transform: translateY(101%);
+  transition: transform 240ms var(--ease-materia);
+  pointer-events: none;
+}
+
+.cartel:hover .peek,
+.cartel:focus-visible .peek {
+  transform: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--rule, var(--ink));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.more {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.by {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* caption block */
+
+.caption {
+  flex: none;
+  max-height: 44%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px 12px;
+  border-top: 1px solid var(--rule, var(--ink));
+  container-type: inline-size;
+  transition: opacity 700ms var(--ease-enfriar);
+}
+
+.subject {
+  font-family: var(--font-display);
+  line-height: 0.98;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.when {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mine {
+  color: var(--ink);
+}
+
+/* The energy line: hue = the band of its genres, strength = how recently it moved. */
+.energy {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--band);
+  opacity: calc(0.35 + var(--warm) * 0.65);
+  pointer-events: none;
+  transition: opacity 900ms var(--ease-enfriar);
+}
+
+/* ── cooled: out of range / out of the search. It keeps its slot and its
+      energy line (you can see where it lives); everything else steps back. */
+
+/* Out of range fades toward the paper, like a washed-out print. */
+.cartel[data-cool] .art {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.cartel[data-cool] .img {
+  filter: grayscale(1);
+  opacity: 0.2;
+}
+
+.cartel[data-cool] .top,
+.cartel[data-cool] .caption {
+  opacity: 0.3;
+}
+
+.cartel[data-cool] .paper {
+  box-shadow: 0 0 0 1px var(--hair-2);
+}
+
+/* ── the empty slot ──────────────────────────────────────────────────────── */
+
+.hueco {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--hair-2);
+  color: var(--ink-4);
+  cursor: pointer;
+  animation: huecoIn 500ms ease both;
+}
+
+@keyframes huecoIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.hueco:hover,
+.hueco:focus-visible {
+  border-color: var(--rule, var(--ink));
+  color: var(--ink);
+}
+
+.hueco:focus-visible {
+  outline-offset: -2px;
+}
+
+.huecoNum {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-4);
+}
+
+.free,
+.freeOn {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.freeOn {
+  display: none;
+}
+
+.hueco:hover .free,
+.hueco:focus-visible .free {
+  display: none;
+}
+
+.hueco:hover .freeOn,
+.hueco:focus-visible .freeOn {
+  display: block;
+}
+
+.freeOn::before {
+  content: '+ ';
+}
+
+.lastNote {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 9px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper,
+  .peek {
+    transition: none;
+  }
+}

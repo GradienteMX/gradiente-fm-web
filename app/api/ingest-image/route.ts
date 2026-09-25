@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 import sharp from 'sharp'
 import { createClient } from '@/lib/supabase/server'
 
-// POST /api/ingest-image  (multipart form-data: file, externalId?)
+// POST /api/ingest-image  (multipart form-data: file, externalId?, folder?)
+//
+// `folder=foro`: the V2 foro's images (a thread's gallery, a reply's image),
+// prepared in the browser and stored here before the post is written
+// (lib/store/efectos/foro.ts) — same transcode, same bucket, under
+// `${user.id}/foro/`. Without it, the Instagram path below.
 //
 // Persist a flyer image into our own `uploads` bucket and return the permanent
 // public URL. This exists because Instagram `og:image` URLs are signed +
@@ -37,7 +42,7 @@ function sanitizeId(s: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -91,7 +96,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const path = `${user.id}/ig/${stamp}.${ext}`
+  const folder = form.get('folder') === 'foro' ? 'foro' : 'ig'
+  const path = `${user.id}/${folder}/${stamp}.${ext}`
   const { error } = await supabase.storage
     .from('uploads')
     .upload(path, body, { contentType, upsert: true, cacheControl: ONE_YEAR })

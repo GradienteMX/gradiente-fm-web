@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 import type { Json } from '@/lib/supabase/database.types'
 
 // /api/users/me
@@ -42,7 +44,7 @@ function isPlainObject(v: unknown): v is Record<string, Json> {
 }
 
 export async function PATCH(_request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -137,5 +139,8 @@ export async function PATCH(_request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Name, bio, firma, place and avatar are the public face every member
+  // sees (the public world's users); the dashboard namespace is not.
+  if (Object.keys(patch).some((k) => k !== 'profile_meta')) revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ user: data })
 }

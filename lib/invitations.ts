@@ -1,30 +1,32 @@
+'use client'
+
 import { createClient } from '@/lib/supabase/client'
 import { inviteCodeCandidates } from '@/lib/identity'
+import type { Role } from '@/lib/types'
 
-// Invitación-3D integration · the data contract the holo card consumes.
-// `peekInviteCard` resolves a ?codigo= into this shape via the anon-safe
-// `peek_invite_card` RPC (migration 0028). The card reads `name/code/folio/
-// issued/role/franja`; `qrTarget` is derived by the card per state
-// (pre-signup → /welcome?codigo=, post-signup → /u/<username>).
+// The invitation as the door may know it before anyone signs up — ported from
+// production (main:lib/invitations.ts). `peek_invite_card` (migration 0028,
+// reshaped in 0048) is a SECURITY DEFINER lookup granted to `anon`: one code
+// in, that code's card out (name, role, folio, issue month, team) and a
+// status. The invite table itself never reaches the browser, and neither does
+// any other code.
 
 export type InviteCardStatus = 'active' | 'used' | 'expired' | 'invalid'
 
-export type InviteRole = 'user' | 'curator' | 'guide' | 'insider' | 'admin'
-
 export interface InviteCard {
   name: string
+  /** The spelling that matched — what signup must submit. */
   code: string
-  folio: string // "007/150" — empty when the code carries no folio
-  issued: string // "JUN 2026" — issued_label, else derived from created_at
-  role: InviteRole
+  /** «007/150» — empty when the code carries no folio. */
+  folio: string
+  /** «SEP 2026» — issued_label, else the month it was created. */
+  issued: string
+  role: Role
   franja: { title: string; logoUrl: string | null } | null
   status: InviteCardStatus
 }
 
-const MESES = [
-  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
-]
+const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 
 function issuedFrom(label: string | null, isoDate: string | null): string {
   if (label && label.trim()) return label.trim()
@@ -33,57 +35,49 @@ function issuedFrom(label: string | null, isoDate: string | null): string {
   return `${MESES[d.getMonth()]} ${d.getFullYear()}`
 }
 
-// Resolves an invite code into card data. Never throws — an unknown/empty code
-// returns a well-formed object with status:'invalid' so the UI can branch
-// without try/catch. `peek_invite_card` matches exactly, so we try the code as
-// given first and fall back to its normalized spelling: a code retyped on a
-// phone (auto-capitalized) or pasted with a trailing period resolves instead
-// of reading as "CÓDIGO NO RECONOCIDO". The returned `code` is the spelling
-// that matched — RegistroCard submits that, not what was typed.
-export async function peekInviteCard(code: string): Promise<InviteCard> {
+/**
+ * Resolves a code into its card. Never throws: an unknown or empty code — or
+ * a network failure, reported as `error` so the door can say so honestly —
+ * comes back with status 'invalid'. The RPC matches exactly, so the code is
+ * tried as typed first and then in its normalized spelling (a code retyped on
+ * a phone, auto-capitalized, or pasted with a trailing period still resolves).
+ */
+export async function peekInviteCard(code: string): Promise<InviteCard & { error?: boolean }> {
   const trimmed = code.trim()
-  const base: InviteCard = {
-    name: '',
-    code: trimmed,
-    folio: '',
-    issued: '',
-    role: 'user',
-    franja: null,
-    status: 'invalid',
-  }
+  const base: InviteCard = { name: '', code: trimmed, folio: '', issued: '', role: 'user', franja: null, status: 'invalid' }
   if (!trimmed) return base
 
   const supabase = createClient()
+  let failed = false
   const peek = async (candidate: string) => {
     const { data, error } = await supabase.rpc('peek_invite_card', { p_code: candidate })
+    if (error) failed = true
     return error || !data || data.length === 0 ? null : data[0]
   }
 
   let matched = trimmed
   let row: Awaited<ReturnType<typeof peek>> = null
-  for (const candidate of inviteCodeCandidates(trimmed)) {
-    row = await peek(candidate)
-    if (row) {
-      matched = candidate
-      break
+  try {
+    for (const candidate of inviteCodeCandidates(trimmed)) {
+      row = await peek(candidate)
+      if (row) {
+        matched = candidate
+        break
+      }
     }
+  } catch {
+    return { ...base, error: true }
   }
-  if (!row) return base
+  if (!row) return failed ? { ...base, error: true } : base
 
-  const folio =
-    row.folio != null
-      ? `${String(row.folio).padStart(3, '0')}/${row.folio_denominator ?? 150}`
-      : ''
-
+  const folio = row.folio != null ? `${String(row.folio).padStart(3, '0')}/${row.folio_denominator ?? 150}` : ''
   return {
     name: row.card_name?.trim() || '',
     code: matched,
     folio,
     issued: issuedFrom(row.issued_label, row.issued_at),
     role: row.role,
-    franja: row.franja_title
-      ? { title: row.franja_title, logoUrl: row.franja_logo_url }
-      : null,
+    franja: row.franja_title ? { title: row.franja_title, logoUrl: row.franja_logo_url } : null,
     status: (row.status as InviteCardStatus) ?? 'active',
   }
 }

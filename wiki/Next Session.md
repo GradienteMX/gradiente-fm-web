@@ -1,17 +1,47 @@
 # Next Session — start here
 
-## Current handoff — 2026-09-10
+## Current handoff — 2026-09-25
 
-**Publish lockout fixed in the working tree (uncommitted).** See [[Publication Readiness]] and the 2026-09-10 [[log]] entry. Before judging the composer:
+**V2 («TRAMA» + «LIBREA») is replacing the site.** Iker's decision (2026-09-25): the whole purpose is replacing gradiente.org, and work continues only on V2. It lives in this repo on branch **`v2`**, branched in place from `main`. **Nothing is committed yet**: the uncommitted `main` edits (wiki, CLAUDE.md) came along and are part of the working tree. `Documents/GradienteV2` is superseded; don't work there. CLAUDE.md, AGENTS.md and README.md describe V2 now.
+
+What `v2` is:
+- The old UI is deleted (`git show main:<path>` still reads it). The backend stays and is Next 16-safe: `app/api/**` (awaited `params`, `await createClient()`), `proxy.ts` (was `middleware.ts`), `lib/supabase`, `lib/data`, and the shared rules in `lib/`. Next 16.3.6 + React 19.
+- Reads: `lib/data/world.ts` builds a public snapshot (service role, `unstable_cache` tag `'world'`, ~855 KB), a private overlay per viewer (cookie client, RLS), and admin ledgers that only `/central` loads. Stickers are cached separately (tag `'stickers'`). La Puerta (`/welcome`) uses real Supabase auth.
+- Writes: all 37 world actions reach the backend. `dispatch` runs the reducer at once, then `lib/store/efectos/*` calls an `app/api` route. A failure undoes the change and shows the route's message. `'seen'` stays on the device by design. New routes: `app/api/stickers/{apply,scrape,stub,redeem,me}`, `app/api/follows`, `app/api/comments/[id]`.
+
+**Before anything else (Iker):**
+1. ~~Apply `0052_stickers.sql` and `0053_follows.sql`~~: **applied by hand in the SQL editor on 2026-09-25** (ikerio). The tables, RLS policies, trigger and function grants were checked read-only the same day. `schema_migrations` still stops at 0016.
+2. ~~Beta sticker kits~~: **granted 2026-09-25** to all 64 members, under batch `beta-2026`. That is 539 copies (384 kit + 155 admin test sheets), 128 pressed (64 on the front, 64 on the back) and 192 vouchers. New signups get a kit automatically (`app/api/auth/signup`). The pressed front sticker renders on `/u/iker`, wrapping the case corner.
+3. Walk the signed-in flows with a QA account on `localhost:3003` (preview config «dev»): login; taller (credencial, stickers, vouchers); comment, react, vibe check, save; publish from the mesa; foro; franja follow; `/central`. **Only the anonymous side has been checked in a browser.** Agents can't sign in.
+4. Decide how to deploy: commit `v2`, push, get a Vercel preview, then merge to `main`. The private repo ↔ Vercel Hobby constraint still applies (see Claude memory `reference_private_repo_vercel_constraint`).
+
+**At release (clean slate):** `npx tsx scripts/stickersBeta.ts --wipe --yes` deletes every `beta-2026` row (kits, vouchers, stub claims, test sheets and their placements) and resets serial counters. Then set `STICKERS_BETA = false` in `lib/stickers/beta.ts`. Real unlocks (participation, franjas, support, trophies) come later, on the payments spine.
+
+**Verified 2026-09-25:** `tsc` clean · eslint clean · 205 tests pass · `next build` passes with a clean log · every route opened anonymously on dev (`GRADIENTE_DEV_OPEN=1`) with no app errors.
+
+**Open:**
+- **Privacy, pre-existing and live on production today:** RLS lets the `anon` role (the public key in every browser) read `users.engagement_hp` and every individual `vibe_checks` and `poll_votes` row. Confirmed 2026-09-25 with `pg_policies` and `has_column_privilege`. V2 doesn't display them, but the data can be read. Fixing it needs a migration that keeps both `main` and `v2` working (offered as a separate task).
+- Every refresh after a write re-reads the ~855 KB world. That's fine at 64 members; revisit as the site grows.
+- Still missing: an edit that removes a piece's poll leaves the poll on the server; follows saved in the old UI's localStorage aren't imported; only guides and admins can create entities; the composer can't upload images yet; one external image host blocks hotlinking.
+
+## Previous handoff — 2026-09-10
+
+> On `v2` the composer and dashboard this handoff talks about are retired. Its backend facts (0051 applied, the hard/soft publish readiness rules) still hold.
+
+**Publish lockout fixed — committed in `1649cb1` (2026-09-10).** See [[Publication Readiness]] and the 2026-09-10 [[log]] entry. Before judging the composer:
 
 1. ~~Apply `0051_item_franjas.sql`~~ — **applied by hand in the Supabase SQL editor on 2026-09-10** (ikerio). `schema_migrations` still stops at 0016; see [[Supabase migration apply drift]] conventions in the 0049/0050 handoffs below.
 2. **Verify in Chrome with a non-admin creator account:** open an older published piece → it must hydrate and the «Actualizar publicación» button must be enabled once a género and an etiqueta are set; soft gaps appear under «Recomendado» only. Publish a draft with an autosave error forced (offline) → the button must still open confirmation. Tag a franja in CONTEXTO, publish, confirm the FRANJAS chip in the overlay routes to `/f/[slug]`.
 3. Existing published content lacking a genre or a classifier tag is now blocked from re-publish until classified — intended (classification feeds the dial filter and the affinity map), but tell the team.
-4. Then commit; the drafting UX revamp below remains the next design focus.
+4. ~~Then commit~~ — done in `1649cb1`; the drafting UX revamp below remains the next design focus.
 
-## Previous handoff — 2026-09-09
+**Not handed off yet:** `e750066` (portada carousel, admin feed toggle, slider fold, HL lever presets — 2026-09-10; see the top [[log]] entries) and `eadc269` (dashboard collections, activity, warm hi-fi player — 2026-09-15; no log entry, notes in `Documents/Gradiente/reviews/dashboard-feedback-2026-09-15/`, outside the repo). The next handoff replaces this section.
 
-**Next session: revamp the design and UX of drafting feed content and publications.** The user ended the current session and named this as the next focus. No composer redesign has been started or approved yet.
+## Earlier handoffs — historical context
+
+### Handoff — 2026-09-09 (composer revamp direction, old UI)
+
+**Next session: revamp the design and UX of drafting feed content and publications.** The user ended the current session and named this as the next focus. The first pass then shipped on 2026-09-10 in `968879c`, and `1649cb1` fixed the publish lockout it introduced; the direction below still applies to further composer work.
 
 ### Where this session finished
 
@@ -29,7 +59,6 @@
 - Entry points: `components/dashboard/espacios/PublicarSpace.tsx`, `components/dashboard/compose/ComposeSheet.tsx`, `components/dashboard/compose/editor/ComposeLayout.tsx`, `ComposeRail.tsx`, the per-type composers and shared `compose/kit/` fields, and `app/dashboard/drafts/page.tsx`.
 - Keep existing draft persistence, autosave, published-item editing, permissions, content-type requirements and publish confirmation behavior in view while redesigning. Do not change feed curation, introduce engagement metrics, or flatten the differences between content types merely to simplify the form.
 
-## Earlier handoffs — historical context
 
 > Brief for picking up where the previous session ended.
 >
@@ -179,6 +208,8 @@
 > **Responsive coverage gap**: viewports ≤1280px (older Intel MacBook 13", iPad landscape) previously overflowed the header. The 2026-05-12 trim (9 links → 4) likely resolves this — verify on a 1280px window before declaring it closed. If still tight, the deferred path-2 hamburger drawer + horizontal SECCIÓN strip remains the answer (tiny demographic, may not be worth the redesign per Iker).
 
 ## How to start this session
+
+> **Historical (May–June 2026).** This section and the five after it predate the HL ledger, the Pliego redesign and the franja rename, and parts are now false: the HP writer is live (not "deferred"), the scraper stays manual by decision (no GH Actions cron), `/admin` has seven tabs, migrations run to `0051`, and `/api/health` exists. Treat each item as a claim to verify; current state is in the handoffs at the top and in [[log]].
 
 > **Site is live at https://gradiente.org** (Vercel auto-deploys on push to `main`). Reads from Supabase project `gradiente-fm` (ref `dcqbtcpqbqrtxbshhlkd`). Real auth at the LOGIN button. Iker is admin (`@iker`). Migration history: files run through `0031_seed_franjas` in `supabase/migrations/` (0030/0031 land with the unmerged franja PR), but the prod `schema_migrations` table only records 0001–0016 — **0017–0031 were applied out-of-band via the SQL editor, so never `supabase db push`** (it would replay/conflict). See `migration-history-drift` memory. Pre-squash originals preserved in `supabase/migrations.bak/` (untracked).
 

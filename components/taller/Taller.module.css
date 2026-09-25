@@ -1,0 +1,213 @@
+.taller {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 160px;
+}
+
+/* ── waiting (session + world replay, well under a second) ──────────── */
+
+.waiting {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+}
+
+.waitLine {
+  display: block;
+  width: 140px;
+  height: 2px;
+  background: var(--ink);
+  transform-origin: center;
+  animation: wait 1.8s var(--ease-enfriar) infinite;
+}
+
+@keyframes wait {
+  0%,
+  100% {
+    transform: scaleX(0.12);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 0.8;
+  }
+}
+
+/* ── the gate ───────────────────────────────────────────────────────── */
+
+.umbral {
+  min-height: calc(100dvh - var(--nav-h) - 140px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 64px var(--gutter);
+  text-align: center;
+}
+
+.umbralMark {
+  width: 58px;
+  height: 58px;
+  margin-bottom: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.umbralTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 118, 'wght' 380;
+  font-size: clamp(36px, 5.4vw, 72px);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  max-width: 15ch;
+  text-wrap: balance;
+}
+
+.umbralText {
+  font-family: var(--font-read);
+  font-size: 21px;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.umbralNote {
+  margin-top: 10px;
+  max-width: 48ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* ── tabs ───────────────────────────────────────────────────────────── */
+
+.tabsRow {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 20;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 0 var(--gutter);
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.tablist {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tablist::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.tab:first-child {
+  padding-left: 0;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab[data-on] {
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline-offset: -6px;
+}
+
+.tabNote {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+
+.tabDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.tabCount {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  background: var(--red);
+  color: var(--paper);
+}
+
+.tabBar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 3px;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--red);
+}
+
+/* ── the stage ──────────────────────────────────────────────────────── */
+
+.escena {
+  padding-top: 28px;
+  min-height: 50vh;
+  outline: none;
+}
+
+.escena:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 8px;
+}
+
+@media (max-width: 640px) {
+  .taller {
+    padding-bottom: 140px;
+  }
+  .tab {
+    height: 48px;
+    padding: 0 12px;
+  }
+  .escena {
+    padding-top: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waitLine {
+    animation: none;
+    transform: none;
+    opacity: 0.5;
+  }
+}

@@ -1,0 +1,316 @@
+/* CABECERA — the livery at full volume. Colours come from the livery
+   (--lc colour, --lo ink on it, --la accent); axes from --wd / --wg. */
+
+.cab {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--lc);
+  color: var(--lo);
+  border-bottom: 1px solid var(--rule);
+}
+
+.flood {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  clip-path: inset(0 0 0 100%);
+}
+
+.inner {
+  position: relative;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  container-type: inline-size;
+}
+
+/* ── the channel row ─────────────────────────────────────────────────── */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-bottom: 1px solid color-mix(in srgb, var(--lo) 40%, transparent);
+}
+
+.canal {
+  white-space: nowrap;
+}
+
+.code {
+  padding: 2px 7px;
+  background: var(--lo);
+  color: var(--lc);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.rule {
+  flex: 1;
+  height: 3px;
+  background: var(--lo);
+}
+
+.meta {
+  white-space: nowrap;
+}
+
+.arrows {
+  letter-spacing: -0.1em;
+  font-size: 9px;
+}
+
+/* ── the name, overprinted ───────────────────────────────────────────── */
+
+.body {
+  position: relative;
+  padding: 14px 0 6px;
+}
+
+.name {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' var(--wd), 'wght' var(--wg);
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.solid {
+  position: relative;
+  z-index: 1;
+}
+
+/* The outline copy, off register — the second plate. */
+.ghost {
+  position: absolute;
+  left: 0.045em;
+  top: 0.05em;
+  z-index: 0;
+  color: transparent;
+  -webkit-text-stroke: max(1.5px, 0.012em) var(--lo);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.glyph {
+  position: absolute;
+  right: 0;
+  top: 10px;
+  width: clamp(72px, 10cqi, 150px);
+  height: clamp(72px, 10cqi, 150px);
+  color: var(--lo);
+  z-index: 2;
+}
+
+/* ── the pattern band, drifting while on screen ──────────────────────── */
+
+.band {
+  position: relative;
+  height: 26px;
+  margin: 10px calc(var(--gutter) * -1) 0;
+  overflow: hidden;
+  border-top: 1px solid var(--lo);
+  border-bottom: 1px solid var(--lo);
+}
+
+.bandInk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% + var(--tile) * 2);
+}
+
+.cab[data-vivo] .bandInk {
+  animation: drift 3.2s linear infinite;
+}
+
+.cab[data-patron='espectro'] .bandInk,
+.cab[data-patron='rueda'] .bandInk {
+  width: 100%;
+  animation: none;
+}
+
+@keyframes drift {
+  to {
+    transform: translateX(calc(var(--tile) * -1));
+  }
+}
+
+/* ── foot: one true line, real counts ────────────────────────────────── */
+
+.foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0 16px;
+}
+
+.lema {
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.datos {
+  display: flex;
+  gap: 0;
+  margin: 0;
+}
+
+.dato {
+  display: grid;
+  gap: 2px;
+  padding: 0 14px;
+  border-left: 1px solid var(--lo);
+}
+
+.dato dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 80, 'wght' 850;
+  font-size: 30px;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.dato dt {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.controls {
+  padding: 0 0 14px;
+}
+
+/* Inside a livery every quiet label prints in the livery's ink. */
+.cab :global(.meta),
+.cab :global(.label) {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* ── compact ─────────────────────────────────────────────────────────── */
+
+.cab[data-size='compact'] .body {
+  padding: 10px 0 2px;
+}
+
+.cab[data-size='compact'] .glyph {
+  width: 64px;
+  height: 64px;
+  top: 6px;
+}
+
+.cab[data-size='compact'] .foot {
+  padding: 10px 0 12px;
+}
+
+.cab[data-size='compact'] .dato dd {
+  font-size: 22px;
+}
+
+/* ── banda: one line, for the hub ────────────────────────────────────── */
+
+.cab[data-size='banda'] .inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'top top top'
+    'name lema datos'
+    'band band band';
+  align-items: center;
+  column-gap: 24px;
+}
+
+.cab[data-size='banda'] .top {
+  grid-area: top;
+}
+
+.cab[data-size='banda'] .body {
+  grid-area: name;
+  padding: 10px 0 8px;
+}
+
+.cab[data-size='banda'] .glyph {
+  display: none;
+}
+
+.cab[data-size='banda'] .ghost {
+  left: 0.03em;
+  top: 0.035em;
+}
+
+.cab[data-size='banda'] .foot {
+  display: contents;
+}
+
+.cab[data-size='banda'] .lema {
+  grid-area: lema;
+  font-size: 13px;
+}
+
+.cab[data-size='banda'] .datos {
+  grid-area: datos;
+}
+
+.cab[data-size='banda'] .dato dd {
+  font-size: 22px;
+}
+
+.cab[data-size='banda'] .band {
+  grid-area: band;
+  height: 12px;
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .cab[data-size='banda'] .inner {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'top'
+      'name'
+      'datos'
+      'band';
+  }
+  .cab[data-size='banda'] .lema {
+    display: none;
+  }
+  .meta,
+  .arrows {
+    display: none;
+  }
+  .foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .datos {
+    flex-wrap: wrap;
+  }
+  .dato:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .glyph {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cab[data-vivo] .bandInk {
+    animation: none;
+  }
+}

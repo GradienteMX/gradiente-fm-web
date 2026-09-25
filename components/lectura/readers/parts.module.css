@@ -1,0 +1,636 @@
+/* PARTS — the vocabulary every reader shares, printed: codes on stock,
+   energy headlines, mono meta, hairline ledgers, framed wells. */
+
+/* ── slug line: format on its stock · editorial · the band as a code ──── */
+
+.kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.25;
+  color: var(--ink-2);
+}
+
+.code {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 19px;
+  padding: 0 6px;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.format {
+  color: var(--ink);
+}
+
+.sel {
+  color: var(--red-ink);
+}
+
+.kickerBand {
+  margin-left: auto;
+}
+
+/* A band as a printed code: swatch + `07–08 · HOT → FUEGO`. */
+.bandCode {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 20px;
+  padding: 0 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.bandSwatch {
+  width: 20px;
+  height: 7px;
+  outline: 1px solid var(--rule);
+}
+
+.bandNum {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── headline, dek, byline ────────────────────────────────────────────── */
+
+.titleBox {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+}
+
+.watermark {
+  position: absolute;
+  z-index: -1;
+  right: -0.04em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 150, 'wght' 900;
+  font-size: clamp(120px, 34cqi, 300px);
+  line-height: 0.75;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--wm);
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+}
+
+.title {
+  font-family: var(--font-display);
+  line-height: 0.9;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  color: var(--ink);
+}
+
+.dek {
+  font-family: var(--font-read);
+  font-size: clamp(18px, 1.55vw, 22px);
+  line-height: 1.4;
+  color: var(--ink-2);
+  max-width: 36em;
+  text-wrap: pretty;
+}
+
+.byline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding-top: 11px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.author {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* The publisher is a person, not a code: their chip keeps its own type. */
+.creator {
+  display: inline-flex;
+  font-family: var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.when {
+  white-space: nowrap;
+}
+
+/* ── indexical head: 01 / NAME — the rest ─────────────────────────────── */
+
+.indice {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.indiceLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+
+.idx {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.idxName {
+  color: var(--red-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.idxSub {
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idxAside {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ledger: key | value rows on hairlines ────────────────────────────── */
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.ledger:empty {
+  display: none;
+}
+
+/* Rows close on a hairline; the head's rule (or the row above) opens them. */
+.row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.key {
+  padding-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.val {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  min-width: 0;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.val[data-stack] {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.genre {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.genre:hover {
+  background: var(--paper-4);
+}
+
+.genre:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.entity {
+  display: inline;
+  text-align: left;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.entity:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* The way-out mark follows the last word of the link. */
+.entity svg {
+  display: inline;
+  margin-left: 4px;
+  vertical-align: -1px;
+}
+
+/* ── siguientes: three neighbours, printed like pieces ────────────────── */
+
+.siguientes {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sigGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.sig {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+  text-align: left;
+  color: var(--ink);
+}
+
+.sigArt {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--paper-3);
+}
+
+.sigArt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.sigEnergy {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: var(--band);
+  border-top: 1px solid var(--rule);
+}
+
+/* Registration marks: four red corners just inside the frame. */
+.marks {
+  position: absolute;
+  inset: 5px;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  --m: 10px;
+  --w: 1.5px;
+  background:
+    linear-gradient(var(--red), var(--red)) top left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--w) var(--m) no-repeat;
+}
+
+.sig:hover .marks,
+.sig:focus-visible .marks {
+  opacity: 1;
+}
+
+.sigText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sigFormat {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.sigFormat .code {
+  height: 17px;
+  padding: 0 5px;
+  gap: 4px;
+}
+
+.sigTitle {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1;
+  color: var(--ink);
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.sig:hover .sigTitle {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.12em;
+}
+
+.cover {
+  object-fit: cover;
+}
+
+/* ── progreso: an ink rule filling along the sheet's foot ─────────────── */
+
+.progreso {
+  position: sticky;
+  bottom: 6px;
+  z-index: 2;
+  height: 0;
+  pointer-events: none;
+}
+
+.progresoFill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--ink);
+  transform-origin: left;
+}
+
+.progreso em {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  padding: 2px 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--paper-2);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── presenta: the franja that signs the piece ────────────────────────── */
+
+.presenta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 12px 7px 7px;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper-2);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.presenta:hover {
+  background: var(--paper-4);
+}
+
+.presenta:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.presentaLogo {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  background: var(--paper-3);
+}
+
+.presentaLogo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--rule);
+}
+
+.presentaText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.presentaKind {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.presenta:active .presentaKind {
+  color: inherit;
+}
+
+.presentaName {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 96, 'wght' 700;
+  font-size: 17px;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.presentaArrow {
+  flex: none;
+}
+
+/* ── hero media: a framed well, the band on its foot, a mono caption ──── */
+
+.artFig {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.art {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--well);
+}
+
+/* The frame sits above the plate (an outline would paint under it). */
+.art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.art .cover {
+  filter: var(--art-filter, none);
+}
+
+.blank {
+  position: absolute;
+  inset: 0;
+  background-color: var(--stock);
+}
+
+.artEnergy {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: var(--band);
+  border-top: 1px solid var(--rule);
+  filter: var(--art-filter, none);
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.fig {
+  margin-right: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .indiceLine {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .idxSub {
+    white-space: normal;
+  }
+  .sigGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .sig {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .sigArt {
+    flex: none;
+    width: 96px;
+    aspect-ratio: 4 / 5;
+  }
+  .sigTitle {
+    font-size: 17px;
+  }
+}
+
+@media (hover: none) {
+  .marks {
+    display: none;
+  }
+}

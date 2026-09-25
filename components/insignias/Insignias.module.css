@@ -1,0 +1,264 @@
+/* INSIGNIAS — the pins, pressed into the page. The tray is a GL window with
+   no box: nothing over it paints a ground, so the page's paper shows through
+   and the GL adds only the pins and the shading of the pressing. The labels
+   are printed on the page in ink. Without WebGL the pins are printed (SVG)
+   and pressed in with SVG filter shading, on the same paper. */
+
+.root {
+  container-type: inline-size;
+  min-width: 0;
+  /* The pressing's inks, from the page's paper: a warm dark, a warm white. */
+  --ins-shade: color-mix(in srgb, var(--paper) 28%, #1d160b);
+  --ins-lite: color-mix(in srgb, var(--paper) 8%, #ffffff);
+}
+
+/* The window reaches a little past the pins' places (the slots don't move),
+   so the pressing's soft edge always fades out inside it, never at its
+   scissor. */
+.tray {
+  --bleed: 8px;
+  position: relative;
+  margin: calc(-1 * var(--bleed));
+  padding: var(--bleed);
+  background: transparent;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 26px 14px 26px;
+  text-align: center;
+}
+
+/* ── the pin's proxy: a real button over the GL pin ────────────────────── */
+
+.pin {
+  position: relative;
+  display: block;
+  width: min(100%, 176px);
+  aspect-ratio: 1;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pin[aria-disabled='true'] {
+  cursor: default;
+}
+
+.box {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+/* The printed case's pressing filters: present (a filter under display:none
+   may not apply) but taking no room. */
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Focus on the page: an ink ring and the red registration corners. */
+.tray .pin:focus-visible {
+  outline: 1.5px solid var(--ink) !important;
+  outline-offset: 6px !important;
+}
+
+.pin:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  pointer-events: none;
+  --m: 10px;
+  --w: 1.5px;
+  background:
+    linear-gradient(var(--red), var(--red)) top left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--w) var(--m) no-repeat;
+}
+
+/* ── the label printed under each pin (vitrina) ────────────────────────── */
+
+.cartela {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  max-width: 28ch;
+  min-width: 0;
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.when {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.story {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.42;
+  color: var(--ink-2);
+}
+
+.slot[data-state='locked'] .name {
+  color: var(--ink-2);
+}
+
+.slot[data-state='locked'] .when,
+.slot[data-state='locked'] .story {
+  color: var(--ink-3);
+}
+
+.slot[data-back] .when {
+  color: var(--ink);
+}
+
+/* ── compacta: the desk's small case ───────────────────────────────────── */
+
+.root[data-variant='compacta'] .tray {
+  max-width: calc(540px + 2 * var(--bleed));
+}
+
+.root[data-variant='compacta'] .slot {
+  padding: 12px 6px;
+  gap: 0;
+}
+
+.root[data-variant='compacta'] .pin {
+  width: min(100%, 92px);
+}
+
+.root[data-variant='compacta'] .pin:focus-visible::after {
+  inset: -6px;
+  --m: 7px;
+}
+
+.root[data-variant='compacta'] .tray .pin:focus-visible {
+  outline-offset: 2px !important;
+}
+
+/* Two fixed rows (head, text): hovering along the case never moves the page. */
+.caption {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 3px;
+  max-width: 540px;
+  height: 62px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  overflow: hidden;
+}
+
+.capHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.capCode {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+
+.capName {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.capText {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.caption[data-empty] .capText {
+  color: var(--ink-3);
+}
+
+.capWhen {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* ── narrow: two columns of five ───────────────────────────────────────── */
+
+@container (max-width: 760px) {
+  .root[data-variant='vitrina'] .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .root[data-variant='vitrina'] .slot {
+    padding: 20px 10px 22px;
+    gap: 12px;
+  }
+  .root[data-variant='vitrina'] .pin {
+    width: min(100%, 148px);
+  }
+  .story {
+    font-size: 12px;
+  }
+}
+
+@media (forced-colors: active) {
+  .pin:focus-visible {
+    outline-color: Highlight !important;
+  }
+}

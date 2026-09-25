@@ -1,0 +1,201 @@
+/* ATAJOS — the keys as a printed table: indexical heads, then two columns
+   (keys | what they do) on hairline rows. Keys are boxed; pointer
+   gestures sit in dashed boxes because they aren't keys. */
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 10px 10px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+
+.name {
+  flex: none;
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.rest {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 6px 0 10px;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.close kbd {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 2px 5px;
+  border: 1px solid var(--on-well-hair);
+  color: var(--on-well-2);
+}
+
+.close:hover {
+  background: var(--ink-2);
+}
+
+.close:active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+/* Two columns that read down, then across — like a printed index. */
+.groups {
+  columns: 2;
+  column-gap: 28px;
+  padding: 18px 20px 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  break-inside: avoid;
+  padding-bottom: 24px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+
+.n {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.gname {
+  flex: none;
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.note {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The table: keys | what, one hairline per row. */
+.table {
+  margin: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+}
+
+.key {
+  display: inline-flex;
+  align-items: center;
+}
+
+.join {
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-4);
+}
+
+.gesture {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px dashed var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.what {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .head {
+    padding-left: 14px;
+  }
+  .rest {
+    display: none;
+  }
+  .groups {
+    columns: 1;
+    padding: 14px 14px 0;
+  }
+  .group {
+    padding-bottom: 20px;
+  }
+  .row {
+    grid-template-columns: 116px minmax(0, 1fr);
+  }
+}

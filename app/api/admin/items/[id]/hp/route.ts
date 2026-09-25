@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { requireAdmin, statusForRpcError } from '@/lib/api/requireAdmin'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // POST /api/admin/items/[id]/hp — the beta-calibration HL lever.
 //
@@ -35,8 +36,9 @@ interface Body {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
+  const params = await paramsP
   const gate = await requireAdmin()
   if (!gate.ok) return gate.response
 
@@ -85,8 +87,9 @@ export async function POST(
     )
   }
 
-  // The home is force-dynamic; this clears any route cache a later deploy
-  // adds. The client-side Router Cache is handled by staleTimes.dynamic = 0.
+  // items.hp is read from the public world (cached, tag WORLD_TAG); the path
+  // revalidation clears any route cache a later deploy adds.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   revalidatePath('/')
   return NextResponse.json(data)
 }

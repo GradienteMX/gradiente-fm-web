@@ -122,7 +122,7 @@ export interface AdminOverview {
 }
 
 export async function getAdminOverview(days = 30): Promise<AdminOverview> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const now = new Date()
   const from = new Date(now.getTime() - (days - 1) * 86_400_000)
   const fromIso = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate())).toISOString()
@@ -271,7 +271,7 @@ interface LedgerRow {
  * disappearing, so the operator learns the queue's full shape.
  */
 async function buildAttention(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   items: HpRow[],
   now: Date,
 ): Promise<AttentionItem[]> {

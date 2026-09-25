@@ -1,0 +1,46 @@
+.wrap {
+  position: relative;
+}
+
+.grid {
+  display: grid;
+  grid-auto-flow: dense;
+}
+
+.cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ghosts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* A ghost un-prints: its plate breaks into grey blocks (TRAMA), and the
+   label drops out in registration steps, never a smooth fade. */
+.ghost {
+  position: absolute;
+  animation: unprint 560ms steps(4, jump-end) forwards;
+}
+
+@keyframes unprint {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.empty {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--ink-2);
+  outline: 1px dashed var(--hair-3);
+  outline-offset: -1px;
+}

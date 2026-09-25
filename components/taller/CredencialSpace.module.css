@@ -1,0 +1,584 @@
+/* CREDENCIAL (Taller) — the Taller's livery at full volume: acid on ink,
+   the cutting mat. The card sits in a paper window cut out of the mat (the
+   GL card is drawn behind the DOM, so nothing may be painted under it).
+   Tokens only; the mat's grid is the livery pattern, set inline. */
+
+.espacio {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── masthead ───────────────────────────────────────────────────────── */
+
+.cab {
+  position: relative;
+  overflow: hidden;
+  background: var(--acid);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  container-type: inline-size;
+}
+
+.cabTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 34px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ink);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.canal {
+  font-weight: 700;
+}
+
+/* acid type is legal on ink */
+.cabCode {
+  padding: 3px 7px 2px;
+  font-weight: 700;
+  background: var(--ink);
+  color: var(--acid);
+}
+
+.cabRule {
+  flex: 1;
+  min-width: 12px;
+  height: 3px;
+  background: var(--ink);
+}
+
+.cabDatos {
+  font-variant-numeric: tabular-nums;
+}
+
+.cabName {
+  position: relative;
+  margin: 0;
+  padding: 14px 16px 0;
+  font-family: var(--font-display);
+  font-variation-settings:
+    'wdth' 150,
+    'wght' 900;
+  font-size: clamp(44px, 9cqi, 116px);
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cabSolid {
+  position: relative;
+  z-index: 1;
+}
+
+/* the outline plate, off register */
+.cabGhost {
+  position: absolute;
+  left: calc(16px + 0.045em);
+  top: calc(14px + 0.05em);
+  color: transparent;
+  -webkit-text-stroke: max(1.5px, 0.012em) var(--ink);
+  pointer-events: none;
+}
+
+.lema {
+  max-width: 60ch;
+  padding: 14px 16px 16px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.cabBand {
+  display: block;
+  height: 26px;
+  border-top: 1px solid var(--ink);
+  background-repeat: repeat;
+}
+
+/* ── layout ─────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.colMesa,
+.colLado {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ── the mat, with a paper window where the card is drawn ───────────── */
+
+.mesa {
+  position: relative;
+  padding: 26px;
+  isolation: isolate;
+  /* brought back into view under the sticky nav and the space tabs */
+  scroll-margin-top: calc(var(--nav-h) + 64px);
+}
+
+.mat {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  padding: 26px;
+  background-color: var(--acid);
+  border: 1px solid var(--rule);
+  -webkit-mask:
+    linear-gradient(var(--ink) 0 0) content-box,
+    linear-gradient(var(--ink) 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(var(--ink) 0 0) content-box exclude,
+    linear-gradient(var(--ink) 0 0);
+}
+
+/* the window's cut line */
+.window {
+  position: absolute;
+  inset: 25px;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.mesa[data-placing] .window {
+  border-style: dashed;
+}
+
+/* A spot is chosen: the mat holds the copy still while you confirm. */
+.freeze {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  cursor: pointer;
+  background: transparent;
+}
+
+.freeze:focus-visible {
+  outline-offset: -4px !important;
+}
+
+/* ── placing / confirming ───────────────────────────────────────────── */
+
+.colocando {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 8px 6px 14px;
+  border: 1px dashed var(--rule);
+  background: var(--paper-2);
+}
+
+.colocandoCode {
+  flex: none;
+  padding: 3px 7px 2px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--acid);
+}
+
+.colocandoName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.confirma {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  background: var(--acid);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+.confirmaText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.confirmaText b {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.confirmaText span {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.confirmaActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── detail ─────────────────────────────────────────────────────────── */
+
+.detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fichaArt {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  margin-bottom: 8px;
+  padding: 22px;
+  background: var(--paper-3);
+  border: 1px solid var(--hair-2);
+}
+
+.fichaArt[data-wide] {
+  min-height: 180px;
+}
+
+.fichaKind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.fichaName {
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.fichaNote {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+/* a foil copy is one of a kind: said once, plainly */
+.fichaUnica {
+  margin-top: 4px;
+  padding-left: 9px;
+  border-left: 2px solid var(--red);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.edad {
+  font-family: var(--font-display);
+  font-variation-settings:
+    'wdth' 104,
+    'wght' 800;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.005em;
+}
+
+.hechos {
+  margin: 0;
+}
+
+.hechos div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+}
+
+.hechos dt {
+  padding-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.hechos dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.teclas {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px dashed var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.teclas b {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.raspar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.raspar > :first-child {
+  align-self: stretch;
+}
+
+.rasparNota {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.ultima {
+  padding-left: 10px;
+  border-left: 2px solid var(--red);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.ultima b {
+  color: var(--red-ink);
+}
+
+.nada {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* scrape passes: four blocks, printed as they go */
+.pasadas {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.pasadas i {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--ink);
+}
+
+.pasadas i[data-on] {
+  background: var(--ink);
+}
+
+/* ── the wall ───────────────────────────────────────────────────────── */
+
+.pared {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.cara {
+  min-width: 0;
+}
+
+.caraHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.caraHead i {
+  font-style: normal;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.filas {
+  display: flex;
+  flex-direction: column;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 4px;
+  text-align: left;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.fila:hover {
+  background: var(--paper-3);
+}
+
+.fila[data-on] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.fila[data-on] .filaMeta {
+  color: var(--paper);
+  opacity: 0.7;
+}
+
+.fila[data-on] .pasadas i {
+  border-color: var(--paper);
+}
+
+.fila[data-on] .pasadas i[data-on] {
+  background: var(--paper);
+}
+
+.filaArt {
+  display: grid;
+  place-items: center;
+}
+
+.filaText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.filaName {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.filaMeta {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.caraVacia {
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────── */
+
+/* One column: the card, what you're doing with it, the binder, then the wall. */
+@media (max-width: 1080px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .colMesa,
+  .colLado {
+    display: contents;
+  }
+  .mesa {
+    order: 1;
+  }
+  .confirma,
+  .colocando {
+    order: 2;
+  }
+  .oDetalle {
+    order: 3;
+  }
+  .oCarpeta {
+    order: 4;
+  }
+  .oPared {
+    order: 5;
+  }
+}
+
+@media (max-width: 640px) {
+  .espacio {
+    gap: 18px;
+  }
+  .cabTop {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .cabDatos {
+    display: none;
+  }
+  .cabName {
+    padding: 12px 12px 0;
+  }
+  .cabGhost {
+    left: calc(12px + 0.045em);
+    top: calc(12px + 0.05em);
+  }
+  .lema {
+    padding: 12px;
+    font-size: 14px;
+  }
+  .mesa,
+  .mat {
+    padding: 12px;
+  }
+  .window {
+    inset: 11px;
+  }
+  .pared {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fichaArt {
+    min-height: 180px;
+  }
+}

@@ -56,7 +56,7 @@ function sanitizeId(s: string): string {
 // path keyed on the post id so re-ingest overwrites instead of orphaning.
 // Best-effort: on any failure, falls back to the original URL.
 async function rehostImage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   externalId: string,
   srcUrl: string,
@@ -110,7 +110,7 @@ async function rehostImage(
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

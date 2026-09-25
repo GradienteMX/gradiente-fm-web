@@ -9,7 +9,7 @@ import type { ForoReply, ForoThread } from '@/lib/types'
 type ThreadRow = Database['public']['Tables']['foro_threads']['Row']
 type ReplyRow = Database['public']['Tables']['foro_replies']['Row']
 
-function rowToThread(row: ThreadRow): ForoThread {
+export function rowToThread(row: ThreadRow): ForoThread {
   const out: ForoThread = {
     id: row.id,
     authorId: row.author_id,
@@ -32,7 +32,7 @@ function rowToThread(row: ThreadRow): ForoThread {
   return out
 }
 
-function rowToReply(row: ReplyRow): ForoReply {
+export function rowToReply(row: ReplyRow): ForoReply {
   const out: ForoReply = {
     id: row.id,
     threadId: row.thread_id,
@@ -56,7 +56,7 @@ function rowToReply(row: ReplyRow): ForoReply {
 // tombstoned) doing the heavy lifting at the policy layer. RLS hides
 // seed=true threads from anon; staff (guide/admin) see everything.
 export async function getThreads(): Promise<ForoThread[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('foro_threads')
     .select('*')
@@ -71,7 +71,7 @@ export async function getThreads(): Promise<ForoThread[]> {
 }
 
 export async function getThreadById(id: string): Promise<ForoThread | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('foro_threads')
     .select('*')
@@ -85,7 +85,7 @@ export async function getThreadById(id: string): Promise<ForoThread | null> {
 }
 
 export async function getRepliesForThread(threadId: string): Promise<ForoReply[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('foro_replies')
     .select('*')

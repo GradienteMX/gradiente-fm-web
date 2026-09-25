@@ -1,0 +1,482 @@
+/* CALCO — a sticker in the DOM: the printed art, a slight tilt under the
+   pointer, and its FINISH answering the light. The art, the copy's foil
+   sheet, the window it shows through, the ink and the relief's light are
+   images painted once by lib/stickers/arte + acabado; everything here only
+   moves them. Pointer variables (set on .calco while it's under a fine
+   pointer, removed on leave): --mx --my (-1..1), --rx --ry (tilt), --gx --gy
+   (steps), --lx --ly (the relief's light), --lf (lenticular flip 0..1),
+   --arm (the laser's arms, deg), --hb (the metal's glint band), --o0… (glint
+   groups), --hot (1). Without them: the still, lit from the top left. */
+
+.calco {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  vertical-align: top;
+  perspective: 700px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.body {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--ar);
+  /* the foil tiles are sized in the sticker's own width (cqw) */
+  container-type: inline-size;
+  transform: rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg));
+  transition: transform var(--t-micro) var(--ease-release);
+}
+
+.calco[data-hot] .body {
+  transition: transform var(--t-base) var(--ease-platen);
+}
+
+/* The print and everything over it, one group (the wear mask cuts them all). */
+.print {
+  position: absolute;
+  inset: 0;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* The die line holds the place while the print arrives. */
+.cut {
+  position: absolute;
+  inset: 3%;
+  border: 1px dashed var(--hair-3);
+}
+
+.cut[data-round] {
+  border-radius: 50%;
+}
+
+/* ── the finish: layers over the print ──────────────────────────────── */
+
+/* By default a layer lives in the window: where the print leaves the stock
+   bare (the foil shows there, dark ink stays ink). */
+.l {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask: var(--win) 0 0 / 100% 100% no-repeat;
+  mask: var(--win) 0 0 / 100% 100% no-repeat;
+  transition:
+    opacity 110ms linear,
+    filter 150ms linear,
+    background-position 150ms linear;
+  /* the finish lands a beat after the print: it comes up, it doesn't pop */
+  animation: aparece 260ms var(--ease-platen) backwards;
+}
+
+@keyframes aparece {
+  from {
+    opacity: 0;
+  }
+}
+
+.l[data-m='die'] {
+  -webkit-mask-image: var(--art);
+  mask-image: var(--art);
+}
+
+.l[data-m='ink'] {
+  -webkit-mask-image: var(--tinta);
+  mask-image: var(--tinta);
+}
+
+.l[data-m='none'] {
+  -webkit-mask: none;
+  mask: none;
+}
+
+/* A tile of the copy's foil sheet: --i picks it; --dx / --dy slide it inside
+   its bleed (10 % of the sticker on every side, acabado.ts BLEED). */
+.tile {
+  background-image: var(--sheet);
+  background-repeat: no-repeat;
+  background-size: calc(var(--T) * 120cqw) calc(120cqw / var(--ar));
+  background-position: calc(var(--i) * -120cqw - 10cqw + var(--dx, 0cqw)) calc(-10cqw / var(--ar) + var(--dy, 0cqw));
+}
+
+/* The relief's light: 50 % grey is flat. invert(t) scales its slope by the
+   light's component (t = ½ − ½·l), hard-light lays it over the print. */
+.rel {
+  background-image: var(--relief);
+  background-repeat: no-repeat;
+  background-size: calc(var(--RT) * 100%) 100%;
+  background-position: calc(var(--i) / (var(--RT) - 1) * 100%) 0;
+  mix-blend-mode: hard-light;
+}
+
+/* ── holo · the foil's own light (every family) ──────────────────────── */
+
+.l[data-l='spec'] {
+  background: radial-gradient(
+    circle at calc(50% + var(--mx, -0.45) * 48%) calc(50% + var(--my, -0.55) * 48%),
+    rgb(255 255 255 / 0.7),
+    rgb(255 255 255 / 0) 46%
+  );
+  mix-blend-mode: soft-light;
+  opacity: calc(0.45 + 0.4 * var(--hot, 0));
+}
+
+/* a first-order band crossing the grating (prisma, motivo, the lenticular's lens) */
+.l[data-l='sweep'] {
+  background: linear-gradient(
+    var(--fa),
+    transparent 36%,
+    rgb(255 70 170 / 0.55) 42%,
+    rgb(255 226 80 / 0.6) 46.5%,
+    rgb(80 255 170 / 0.55) 51%,
+    rgb(70 160 255 / 0.55) 55.5%,
+    rgb(170 90 255 / 0.4) 59%,
+    transparent 65%
+  );
+  background-size: 320% 320%;
+  background-position: calc(50% + var(--mx, -0.45) * 58%) calc(50% + var(--my, -0.55) * 58%);
+  mix-blend-mode: color-dodge;
+  opacity: calc(0.28 + 0.5 * var(--hot, 0));
+}
+
+/* prisma: the bands ride the tilt; the second grating slides over the first
+   and its moiré fringes sweep across (the fringes move far more than it does) */
+.calco[data-holo='prisma'] .l[data-l='t0'] {
+  --dx: calc(var(--mx, 0) * 3cqw);
+  --dy: calc(var(--my, 0) * 2cqw);
+  filter: hue-rotate(calc(var(--mx, 0) * 120deg - var(--my, 0) * 70deg));
+}
+
+.calco[data-holo='prisma'] .l[data-l='t1'] {
+  --dx: calc(var(--mx, 0) * -1cqw);
+  --dy: calc(var(--my, 0) * 0.8cqw);
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+}
+
+/* galaxia: space stays put; stars sit a little nearer, flares nearer still,
+   the nebula nearest — it drifts with the view and turns its colour */
+.calco[data-holo='galaxia'] .l[data-l='t1'] {
+  --dx: calc(var(--mx, 0) * -4.5cqw);
+  --dy: calc(var(--my, 0) * -3.5cqw);
+  mix-blend-mode: screen;
+  filter: hue-rotate(calc(var(--mx, 0) * 55deg + var(--my, 0) * 35deg));
+}
+
+.calco[data-holo='galaxia'] .l[data-g] {
+  --dx: calc(var(--mx, 0) * -1.4cqw);
+  --dy: calc(var(--my, 0) * -1.1cqw);
+  mix-blend-mode: plus-lighter;
+  transition:
+    opacity 170ms linear,
+    background-position 150ms linear;
+}
+
+.calco[data-holo='galaxia'] .l[data-l='g3'] {
+  --dx: calc(var(--mx, 0) * -2.6cqw);
+  --dy: calc(var(--my, 0) * -2cqw);
+}
+
+/* hielo: each shard a flat mirror — whole shards flash, on or off */
+.calco[data-holo='hielo'] .l[data-l='t0'] {
+  filter: hue-rotate(calc(var(--mx, 0) * 28deg)) brightness(calc(1 - var(--my, 0) * 0.06));
+}
+
+.calco[data-holo='hielo'] .l[data-g] {
+  mix-blend-mode: screen;
+  transition: opacity 60ms steps(1, end);
+}
+
+/* diamante: every face of one orientation flashes together — engineered */
+.calco[data-holo='diamante'] .l[data-g] {
+  mix-blend-mode: screen;
+  filter: hue-rotate(calc(var(--mx, 0) * 45deg - var(--my, 0) * 45deg));
+  transition:
+    opacity 70ms steps(1, end),
+    filter 150ms linear;
+}
+
+/* láser: the rainbow arms swing round the (often off-sticker) centre */
+.calco[data-holo='laser'] .l[data-l='t0'] {
+  filter: hue-rotate(calc(var(--mx, 0) * 30deg));
+}
+
+.calco[data-holo='laser'] .l[data-l='arms'] {
+  -webkit-mask:
+    var(--win) 0 0 / 100% 100% no-repeat,
+    conic-gradient(
+      from calc(var(--arm, -129deg) + 90deg) at var(--cx) var(--cy),
+      #000 0deg,
+      transparent 24deg 156deg,
+      #000 180deg,
+      transparent 204deg 336deg,
+      #000 360deg
+    );
+  -webkit-mask-composite: source-in;
+  mask:
+    var(--win) 0 0 / 100% 100% no-repeat,
+    conic-gradient(
+      from calc(var(--arm, -129deg) + 90deg) at var(--cx) var(--cy),
+      #000 0deg,
+      transparent 24deg 156deg,
+      #000 180deg,
+      transparent 204deg 336deg,
+      #000 360deg
+    );
+  mask-composite: intersect;
+  mix-blend-mode: screen;
+  opacity: calc(0.4 + 0.55 * var(--hot, 0));
+}
+
+/* aceite: the film shifts colour and slides a little under the print */
+.calco[data-holo='aceite'] .l[data-l='t0'] {
+  --dx: calc(var(--mx, 0) * 1.5cqw);
+  --dy: calc(var(--my, 0) * 1.5cqw);
+  filter: hue-rotate(calc(var(--my, 0) * 32deg));
+}
+
+.calco[data-holo='aceite'] .l[data-l='t1'] {
+  --dx: calc(var(--mx, 0) * 2.6cqw);
+  --dy: calc(var(--my, 0) * 2.6cqw);
+  transition:
+    opacity 180ms linear,
+    background-position 160ms linear;
+}
+
+/* escamas: the rows flash in turn */
+.calco[data-holo='escamas'] .l[data-l='t0'] {
+  filter: hue-rotate(calc(var(--mx, 0) * 30deg));
+}
+
+.calco[data-holo='escamas'] .l[data-g] {
+  mix-blend-mode: screen;
+  transition: opacity 50ms steps(1, end);
+}
+
+/* motivo: ground and motifs diffract at different phases, so the motifs
+   come and go against it */
+.calco[data-holo='motivo'] .l[data-l='t0'] {
+  --dx: calc(var(--mx, 0) * 1.2cqw);
+  filter: hue-rotate(calc(var(--mx, 0) * 80deg));
+}
+
+.calco[data-holo='motivo'] .l[data-l='t1'] {
+  mix-blend-mode: color-dodge;
+  filter: hue-rotate(calc(var(--mx, 0) * -120deg + var(--my, 0) * 70deg));
+}
+
+/* ── brillo: flakes flip, they don't slide ───────────────────────────── */
+
+.calco[data-material='brillo'] .l[data-g] {
+  mix-blend-mode: plus-lighter;
+  transition: opacity 40ms steps(1, end);
+}
+
+/* ── metal: a mirror of the studio, brushed ─────────────────────────── */
+
+.calco[data-material='metal'] .l[data-l='t0'] {
+  --dx: calc(var(--mx, 0) * 1cqw);
+  --dy: calc(var(--my, 0) * 1cqw);
+}
+
+.calco[data-material='metal'] .l[data-l='env'] {
+  background: linear-gradient(
+    var(--fa),
+    rgb(0 0 0 / 0.55) 0%,
+    rgb(255 255 255 / 0.8) 17%,
+    rgb(0 0 0 / 0.35) 29%,
+    rgb(255 255 255 / 0.5) 45%,
+    rgb(0 0 0 / 0.5) 61%,
+    rgb(255 255 255 / 0.85) 77%,
+    rgb(0 0 0 / 0.4) 100%
+  );
+  background-size: 260% 260%;
+  background-position: calc(50% + var(--mx, -0.45) * 52%) calc(50% + var(--my, -0.55) * 52%);
+  mix-blend-mode: overlay;
+  opacity: 0.62;
+}
+
+.calco[data-material='metal'] .l[data-l='hl'] {
+  -webkit-mask:
+    var(--win) 0 0 / 100% 100% no-repeat,
+    linear-gradient(var(--fa), transparent calc(var(--hb, var(--hbr)) - 13%), #000 var(--hb, var(--hbr)), transparent calc(var(--hb, var(--hbr)) + 13%));
+  -webkit-mask-composite: source-in;
+  mask:
+    var(--win) 0 0 / 100% 100% no-repeat,
+    linear-gradient(var(--fa), transparent calc(var(--hb, var(--hbr)) - 13%), #000 var(--hb, var(--hbr)), transparent calc(var(--hb, var(--hbr)) + 13%));
+  mask-composite: intersect;
+  mix-blend-mode: screen;
+  opacity: calc(0.55 + 0.45 * var(--hot, 0));
+}
+
+.calco[data-metal='grafito'] .l[data-l='env'] {
+  opacity: 0.45;
+}
+
+/* ── lenticular: the other picture behind the ridges ────────────────── */
+
+/* Frame b shows left of a boundary that crosses as you tilt across the
+   ridges: solid behind it, a band of both (ridge by ridge) at it. */
+.calco[data-material='lenticular'] .l[data-l='b'] {
+  --B: calc(var(--lf, 0) * 130% - 15%);
+  background: var(--b) 0 0 / 100% 100% no-repeat;
+  -webkit-mask-image:
+    linear-gradient(90deg, #000 calc(var(--B) - 13%), transparent var(--B)),
+    linear-gradient(90deg, #000 calc(var(--B) - 13%), transparent calc(var(--B) - 13%)),
+    repeating-linear-gradient(90deg, #000 0 1.1cqw, transparent 1.1cqw 2.2cqw);
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-composite: source-in, source-over, source-over;
+  mask-image:
+    linear-gradient(90deg, #000 calc(var(--B) - 13%), transparent var(--B)),
+    linear-gradient(90deg, #000 calc(var(--B) - 13%), transparent calc(var(--B) - 13%)),
+    repeating-linear-gradient(90deg, #000 0 1.1cqw, transparent 1.1cqw 2.2cqw);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mask-composite: intersect, add, add;
+}
+
+/* at rest the other picture ghosts faintly through the ridges, as cheap lenses do */
+.calco[data-material='lenticular'] .l[data-l='fantasma'] {
+  background: var(--b) 0 0 / 100% 100% no-repeat;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 1.1cqw, transparent 1.1cqw 2.2cqw);
+  mask: repeating-linear-gradient(90deg, #000 0 1.1cqw, transparent 1.1cqw 2.2cqw);
+  opacity: calc(0.22 * (1 - var(--hot, 0)));
+}
+
+.calco[data-material='lenticular'] .l[data-l='ridges'] {
+  background: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.5) 0 0.35cqw, rgb(255 255 255 / 0) 0.35cqw 1.4cqw, rgb(0 0 0 / 0.22) 1.4cqw 2.2cqw);
+  mix-blend-mode: soft-light;
+}
+
+.calco[data-material='lenticular'] .l[data-l='sweep'] {
+  --fa: 90deg;
+  opacity: calc(0.12 + 0.3 * var(--hot, 0));
+}
+
+/* ── relief ─────────────────────────────────────────────────────────── */
+
+.l[data-l='rx'] {
+  filter: invert(calc(0.5 - 0.5 * var(--lx, -0.62)));
+}
+
+.l[data-l='ry'] {
+  filter: invert(calc(0.5 - 0.5 * var(--ly, -0.7)));
+}
+
+/* the dome: its lens magnifies the print a touch and swims with the view */
+.l[data-l='lens'] {
+  background: var(--art) center / 104.5% 104.5% no-repeat;
+  -webkit-mask: var(--relief) 100% 0 / calc(var(--RT) * 100%) 100% no-repeat;
+  mask: var(--relief) 100% 0 / calc(var(--RT) * 100%) 100% no-repeat;
+  translate: calc(var(--mx, 0) * -0.9cqw) calc(var(--my, 0) * -0.9cqw);
+  transition: translate 150ms linear;
+}
+
+/* …a big rolling highlight and the window's small one */
+.l[data-l='dome'] {
+  background:
+    radial-gradient(
+      ellipse 22% 14% at calc(50% + var(--mx, -0.45) * 34%) calc(50% + var(--my, -0.55) * 34%),
+      rgb(255 255 255 / 0.95),
+      rgb(255 255 255 / 0) 100%
+    ),
+    radial-gradient(ellipse 58% 46% at calc(50% + var(--mx, -0.45) * 26%) calc(50% + var(--my, -0.55) * 26%), rgb(255 255 255 / 0.5), rgb(255 255 255 / 0) 70%);
+  mix-blend-mode: screen;
+  opacity: calc(0.7 + 0.3 * var(--hot, 0));
+  transition: opacity 110ms linear;
+}
+
+/* spot varnish: a gloss band on the ink only; the rest stays matte */
+.l[data-l='barniz'] {
+  background: linear-gradient(115deg, transparent 28%, rgb(255 255 255 / 0.7) 42%, rgb(255 255 255 / 0.18) 50%, rgb(255 255 255 / 0.6) 56%, transparent 70%);
+  background-size: 200% 200%;
+  background-position: calc(50% + var(--mx, -0.25) * 50%) calc(50% + var(--my, -0.3) * 50%);
+  mix-blend-mode: screen;
+  opacity: calc(0.6 + 0.4 * var(--hot, 0));
+}
+
+/* ── the plain stocks: their light only under the pointer ───────────── */
+
+.l[data-l='sheen'] {
+  opacity: 0;
+  background-image: var(--tex);
+  transition: opacity var(--t-micro) var(--ease-release);
+}
+
+.calco[data-hot] .l[data-l='sheen'] {
+  opacity: var(--sheen, 0.8);
+  transition: opacity var(--t-base) var(--ease-platen) 60ms;
+}
+
+/* vinil: one hard gloss band sweeping with the tilt */
+.calco[data-material='vinil'] .l[data-l='sheen'],
+.calco[data-material='transparente'] .l[data-l='sheen'] {
+  --sheen: 0.9;
+  background-size: 240% 240%;
+  background-repeat: no-repeat;
+  background-position: calc(50% - var(--mx, 0) * 60%) calc(50% - var(--my, 0) * 60%);
+  mix-blend-mode: screen;
+}
+
+/* papel: raking light finds the fibre */
+.calco[data-material='papel'] .l[data-l='sheen'] {
+  --sheen: 0.85;
+  background-size: 140px 140px;
+  background-position: calc(var(--mx, 0) * 6px) calc(var(--my, 0) * 6px);
+  mix-blend-mode: multiply;
+}
+
+/* ── wear: scraped in passes ────────────────────────────────────────── */
+
+.calco[data-worn] .print {
+  -webkit-mask-image: repeating-linear-gradient(-14deg, var(--ink) 0 calc(11px - var(--wear) * 9px), transparent calc(11px - var(--wear) * 9px) 11px);
+  mask-image: repeating-linear-gradient(-14deg, var(--ink) 0 calc(11px - var(--wear) * 9px), transparent calc(11px - var(--wear) * 9px) 11px);
+  opacity: calc(1 - var(--wear) * 0.3);
+}
+
+/* ── lifted: picked up off the sheet ────────────────────────────────── */
+
+.calco[data-lifted] .body {
+  translate: -2px -2px;
+  filter: drop-shadow(4px 4px 0 var(--ink));
+}
+
+/* ── the serial of an edition ───────────────────────────────────────── */
+
+.serial {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  translate: 12% 45%;
+  padding: 3px 5px 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body {
+    transform: none;
+    transition: none;
+  }
+  .l {
+    transition: none;
+    animation: none;
+  }
+}

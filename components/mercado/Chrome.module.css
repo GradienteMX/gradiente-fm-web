@@ -1,0 +1,115 @@
+/* Header chrome shared by the Tienda and the Pieza: mono, boxed, indexical. */
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.crumb {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.bandMark {
+  width: 14px;
+  height: 5px;
+  border: 1px solid var(--ink);
+  flex: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.action,
+.back,
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-piece);
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.action:hover {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.back,
+.close {
+  border: 1px solid var(--rule, var(--hair-3));
+}
+
+.back:hover,
+.close:hover {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.back {
+  padding: 0 11px 0 8px;
+}
+
+.back svg {
+  transform: scaleX(-1);
+}
+
+.close {
+  gap: 8px;
+  padding: 0 7px 0 10px;
+  margin-left: 4px;
+}
+
+.close kbd {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  padding: 2px 5px;
+  border: 1px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+@media (max-width: 1000px) {
+  .action span,
+  .crumb {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .left:has(.back) .kind {
+    display: none;
+  }
+}

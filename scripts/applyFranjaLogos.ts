@@ -25,7 +25,7 @@
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
 import { readdirSync, writeFileSync } from 'node:fs'
-import { resolve, join, parse } from 'node:path'
+import { resolve, parse } from 'node:path'
 
 config({ path: resolve(process.cwd(), '.env.local') })
 

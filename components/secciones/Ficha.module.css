@@ -1,0 +1,387 @@
+.ficha {
+  padding-bottom: 150px;
+}
+
+.frame {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+/* ── head ─────────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: clamp(40px, 7vh, 88px);
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: var(--ink);
+}
+
+/* A boxed code: "FICHA / ARTISTA". */
+.kind {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.place {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.rule {
+  flex: 0 1 56px;
+  height: 1px;
+  background: var(--rule);
+}
+
+.derived {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+/* ── spectrum of appearances ──────────────────────────────────────────── */
+
+.espectro {
+  margin: -8px 0 0;
+  max-width: 880px;
+}
+
+.axis {
+  position: relative;
+  height: 46px;
+  margin: 0 8px;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--spectrum-steps);
+  opacity: 0.45;
+}
+
+.tick {
+  position: absolute;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 0;
+  background: var(--t);
+}
+
+.mean {
+  position: absolute;
+  bottom: -9px;
+  width: 0;
+  height: 0;
+  margin-left: -5px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 6px solid var(--ink);
+}
+
+.axisLabels {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 14px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.meanLabel {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* ── facts ────────────────────────────────────────────────────────────── */
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.facts b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dim {
+  color: var(--ink-3);
+}
+
+.franja {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px 12px 14px;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+.franja:hover {
+  background: var(--paper-3);
+}
+
+.franja:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.franjaBand {
+  width: 22px;
+  height: 8px;
+  border-radius: 1px;
+  border: 1.5px solid currentColor;
+}
+
+.franja > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.franjaKicker {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: inherit;
+}
+
+.franjaName {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+/* ── shared section heads ─────────────────────────────────────────────── */
+
+.secHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.secTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 124, 'wght' 320;
+  font-size: clamp(28px, 2.8vw, 44px);
+  line-height: 0.95;
+  color: var(--ink);
+}
+
+.secSub {
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+/* ── next nights ──────────────────────────────────────────────────────── */
+
+.proximas {
+  display: flex;
+  flex-direction: column;
+}
+
+.nochesList {
+  display: flex;
+  flex-direction: column;
+}
+
+.nocheRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 84px 120px minmax(0, 1.4fr) minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 8px;
+  border-bottom: 1px solid var(--hair);
+  text-align: left;
+  transition: background var(--t-micro) ease;
+}
+
+.nocheRow:hover,
+.nocheRow:focus-visible {
+  background: var(--paper-3);
+}
+
+.nDay {
+  font-family: var(--font-display);
+  font-size: 54px;
+  line-height: 0.8;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.nocheRow[data-prox='esta-noche'] .nDay,
+.nocheRow[data-prox='en-vivo'] .nDay {
+  text-decoration: underline;
+  text-decoration-color: var(--ne);
+  text-decoration-thickness: 5px;
+  text-underline-offset: 6px;
+}
+
+.nWhen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.nProx {
+  color: var(--ink-3);
+}
+
+.nocheRow[data-prox='en-vivo'] .nProx {
+  color: var(--red-ink);
+}
+
+.nTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 100, 'wght' 620;
+  font-size: 20px;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+.nVenue {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.nGo {
+  color: var(--ink-3);
+  transition: transform var(--t-base) var(--ease-materia), color var(--t-micro) ease;
+}
+
+.nocheRow:hover .nGo {
+  color: var(--ink);
+  transform: translateX(4px);
+}
+
+/* ── constellation ────────────────────────────────────────────────────── */
+
+.constelacion {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 28px 56px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ink-3);
+}
+
+.names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.name:hover {
+  background: var(--paper-3);
+}
+
+.name:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.times {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: inherit;
+  opacity: 0.66;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── appearances ──────────────────────────────────────────────────────── */
+
+.apariciones {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+@media (max-width: 860px) {
+  .nocheRow {
+    grid-template-columns: 64px minmax(0, 1fr) 20px;
+    gap: 6px 14px;
+  }
+  .nDay {
+    grid-row: span 3;
+    font-size: 44px;
+  }
+  .nWhen,
+  .nTitle,
+  .nVenue {
+    grid-column: 2;
+  }
+  .nGo {
+    grid-column: 3;
+    grid-row: 1 / span 3;
+  }
+}

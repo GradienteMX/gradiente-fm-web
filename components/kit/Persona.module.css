@@ -1,0 +1,142 @@
+/* PERSONA — people on the sheet: a round portrait in a 1px ink ring, one
+   boxed mono badge, flags as dashed boxes. Rank frames are ink rules drawn
+   around the ring — never hue, which belongs to energy. */
+
+.avatar {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.initial {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 110, 'wght' 700;
+  line-height: 1;
+}
+
+/* Rank frames — earned texture, printed as a second rule: a burst of dots
+   (detonador), a broken line (enigma), a double rule (espectro). */
+.avatar[data-rank='detonador'] {
+  outline: 2px dotted var(--ink);
+  outline-offset: 2px;
+}
+
+.avatar[data-rank='enigma'] {
+  outline: 1.5px dashed var(--ink);
+  outline-offset: 2px;
+}
+
+.avatar[data-rank='espectro'] {
+  outline: 3px double var(--ink);
+  outline-offset: 1px;
+}
+
+/* ── the badge: role for staff, rank for readers ─────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.badge[data-role='curator'] {
+  color: var(--ink);
+}
+
+.badge[data-role='guide'],
+.badge[data-role='insider'] {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.badge[data-role='admin'] {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.badge[data-rank='normie'] {
+  color: var(--ink-3);
+}
+
+.badge[data-rank='detonador'],
+.badge[data-rank='enigma'],
+.badge[data-rank='espectro'] {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+/* Flags are attributes, not ranks: a dashed box. */
+.flag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px dashed var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* ── the chip: portrait, handle, badge ───────────────────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.link {
+  min-width: 0;
+}
+
+.link:hover .handle {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.name {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.handle {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

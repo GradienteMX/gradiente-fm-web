@@ -1,0 +1,135 @@
+/* A hairline ledger: numbers set large, labels in mono, no fills to speak of. */
+.ficha {
+  display: grid;
+  gap: 1px;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--rule, var(--hair-2));
+  box-shadow: 0 0 0 1px var(--rule, var(--hair-2));
+}
+
+.ficha[data-layout='strip'] {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.ficha[data-layout='column'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ficha > li {
+  display: flex;
+  min-width: 0;
+}
+
+.fact {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  text-align: left;
+  background: var(--paper-2, var(--obs-1));
+}
+
+.fact[data-link]:hover,
+.fact[data-link]:focus-visible {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.value {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 72, 'wght' 720;
+  font-size: 30px;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.label {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.fact[data-link] .label {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fact[data-link]:hover .label {
+  color: var(--ink);
+}
+
+.fact[data-zero] .value,
+.fact[data-zero] .label {
+  color: var(--ink-4);
+}
+
+/* ── banda ─────────────────────────────────────────────────────────────── */
+
+.banda {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bandaHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bandaLabel {
+  color: var(--ink-3);
+}
+
+.bandaName {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bandaTrack {
+  position: relative;
+  height: 18px;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+/* The energy axis itself, quietly: hue is energy, so it may carry it. */
+.bandaSpectrum {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  opacity: 0.8;
+}
+
+.bandaSpan {
+  position: absolute;
+  top: 4px;
+  bottom: 0;
+  border: 1px solid var(--ink-3);
+  border-bottom: 0;
+}
+
+.tick {
+  position: absolute;
+  top: 1px;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+}

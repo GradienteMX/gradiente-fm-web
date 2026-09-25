@@ -9,9 +9,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { commentId: string } }
+  { params: paramsP }: { params: Promise<{ commentId: string }> }
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -23,6 +24,8 @@ export async function POST(
     .from('saved_comments')
     .insert({ user_id: user.id, comment_id: params.commentId })
 
+  // 23503: the comment is gone. 22P02: not a comment id at all.
+  if (error?.code === '23503' || error?.code === '22P02') return NextResponse.json({ error: 'Ese comentario ya no está.' }, { status: 404 })
   if (error && error.code !== '23505') {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -31,9 +34,10 @@ export async function POST(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { commentId: string } }
+  { params: paramsP }: { params: Promise<{ commentId: string }> }
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

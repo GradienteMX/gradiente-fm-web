@@ -1,0 +1,820 @@
+.mercado {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 112, 'wght' 540;
+  font-size: clamp(30px, 3.4vw, 50px);
+  line-height: 0.94;
+  letter-spacing: -0.01em;
+}
+
+.sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.visible {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+.visible:hover {
+  background: var(--paper-3);
+}
+
+.visibleDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--ink);
+}
+
+.visible[data-on] .visibleDot {
+  background: var(--ink);
+}
+
+.n {
+  margin-left: 2px;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buyers waiting is an alert: red ground, paper figure. */
+.waiting {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  background: var(--red);
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+.answered {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ── catalog ────────────────────────────────────────────────────────── */
+
+.catalogo {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(214px, 1fr));
+  gap: 20px 16px;
+}
+
+.catalogo > li {
+  display: flex;
+}
+
+/* A new piece is creation: acid is its ground. */
+.nueva {
+  flex: 1;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  border: 1px dashed var(--rule);
+  color: var(--ink);
+  text-align: center;
+  background: var(--paper-2);
+}
+
+.nueva:hover,
+.nueva:focus-visible {
+  background: var(--acid);
+  border-style: solid;
+}
+
+.nueva:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.nuevaPlus {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+}
+
+.nuevaText {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 110, 'wght' 600;
+  font-size: 20px;
+}
+
+.nuevaHint {
+  font-size: 12.5px;
+}
+
+.listing {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.listingArt {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--well);
+  overflow: hidden;
+  border-bottom: 1px solid var(--rule);
+}
+
+.cover {
+  object-fit: cover;
+}
+
+.listing[data-status='sold'] .cover {
+  filter: grayscale(1) contrast(0.9);
+}
+
+/* No image yet: the printed «nothing here», named by category. */
+.catPlate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(-45deg, var(--hair-2) 0 1px, transparent 1px 7px),
+    var(--paper-3);
+}
+
+.stamp {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.stamp i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+/* Status by shape, never by hue: full · half · hollow. */
+.stamp[data-status='reserved'] i {
+  background: linear-gradient(90deg, var(--ink) 50%, transparent 50%);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.stamp[data-status='sold'] i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.listingBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 10px;
+}
+
+.listingCat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.listingTitle {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.price {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 96, 'wght' 640;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.listingMeta {
+  min-height: 15px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.statusPick select {
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--rule);
+  background:
+    linear-gradient(45deg, transparent 50%, var(--ink) 50%) calc(100% - 17px) 55% / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--ink) 50%, transparent 50%) calc(100% - 12px) 55% / 5px 5px no-repeat,
+    var(--paper-3);
+  appearance: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.statusPick select option {
+  background: var(--paper-2);
+}
+
+.waitingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--red-ink);
+}
+
+.waitingLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.waitingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.listingActions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* ── offers ─────────────────────────────────────────────────────────── */
+
+.ofertas {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ofertas > li[data-focus] > section {
+  box-shadow: var(--lift);
+}
+
+.ofertaHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.ofertaThumb {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  background: var(--well);
+  flex: none;
+}
+
+.ofertaName {
+  font-weight: 600;
+  white-space: normal;
+}
+
+.threads {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--hair-3);
+  background: var(--paper);
+}
+
+.thread[data-waiting] {
+  border-color: var(--rule);
+}
+
+.msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.msg[data-seller] {
+  padding-left: 14px;
+  border-left: 2px solid var(--ink);
+}
+
+.msgHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.sellerTag {
+  height: 17px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.msgWhen {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.msgBody {
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.reply {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.reply > :first-child {
+  flex: 1;
+}
+
+/* ── settings ───────────────────────────────────────────────────────── */
+
+.ajustes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ajustes > p {
+  grid-column: 1 / -1;
+}
+
+.switchRow {
+  display: flex;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch:disabled {
+  opacity: 0.5;
+}
+
+.switchTrack {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: 1px solid var(--rule);
+  background: var(--paper-3);
+}
+
+.switchTrack[data-on] {
+  background: var(--ink);
+}
+
+.switchKnob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--ink);
+}
+
+.switchTrack[data-on] .switchKnob {
+  transform: translateX(20px);
+  background: var(--paper);
+}
+
+.switchLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ajusteText {
+  margin-top: 12px;
+  font-family: var(--font-read);
+  font-size: 16.5px;
+  color: var(--ink);
+}
+
+.ajusteNote {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.monedaForm {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.monedaForm > :first-child {
+  flex: 1;
+}
+
+.monedaForm > button {
+  margin-top: 25px;
+}
+
+/* ── the listing form (inside a right-hand sheet) ───────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--paper-2);
+}
+
+.formHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 14px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule);
+}
+
+.formTitle {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 110, 'wght' 580;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+.close:hover {
+  background: var(--paper-3);
+}
+
+.close:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.formBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 24px 24px;
+}
+
+.checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.checklist li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.checklist li[data-done] {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.faint {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.images,
+.contact {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.images legend,
+.contact legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.imageList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.imageRow {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.imageThumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  background: var(--well);
+}
+
+.imageInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--rule);
+  background: var(--paper-3);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.imageInput:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 0;
+}
+
+.coverTag {
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.iconBtn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border: 1px solid var(--hair-3);
+}
+
+.iconBtn:hover {
+  border-color: var(--ink);
+}
+
+.iconBtn:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.imageActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--rule);
+  background: var(--paper-3);
+}
+
+.pick {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--well);
+  outline: 1px solid transparent;
+  outline-offset: 2px;
+}
+
+.pick:hover:not(:disabled),
+.pick:focus-visible {
+  outline: 2px solid var(--ink);
+}
+
+.pick[data-taken] {
+  opacity: 0.3;
+}
+
+.error {
+  font-size: 12.5px;
+  color: var(--red-ink);
+}
+
+.formFoot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+
+.footNote {
+  flex: 1 1 220px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.footActions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .row2,
+  .row3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .catalogo {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px 12px;
+  }
+  .nueva {
+    min-height: 240px;
+  }
+  .reply {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

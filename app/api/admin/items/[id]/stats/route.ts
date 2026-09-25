@@ -14,8 +14,9 @@ import { getAdminItemDetail } from '@/lib/data/adminItems'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
+  const params = await paramsP
   const gate = await requireAdmin()
   if (!gate.ok) return gate.response
 

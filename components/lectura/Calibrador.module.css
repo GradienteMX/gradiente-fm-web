@@ -1,0 +1,498 @@
+/* CALIBRADOR — the vibe check, printed in the Horizonte's grammar: eleven
+   swatches (out-of-band slots pale), the author's band as a dimension line,
+   the crowd's median as a hatched band, your reading as two ink bars. */
+
+.cal {
+  --sw-top: 14px;
+  --sw-h: 22px;
+  --cr-top: 40px;
+  --cr-h: 7px;
+  --bar-top: 10px;
+  --bar-h: 38px;
+  --track-h: 50px;
+  container-type: inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+
+.cal[data-compact] {
+  --sw-h: 18px;
+  --cr-top: 36px;
+  --cr-h: 6px;
+  --bar-h: 34px;
+  --track-h: 46px;
+  gap: 10px;
+  padding: 12px;
+}
+
+/* Armed: the instrument is in proof — registration marks in its corners. */
+.cal::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  opacity: 0;
+  --m: 10px;
+  --w: 1.5px;
+  background:
+    linear-gradient(var(--red), var(--red)) top left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--w) var(--m) no-repeat;
+}
+
+.cal[data-armed]::after {
+  opacity: 1;
+}
+
+/* ── head: name · effective code · reading · whose band ───────────────── */
+
+.head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--ink-3);
+}
+
+.title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.idx {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.name {
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.code {
+  padding: 2px 6px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  background: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.reading {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 7px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.source[data-crowd] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+/* In a rail: name and whose band on one line, the reading under them. */
+.cal[data-compact] .source {
+  order: 1;
+}
+
+.cal[data-compact] .readout {
+  order: 2;
+  flex-basis: 100%;
+}
+
+/* ── the instrument ───────────────────────────────────────────────────
+   Side padding is half a swatch: the scale runs 0..10 between swatch
+   centres and the swatches fill the full width (as in the Horizonte). */
+
+.instrument {
+  position: relative;
+  padding: 0 calc(100% / 22);
+}
+
+.names {
+  position: relative;
+  height: 18px;
+  margin-bottom: 2px;
+}
+
+.names span {
+  position: absolute;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink-4);
+  user-select: none;
+}
+
+.names span[data-in] {
+  color: var(--ink);
+}
+
+.track {
+  position: relative;
+  height: var(--track-h);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Focus rings the scale itself (the track box runs between swatch centres). */
+.track:focus-visible {
+  outline: none;
+}
+
+.track:focus-visible .swatches {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* The author's band: a dimension line over its slots, ticks at both ends. */
+.author {
+  position: absolute;
+  top: 5px;
+  height: 1px;
+  background: var(--ink);
+  pointer-events: none;
+}
+
+.author::before,
+.author::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 9px;
+  background: var(--ink);
+}
+
+.author::before {
+  left: 0;
+}
+
+.author::after {
+  right: 0;
+}
+
+.swatches {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  top: var(--sw-top);
+  height: var(--sw-h);
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+/* Out-of-band slots print pale (a 22% tint of their own ink on paper). */
+.swatches span {
+  background: color-mix(in srgb, var(--s) 22%, var(--paper));
+  box-shadow: inset -1px 0 0 var(--paper);
+  transition: background 160ms steps(2, jump-end);
+}
+
+.swatches span:last-child {
+  box-shadow: none;
+}
+
+.swatches span[data-in] {
+  background: var(--s);
+}
+
+.cal[data-armed] .swatches {
+  outline-width: 2px;
+  outline-offset: -2px;
+}
+
+/* The crowd's median: a hatched band under the scale, ticked at its ends.
+   Before the threshold it prints light — provisional. */
+.crowd {
+  position: absolute;
+  top: var(--cr-top);
+  height: var(--cr-h);
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, var(--hair-3) 0 1px, transparent 1px 4px);
+}
+
+.crowd::before,
+.crowd::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--hair-3);
+}
+
+.crowd::before {
+  left: 0;
+}
+
+.crowd::after {
+  right: 0;
+}
+
+.crowd[data-live] {
+  background-image: repeating-linear-gradient(-45deg, var(--ink) 0 1px, transparent 1px 4px);
+}
+
+.crowd[data-live]::before,
+.crowd[data-live]::after {
+  background: var(--ink);
+}
+
+/* Your reading: two ink bars on the edges of its slots. A proof (while you
+   paint) is outlined; a sealed reading is solid. */
+.bar {
+  position: absolute;
+  top: var(--bar-top);
+  height: var(--bar-h);
+  width: 4px;
+  margin-left: -2px;
+  background: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--paper);
+  pointer-events: none;
+}
+
+.bar[data-proof] {
+  width: 6px;
+  margin-left: -3px;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+}
+
+.cal[data-sealed] .bar {
+  animation: seal 260ms steps(2, jump-none);
+}
+
+@keyframes seal {
+  from {
+    transform: translateY(-5px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.tag {
+  position: absolute;
+  top: calc(100% + 3px);
+  z-index: 2;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--paper-2);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+  box-shadow: var(--lift);
+  pointer-events: none;
+}
+
+.numbers {
+  position: relative;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.numbers span {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.numbers span[data-in] {
+  color: var(--ink);
+}
+
+/* ── foot: the key doubles as the readouts ────────────────────────────── */
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.keyItem,
+.enter {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  min-height: 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--ink-3);
+}
+
+.keyItem b {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.keyItem[data-live],
+.keyItem[data-mine] {
+  color: var(--ink);
+}
+
+/* A reading just landed: the readout inverts for a beat. */
+.keyItem[data-on] {
+  margin: 0 -6px;
+  padding: 0 6px;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.keyItem[data-on] b {
+  color: inherit;
+}
+
+.keyItem[data-on] .kMine {
+  border-color: var(--paper);
+}
+
+.kCrowd {
+  width: 16px;
+  height: 7px;
+  border-left: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  background-image: repeating-linear-gradient(-45deg, var(--ink) 0 1px, transparent 1px 4px);
+}
+
+.kAuthor {
+  width: 16px;
+  height: 9px;
+  border-left: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  background: linear-gradient(var(--ink), var(--ink)) center / 100% 1px no-repeat;
+}
+
+.kMine {
+  width: 12px;
+  height: 12px;
+  border-left: 3px solid var(--ink);
+  border-right: 3px solid var(--ink);
+}
+
+.enter {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 3px;
+}
+
+.enter:hover {
+  text-decoration-color: var(--ink);
+}
+
+.status {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.cal[data-armed] .status {
+  color: var(--ink);
+}
+
+.clear {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 3px;
+}
+
+.clear:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+/* Narrow instruments keep only the three anchors of the scale; the end
+   anchors sit flush with the outer edges of their swatches. */
+@container (max-width: 620px) {
+  .names span:not(:nth-child(1)):not(:nth-child(6)):not(:nth-child(11)) {
+    display: none;
+  }
+  .names span:first-child {
+    margin-left: -5%;
+    transform: none;
+  }
+  .names span:last-child {
+    margin-left: 5%;
+    transform: translateX(-100%);
+  }
+}

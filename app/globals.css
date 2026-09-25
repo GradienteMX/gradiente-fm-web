@@ -1,644 +1,377 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ───────────────────────────────────────────────────────────────────────────
+   GRADIENTE V2 · «TRAMA» — tokens and base.
+   A printed sheet: paper, ink, hairlines. Hue belongs to energy; red, acid
+   and cobalt are signals with one job each. Dark exists only as a well that
+   holds media. See docs/05-TRAMA.md.
+   ─────────────────────────────────────────────────────────────────────────── */
 
-/* ── CSS custom properties ────────────────────────────────── */
 :root {
-  /* Canonical full-axis vibe gradient — 11 HARD slot steps of the
-     thermo-diverging instrument ramp (single source of truth:
-     VIBE_SLOT_COLORS in lib/utils.ts; change in lockstep). Stepped, not
-     smooth: 11 calibrated bands read as measured, a continuous gradient
-     reads as generated. This is the ONLY definition of .bg-vibe-gradient —
-     the old Tailwind backgroundImage duplicate was removed. */
-  --vibe-gradient: linear-gradient(
-    to right,
-    #087487 0%      9.09%,
-    #217B98 9.09%  18.18%,
-    #48819E 18.18% 27.27%,
-    #6586A0 27.27% 36.36%,
-    #7A8A9D 36.36% 45.45%,
-    #948E85 45.45% 54.55%,
-    #C38174 54.55% 63.64%,
-    #E17756 63.64% 72.73%,
-    #FC6C0F 72.73% 81.82%,
-    #FC9414 81.82% 90.91%,
-    #FEB225 90.91% 100%
-  );
-  --font-syne: 'Syne', sans-serif;
-  --font-space-grotesk: 'Space Grotesk', sans-serif;
-  --font-space-mono: 'Space Mono', monospace;
+  /* Papel */
+  --paper: #edebe3;
+  --paper-2: #f6f4ec; /* raised: sheets, panels, open caption */
+  --paper-3: #e4e1d6; /* sunken: inputs, empty wells on paper */
+  --paper-4: #d8d4c7; /* pressed, hatch ground */
 
-  /* ── Chrome heights (fase A) — the ONE place sticky arithmetic lives.
-     Consumers: Navigation (h), VibeSlider (sticky top), GlobalPlayerBar
-     (bar + spacer height). CategoryRail keeps measuring [data-vibe-strip]
-     at runtime, so it needs no constant here. Change these two values,
-     never a hardcoded px offset in a component. */
-  --gr-nav-h: 64px;
-  --gr-player-h: 56px;
+  /* Tinta */
+  --ink: #111111;
+  --ink-2: #3d3a33;
+  --ink-3: #5c5850;
+  --ink-4: #8c877b; /* disabled, placeholder — never body copy */
+  --rule: #111111;
+  --hair: rgba(17, 17, 17, 0.12);
+  --hair-2: rgba(17, 17, 17, 0.22);
+  --hair-3: rgba(17, 17, 17, 0.4);
+
+  /* Pozo — the only dark surfaces: media frames, the deck, map chrome. */
+  --well: #111111;
+  --well-2: #1b1b1b;
+  --on-well: #edebe3;
+  --on-well-2: rgba(237, 235, 227, 0.66);
+  --on-well-3: rgba(237, 235, 227, 0.4);
+  --on-well-hair: rgba(237, 235, 227, 0.22);
+
+  /* Señales — one job each. */
+  --red: #e63329; /* live, alert, destructive, active, registration */
+  --red-ink: #c42b20; /* red as text on paper */
+  --acid: #d8ff00; /* creation only; a ground, never text/border on paper */
+  --cobalt: #1d4ed8; /* private HL: only you see it */
+
+  /* Planchas de formato — flat pastel plates. */
+  --p-mix: #b9d8f3;
+  --p-lista: #edc7dc;
+  --p-evento: #f0b6a3;
+  --p-review: #ead199;
+  --p-texto: #cec8e8;
+  --p-noticia: #bfdcc8;
+  --p-franja: #d8d4c7;
+
+  /* Libreas — each format's livery (docs/06-LIBREA.md): flat, saturated,
+     descended from the original category colours. Identity, never energy. */
+  --l-ev: #e63329;
+  --l-ev-on: #edebe3;
+  --l-mx: #00b4d8;
+  --l-mx-on: #111111;
+  --l-rs: #ffc400;
+  --l-rs-on: #111111;
+  --l-ed: #7dc21e;
+  --l-ed-on: #111111;
+  --l-op: #8b5cf6;
+  --l-op-on: #edebe3;
+  --l-ar: #2f5bff;
+  --l-ar-on: #edebe3;
+  --l-ls: #ec4899;
+  --l-ls-on: #edebe3;
+  --l-nt: #111111;
+  --l-nt-on: #edebe3;
+  --l-fr: #9ca3af;
+  --l-fr-on: #111111;
+  /* La Puerta: the original invitation's manila. */
+  --l-pta: #e8a623;
+  --l-pta-on: #111111;
+
+  /* Energía — the real Gradiente thermal ramp (lib/vibe.ts, lockstep). */
+  --e0: #087487;
+  --e1: #217b98;
+  --e2: #48819e;
+  --e3: #6586a0;
+  --e4: #7a8a9d;
+  --e5: #948e85;
+  --e6: #c38174;
+  --e7: #e17756;
+  --e8: #fc6c0f;
+  --e9: #fc9414;
+  --e10: #feb225;
+  --spectrum: linear-gradient(90deg, var(--e0), var(--e1), var(--e2), var(--e3), var(--e4), var(--e5), var(--e6), var(--e7), var(--e8), var(--e9), var(--e10));
+  /* The stepped version — how the ramp is printed. */
+  --spectrum-steps: linear-gradient(
+    90deg,
+    var(--e0) 0 9.09%,
+    var(--e1) 9.09% 18.18%,
+    var(--e2) 18.18% 27.27%,
+    var(--e3) 27.27% 36.36%,
+    var(--e4) 36.36% 45.45%,
+    var(--e5) 45.45% 54.54%,
+    var(--e6) 54.54% 63.63%,
+    var(--e7) 63.63% 72.72%,
+    var(--e8) 72.72% 81.81%,
+    var(--e9) 81.81% 90.9%,
+    var(--e10) 90.9% 100%
+  );
+
+  /* The energy of the current field (set by the Horizonte). */
+  --field-e: 5;
+  --field-color: var(--e5);
+
+  /* Legacy aliases (V2 «CAMPO») — values follow the paper. */
+  --obs-0: var(--paper);
+  --obs-1: var(--paper-2);
+  --obs-2: var(--paper-3);
+  --obs-3: var(--paper-4);
+  --obs-glass: var(--paper-2);
+
+  /* Type */
+  --font-display: var(--f-anybody), 'Arial Narrow', system-ui, sans-serif;
+  --font-ui: var(--f-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--f-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-read: var(--f-newsreader), Georgia, 'Times New Roman', serif;
+
+  /* Motion — mechanical: platen passes, registration jumps, no float. */
+  --ease-materia: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-platen: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-resorte: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-enfriar: cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-release: cubic-bezier(0.3, 0, 0.7, 1);
+  --t-micro: 130ms;
+  --t-base: 220ms;
+  --t-stage: 520ms;
+
+  /* Shape — square sheets. */
+  --r-piece: 0px;
+  --r-panel: 0px;
+  --r-cap: 0px;
+  --lift: 4px 4px 0 0 var(--ink);
+  --lift-deep: 6px 6px 0 0 var(--ink);
+
+  /* Layout */
+  --gutter: clamp(16px, 2.6vw, 40px);
+  --max: 1520px;
+  --read: 680px;
+  --nav-h: 56px;
+  --horizon-h: 132px;
+  --horizon-compact-h: 48px;
+
+  color-scheme: light;
 }
 
-/* ── Base reset ───────────────────────────────────────────── */
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
-  background-color: #0D0D0D;
-  color: #f0f0f0;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-color: var(--ink) var(--paper);
+  scrollbar-width: thin;
+}
+
+/* La Puerta's ground is the page itself — the original door's radial field
+   (ivory eye, moss to green-black) — painted under the stage canvas, where
+   the printed field (Umbral) and the 3D credencial draw over it. Without
+   WebGL it is the whole picture. */
+html:has([data-ruta='puerta']) {
+  background: radial-gradient(ellipse at 48% 40%, #eeecdc 0%, #b6b8ad 30%, #363d39 65%, #101513 100%) fixed;
+  background-color: #101513;
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+html::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border: 2px solid var(--paper);
 }
 
 body {
-  font-family: var(--font-space-grotesk);
-  background-color: #0D0D0D;
-  min-height: 100vh;
-  /* dvh on mobile so content isn't sized against the (larger) layout viewport
-     and hidden behind the dynamic browser bars. vh stays as the fallback for
-     browsers without dvh. */
+  margin: 0;
   min-height: 100dvh;
-  /* Safety net — prevents any rogue child from producing a horizontal
-     scrollbar at intermediate viewport widths. The header and home layout
-     are responsive but this guarantees the page never scrolls sideways. */
+  /* Paper is painted by <html>; the stage canvas behind the DOM is clear. */
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  font-feature-settings: 'ss01' 0;
   overflow-x: hidden;
 }
 
-/* ── iOS zoom-on-focus guard ──────────────────────────────────
-   iOS Safari force-zooms (and never restores) any focused input/select/
-   textarea whose computed font-size is under 16px — which shoves auth /
-   search / composer forms off-screen mid-entry. Floor every form control to
-   16px on phones; desktop (md+) keeps the smaller terminal register via the
-   components' own text-sm/xs classes. !important because Tailwind's text-*
-   utility classes otherwise out-specify this element selector. */
-@media (max-width: 767px) {
-  input:not([type='checkbox']):not([type='radio']):not([type='range']),
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
+img {
+  display: block;
+  max-width: 100%;
 }
 
-/* ── Scrollbar ────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #0D0D0D;
-}
-::-webkit-scrollbar-thumb {
-  background: #333;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-@layer components {
-  /* Warning stripe (hazard tape) */
-  .hazard-stripe {
-    background: repeating-linear-gradient(
-      -45deg,
-      #F97316 0px 4px,
-      #0D0D0D 4px 12px
-    );
-  }
-
-  /* Terminal text style */
-  .sys-label {
-    font-family: var(--font-space-mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #444;
-  }
-
-  /* Section divider NGE style */
-  .nge-divider {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .nge-divider::before {
-    content: '//';
-    font-family: var(--font-space-mono);
-    font-size: 10px;
-    color: #E63329;
-  }
-  .nge-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(to right, #242424, transparent);
-  }
-}
-
-/* ── Vibe gradient utility ───────────────────────────────── */
-.bg-vibe-gradient {
-  background: var(--vibe-gradient);
-}
-
-/* ── NGE data-strip ticker ───────────────────────────────── */
-@keyframes nge-ticker {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-
-/* EventosRail track — hide native scrollbar on WebKit so the rAF-driven
-   auto-scroll + edge fades carry the affordance without a stray gutter. */
-.evento-rail-track::-webkit-scrollbar { display: none; }
-
-/* The EVA kit (.eva-box, .eva-scanlines) is GONE as of fase F — orange glow
-   borders, corner ticks and the scan-line overlay were the last of the NGE
-   chrome, and their final holdouts (the two /welcome modals and MobileNotice's
-   dark branch) now speak paper and ink-bezel respectively. Nothing renders
-   them; do not reintroduce. The house draws full 1px ink hairlines. */
-
-/* ── Content cascade animation ───────────────────────────── */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-up {
-  animation: fadeUp 0.25s ease-out both;
-}
-
-/* ── Selection color ─────────────────────────────────────── */
-::selection {
-  background-color: #E63329;
-  color: #000;
-}
-
-/* ── Overlay: backdrop fade ──────────────────────────────── */
-@keyframes overlay-backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes overlay-backdrop-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-
-/* ── Overlay: CRT boot-in for the panel ──────────────────── */
-/* Phase 1 (0-25%): horizontal line — scaleY collapsed, full-ish scaleX, bright */
-/* Phase 2 (25-60%): scaleY expands, brightness settles */
-/* Phase 3 (60-100%): settle to rest */
-@keyframes overlay-panel-in {
-  0% {
-    opacity: 0;
-    transform: scaleX(0.35) scaleY(0.005);
-    filter: brightness(3.5) blur(3px);
-  }
-  25% {
-    opacity: 1;
-    transform: scaleX(1) scaleY(0.006);
-    filter: brightness(3) blur(2px);
-  }
-  60% {
-    opacity: 1;
-    transform: scaleX(1) scaleY(1.02);
-    filter: brightness(1.4) blur(0.5px);
-  }
-  100% {
-    opacity: 1;
-    transform: scaleX(1) scaleY(1);
-    filter: brightness(1) blur(0);
-  }
-}
-@keyframes overlay-panel-out {
-  0% {
-    opacity: 1;
-    transform: scaleX(1) scaleY(1);
-    filter: brightness(1);
-  }
-  40% {
-    opacity: 1;
-    transform: scaleX(1) scaleY(0.1);
-    filter: brightness(2);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleX(0.3) scaleY(0.004);
-    filter: brightness(3);
-  }
-}
-
-/* overlay-phosphor-in retired in fase C (the paper sheet has no warm-up flash). */
-.overlay-backdrop-in  { animation: overlay-backdrop-in 0.18s ease-out both; }
-.overlay-backdrop-out { animation: overlay-backdrop-out 0.2s ease-in both; }
-.overlay-panel-in     { animation: overlay-panel-in 0.5s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
-.overlay-panel-out    { animation: overlay-panel-out 0.24s ease-in both; }
-
-/* ── Comment focus pulse — fired when arriving from a saved-comment
-   deep-link. Red outline pulse on the paper column (fase C — was cyan on
-   the dark terminal; non-permanent — outline reverts after the animation
-   since fill-mode is omitted). Outline is used instead of background so
-   the user-own-comment background stays intact. */
-@keyframes comment-focus-flash {
-  0%   { outline-color: rgba(196, 43, 32, 0.95); outline-width: 2px; }
-  60%  { outline-color: rgba(196, 43, 32, 0.45); outline-width: 2px; }
-  100% { outline-color: rgba(196, 43, 32, 0);    outline-width: 2px; }
-}
-.comment-focus-flash {
-  outline-style: solid;
-  outline-color: transparent;
-  outline-offset: 4px;
-  animation: comment-focus-flash 2.4s ease-out 1;
-}
-
-/* The fresh-glitch CRT kit (border pulse / scanline sweep / cover flicker /
-   chip flicker) was retired in fase B — the recién-publicado marker is now
-   the .print-fresh out-of-register pulse defined at the end of this file. */
-
-/* The archival grayscale-develop flyer treatment (.flyer-*) was removed for
-   performance — feed cards now render full-color and static (no per-card
-   filter/blend, no hover develop, no 3D tilt). */
-
-/* HUD marquee — MarqueeText (GlobalPlayerBar / MiniTransport / ReproductorWidget) track/artist lines scroll horizontally when the
-   text overflows the narrow rail. Two copies of the text each translate -100%
-   for a seamless loop (the second enters as the first exits). Neutralized
-   under prefers-reduced-motion below (falls back to a static truncated line). */
-@keyframes hud-marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-100%);
-  }
-}
-.hud-marquee {
-  animation: hud-marquee 14s linear infinite;
-}
-
-/* Reduced-motion backstop — neutralize the remaining infinite/looping CSS
-   animations that aren't already branched in JS. Targets named classes ONLY:
-   a blanket `* { animation: none }` would fight the CRTShader / VibeFader /
-   SignalTransition / VibeSlider JS reduced-motion paths and kill the one-shot
-   overlay reveals. (.cursor-blink and .animate-scanline were listed here as
-   unused-but-neutralized; both are DELETED as of fase F, along with
-   .nge-bracket(-full) and .crt-pathb-scroll — the CRT layer they served has
-   not existed since fase A.) */
-@media (prefers-reduced-motion: reduce) {
-  .animate-pulse,
-  .hud-marquee {
-    animation: none !important;
-  }
-}
-
-
-/* ── Spatial Identity Canvas (/mapa) — semantic zoom bands ──────────────────
-   The canvas root carries data-band="far|mid|near" (set imperatively from the
-   camera zoom in MapaCanvas). Cell text detail resolves with scale — imagery
-   and silhouette dominate at distance, metadata appears close-up. This is the
-   "semantic scale, not just CSS magnification" behavior from the Spatial
-   Identity Canvas spec, band-gated in CSS so pan/zoom never re-renders cells. */
-.mapa-cell-label,
-.mapa-cell-title,
-.mapa-cell-meta {
-  transition: opacity 0.25s ease;
-}
-.mapa-root[data-band='far'] .mapa-cell-label,
-.mapa-root[data-band='far'] .mapa-cell-meta,
-.mapa-root[data-band='far'] .mapa-cell-shade {
-  opacity: 0;
-}
-/* Far band: silhouette + imagery only — titles survive on rosettes alone
-   (trihex titles at ≤0.45 zoom render below legibility and read as noise,
-   which the synthetic-HL terrain made obvious: 70+ trihexes of smudge). */
-.mapa-root[data-band='far'] [data-size='1'] .mapa-cell-title,
-.mapa-root[data-band='far'] [data-size='3'] .mapa-cell-title {
-  opacity: 0;
-}
-.mapa-root[data-band='mid'] .mapa-cell-label,
-.mapa-root[data-band='mid'] [data-size='1'] .mapa-cell-title,
-.mapa-root[data-band='mid'] [data-size='1'] .mapa-cell-meta {
-  opacity: 0;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mapa-cell-label,
-  .mapa-cell-title,
-  .mapa-cell-meta {
-    transition: none;
-  }
-}
-
-/* ── /mapa — focus dim + zoom-burst hints ───────────────────────────────────
-   .mapa-cell--dim / --emph: partner-focus terrain treatment — everything not
-   attributed to the focused identity recedes; attributed cells keep full
-   color (their rim boost is inline SVG props).
-   .mapa-zooming: transitions suspended while the scale is actively changing —
-   a band flip mid-zoom otherwise starts an opacity transition on every
-   visible label at once. */
-.mapa-cell--off {
-  opacity: 0;
-  pointer-events: none;
-}
-.mapa-cell--dim .mapa-cell-media {
-  opacity: 0.3;
-}
-.mapa-cell--dim .mapa-cell-text {
-  opacity: 0.25;
-}
-.mapa-cell--dim .mapa-cell-media,
-.mapa-cell--dim .mapa-cell-text {
-  transition:
-    opacity 0.3s ease;
-}
-.mapa-zooming .mapa-cell-label,
-.mapa-zooming .mapa-cell-title,
-.mapa-zooming .mapa-cell-meta,
-.mapa-zooming .mapa-cell-media,
-.mapa-zooming .mapa-cell-img,
-.mapa-zooming .mapa-cell-rim {
-  transition: none;
-}
-
-/* ── /mapa — boot entrance ripple ───────────────────────────────────────────
-   Center-out staggered reveal: each cell's wrapper animates once at boot,
-   delayed by its distance from the terrain center (--mapa-enter-delay, set
-   inline by MapaCanvas). Scoped to .mapa-booting — the class drops ~1.2s
-   after mount, so cells mounted later by virtualization never re-animate.
-   The wrapper (not the cell root) animates: the root's transform belongs to
-   focus/compaction deltas. */
-.mapa-booting .mapa-cell-anim {
-  animation: mapa-cell-enter 0.5s ease-out backwards;
-  animation-delay: var(--mapa-enter-delay, 0s);
-}
-@keyframes mapa-cell-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* ── /mapa — pointer feel ───────────────────────────────────────────────────
-   No hover transforms, tints or stacking-order changes on the bitmap terrain.
-   The isolated caption supplies pointer feedback. Reserve the rim change for
-   keyboard focus so skimming hundreds of cells never repaints the terrain. */
-.group\/cell:focus-visible .mapa-cell-rim {
-  stroke-opacity: 1;
-  stroke-width: 4;
-}
-.mapa-dragging {
-  cursor: grabbing;
-}
-.mapa-panning .mapa-plane,
-.mapa-panning .mapa-backdrop {
-  visibility: hidden;
-}
-.mapa-dragging [data-item-id] {
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mapa-booting .mapa-cell-anim {
-    animation: none;
-  }
-}
-
-/* ── /dashboard — «EL PLIEGO» light surface ─────────────────────────────────
-   Everything below is scoped under .dash-shell (plus the html.dash-route
-   toggle WP1's layout effect flips while /dashboard is mounted). The dark
-   chrome and the .mapa-* blocks above are untouched. Hex values mirror the
-   dashboard tokens in tailwind.config.ts (paper/ink/acid) — lockstep. */
-.dash-shell {
-  background-color: #EDEBE3; /* paper */
-  color: #111111; /* ink */
-  min-height: 100dvh;
-  /* The shell owns its scroll — no dark rubber-band flash may frame the
-     paper. */
-  overscroll-behavior-y: none;
-}
-
-/* Route-scoped ground: toggled on <html> by app/dashboard/layout.tsx so
-   overscroll and scrollbar gutters show paper, never #0D0D0D. */
-html.dash-route,
-html.dash-route body {
-  background-color: #EDEBE3;
-}
-
-/* Selection inside the shell: ink on acid — the accent's legal ground. */
-.dash-shell ::selection {
-  background-color: #D8FF00;
-  color: #111111;
-}
-
-/* Scrollbar: paper track, ink thumb. Scoped to the shell and its scrollable
-   rails; overlays mounted outside the shell keep the dark chrome bars. */
-.dash-shell::-webkit-scrollbar,
-.dash-shell *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-  background: #EDEBE3;
-}
-.dash-shell::-webkit-scrollbar-track,
-.dash-shell *::-webkit-scrollbar-track {
-  background: #EDEBE3;
-}
-.dash-shell::-webkit-scrollbar-thumb,
-.dash-shell *::-webkit-scrollbar-thumb {
-  background: #111111;
-  /* paper border mats the thumb off the track edge — reads as a hairline
-     instrument slider, not a browser default */
-  border: 2px solid #EDEBE3;
-}
-.dash-shell,
-.dash-shell * {
-  scrollbar-color: #111111 #EDEBE3; /* Firefox */
-}
-
-/* The COSECHAR CSS-attack (utility-class remap of the byte-untouched dark
-   HarvestConfirmModal, keyed on .z-[100].backdrop-blur-sm) was deleted in
-   fase C — the modal is now a native pliego sheet carrying every style
-   locally, and it no longer renders backdrop-blur-sm at all. */
-
-/* ── Pressed states — «EL PLIEGO» deliberate :active (fix 10, ADDITIVE) ─────
-   Diagnosis: NO :active rule exists anywhere in this sheet — the red-on-black
-   flash on pressed pliego buttons is the legacy global ::selection above
-   (#E63329 on #000, «Selection color» block): a press-drag / double-click
-   starts a text selection on the control's label, and dash surfaces mounted
-   OUTSIDE .dash-shell (the portal'd harvest modal) miss the shell's acid
-   selection override entirely. Two-part fix, all scoped:
-   (1) press hygiene — controls never start a selection or UA tap flash;
-   (2) a deliberate active state — one-step fill inversion, zero tween (§6). */
-
-/* (1) Press hygiene on the shell's interactive elements. */
-.dash-shell :where(button, [role='button'], a) {
-  -webkit-tap-highlight-color: transparent;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* (2) The pressed register: paper/raised controls invert to an ink slab with
-   paper text. :where() keeps the element part at zero specificity so the
-   variant rules below win on source order, while the whole selector still
-   out-specifies bare utility classes (hover:bg-paper etc.). */
-.dash-shell :where(button, [role='button'], a):active:not(:disabled) {
-  background-color: #111111; /* ink */
-  border-color: #111111;
-  color: #EDEBE3; /* paper */
-}
-/* Nested label text joins the inversion (rows carry their own text-ink /
-   text-ink-soft utilities that would otherwise vanish on the ink ground);
-   hairline chips redraw in the inverted color. Momentary by nature. */
-.dash-shell :where(button, [role='button'], a):active:not(:disabled)
-  :where(p, span, h1, h2, h3, h4, h5, h6, strong, em, time, small) {
+a {
   color: inherit;
-  border-color: currentColor;
-}
-/* Inside a black panel the inversion flips the other way — paper ground,
-   ink text (an ink slab on ink would be no feedback at all). */
-.dash-shell .bg-panel :where(button, [role='button'], a):active:not(:disabled) {
-  background-color: #EDEBE3;
-  border-color: #EDEBE3;
-  color: #111111;
-}
-/* Acid-filled controls (CREAR) keep the accent's voltage while pressed:
-   ink ground, acid text — the §1.1-legal acid-on-ink pairing (≈13:1). */
-.dash-shell :where(button, [role='button'], a).bg-acid:active:not(:disabled) {
-  background-color: #111111;
-  border-color: #111111;
-  color: #D8FF00;
-}
-/* Ink-filled controls (LISTO) invert to paper — same one-step grammar. */
-.dash-shell :where(button, [role='button'], a).bg-ink:active:not(:disabled) {
-  background-color: #EDEBE3;
-  border-color: #111111;
-  color: #111111;
-}
-/* Destructive commits (EditModeBar CONFIRMAR) press into the red they are
-   about to execute — never the generic ink inversion. */
-.dash-shell .dash-active-danger:active:not(:disabled) {
-  background-color: #C42B20; /* sys-red-paper */
-  border-color: #C42B20;
-  color: #EDEBE3;
+  text-decoration: none;
 }
 
-/* The harvest modal's portal ::selection patch left with the CSS-attack
-   above (fase C) — the native pliego modal styles its own selection scope
-   via html.dash-route / html.paper-route. */
-
-/* ── ACTIVIDAD ledger — the directed void (fix 9a, ADDITIVE) ────────────────
-   Sparse days leave room between the last activity row and the pinned
-   footnotes; this zone rules itself like an empty printed ledger — hairline
-   baseline rules on the 24px line grid (§1.4), ink-faint at low alpha — so
-   the space reads as «room reserved for signals», never breakage. Pure
-   background: zero fake rows, zero extra DOM per rule. */
-.dash-ledger {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 23px,
-    rgba(92, 88, 80, 0.22) 23px, /* ink-faint, low alpha */
-    rgba(92, 88, 80, 0.22) 24px
-  );
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-
-/* ── «EL PLIEGO» paper ground (fase B) ─────────────────────────────────────
-   Scoped under html.paper-route — toggled by components/chrome/PaperGround,
-   mounted by every route listed in lib/chrome/paperRoutes.ts. Mirror of the
-   dashboard's dash-route mechanism: the CLASS paints documentElement/body so
-   rubber-band overscroll never flashes charcoal under the paper page. */
-html.paper-route {
-  background-color: #EDEBE3;
-  color: #111111;
-}
-html.paper-route body {
-  background-color: #EDEBE3;
-  color: #111111;
-}
-html.paper-route ::selection {
-  background-color: #D8FF00;
-  color: #111111;
-}
-html.paper-route ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-html.paper-route ::-webkit-scrollbar-track {
-  background: #EDEBE3;
-}
-html.paper-route ::-webkit-scrollbar-thumb {
-  background: #111111;
-  border: 2px solid #EDEBE3;
-}
-html.paper-route ::-webkit-scrollbar-thumb:hover {
-  background: #3D3A33;
+button:disabled {
+  cursor: not-allowed;
 }
 
-/* ── Print out-of-register pulse (fase B) ──────────────────────────────────
-   The paper translation of the old fresh-glitch CRT kit: a freshly published
-   card (first hour, scraper-sourced excluded — the TIMER logic lives in
-   ContentCard, unchanged) reads as a sheet whose color plates slipped.
-   Stepped, never smooth (print misregisters in registration jumps, and
-   steps() keeps it under any flicker-frequency concern). Uses box-shadow
-   plate ghosts in the two working accent inks — red plate right, HP-blue
-   plate left — swapping sides each beat.
-   Consumers add .print-fresh to the card frame. */
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure,
+blockquote {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+/* Acid's legal ground: ink on acid. */
+::selection {
+  background: var(--acid);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 0;
+}
+
+/* Boxed controls draw their 1px box with outline; the focus ring must win. */
+:is(button, a, [role='button'], [role='tab'], [role='radio'], [role='slider'], [tabindex]):focus-visible {
+  outline: 2px solid var(--ink) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── utilities (deliberately few) ───────────────────────────────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Indexical label: mono, uppercase, tracked — the system speaking. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  font-family: var(--font-display);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+}
+
+.hairline {
+  height: 1px;
+  background: var(--hair-2);
+  border: 0;
+}
+
+/* Hatch — the printed "nothing here": diagonal ink at low density. */
+.hatch {
+  background-image: repeating-linear-gradient(-45deg, var(--hair-2) 0 1px, transparent 1px 7px);
+}
+
+/* A freshly printed sheet whose colour plates slipped (first hour). */
 @keyframes print-misregister {
-  0%, 49.9% {
+  0%,
+  49.9% {
     box-shadow: 1.5px 0 0 0 rgba(196, 43, 32, 0.55), -1.5px 0 0 0 rgba(29, 78, 216, 0.35);
   }
-  50%, 100% {
+  50%,
+  100% {
     box-shadow: -1.5px 0 0 0 rgba(196, 43, 32, 0.55), 1.5px 0 0 0 rgba(29, 78, 216, 0.35);
   }
 }
 .print-fresh {
   animation: print-misregister 2.8s steps(2, jump-none) infinite;
 }
+
+/* TRAMA gestures: while a gesture prints an element, the DOM copy waits. */
+[data-trama='pendiente'],
+[data-trama='activo'] {
+  visibility: hidden;
+}
+[data-trama-img='pendiente'],
+[data-trama-img='activo'] {
+  opacity: 0 !important;
+}
+[data-trama-img] {
+  transition: none !important;
+}
+html.trama-off [data-trama] {
+  visibility: visible !important;
+}
+html.trama-off [data-trama-img] {
+  opacity: 1 !important;
+}
+
+/* Lenis */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .print-fresh {
-    animation: none;
-    box-shadow: 1.5px 0 0 0 rgba(196, 43, 32, 0.55);
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
-}
-
-/* ── The «ficha» wipe (ContentCard dense face) ─────────────────────────────
-   The dense caption card slides up over the resting poster like a spec
-   sheet fed through a platen: a bottom-to-top clip-path wipe plus a 10px
-   rise of the sheet itself. Directional and mechanical — a roller pass,
-   not a dissolve — so the poster underneath never visibly changes crop.
-
-   Timing is asymmetric on purpose: entry is a 220ms ease-out pass gated by
-   a 60ms hover-intent delay (skimming the cursor across the mosaic must
-   not strobe the cards it crosses); exit is a fast 130ms release with NO
-   delay. The delay lives on the hovered state's transition so it applies
-   entering only.
-
-   `.content-card` is the wrapper hook (also carries Tailwind's `group` for
-   the pointer-events flip in ContentCard). :focus-within mirrors :hover so
-   keyboard reveal takes the same pass. Reduced motion falls back to the
-   instant cut — the pre-wipe behavior, kept deliberately. */
-.card-face-dense {
-  clip-path: inset(100% 0 0 0);
-  transform: translateY(10px);
-  transition:
-    clip-path 130ms cubic-bezier(0.3, 0, 0.7, 1),
-    transform 130ms cubic-bezier(0.3, 0, 0.7, 1);
-}
-.content-card:hover .card-face-dense,
-.content-card:focus-within .card-face-dense {
-  clip-path: inset(0 0 0 0);
-  transform: translateY(0);
-  transition:
-    clip-path 220ms cubic-bezier(0.16, 1, 0.3, 1) 60ms,
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1) 60ms;
-}
-@media (prefers-reduced-motion: reduce) {
-  .card-face-dense,
-  .content-card:hover .card-face-dense,
-  .content-card:focus-within .card-face-dense {
-    transition: none;
-    transform: none;
+  .print-fresh {
+    box-shadow: 1.5px 0 0 0 rgba(196, 43, 32, 0.55);
   }
 }

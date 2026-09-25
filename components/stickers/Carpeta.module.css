@@ -1,0 +1,227 @@
+/* CARPETA — the binder: a ruled sheet of pockets, each holding a copy on
+   its backing, the date and the way it came. Picked = lifted (the hard
+   offset) with the four red registration corners. Tokens only. */
+
+.carpeta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ── filters: joined boxes, the chosen one inverted ─────────────────── */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  padding-left: 1px;
+}
+
+.filtros button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  margin-left: -1px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.filtros button i {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.filtros button:hover {
+  z-index: 1;
+  color: var(--ink);
+  background: var(--paper-3);
+  border-color: var(--rule);
+}
+
+.filtros button[data-on] {
+  z-index: 2;
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.filtros button[data-on] i {
+  color: inherit;
+  opacity: 0.6;
+}
+
+/* ── the sheet of pockets ───────────────────────────────────────────── */
+
+/* Pockets are ruled by their own outlines; the unused rest of the sheet is
+   printed as the hatch ("nothing here"). */
+.hoja {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  grid-auto-flow: dense;
+  gap: 1px;
+  border: 1px solid var(--rule);
+}
+
+.item {
+  min-width: 0;
+  outline: 1px solid var(--hair-2);
+}
+
+/* Stubs and tapes are long: they take two pockets. */
+.item[data-wide] {
+  grid-column: span 2;
+}
+
+.celda {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+button.celda:hover {
+  background: var(--paper-3);
+}
+
+.celda[data-on] {
+  background: var(--paper-3);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+/* registration corners: hover, focus, picked */
+.celda::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(var(--red), var(--red)) top left / 10px 2px no-repeat,
+    linear-gradient(var(--red), var(--red)) top left / 2px 10px no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / 10px 2px no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / 2px 10px no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / 10px 2px no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / 2px 10px no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / 10px 2px no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / 2px 10px no-repeat;
+}
+
+button.celda:hover::after,
+button.celda:focus-visible::after,
+.celda[data-on]::after {
+  opacity: 1;
+}
+
+.bolsa {
+  display: grid;
+  place-items: center;
+  min-height: 148px;
+  padding: 16px 14px 14px;
+}
+
+.bolsa[data-wide] {
+  min-height: 148px;
+  padding: 16px 20px 14px;
+}
+
+.texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.nombre {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.meta,
+.via {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.via {
+  color: var(--ink-2);
+}
+
+.nada {
+  padding: 18px 0;
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+/* ── empty ──────────────────────────────────────────────────────────── */
+
+.vacia {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 20px;
+  border: 1px solid var(--rule);
+}
+
+.vaciaTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vaciaBody {
+  max-width: 46ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.vaciaLinks {
+  display: flex;
+  gap: 16px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .hoja {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bolsa {
+    min-height: 124px;
+    padding: 12px 10px;
+  }
+}

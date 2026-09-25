@@ -1,0 +1,542 @@
+/*
+ * Tokens only (with fallbacks to the pre-TRAMA names while the palette
+ * flips). Mono for codes, indices, counters and status; 1px boxed controls;
+ * pressed/active = one-step inversion; hairline ledgers.
+ */
+
+.sesion {
+  --mono: var(--font-mono, var(--font-ui));
+  --rule-c: var(--rule, var(--hair-2));
+  --ground: var(--paper, var(--obs-0));
+  --sheet: var(--paper-2, var(--obs-1));
+  position: relative;
+  min-height: 100%;
+}
+
+/* ── hero: the object + the deck ────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: clamp(28px, 3.6vw, 52px);
+  align-items: center;
+  padding: clamp(26px, 3.4vw, 48px) clamp(22px, 4vw, 56px) clamp(22px, 3vw, 36px);
+}
+
+.tornamesa {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.56 / 1;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+/* The sleeve is the cover, flat, with a rule. */
+.funda {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--paper-3, var(--obs-2));
+  box-shadow: 0 0 0 1px var(--rule-c);
+}
+
+.cover {
+  object-fit: cover;
+}
+
+/* The piece's energy band along the sleeve's lower edge (as on every card). */
+.fundaLinea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 4px;
+  background: var(--band, var(--e));
+}
+
+.discoWrap {
+  position: absolute;
+  top: 3%;
+  left: 2%;
+  z-index: 1;
+  height: 94%;
+  aspect-ratio: 1;
+}
+
+.disco {
+  width: 100%;
+}
+
+/* The needle: it doesn't turn with the record, it walks inward with time. */
+.stylus {
+  --r: 0.955;
+  position: absolute;
+  top: 50%;
+  left: calc(50% + var(--r) * 50%);
+  z-index: 2;
+  width: 2px;
+  height: 7%;
+  min-height: 12px;
+  transform: translate(-50%, -50%);
+  background: var(--on-well, var(--ink));
+  pointer-events: none;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.estatus {
+  padding: 2px 7px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--ink);
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+.estatus[data-status='exclusivo'] {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.estatus[data-status='archivo'] {
+  color: var(--ink-2);
+  border-color: var(--rule-c);
+}
+
+.estatus[data-status='proximamente'] {
+  border-style: dashed;
+}
+
+.serie {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* transport */
+
+.mando {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule-c);
+}
+
+.mandoFila {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Play: boxed; sounding = inverted (ink ground, paper glyph). No tween. */
+.play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--ink);
+  background: var(--sheet);
+  color: var(--ink);
+}
+
+.play[data-on] {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.play:disabled {
+  opacity: 0.32;
+}
+
+.mandoTexto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.palabra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+.palabra::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+}
+
+.palabra[data-tone='vivo']::before {
+  background: var(--red, var(--e));
+  border-color: var(--red, var(--e));
+}
+
+.palabra[data-tone='falla'] {
+  color: var(--red-ink, var(--ink));
+}
+
+.palabra[data-tone='falla']::before {
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.detalle {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reloj {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.aguja {
+  width: 100%;
+}
+
+/* sources: boxed chips; the chosen one inverted */
+
+.fuentes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.tab[aria-checked='true'] {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.tabVivo {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red, var(--e));
+}
+
+.salidas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.salida {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 3px;
+}
+
+.salida:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+.nota {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  max-width: 52ch;
+}
+
+.teclas {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.teclas:empty {
+  display: none;
+}
+
+/* ── below the hero ─────────────────────────────────────────────────────── */
+
+.calibra {
+  padding: 4px clamp(22px, 4vw, 56px) 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 320px);
+  gap: clamp(28px, 4vw, 64px);
+  padding: 32px clamp(22px, 4vw, 56px) 40px;
+  align-items: start;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.after {
+  padding: 36px clamp(22px, 4vw, 56px) 30px;
+  border-top: 1px solid var(--rule-c);
+}
+
+/* tracklist: a ledger */
+
+.tracklist {
+  display: flex;
+  flex-direction: column;
+}
+
+.secHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--ink-3);
+}
+
+.secMeta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tabla th {
+  padding: 0 0 9px;
+  border-bottom: 1px solid var(--rule-c);
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tabla td {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: baseline;
+}
+
+.tabla tbody tr:hover {
+  background: var(--hair);
+}
+
+.cNum {
+  width: 44px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.tabla td.cNum {
+  padding-left: 4px;
+}
+
+.cArtista {
+  padding-right: 18px !important;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cTema {
+  padding-right: 18px !important;
+  color: var(--ink-2);
+}
+
+.cBpm {
+  width: 112px;
+  text-align: right !important;
+}
+
+.tabla td.cBpm {
+  padding-right: 4px;
+}
+
+.bpm {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bpmRiel {
+  position: relative;
+  width: 56px;
+  height: 1px;
+  background: var(--rule-c);
+}
+
+.bpmPunto {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.bpmN {
+  min-width: 26px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.nd {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.sinMarcas {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* context: a ledger */
+
+.ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ink-3);
+}
+
+.dl {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.dl > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hair);
+  font-size: 13px;
+}
+
+.dl dt {
+  padding-top: 2px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.dl dd {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .hero,
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tornamesa {
+    max-width: 560px;
+  }
+  .rail {
+    position: static;
+  }
+}
+
+@media (max-width: 520px) {
+  .cBpm {
+    width: 72px;
+  }
+  .bpmRiel {
+    display: none;
+  }
+}

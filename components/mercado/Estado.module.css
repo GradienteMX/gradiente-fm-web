@@ -1,0 +1,61 @@
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.estado[data-size='md'] {
+  font-size: 11px;
+  gap: 8px;
+}
+
+.dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.estado[data-size='md'] .dot {
+  width: 9px;
+  height: 9px;
+}
+
+.estado[data-status='reserved'] {
+  color: var(--ink-2);
+}
+
+.estado[data-status='reserved'] .dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.estado[data-status='sold'] {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.estado[data-status='sold'] .dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.estado[data-status='sold'] .dot::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  transform: rotate(-45deg);
+}

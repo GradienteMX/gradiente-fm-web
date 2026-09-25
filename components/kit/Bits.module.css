@@ -1,0 +1,217 @@
+/* BITS — the small printed parts: band chips, indexical heads, the hatch
+   plate for "nothing here", boxed chips and keys. */
+
+/* ── band chip: stepped swatches + mono names in a 1px ink box ─────────── */
+
+.band {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.swatch {
+  flex: none;
+}
+
+.band[data-size='sm'] {
+  height: 20px;
+  padding: 0 6px 0 5px;
+  font-size: 9.5px;
+}
+
+.band[data-size='sm'] .swatch {
+  width: 18px;
+  height: 8px;
+}
+
+.band[data-size='md'] {
+  height: 26px;
+  padding: 0 9px 0 7px;
+  gap: 7px;
+  font-size: 10.5px;
+}
+
+.band[data-size='md'] .swatch {
+  width: 26px;
+  height: 9px;
+}
+
+/* ── section head: 02 / NAME — the rest ────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.index {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+
+.n {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.name {
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.rest {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 92, 'wght' 720;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.sub {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── empty: a hatch plate with a paper label pasted on it ──────────────── */
+
+.empty {
+  display: grid;
+  place-items: center;
+  padding: 44px 20px;
+  border: 1px solid var(--hair-3);
+  background-image: repeating-linear-gradient(-45deg, var(--hair-2) 0 1px, transparent 1px 7px);
+}
+
+.emptyLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 52ch;
+  padding: 11px 16px 12px;
+  text-align: center;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.emptyTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.emptyBody {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* ── chip: a boxed mono cell; the chosen one inverted ──────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+button.chip:hover {
+  color: var(--ink);
+  background: var(--paper-3);
+  border-color: var(--rule);
+}
+
+button.chip:active {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.chip[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+button.chip[data-on]:hover {
+  color: var(--paper);
+  background: var(--ink-2);
+  border-color: var(--ink-2);
+}
+
+/* ── kbd: a key, boxed ───────────────────────────────────────────────── */
+
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}

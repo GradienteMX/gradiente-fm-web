@@ -187,7 +187,6 @@ async function main() {
     }
     let imageUrl: string | null = null
     for (const c of candidates) {
-      // eslint-disable-next-line no-await-in-loop
       if (await verifyImage(c, cache)) {
         imageUrl = c
         break

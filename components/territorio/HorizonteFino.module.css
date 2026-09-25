@@ -1,0 +1,150 @@
+/* The slim horizon, printed: the ramp in its eleven steps, the selected band
+   as a thicker strip of the same steps, caps as ink blocks. Tokens only
+   (inside the bar the tokens are re-inked for the well). */
+
+.fino {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 16px;
+  padding: 0 8px;
+}
+
+.reading {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 118, 'wght' 560;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.hint {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.reset {
+  margin-left: auto;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.reset:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.track {
+  position: relative;
+  height: 22px;
+  margin: 0 8px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.track[data-grab='band'] {
+  cursor: grabbing;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--spectrum-steps);
+  opacity: 0.45;
+}
+
+.band {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  background-image: var(--spectrum-steps);
+  background-repeat: no-repeat;
+  cursor: grab;
+}
+
+.cap {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 22px;
+  margin: -11px 0 0 -9px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  outline: none;
+}
+
+.capBody {
+  position: relative;
+  width: 7px;
+  height: 18px;
+  background: var(--ink);
+}
+
+.capBody::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 4px;
+  bottom: 4px;
+  background: var(--cap);
+}
+
+.cap:focus-visible .capBody {
+  outline: 1px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.cap[data-active] .capBody {
+  cursor: grabbing;
+}
+
+.capTag {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 5px 2px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cap[data-active] .capTag,
+.cap:focus-visible .capTag {
+  opacity: 1;
+}

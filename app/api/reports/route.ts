@@ -39,7 +39,7 @@ interface Body {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -71,20 +71,35 @@ export async function POST(request: NextRequest) {
 
   const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : null
 
-  const { error } = await supabase.from('reports' as never).insert({
-    reporter_id: user.id,
-    target_type: body.target_type,
-    target_id: body.target_id,
-    reason: body.reason,
-    note: note || null,
-  } as never)
+  // The id is the table's (a bigserial): it is answered so the client can
+  // call the report by it from now on (V2's world minted a provisional one —
+  // lib/store/ids.ts).
+  const { data: row, error } = await supabase
+    .from('reports' as never)
+    .insert({
+      reporter_id: user.id,
+      target_type: body.target_type,
+      target_id: body.target_id,
+      reason: body.reason,
+      note: note || null,
+    } as never)
+    .select('id')
+    .single()
 
   if (error) {
     // 23505 = the unique (reporter_id, target_type, target_id) index. One
     // report per person per object is the design — a second is not an error
     // the user should see as a failure, it just means "already told us".
+    // The first report's id is answered (reports_read_own lets them read it).
     if ((error as { code?: string }).code === '23505') {
-      return NextResponse.json({ ok: true, duplicate: true })
+      const { data: first } = await supabase
+        .from('reports' as never)
+        .select('id')
+        .eq('reporter_id' as never, user.id as never)
+        .eq('target_type' as never, body.target_type as never)
+        .eq('target_id' as never, body.target_id as never)
+        .maybeSingle()
+      return NextResponse.json({ ok: true, duplicate: true, id: (first as { id?: number } | null)?.id ?? null })
     }
     // 42P01 = the table does not exist yet (migration 0049 not applied). Fail
     // honestly rather than pretending the report landed.
@@ -97,5 +112,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, id: (row as { id?: number } | null)?.id ?? null })
 }

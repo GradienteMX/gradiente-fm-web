@@ -1,0 +1,366 @@
+.spine {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(460px, 600px);
+  /* The empty flexible row takes whatever height the private module adds,
+     so the trophies stay under the name instead of drifting down. */
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    'who private'
+    'trofeos private'
+    '. private'
+    'form form';
+  column-gap: clamp(28px, 4vw, 72px);
+  /* Vertical spacing is margins, not row-gap: the spacer row and the closed
+     profile form are empty and must not add dead space under the trophies. */
+  row-gap: 0;
+  padding: 32px 0 30px;
+  align-items: start;
+}
+
+/* ── public identity ─────────────────────────────────────────────────── */
+
+.who {
+  grid-area: who;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.avatar {
+  flex: none;
+  padding-top: 22px;
+}
+
+.idText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.h1 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  font-weight: inherit;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 104, 'wght' 620;
+  font-size: clamp(40px, 4.6vw, 68px);
+  line-height: 0.9;
+  letter-spacing: -0.012em;
+  overflow-wrap: anywhere;
+  transition: font-variation-settings var(--t-stage) var(--ease-materia);
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.handle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.zona {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.zona::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--ink-4);
+}
+
+.bio {
+  font-family: var(--font-read);
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink);
+  max-width: 62ch;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.firma {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 14.5px;
+  color: var(--ink-3);
+  max-width: 62ch;
+}
+
+.firma::before {
+  content: '— ';
+}
+
+.ctas {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.trofeos {
+  grid-area: trofeos;
+  min-width: 0;
+  margin-top: 24px;
+  padding-left: 112px;
+}
+
+/* ── the private module ─────────────────────────────────────────────── */
+
+.private {
+  grid-area: private;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'head head'
+    'pres vibra';
+  row-gap: 16px;
+  padding: 18px 22px 20px;
+  background: var(--paper-2);
+  border: 1px solid var(--cobalt);
+}
+
+/* «Solo tú ves esto»: cobalt is reserved for exactly this. */
+.privateHead {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cobalt);
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pres {
+  grid-area: pres;
+  padding-right: 22px;
+}
+
+.vib {
+  grid-area: vibra;
+  padding-left: 22px;
+  border-left: 1px solid var(--hair-2);
+}
+
+.blockHead {
+  color: var(--ink-3);
+}
+
+.reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.word {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 120, 'wght' 500;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--cobalt);
+  font-variant-numeric: tabular-nums;
+}
+
+.caption {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.caption b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.faint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+
+.vibra {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: 3px;
+  height: 14px;
+}
+
+.vibra span {
+  background: color-mix(in oklab, var(--c) 15%, transparent);
+  transition: background var(--t-base) ease;
+}
+
+.vibra span[data-lit] {
+  background: var(--c);
+}
+
+.vibra[data-empty] span {
+  background: color-mix(in oklab, var(--c) 9%, transparent);
+}
+
+.vibraWords {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+
+.pending {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+}
+
+.dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-3);
+}
+
+.dots span[data-on] {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ── profile form ───────────────────────────────────────────────────── */
+
+.form {
+  grid-area: form;
+  margin-top: 24px;
+  border-top: 1px solid var(--rule);
+  padding-top: 24px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 22px;
+  max-width: 920px;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.avatarRow {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.avatarRow > :first-child {
+  margin-top: 22px;
+}
+
+.grow {
+  flex: 1;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 920px;
+  margin-top: 20px;
+}
+
+@media (max-width: 1180px) {
+  .spine {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      'who'
+      'trofeos'
+      'private'
+      'form';
+  }
+  .trofeos {
+    padding-left: 0;
+  }
+  .private {
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .spine {
+    padding-top: 24px;
+  }
+  .who {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .avatar {
+    padding-top: 0;
+  }
+  .private {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'head'
+      'pres'
+      'vibra';
+  }
+  .pres {
+    padding-right: 0;
+  }
+  .vib {
+    padding: 16px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--hair);
+  }
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

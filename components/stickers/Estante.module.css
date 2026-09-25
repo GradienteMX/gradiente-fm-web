@@ -1,0 +1,318 @@
+/* ESTANTE — a franja's stickers. The head wears the franja's team colour
+   (--st-c, set from its kind's livery) with the dial pattern; the shelf is
+   a hairline grid of backing sheets. Tokens only. */
+
+.estante {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+/* ── head: the livery at full volume, briefly ───────────────────────── */
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px 0;
+  background: var(--st-c);
+  color: var(--st-on);
+  border-bottom: 1px solid var(--rule);
+}
+
+.code {
+  padding: 3px 7px 2px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--st-on);
+  color: var(--st-c);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings:
+    'wdth' 112,
+    'wght' 900;
+  font-size: clamp(22px, 2.6vw, 34px);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.band {
+  align-self: stretch;
+  height: 22px;
+  margin: 2px -16px 0;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  border-top: 1px solid var(--st-on);
+}
+
+/* ── the demo, said plainly ─────────────────────────────────────────── */
+
+.demo {
+  margin: 14px 16px 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.demo b {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* ── the shelf ──────────────────────────────────────────────────────── */
+
+/* Items are ruled by their own outlines; the rest of the shelf prints the
+   hatch ("nothing here"). */
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1px;
+  margin: 14px 16px 0;
+  border: 1px solid var(--hair-2);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--paper-2);
+  outline: 1px solid var(--hair-2);
+}
+
+/* The backing sheet the sticker sits on (one height, so the rows align). */
+.stage {
+  --fit-h: 192px;
+  display: grid;
+  place-items: center;
+  height: 236px;
+  padding: 22px 18px;
+  background: var(--paper-3);
+  border-bottom: 1px solid var(--hair-2);
+}
+
+/* the sticker fits the sheet both ways (its aspect is on it as --ar) */
+.item .stage > * {
+  width: min(100%, calc(var(--fit-h) * var(--ar, 1)));
+}
+
+.info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 14px;
+}
+
+.kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.name {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin-top: auto;
+  padding-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+/* A long sticker (a tape) takes two slots of the shelf. */
+.item[data-wide] {
+  grid-column: span 2;
+}
+
+/* ── the finishes of a design: a printer's card of swatches ─────────── */
+
+.acabados {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 4px;
+  border: 1px solid var(--hair-3);
+}
+
+.acabado {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 5px 8px 5px 6px;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper-2);
+  border-top: 1px solid var(--hair-2);
+}
+
+.acabado:first-child {
+  border-top: 0;
+}
+
+.acabado:hover {
+  background: var(--paper-3);
+}
+
+/* the chosen finish: inverted, as a pressed key */
+.acabado[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.acTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.acNombre {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.acTiraje {
+  font-size: 11px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.acabado[data-on] .acTiraje {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.acPrecio {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* a narrow card (a store's column, a phone): the price drops under the finish's name */
+@container (max-width: 250px) {
+  .acabado {
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start;
+    row-gap: 1px;
+  }
+  .acPrecio {
+    grid-column: 2;
+    font-size: 11.5px;
+  }
+}
+
+/* The label may wrap in a narrow column: it must be read whole. */
+.info .get {
+  height: auto;
+  min-height: 32px;
+  padding-top: 8px;
+  padding-bottom: 7px;
+  white-space: normal;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.mine {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.foot {
+  margin: 12px 16px 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* ── inside a store: a little tighter ───────────────────────────────── */
+
+.estante[data-variant='tienda'] {
+  margin-top: 16px;
+}
+
+.estante[data-variant='tienda'] .shelf {
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+}
+
+.estante[data-variant='tienda'] .stage {
+  --fit-h: 160px;
+  height: 196px;
+  padding: 18px 14px;
+}
+
+@media (max-width: 640px) {
+  .head {
+    padding: 10px 12px 0;
+  }
+  .band {
+    margin: 2px -12px 0;
+  }
+  .demo,
+  .shelf {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+  .foot {
+    margin: 12px;
+  }
+  .shelf,
+  .estante[data-variant='tienda'] .shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stage,
+  .estante[data-variant='tienda'] .stage {
+    --fit-h: 122px;
+    height: 150px;
+    padding: 14px 10px;
+  }
+  .info {
+    padding: 10px 10px 12px;
+  }
+}

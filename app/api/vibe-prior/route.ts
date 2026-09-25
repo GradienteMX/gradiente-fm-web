@@ -9,7 +9,7 @@ import { computeVibePrior } from '@/lib/data/vibePriors'
 // and the prior is computed against the caller's own history. Returns
 // { prior: VibePrior | null } — null when there's no history to suggest from.
 export async function GET(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -4,8 +4,10 @@ import {
   WAITLIST_ALIAS_MAX,
   WAITLIST_CITIES,
   WAITLIST_EMAIL_RE,
+  WAITLIST_FILA_MAX,
   WAITLIST_SOURCES,
   type WaitlistJoinResponse,
+  type WaitlistPlace,
   type WaitlistStats,
 } from '@/lib/waitlist'
 
@@ -15,9 +17,11 @@ import {
 //        path to the table at all, so every insert funnels through the
 //        validation below. Idempotent on email — re-submitting returns the
 //        existing queue position instead of an error.
-// GET  → aggregate counts for the /espera stats panel. Numbers are real
-//        (house rule: every readout true data) — no PII leaves this route,
-//        only counts.
+// GET  → aggregate counts for the /espera stats panel, plus `fila`: the
+//        queue's states in order of arrival (espera / invitado / registrado),
+//        which /espera draws one point per place. Numbers are real (house
+//        rule: every readout true data) — no PII leaves this route: counts and
+//        states, never an id, alias or email.
 //
 // Abuse posture (personal-beta scale, see feedback_captcha_over_rate_limits):
 // honeypot field + allowlisted selects + unique email. No hard rate limits;
@@ -143,7 +147,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   const admin = createAdminClient()
 
-  const [totalRes, pendingRes, invitedRes] = await Promise.all([
+  const [totalRes, pendingRes, invitedRes, filaRes] = await Promise.all([
     admin.from('waitlist_signups').select('*', { count: 'exact', head: true }),
     admin
       .from('waitlist_signups')
@@ -153,7 +157,19 @@ export async function GET() {
       .from('waitlist_signups')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'invited'),
+    // States only, in order of arrival. "Registered" isn't stored (0045): it
+    // is an invited entry whose invitation code has been used.
+    admin
+      .from('waitlist_signups')
+      .select('status, invite:invite_codes(used_at)')
+      .order('created_at', { ascending: true })
+      .limit(WAITLIST_FILA_MAX),
   ])
+
+  const filaRows = (filaRes.data ?? []) as unknown as { status: string; invite: { used_at: string | null } | null }[]
+  const fila: WaitlistPlace[] = filaRows.map((r) =>
+    r.status === 'invited' ? (r.invite?.used_at ? 'registrado' : 'invitado') : 'espera',
+  )
 
   // Missing table (migration pending) → zeros; the panel renders "—" states
   // rather than the page erroring.
@@ -161,6 +177,7 @@ export async function GET() {
     senales: totalRes.count ?? 0,
     espera: pendingRes.count ?? 0,
     accesos: invitedRes.count ?? 0,
+    fila,
   }
 
   return NextResponse.json(stats, {

@@ -1,0 +1,329 @@
+/* The sheet's content brings its own paper, whatever the frame around it. */
+.body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 22px 26px 24px;
+  background: var(--paper-2);
+  color: var(--ink);
+  min-height: 100%;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+.close:hover {
+  background: var(--paper-3);
+}
+
+.close:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ── the piece ──────────────────────────────────────────────────────── */
+
+.piece {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 18px;
+  align-items: end;
+}
+
+.poster {
+  position: relative;
+  width: 104px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--well);
+}
+
+.posterImg {
+  object-fit: cover;
+}
+
+.plate {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+}
+
+.posterLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--band);
+}
+
+.pieceText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  container-type: inline-size;
+}
+
+.pieceMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.pieceTitle {
+  font-family: var(--font-display);
+  line-height: 0.95;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+/* ── the flow: two lines on one scale ───────────────────────────────── */
+
+.flow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 18px 18px 6px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+}
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lineHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lineHead > :first-child {
+  flex: 1;
+  color: var(--ink-3);
+}
+
+.word {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 120, 'wght' 500;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+/* The private numbers: cobalt, and only in this sheet and the spine. */
+.num {
+  min-width: 40px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--cobalt);
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  position: relative;
+  height: 8px;
+  background: var(--paper-2);
+}
+
+.remain {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--band);
+}
+
+/* The part that will leave: the same energy, marked off by a dashed rule. */
+.echo {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  background: var(--e);
+  outline: 1px dashed var(--ink);
+  outline-offset: 3px;
+}
+
+.echoNote {
+  display: flex;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.seed {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  background: var(--e);
+  pointer-events: none;
+  will-change: transform;
+  z-index: 2;
+}
+
+/* ── terms ──────────────────────────────────────────────────────────── */
+
+.terms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.projection {
+  font-family: var(--font-read);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.faint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--cobalt);
+  font-variant-numeric: tabular-nums;
+}
+
+.weak {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.warning b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.warnMark {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--paper);
+  background: var(--red);
+}
+
+.circular {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ── after ──────────────────────────────────────────────────────────── */
+
+.after {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: afterIn 0.9s var(--ease-materia) both;
+}
+
+@keyframes afterIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.afterTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 122, 'wght' 420;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.afterText {
+  font-family: var(--font-read);
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.afterText b {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--cobalt);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .body {
+    padding: 18px 16px 20px;
+  }
+  .piece {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+  .poster {
+    width: 80px;
+  }
+  .flow {
+    padding: 16px 14px 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .after {
+    animation: none;
+  }
+}

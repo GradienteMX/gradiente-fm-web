@@ -1,0 +1,604 @@
+/* READERS — per-format layouts on the paper-2 sheet: a narrow prose
+   column, a rail at the spec's width, indexical sections, generous margins. */
+
+/* The reader is a size container: its layouts answer to the sheet's width
+   (which the thread narrows), not the viewport's. */
+.reader {
+  --pad-x: clamp(16px, 4vw, 56px);
+  container: lectura / inline-size;
+  position: relative;
+  min-height: 100%;
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(26px, 3.6vw, 48px) var(--pad-x) 0;
+}
+
+.dim {
+  color: var(--ink-3);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.railBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ledgers {
+  display: flex;
+  flex-direction: column;
+}
+
+.after {
+  padding: 34px var(--pad-x) 56px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ── Texto: the column and its rail ─────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, var(--read)) minmax(232px, 264px);
+  grid-template-areas:
+    'main lamina'
+    'main rail';
+  grid-template-rows: auto 1fr;
+  justify-content: space-between;
+  gap: 30px clamp(32px, 5vw, 72px);
+  padding: 34px var(--pad-x) 56px;
+  align-items: start;
+}
+
+.lamina {
+  grid-area: lamina;
+  min-width: 0;
+}
+
+.main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+
+.rail {
+  grid-area: rail;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  min-width: 0;
+}
+
+/* ── Noche: flyer | bill ────────────────────────────────────────────── */
+
+.noche {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(28px, 4vw, 60px);
+  padding: clamp(24px, 3.2vw, 44px) var(--pad-x) 56px;
+  align-items: start;
+}
+
+.nocheArt {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+}
+
+.nocheInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  min-width: 0;
+}
+
+.nocheHead {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Proximity chip in the slug line: tonight and live print in red; live
+   carries a square that blinks in two steps (well under 3 Hz). */
+.prox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 19px;
+  padding: 0 7px;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.prox[data-prox='esta-noche'],
+.prox[data-prox='en-vivo'] {
+  color: var(--red-ink);
+  outline-color: var(--red-ink);
+}
+
+.prox[data-prox='pasado'] {
+  color: var(--ink-3);
+  outline: 1px dashed var(--hair-3);
+}
+
+.liveSq {
+  width: 6px;
+  height: 6px;
+  background: var(--red);
+  animation: blink 1.6s steps(2, jump-none) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* The bill: a boxed date plate and a ledger beside it. */
+.cartel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 18px;
+  align-items: stretch;
+}
+
+.cartel[data-plate] {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.fechaPlate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 118px;
+  padding: 12px 14px 13px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+
+.fechaPlate[data-prox='esta-noche'],
+.fechaPlate[data-prox='en-vivo'] {
+  color: var(--paper);
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.fechaPlate[data-prox='pasado'] {
+  color: var(--ink-3);
+  background: var(--paper-3);
+}
+
+.plateWeek,
+.plateMonth {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.plateDay {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 72, 'wght' 820;
+  font-size: 84px;
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.facts > div {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.facts dt {
+  padding-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.times,
+.price {
+  font-family: var(--font-mono);
+  font-size: 14.5px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.times {
+  display: block;
+}
+
+.countdown {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.countdown[data-prox='esta-noche'],
+.countdown[data-prox='en-vivo'] {
+  color: var(--red-ink);
+}
+
+/* Tickets: an ink button, and it says it leaves. */
+.tickets {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+  height: 46px;
+  padding: 0 16px 0 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+  transition: gap var(--t-base) var(--ease-platen);
+}
+
+.tickets:hover {
+  gap: 18px;
+}
+
+.tickets:active {
+  color: var(--ink);
+  background: var(--paper);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.ticketsLabel {
+  font-weight: 700;
+}
+
+.ticketsNote {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--on-well-2);
+}
+
+.tickets:active .ticketsNote {
+  color: var(--ink-3);
+}
+
+.reader[data-prox='pasado'] .tickets {
+  color: var(--ink-3);
+  background: transparent;
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+}
+
+.reader[data-prox='pasado'] .ticketsNote {
+  color: var(--ink-4);
+}
+
+/* Line-up: an indexed list; the headliner prints bigger. */
+.lineup {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+}
+
+.act {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 10px 0 9px;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.act[data-head] {
+  padding: 12px 0 13px;
+}
+
+.actIdx {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.act[data-head] .actIdx {
+  color: var(--ink);
+}
+
+.actName {
+  font-family: var(--font-display);
+  line-height: 0.96;
+  text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  color: var(--ink);
+}
+
+.artist {
+  color: inherit;
+}
+
+.artist:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.1em;
+}
+
+.b2b {
+  display: inline-block;
+  margin: 0 0.4em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variation-settings: normal;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  vertical-align: 0.3em;
+  color: var(--ink-3);
+}
+
+/* ── Crónica / Lista: índice | column | rail ────────────────────────── */
+
+.hero {
+  padding: clamp(18px, 2.4vw, 28px) var(--pad-x) 0;
+}
+
+.kickerMeta {
+  color: var(--ink-3);
+}
+
+.long {
+  display: grid;
+  grid-template-columns: 176px minmax(0, var(--read)) minmax(232px, 264px);
+  grid-template-areas: 'index main rail';
+  justify-content: space-between;
+  column-gap: clamp(24px, 3vw, 44px);
+  padding: 34px var(--pad-x) 56px;
+  align-items: start;
+}
+
+.index {
+  grid-area: index;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.indexList {
+  display: flex;
+  flex-direction: column;
+}
+
+.indexList a {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px 6px 8px 8px;
+  border-bottom: 1px solid var(--hair-2);
+  border-left: 2px solid transparent;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.indexList a:hover {
+  color: var(--ink);
+  background: var(--paper-4);
+}
+
+.indexList a[data-on] {
+  color: var(--ink);
+  border-left-color: var(--red);
+}
+
+.indexList b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.indexRank {
+  padding-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.indexList a[data-on] .indexRank {
+  color: var(--red-ink);
+}
+
+.index > .dim {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Escuchar: sources as a ledger ──────────────────────────────────── */
+
+.escuchar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sources {
+  display: flex;
+  flex-direction: column;
+}
+
+.source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.platform {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.playBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.playBtn:hover {
+  background: var(--paper-4);
+}
+
+.playBtn:active,
+.playBtn[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.out {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 3px;
+}
+
+.out:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+/* ── narrow sheets ──────────────────────────────────────────────────── */
+
+@container lectura (max-width: 1060px) {
+  .long {
+    grid-template-columns: minmax(0, var(--read)) minmax(232px, 264px);
+    grid-template-areas: 'main rail';
+  }
+  .index {
+    display: none;
+  }
+}
+
+@container lectura (max-width: 860px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'lamina'
+      'main'
+      'rail';
+    grid-template-rows: auto;
+  }
+  .lamina {
+    width: min(100%, 360px);
+  }
+  .long {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'main'
+      'rail';
+    row-gap: 40px;
+  }
+  .noche {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nocheArt {
+    width: min(100%, 440px);
+  }
+  .rail,
+  .nocheArt {
+    position: static;
+  }
+}
+
+@container lectura (max-width: 520px) {
+  .cartel[data-plate] {
+    gap: 0 12px;
+  }
+  .fechaPlate {
+    min-width: 92px;
+    padding: 10px 8px 11px;
+  }
+  .plateDay {
+    font-size: 62px;
+  }
+  .facts > div {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .tickets {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+}

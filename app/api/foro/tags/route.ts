@@ -16,7 +16,7 @@ import { TAG_NAME_MAX, getTagById, slugifyTag } from '@/lib/genres'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('foro_tags')
     .select('id, name')
@@ -31,7 +31,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -3,8 +3,8 @@ import { cookies } from 'next/headers'
 
 // Server-side Supabase client for RSC, route handlers, and server actions.
 // Uses the request's auth cookie — RLS is enforced as the calling user.
-export function createClient() {
-  const cookieStore = cookies()
+export async function createClient() {
+  const cookieStore = await cookies()
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

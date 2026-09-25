@@ -1,0 +1,194 @@
+.densidad {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  min-height: 22px;
+  color: var(--ink-3);
+}
+
+.readDate {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 112, 'wght' 560;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.readDate::first-letter {
+  text-transform: uppercase;
+}
+
+.readFacts {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.readEnergy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+/* Hue belongs to energy: a flat swatch, never coloured type. */
+.swatch {
+  width: 10px;
+  height: 10px;
+}
+
+.strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+  padding-top: 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.col {
+  position: relative;
+  min-width: 0;
+}
+
+.col[data-first]:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -20px;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule);
+}
+
+.month {
+  position: absolute;
+  top: -20px;
+  left: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 1px 9px;
+  border-radius: var(--r-piece);
+  transition: background var(--t-micro) ease;
+}
+
+button.tick:hover,
+button.tick:focus-visible {
+  background: var(--hair);
+}
+
+.tick[data-off] {
+  cursor: default;
+}
+
+.bars {
+  position: relative;
+  width: 58%;
+  max-width: 16px;
+  height: 66px;
+}
+
+.ghost,
+.lit,
+.zero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.ghost {
+  border-radius: 0;
+  background: var(--hair-2);
+  transition: height var(--t-base) var(--ease-platen), background var(--t-micro) ease;
+}
+
+.lit {
+  border-radius: 0;
+  background: var(--hue);
+  transition: height var(--t-base) var(--ease-platen), background var(--t-micro) ease;
+}
+
+.zero {
+  height: 1px;
+  background: var(--hair-3);
+  opacity: 0.6;
+}
+
+button.tick:hover .ghost {
+  background: var(--ink-4);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.dow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.col[data-weekend] .num {
+  color: var(--ink-2);
+}
+
+.col[data-today] .num,
+.col[data-today] .dow {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+button.tick:hover .num,
+button.tick:focus-visible .num {
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .dow {
+    display: none;
+  }
+  .num {
+    font-size: 9.5px;
+  }
+  .col:nth-child(even) .num {
+    visibility: hidden;
+  }
+  .bars {
+    height: 48px;
+    width: 70%;
+  }
+}

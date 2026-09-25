@@ -1,0 +1,310 @@
+/* The reader is its own raised sheet, whatever the shell around it paints. */
+.estacion {
+  --needle: var(--e);
+  position: relative;
+  display: grid;
+  grid-template-columns: 372px minmax(0, 1fr);
+  min-height: 100%;
+  background: var(--paper-2, transparent);
+  color: var(--ink);
+}
+
+/* ── identity ──────────────────────────────────────────────────────────── */
+
+.id {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(min(100dvh - 36px, 1100px) - 58px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 24px 26px 28px 28px;
+  border-right: 1px solid var(--rule, var(--hair-2));
+}
+
+.id::-webkit-scrollbar {
+  display: none;
+}
+
+.plate {
+  position: relative;
+  width: min(100%, 42vh);
+  margin-top: 4px;
+  border-radius: var(--r-piece);
+}
+
+.plateInner {
+  border-radius: var(--r-piece);
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.kind,
+.verified,
+.sponsored {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--rule, var(--hair-3));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.bandMark {
+  width: 13px;
+  height: 5px;
+  border: 1px solid var(--ink);
+  background: var(--band, transparent);
+}
+
+/* Verified: pressed into the sheet — ink ground, paper type. */
+.verified {
+  gap: 5px;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.sponsored {
+  border-style: dashed;
+  color: var(--ink-2);
+}
+
+.nameBox {
+  container-type: inline-size;
+}
+
+.name {
+  font-family: var(--font-display);
+  line-height: 0.9;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.subtitle {
+  margin-top: -4px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.signal {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.signalDot {
+  flex: none;
+  margin-top: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--needle);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.dim {
+  color: var(--ink-3);
+}
+
+.bio {
+  font-family: var(--font-read);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.actionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actionRow > * {
+  flex: 1 1 auto;
+}
+
+.out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 2px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.out a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.out a:hover {
+  color: var(--ink);
+}
+
+/* ── catalog ───────────────────────────────────────────────────────────── */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+  min-width: 0;
+  padding: 26px 34px 56px 34px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Indexical heads: "01 / CATÁLOGO" on a structural rule. */
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule, var(--hair-2));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.idx {
+  color: var(--ink);
+}
+
+.note {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.more {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.more:hover {
+  color: var(--ink);
+}
+
+.posters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 24px 16px;
+}
+
+.posters[data-few] {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 190px));
+}
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 18px 12px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.empty,
+.honest {
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.honest {
+  font-size: 15px;
+}
+
+.nopay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.nopay::before {
+  content: '';
+  flex: none;
+  width: 16px;
+  height: 1px;
+  background: var(--ink-3);
+}
+
+@media (max-width: 860px) {
+  .estacion {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .id {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule, var(--hair-2));
+    padding: 20px 16px 24px;
+  }
+  .plate {
+    width: min(100%, 320px);
+  }
+  .content {
+    padding: 22px 16px 48px;
+  }
+  .posters,
+  .shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

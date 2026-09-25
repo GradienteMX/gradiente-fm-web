@@ -1,0 +1,556 @@
+/* PROSA — words set for reading on paper: Newsreader on a narrow measure,
+   heads in Anybody at the piece's energy (`--e-var`), mono for the system. */
+
+.prosa {
+  font-family: var(--font-read);
+  font-optical-sizing: auto;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: var(--read);
+  text-wrap: pretty;
+}
+
+.prosa > * + * {
+  margin-top: 1em;
+}
+
+.prosa strong {
+  font-weight: 600;
+}
+
+.prosa em {
+  font-style: italic;
+}
+
+/* Links: an ink underline, 1px, set 3px off the baseline. */
+.a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ── lede and drop cap (the cap is set at the piece's energy) ───────── */
+
+.lede {
+  font-size: 1.16em;
+  line-height: 1.5;
+}
+
+.lede::first-letter {
+  float: left;
+  margin: 0.07em 0.1em 0 0;
+  font-family: var(--font-display);
+  font-variation-settings: var(--e-var, 'wdth' 80, 'wght' 820);
+  font-size: 3.4em;
+  line-height: 0.8;
+  color: var(--ink);
+}
+
+/* ── heads: a rule, the § index in mono, the text in energy type ────── */
+
+.prosa > .h2 {
+  margin-top: 2.4em;
+}
+
+.h2 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  scroll-margin-top: 24px;
+}
+
+.sec {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variation-settings: normal;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  color: var(--red-ink);
+}
+
+.h2Text {
+  font-family: var(--font-display);
+  font-variation-settings: var(--e-var, 'wdth' 100, 'wght' 700);
+  font-size: 1.6em;
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.prosa > .h3 {
+  margin-top: 1.8em;
+}
+
+.h3 {
+  font-family: var(--font-display);
+  font-variation-settings: var(--e-var, 'wdth' 110, 'wght' 560);
+  font-size: 1.15em;
+  line-height: 1.12;
+  color: var(--ink);
+}
+
+/* ── quotes: pull quotes on a red rule; block quotes on an ink hairline ─ */
+
+.prosa > .pull {
+  margin: 1.9em 0;
+}
+
+.pull {
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--red);
+}
+
+.pull blockquote {
+  font-family: var(--font-display);
+  font-variation-settings: var(--e-var, 'wdth' 90, 'wght' 560);
+  font-size: 1.45em;
+  line-height: 1.12;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.pull figcaption,
+.block figcaption {
+  margin-top: 0.8em;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.prosa > .block {
+  margin: 1.6em 0;
+}
+
+.block {
+  padding: 2px 0 2px 18px;
+  border-left: 1px solid var(--rule);
+}
+
+.block blockquote {
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+/* ── figures: framed wells with mono captions ───────────────────────── */
+
+.prosa > .figure {
+  margin: 2em 0;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.figImg {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--well);
+}
+
+.figImg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.cover {
+  object-fit: cover;
+}
+
+.figure figcaption {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.figNum {
+  margin-right: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* A section break, set by hand. */
+.prosa > .divider {
+  margin: 2.2em 0;
+}
+
+.divider {
+  height: auto;
+  border: 0;
+  text-align: center;
+  overflow: visible;
+}
+
+.divider::before {
+  content: '*  *  *';
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--ink-3);
+}
+
+/* ── Q&A ────────────────────────────────────────────────────────────── */
+
+.qa {
+  display: grid;
+  grid-template-columns: 8.5em minmax(0, 1fr);
+  gap: 1em;
+}
+
+.speaker {
+  padding-top: 0.5em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+
+.qa[data-q] .speaker {
+  color: var(--ink);
+}
+
+.qa[data-q] p {
+  font-weight: 600;
+}
+
+/* ── lists with mono markers ────────────────────────────────────────── */
+
+.list {
+  counter-reset: item;
+}
+
+.list li {
+  padding-left: 38px;
+}
+
+.list li + li {
+  margin-top: 0.5em;
+}
+
+.list li::before {
+  content: '—';
+  display: inline-block;
+  width: 38px;
+  margin-left: -38px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+
+.list[data-ordered] li::before {
+  counter-increment: item;
+  content: counter(item, decimal-leading-zero);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── footnotes: calls in mono brackets; notes in mono, with a way back ─ */
+
+.fnref {
+  font-size: 0.62em;
+  line-height: 0;
+}
+
+.fnref a {
+  padding: 0 0.1em;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.fnref a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prosa > .notes {
+  margin-top: 3em;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notesHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+
+.notesName {
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.notes ol {
+  display: flex;
+  flex-direction: column;
+}
+
+.notes li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hair-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  scroll-margin-top: 24px;
+}
+
+.notes li:target {
+  background: var(--paper-4);
+}
+
+.fnNum {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.fnText {
+  min-width: 0;
+}
+
+.back {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--ink-3);
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+}
+
+.back:hover {
+  color: var(--ink);
+  outline-color: var(--rule);
+}
+
+.backArrow {
+  transform: rotate(-90deg);
+}
+
+/* ── track entries: a big index, the cover, energy title, mono meta ──── */
+
+.prosa > .track {
+  margin: 1.6em 0;
+}
+
+.prosa > .track + .track {
+  margin-top: 0;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-areas: 'art text';
+  gap: 16px 20px;
+  padding: 18px 0 20px;
+  border-top: 1px solid var(--hair-3);
+  font-family: var(--font-ui);
+  scroll-margin-top: 24px;
+}
+
+.track:not(:has(+ .track)) {
+  border-bottom: 1px solid var(--hair-3);
+}
+
+.track[data-ranked] {
+  grid-template-columns: minmax(0.8em, auto) 112px minmax(0, 1fr);
+  grid-template-areas: 'rank art text';
+}
+
+.rank {
+  grid-area: rank;
+  margin-top: -3px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 62, 'wght' 900;
+  font-size: 92px;
+  line-height: 0.78;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.track[data-active] .rank {
+  color: var(--red-ink);
+}
+
+.trackArt {
+  grid-area: art;
+  position: relative;
+  width: 112px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--well);
+}
+
+.trackArt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.trackBlank {
+  position: absolute;
+  inset: 0;
+  background-color: var(--paper-3);
+}
+
+.trackText {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.trackTitle {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  overflow-wrap: break-word;
+  color: var(--ink);
+}
+
+.trackMeta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.commentary {
+  margin-top: 4px;
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.trackActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+
+.play {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.play:hover {
+  background: var(--paper-4);
+}
+
+.play:active,
+.play[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.src {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 3px;
+}
+
+.src:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .prosa {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 640px) {
+  .qa {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2em;
+  }
+  .track {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px 14px;
+  }
+  .track[data-ranked] {
+    grid-template-columns: minmax(0.8em, auto) 72px minmax(0, 1fr);
+    grid-template-areas:
+      'rank art .'
+      'text text text';
+  }
+  .trackArt {
+    width: 72px;
+  }
+  .rank {
+    font-size: 72px;
+  }
+  .trackTitle {
+    font-size: 22px;
+  }
+}

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // /api/franjas/[id]/team
 // GET    → list team members (users with franja_id = [id])
@@ -36,7 +38,7 @@ const TEAM_FIELDS =
   'id, username, display_name, role, is_mod, is_og, franja_admin, joined_at'
 
 async function gateTeamAccess(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   franjaId: string,
   requireWrite: boolean,
 ) {
@@ -85,9 +87,10 @@ function mapRpcError(error: { message?: string | null }) {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateTeamAccess(supabase, params.id, false)
   if ('error' in gate) return gate.error
 
@@ -103,9 +106,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateTeamAccess(supabase, params.id, true)
   if ('error' in gate) return gate.error
 
@@ -124,6 +128,9 @@ export async function POST(
     p_user_id: body.user_id,
   })
   if (error) return mapRpcError(error)
+  // Team membership (users.franja_id / franja_admin) is part of every
+  // member's public profile.
+  revalidateTag(WORLD_TAG, { expire: 0 })
 
   // Re-select the public team fields for the response — the SECURITY DEFINER
   // function returns the whole users row (incl. private columns like hp), so
@@ -138,9 +145,10 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateTeamAccess(supabase, params.id, true)
   if ('error' in gate) return gate.error
 
@@ -163,6 +171,9 @@ export async function PATCH(
     p_admin: body.franja_admin,
   })
   if (error) return mapRpcError(error)
+  // Team membership (users.franja_id / franja_admin) is part of every
+  // member's public profile.
+  revalidateTag(WORLD_TAG, { expire: 0 })
 
   const { data: member } = await supabase
     .from('users')
@@ -174,9 +185,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateTeamAccess(supabase, params.id, true)
   if ('error' in gate) return gate.error
 
@@ -195,6 +207,9 @@ export async function DELETE(
     p_user_id: body.user_id,
   })
   if (error) return mapRpcError(error)
+  // Team membership (users.franja_id / franja_admin) is part of every
+  // member's public profile.
+  revalidateTag(WORLD_TAG, { expire: 0 })
 
   return NextResponse.json({ ok: true })
 }

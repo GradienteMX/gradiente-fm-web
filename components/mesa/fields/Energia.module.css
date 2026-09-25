@@ -1,0 +1,356 @@
+/* ENERGÍA — a printed instrument: a tape, a two-row scale, two keys. The
+   ramp is the only color and it means energy. */
+
+.energia {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px 16px;
+  border: 1px solid var(--rule, var(--ink));
+  background: var(--paper-2, var(--obs-1));
+}
+
+.energia[data-unset] {
+  border-style: dashed;
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.readLine {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.reading {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  transition: font-variation-settings 500ms var(--ease-materia);
+  white-space: nowrap;
+}
+
+.reading[data-unset] {
+  color: var(--ink-3);
+  font-variation-settings: 'wdth' 120, 'wght' 260;
+}
+
+.kind {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  max-width: 44ch;
+}
+
+/* ── the instrument ─────────────────────────────────────────────────────── */
+
+.instrument {
+  position: relative;
+  padding: 0 clamp(24px, 3vw, 40px);
+}
+
+/* A dial scale: stations alternate between two rows so all eleven names
+   keep their own width (glacial is wide, volcán is narrow) without touching. */
+.names {
+  position: relative;
+  height: 40px;
+}
+
+.name {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--ink-4);
+  padding: 4px 3px;
+  user-select: none;
+}
+
+.name[data-odd] {
+  bottom: 19px;
+}
+
+.name::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 4px;
+  background: currentColor;
+}
+
+.name[data-odd]::after {
+  height: 21px;
+  opacity: 0.4;
+}
+
+.name:hover {
+  color: var(--ink-2);
+}
+
+.name[data-in] {
+  color: var(--ink);
+}
+
+.track {
+  position: relative;
+  height: 52px;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.track[data-set] {
+  cursor: pointer;
+}
+
+.track:focus-visible {
+  outline: 1.5px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.track[data-grab='band'] {
+  cursor: grabbing;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  opacity: 0.4;
+}
+
+.energia[data-unset] .rail {
+  opacity: 0.75;
+}
+
+.tick {
+  position: absolute;
+  top: calc(50% + 6px);
+  width: 1px;
+  height: 7px;
+  background: var(--ink-4);
+  transform: translateX(-0.5px);
+}
+
+.tick[data-in] {
+  background: var(--ink);
+  height: 10px;
+}
+
+.band {
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  margin-top: -5px;
+  min-width: 6px;
+  transform: translateX(var(--pt, 0));
+  outline: 1px solid var(--ink);
+  cursor: grab;
+}
+
+.ghost {
+  position: absolute;
+  top: 50%;
+  height: 20px;
+  margin-top: -10px;
+  min-width: 10px;
+  border: 1px dashed var(--ink-3);
+  pointer-events: none;
+  transition: left var(--t-stage) var(--ease-materia), width var(--t-stage) var(--ease-materia);
+}
+
+.ghost[data-hot] {
+  border: 1px solid var(--ink);
+  background: var(--hair);
+}
+
+.ghostTag {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* Keys: a flat ink bar with the energy it sits on printed in its core. */
+.cap {
+  position: absolute;
+  top: 50%;
+  width: 26px;
+  height: 44px;
+  margin: -22px 0 0 -13px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  outline: none;
+  z-index: 2;
+}
+
+.capBody {
+  position: relative;
+  width: 12px;
+  height: 34px;
+  background: var(--ink);
+}
+
+.capBody::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 6px;
+  bottom: 6px;
+  background: var(--cap);
+}
+
+.cap:focus-visible .capBody {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Lifted while dragged: the one hard shadow. */
+.cap[data-active] .capBody {
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: translate(-2px, -2px);
+}
+
+.cap[data-active] {
+  cursor: grabbing;
+}
+
+.capTag {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 6px 3px;
+  background: var(--ink);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--paper, var(--obs-0));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cap[data-active] .capTag,
+.cap:focus-visible .capTag {
+  opacity: 1;
+}
+
+/* ── below the instrument ───────────────────────────────────────────────── */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.prior {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.priorLabel {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.priorBand {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.priorBasis {
+  color: var(--ink-3);
+}
+
+.apply {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.apply:hover,
+.apply:focus-visible {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.applied {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.law {
+  font-size: 12px;
+  color: var(--ink-3);
+  max-width: 46ch;
+}
+
+@media (max-width: 520px) {
+  .name[data-odd] {
+    display: none;
+  }
+}

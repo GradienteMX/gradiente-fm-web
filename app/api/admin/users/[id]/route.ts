@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/api/requireAdmin'
+import { WORLD_TAG } from '@/lib/data/tags'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/users/[id]
@@ -28,8 +30,9 @@ const VALID_ROLES: readonly Role[] = ['user', 'curator', 'guide', 'insider', 'ad
 // dependent activity and clears items.created_by while preserving the items.
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
+  const params = await paramsP
   const gate = await requireAdmin()
   if (!gate.ok) return gate.response
   if (params.id === gate.userId) {
@@ -57,6 +60,8 @@ export async function DELETE(
       console.error('Admin user deletion failed:', error)
       return NextResponse.json({ error: 'No se pudo eliminar la cuenta. Revisa sus dependencias y archivos en Supabase.' }, { status: 500 })
     }
+    // Their public profile (and what cascaded with it) leaves the public world.
+    revalidateTag(WORLD_TAG, { expire: 0 })
     return NextResponse.json({ deleted: true })
   } catch {
     return NextResponse.json({ error: 'El servicio de eliminación no está disponible.' }, { status: 500 })
@@ -65,9 +70,10 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -129,6 +135,12 @@ export async function PATCH(
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // PGRST116: no row came back — nobody has that id.
+    if (error.code === 'PGRST116') return NextResponse.json({ error: 'Usuario no encontrado.' }, { status: 404 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  // Role, flags and franja travel with every member's public profile.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ user: data })
 }

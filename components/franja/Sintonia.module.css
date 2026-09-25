@@ -1,0 +1,135 @@
+.escala {
+  --needle: var(--e, var(--ink));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-mono, var(--font-ui));
+  text-transform: uppercase;
+}
+
+.dialLabel {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+.freq {
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  min-width: 4ch;
+}
+
+.state {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+
+:global([data-sintonia='fija']) .state {
+  color: var(--ink);
+}
+
+.track {
+  position: relative;
+  height: 30px;
+  border-radius: var(--r-piece);
+  background: var(--paper-3, var(--obs-1));
+  box-shadow: inset 0 0 0 1px var(--rule, var(--hair-2));
+  overflow: hidden;
+}
+
+/* 0.2 MHz minor ticks, drawn as one repeating pattern (100 intervals). */
+.ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 7px;
+  background: repeating-linear-gradient(90deg, var(--ink-4) 0 1px, transparent 1px 1%);
+}
+
+.major {
+  position: absolute;
+  top: 5px;
+  bottom: 3px;
+  width: 1px;
+  background: var(--ink-3);
+  transform: translateX(-0.5px);
+}
+
+.major i {
+  position: absolute;
+  bottom: -1px;
+  left: 4px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-style: normal;
+  font-size: 9px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+/* The band's two ends are the track's own edges: label them, don't draw them. */
+.major[data-edge] {
+  background: transparent;
+}
+
+.major[data-edge='lo'] i {
+  left: 5px;
+}
+
+.major[data-edge='hi'] i {
+  left: auto;
+  right: 5px;
+}
+
+.needle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--needle);
+  will-change: left;
+}
+
+.needle::before,
+.needle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  transform: translateX(-50%);
+}
+
+.needle::before {
+  top: 0;
+  border-top: 5px solid var(--ink);
+}
+
+.needle::after {
+  bottom: 0;
+  border-bottom: 5px solid var(--ink);
+}
+
+.escala[data-compact] .freq {
+  font-size: 17px;
+}
+
+.escala[data-compact] .track {
+  height: 24px;
+}

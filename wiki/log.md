@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-09-25 · INGEST · V2 («TRAMA» + «LIBREA») replaces the site — branch `v2`, real data, every action wired · migraciones `0052`/`0053` APLICADAS (2026-09-25) · beta kits granted
+
+- **Decision (Iker):** V2 replaces gradiente.org. `Documents/GradienteV2` moved into this repo on branch `v2` (uncommitted). The old UI is deleted (396 files, ~73k lines out). The backend is kept and made Next 16-safe: awaited `params`/`cookies`, `middleware.ts` → `proxy.ts`, `revalidateTag(tag, { expire: 0 })`.
+- **Reads:** `lib/data/world.ts` builds a public snapshot (service role, tag `'world'`), a private overlay per viewer, and admin ledgers loaded only by `/central`. Stickers are cached apart (tag `'stickers'`).
+- **Writes:** an effects registry (`lib/store/effects.ts` + `efectos/*`) calls the existing `app/api` routes. Changes show at once and are undone on failure; rows the server names get remapped (`lib/store/ids.ts`). All 37 actions are covered; `'seen'` stays on the device.
+- **Production bugs fixed along the way:** franja self-service edits never saved for team members (they now save with the service role after the access check); invites showing «no expira»; tombstoned items now answer 403/404; slug collisions on publish now return 409; editing a piece now clears fields left empty.
+- **Stickers:** `0052_stickers.sql` adds copies, placements, stub claims, serials and vouchers. Only service-role routes (`app/api/stickers/*`) write them. Beta kits go under batch `beta-2026` (`scripts/stickersBeta.ts`) and are wiped at release. **Follows:** `0053_follows.sql`. Both were applied by hand on 2026-09-25, and the kits were granted the same day: 64 members, 539 copies, 128 pressed, 192 vouchers.
+- **Found:** `anon` can read `users.engagement_hp` and every `vibe_checks`/`poll_votes` row (pre-existing RLS, live on production). Not fixed yet.
+- **Verified:** tsc, eslint, 205 tests, build, and an anonymous browser walk only. The signed-in flows need a QA account. See [[Next Session]].
+
+## 2026-09-23 · LINT · Agent-instruction audit — session-start hook slimmed, CLAUDE.md/AGENTS.md re-checked against the code
+
+- Session-start hook (Claude Code and Codex) now runs `Documents/Gradiente/.claude/hooks/wiki_session_context.py`: the live handoff from [[Next Session]] plus the 8 newest log headings, ~6.3k characters. The old inline hook sent ~117k; Claude Code keeps only a 2,000-character preview of hook context past 10,000 characters, so the handoff never arrived. [[index]] and full log entries are read on demand.
+- `CLAUDE.md` + `AGENTS.md` corrected against the code: data flow (Supabase, not `mockData`), `pinned` → portada carousel ([[Pinned Hero]]), vibe band + crowd override ([[Vibe Checks]]), the `listicle` type, folder map, image storage (`uploads` bucket), styling rule.
+- [[Data Flow]] marked `status: stale` (it describes the April mock pipeline). [[index]]'s Pinned Hero line fixed. [[Next Session]]: the 09-10 handoff marked committed (`1649cb1`), `e750066`/`eadc269` listed as not handed off, the May–June sections labeled historical.
+- `/scrape` (and its Codex copy): Instagram rows land unpublished; the MI PARTNER → BORRADORES screen is gone and nothing publishes them yet — decide a review surface before the next IG run. `GRADIENTE_OPTIMIZATION_PROMPT.md` got a dated "historical" banner.
+- Still open: "single slot" in [[Content Types]] and [[Editorial Flag]], the sessionStorage-era module lines in [[index]], and the Claude memories that still describe the retired IG review screen.
+
 ## 2026-09-22 · INGEST · Every NEW publish 403'd since 0049 §6 — `hp: null` in the create upsert · [[Publication Readiness]] · [[HL Ledger]]
 
 Reported by @alo (staff): «No tienes permiso para editar este ítem» publishing a new reseña. Not ownership, not RLS (staff pass `items_staff_insert`). `POST /api/items` upserts on the **session** client and the create path sent `hp: null`; PostgREST turns every payload key into `ON CONFLICT DO UPDATE SET`, and Postgres checks UPDATE privilege on those columns at executor start even when no conflict occurs. 0049 §6 revoked UPDATE on the five HP columns from `authenticated` → `permission denied for table items` (42501) → 403, for every role, on every type. Edits were unaffected (no hp in payload); `/api/admin/events` was unaffected (service_role). 0049's «VERIFIED SAFE» note had misread the route as service_role.

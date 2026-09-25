@@ -32,7 +32,7 @@ function clamp(x: number, lo: number, hi: number): number {
 }
 
 export async function computeVibePrior(input: VibePriorInput): Promise<VibePrior | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const genres = (input.genres ?? []).filter(Boolean)
   const venue = input.venue?.trim() || null
 

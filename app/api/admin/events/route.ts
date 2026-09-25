@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { contentItemToRow } from '@/lib/data/items'
+import { WORLD_TAG } from '@/lib/data/tags'
 import type { ContentItem } from '@/lib/types'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // POST /api/admin/events
 //
@@ -31,7 +35,7 @@ function slugify(input: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -130,7 +134,8 @@ export async function POST(request: NextRequest) {
   if (Array.isArray(event.entities)) {
     await admin.from('item_entities').delete().eq('item_id', id)
     const links = event.entities
-      .filter((e) => typeof e?.id === 'string' && e.id)
+      // Only real entity rows: one placeholder id would fail the whole batch.
+      .filter((e) => typeof e?.id === 'string' && UUID_RE.test(e.id))
       .map((e) => ({
         item_id: id,
         entity_id: e.id,
@@ -172,5 +177,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Nights are part of the public world every member reads.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ ok: true, id, slug })
 }

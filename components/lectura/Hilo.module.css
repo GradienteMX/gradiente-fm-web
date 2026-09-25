@@ -1,0 +1,569 @@
+/* HILO — the conversation as a ledger: mono heads and timestamps, bodies in
+   Space Grotesk, replies hung from hairline rails, two boxed reactions. */
+
+.hilo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--paper);
+}
+
+/* ── head: HILO — n comentarios · por actividad ──────────────────────── */
+
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.name {
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.count {
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  color: var(--ink);
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+}
+
+.x:hover {
+  background: var(--paper-4);
+}
+
+.x:active {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--ink) var(--paper);
+}
+
+/* ── the ledger and its rails ────────────────────────────────────────── */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree > .node {
+  border-bottom: 1px solid var(--hair-2);
+}
+
+/* The rail hangs from under the parent's avatar (padding 16 + half of 26). */
+.children {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 12px 29px;
+  border-left: 1px solid var(--hair-3);
+}
+
+.children .children {
+  margin-left: 25px;
+}
+
+.node[data-depth='4'] > .children {
+  margin-left: 0;
+  border-left: 0;
+}
+
+.comment {
+  position: relative;
+  padding: 14px 14px 12px 16px;
+}
+
+.children .comment {
+  padding: 12px 12px 10px 12px;
+}
+
+.comment[data-mine] {
+  background: var(--paper-2);
+}
+
+/* A comment you were sent to: registration marks for a beat. */
+.comment[data-flash]::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  --m: 10px;
+  --w: 1.5px;
+  background:
+    linear-gradient(var(--red), var(--red)) top left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) top right / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom left / var(--w) var(--m) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--m) var(--w) no-repeat,
+    linear-gradient(var(--red), var(--red)) bottom right / var(--w) var(--m) no-repeat;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 7px;
+  min-width: 0;
+}
+
+.handle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.handle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.you {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.edited {
+  padding: 1px 4px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  outline: 1px dashed var(--hair-3);
+  outline-offset: -1px;
+}
+
+.body {
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Unlocked composer emoji: a glyph on an ink block. */
+.emoji {
+  display: inline-grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  margin: 0 2px;
+  padding: 0 3px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 80, 'wght' 900;
+  font-size: 12.5px;
+  line-height: 1;
+  vertical-align: -3px;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.firma {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* ── foot: [!] SEÑAL · [?] DUDA · mono actions ───────────────────────── */
+
+.foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 10px;
+}
+
+.rxs {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.rx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  outline-offset: -1px;
+}
+
+.rx b {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.rxN {
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Señal: red ink on paper; pressed, a red ground (the deeper red, so 10px
+   paper type stays legible on it). */
+.rx[data-kind='signal'] {
+  color: var(--red-ink);
+  outline: 1px solid var(--red-ink);
+}
+
+.rx[data-kind='signal'][data-on] {
+  color: var(--paper);
+  background: var(--red-ink);
+}
+
+/* Duda: ink in a dashed box; pressed, an ink ground. */
+.rx[data-kind='doubt'] {
+  color: var(--ink);
+  outline: 1px dashed var(--ink);
+}
+
+.rx[data-kind='doubt'][data-on] {
+  color: var(--paper);
+  background: var(--ink);
+  outline-style: solid;
+}
+
+.rx:not([data-on]):hover {
+  background: var(--paper-4);
+}
+
+.link {
+  height: 24px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.link:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link[data-on] {
+  color: var(--ink);
+}
+
+.link[data-danger]:hover {
+  color: var(--red-ink);
+}
+
+.more {
+  margin: 0 0 12px 29px;
+  padding: 4px 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.more:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── tombstone: a hatched row that keeps the thread's shape ──────────── */
+
+.tomb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.tombLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.tombLabel {
+  padding: 2px 6px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.tombWhy {
+  padding: 1px 4px;
+  background: var(--paper);
+}
+
+.tomb .link {
+  flex: none;
+  padding: 0 6px;
+  background: var(--paper);
+}
+
+/* ── empty: the printed nothing-here ─────────────────────────────────── */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px;
+  padding: 20px 16px;
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+}
+
+.emptyLabel {
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.empty p {
+  padding: 2px 4px;
+  margin-left: -4px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  background: var(--paper);
+}
+
+/* ── composer: a paper-3 field in a 1px ink box; posting is an ink button ─ */
+
+.replyBox {
+  padding: 0 14px 12px 16px;
+}
+
+.children .replyBox {
+  padding: 0 12px 10px 12px;
+}
+
+.composer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.composer[data-reply] {
+  padding: 0;
+  border-top: 0;
+  background: transparent;
+}
+
+.input {
+  width: 100%;
+  resize: none;
+  padding: 10px 12px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+}
+
+.input::placeholder {
+  color: var(--ink-4);
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.composerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hint {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.unlocked {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.emojiBtn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 80, 'wght' 900;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.emojiBtn:active {
+  color: var(--ink);
+  background: var(--paper);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.send {
+  flex: none;
+  height: 30px;
+  padding: 0 14px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.send:active:not(:disabled) {
+  color: var(--ink);
+  background: var(--paper);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.send:disabled {
+  color: var(--ink-4);
+  background: var(--paper-3);
+  outline: 1px solid var(--hair-2);
+  outline-offset: -1px;
+}
+
+.editBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.editActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.composerOut {
+  flex: none;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.composerOut[data-reply] {
+  padding: 0;
+  border-top: 0;
+  background: transparent;
+}
+
+.enter {
+  width: 100%;
+  height: 40px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: 1px dashed var(--rule);
+  outline-offset: -1px;
+}
+
+.enter:hover {
+  background: var(--paper-4);
+  outline-style: solid;
+}
+
+.enter:active {
+  color: var(--paper);
+  background: var(--ink);
+}

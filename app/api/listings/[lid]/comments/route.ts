@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 import type { ListingComment } from '@/lib/types'
 
 // /api/listings/[lid]/comments — marketplace listing comments.
@@ -10,6 +12,13 @@ import type { ListingComment } from '@/lib/types'
 // user can read/post. `isSeller` marks comments by a member of the listing's
 // franja team (resolved here so the UI can badge seller replies). RLS on
 // listing_comments enforces self-write from the DB side.
+//
+// POST takes an optional `id`: the uuid the client minted, so an answer to a
+// question asked a second ago (parent_id) or its deletion names the right
+// row before any refresh (lib/store/ids.ts). Only a well-formed uuid, only
+// INSERTED — a collision is a 409, never an overwrite.
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type AuthorRow = {
   id: string
@@ -50,7 +59,7 @@ function toComment(row: CommentRow, sellerFranjaId: string | null): ListingComme
 }
 
 async function sellerFranjaId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   listingId: string,
 ): Promise<string | null> {
   const { data } = await supabase
@@ -63,9 +72,10 @@ async function sellerFranjaId(
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { lid: string } },
+  { params: paramsP }: { params: Promise<{ lid: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -93,30 +103,36 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { lid: string } },
+  { params: paramsP }: { params: Promise<{ lid: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let raw: { body?: unknown; parentId?: unknown }
+  let raw: { id?: unknown; body?: unknown; parentId?: unknown }
   try {
     raw = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
+  const id = typeof raw.id === 'string' && UUID_RE.test(raw.id) ? raw.id.toLowerCase() : undefined
   const body = typeof raw.body === 'string' ? raw.body.trim() : ''
   const parentId = typeof raw.parentId === 'string' ? raw.parentId : null
   if (!body) return NextResponse.json({ error: 'body required' }, { status: 400 })
   if (body.length > 1500) {
-    return NextResponse.json({ error: 'comment too long' }, { status: 400 })
+    return NextResponse.json({ error: 'El mensaje pasa de 1500 caracteres.' }, { status: 400 })
+  }
+  if (parentId && !UUID_RE.test(parentId)) {
+    return NextResponse.json({ error: 'La pregunta que respondes ya no está.' }, { status: 404 })
   }
 
   const { data, error } = await supabase
     .from('listing_comments')
     .insert({
+      ...(id ? { id } : {}),
       listing_id: params.lid,
       author_id: user.id,
       parent_id: parentId,
@@ -130,9 +146,18 @@ export async function POST(
     if (error.code === '42501') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'Ya existe un mensaje con ese identificador.' }, { status: 409 })
+    }
+    // 23503: the listing (or the question answered) is gone.
+    if (error.code === '23503') {
+      return NextResponse.json({ error: 'Ese anuncio (o la pregunta que respondes) ya no está.' }, { status: 404 })
+    }
     console.error('[POST listing comment]', error)
     return NextResponse.json({ error: 'Failed to post comment' }, { status: 500 })
   }
+  // Questions and answers under listings are part of the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   const franjaId = await sellerFranjaId(supabase, params.lid)
   return NextResponse.json({
     comment: toComment(data as unknown as CommentRow, franjaId),

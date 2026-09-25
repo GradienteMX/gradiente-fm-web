@@ -13,7 +13,7 @@ import {
   LEDGER_EPOCH,
   type HpEventKind,
 } from '@/lib/hp/kinds'
-import { bucketByDay, dayRange, round } from '@/lib/dashboard/scale'
+import { bucketByDay, round } from '@/lib/dashboard/scale'
 import { ADMIN_PAGE_SIZE } from '@/lib/admin/paging'
 import type { ContentType } from '@/lib/types'
 
@@ -139,7 +139,7 @@ export async function listAdminItems(opts: ListOptions = {}): Promise<AdminItemL
     offset = 0,
   } = opts
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const now = new Date()
   const from = new Date(now.getTime() - (days - 1) * 86_400_000)
   const sparkFrom = new Date(now.getTime() - 6 * 86_400_000)
@@ -177,8 +177,6 @@ export async function listAdminItems(opts: ListOptions = {}): Promise<AdminItemL
     if (list) list.push(e)
     else byItem.set(e.item_id, [e])
   }
-
-  const sparkDays = dayRange(sparkFrom, now)
 
   const rows: AdminItemRow[] = items.map((row) => {
     const parts = toParts(row)
@@ -302,7 +300,7 @@ export async function getAdminItemDetail(
   itemId: string,
   days = 30,
 ): Promise<AdminItemDetail | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const admin = createAdminClient()
   const now = new Date()
   const from = new Date(now.getTime() - (days - 1) * 86_400_000)

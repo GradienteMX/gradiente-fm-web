@@ -1,0 +1,176 @@
+.demo {
+  margin: 18px 0 10px;
+  padding: 24px clamp(20px, 3vw, 34px) 22px;
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: var(--font-ui);
+}
+
+.readout {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--ink);
+}
+
+/* The station as a printed code; hue only in the swatch. */
+.station {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 14ch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  background: var(--h);
+}
+
+.hint {
+  margin-left: auto;
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* Height holds the widest (glacial) setting, so nothing below ever jumps. */
+.sentence {
+  margin: 0;
+  min-height: 2.1em;
+  display: flex;
+  align-items: flex-end;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.1vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.sentenceText {
+  display: block;
+  text-wrap: balance;
+}
+
+.word {
+  transition: opacity 120ms linear;
+}
+
+/* ── the fader ────────────────────────────────────────────────────────── */
+
+.track {
+  position: relative;
+  height: 44px;
+  margin: 0 12px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+/* The ramp as it is printed: stepped, one plate per station. */
+.rail,
+.lit {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background-image: var(--spectrum-steps);
+}
+
+.rail {
+  right: 0;
+  opacity: 0.3;
+}
+
+.lit {
+  height: 6px;
+  margin-top: -3px;
+}
+
+.detent {
+  position: absolute;
+  top: calc(50% + 8px);
+  width: 1px;
+  height: 6px;
+  margin-left: -0.5px;
+  background: var(--ink-3);
+}
+
+.detent[data-on] {
+  height: 10px;
+  background: var(--ink);
+}
+
+.cap {
+  position: absolute;
+  top: 50%;
+  width: 28px;
+  height: 40px;
+  margin: -20px 0 0 -14px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  outline: none;
+}
+
+/* A flat block: ink body, the current energy as its centre line. */
+.capBody {
+  position: relative;
+  width: 12px;
+  height: 30px;
+  background: var(--ink);
+}
+
+.capBody::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--h);
+}
+
+/* Lifted while held: the one shadow the system allows. */
+.cap[data-grabbed] {
+  cursor: grabbing;
+}
+
+.cap[data-grabbed] .capBody {
+  box-shadow: var(--lift);
+  transform: translate(-2px, -2px);
+}
+
+.cap:focus-visible .capBody {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  margin: -12px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .hint {
+    margin-left: 0;
+  }
+}

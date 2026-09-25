@@ -1,0 +1,85 @@
+/* ── Trophy strip ───────────────────────────────────────────────────── */
+
+.strip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.stripHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--ink-3);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Presence meter ─────────────────────────────────────────────────── */
+
+.meter {
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.rail {
+  position: relative;
+  height: 4px;
+  background: var(--paper-3);
+}
+
+/* Presence is private: cobalt, the one color that means «only you». */
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--cobalt);
+}
+
+.ghost {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  min-width: 3px;
+  border: 1px dashed var(--cobalt);
+}
+
+.notch {
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 11px;
+  background: var(--hair-3);
+  transform: translateX(-0.5px);
+}
+
+.notch[data-on] {
+  background: var(--ink);
+}
+
+.ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 11px;
+  height: 12px;
+}
+
+.tick {
+  position: absolute;
+  display: grid;
+  transform: translateX(-50%);
+  color: var(--ink-4);
+}
+
+.tick[data-on] {
+  color: var(--ink);
+}

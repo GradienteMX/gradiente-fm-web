@@ -1,0 +1,331 @@
+/* The identity strip, TRAMA: a paper sheet with a 1 px rule, the name set
+   vertically in heavy Anybody like a spine, facts as a hairline ledger in
+   mono, actions as boxed controls (primary inverted). Tokens only. */
+
+.tira {
+  position: absolute;
+  z-index: 18;
+  top: 76px;
+  left: 16px;
+  /* Clear of the Consola capsule (fixed, bottom-left, 64 px). */
+  bottom: 92px;
+  width: 244px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  color: var(--ink);
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 34px;
+  padding: 0 4px 0 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* Band stripe: franja attribution, the one mark franjas wear everywhere. */
+.band {
+  width: 16px;
+  height: 6px;
+  border: 1px solid var(--ink);
+}
+
+.x {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+.x:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.identity {
+  flex: 1;
+  min-height: 150px;
+  display: flex;
+  gap: 12px;
+  padding: 12px 10px 10px;
+}
+
+.logo {
+  position: relative;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  background: var(--paper-4);
+  border: 1px solid var(--rule);
+}
+
+.logoImg {
+  object-fit: cover;
+}
+
+.spine {
+  flex: 1;
+  min-width: 0;
+  container-type: size;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.name {
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 62, 'wght' 860;
+  font-size: min(80px, calc(94cqh / (var(--len) * 0.56)), 72cqw);
+  line-height: 0.84;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  max-height: 100%;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule);
+  font-size: 12.5px;
+}
+
+.facts div {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.facts dt {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.types span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 3px;
+}
+
+.inline:hover {
+  text-decoration-color: var(--ink);
+}
+
+.related {
+  padding: 8px 10px 10px;
+}
+
+.relLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.relRow {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--rule);
+}
+
+.step {
+  flex: none;
+  width: 28px;
+  height: 30px;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.step:first-child {
+  border-right: 1px solid var(--rule);
+}
+
+.step:last-child {
+  border-left: 1px solid var(--rule);
+}
+
+.step:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.step:disabled {
+  color: var(--ink-4);
+}
+
+.relName {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 90, 'wght' 640;
+  font-size: 14px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.relName:hover {
+  background: var(--paper-3);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--rule);
+}
+
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.primary:hover {
+  background: var(--ink-2);
+}
+
+.secondary {
+  height: 34px;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.secondary:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+@media (max-height: 640px) {
+  .facts div:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .tira {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 88px;
+    width: auto;
+    max-height: 40dvh;
+    border-width: 1px 0 0;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .identity {
+    min-height: 0;
+    padding: 10px 10px 6px;
+    align-items: center;
+  }
+  .logo {
+    width: 48px;
+    height: 48px;
+  }
+  .spine {
+    container-type: normal;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .name {
+    writing-mode: horizontal-tb;
+    font-size: clamp(22px, 7vw, 34px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .facts div:nth-child(n + 3) {
+    display: none;
+  }
+  .related {
+    display: none;
+  }
+  .actions {
+    flex-direction: row;
+    padding: 8px 10px 10px;
+  }
+  .primary,
+  .secondary {
+    flex: 1;
+    justify-content: center;
+    height: 36px;
+  }
+}

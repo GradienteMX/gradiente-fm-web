@@ -1,0 +1,96 @@
+.lista {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  padding: 96px var(--gutter) 64px;
+  touch-action: pan-y;
+}
+
+.head {
+  max-width: 720px;
+  margin-bottom: 28px;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.title {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 120, 'wght' 360;
+  font-size: clamp(26px, 3.4vw, 40px);
+  line-height: 1;
+}
+
+.sub {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  container-type: inline-size;
+}
+
+.art {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+}
+
+/* The energy line: the piece's band. */
+.art::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--band);
+}
+
+.img {
+  object-fit: cover;
+}
+
+.card[data-archive] .img {
+  filter: grayscale(1) contrast(0.9);
+}
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.name {
+  font-family: var(--font-display);
+  line-height: 0.98;
+  color: var(--ink);
+  overflow-wrap: break-word;
+}

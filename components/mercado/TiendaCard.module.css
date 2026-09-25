@@ -1,0 +1,139 @@
+/* A raised sheet; hovered, it lifts with the one hard shadow. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  text-align: left;
+  border-radius: var(--r-piece);
+  background: var(--paper-2, var(--obs-1));
+  box-shadow: 0 0 0 1px var(--rule, var(--hair-2));
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow:
+    0 0 0 1px var(--ink),
+    4px 4px 0 var(--ink);
+}
+
+.id {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.placa {
+  width: 48px;
+}
+
+.idText {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 88, 'wght' 720;
+  font-size: 21px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kind {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.go {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--rule, var(--hair-3));
+  color: var(--ink);
+}
+
+.card:hover .go,
+.card:focus-visible .go {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+/* What's in the crate now: a strict four-up strip of media frames. */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--well, var(--obs-2));
+  box-shadow: 0 0 0 1px var(--hair-2);
+}
+
+.cover[data-empty] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hair-2);
+}
+
+.coverImg {
+  object-fit: cover;
+}
+
+.desc {
+  font-family: var(--font-read);
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.foot {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding-top: 11px;
+  border-top: 1px solid var(--rule, var(--hair-2));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fact {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.fact b {
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.fact:last-child {
+  margin-left: auto;
+}

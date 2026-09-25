@@ -1,0 +1,245 @@
+.agenda {
+  padding-bottom: 150px;
+}
+
+.frame {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 10px var(--gutter) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── masthead ─────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 26px;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--ink);
+}
+
+.glyph {
+  display: inline-flex;
+  color: var(--ink);
+}
+
+.kickerRule {
+  flex: 0 1 64px;
+  height: 1px;
+  background: var(--rule);
+}
+
+.dek {
+  font-family: var(--font-read);
+  font-size: clamp(17px, 1.35vw, 21px);
+  line-height: 1.45;
+  color: var(--ink-2);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+/* ── controls ─────────────────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1 1 380px;
+  max-width: 640px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 8px 0 16px;
+  border: 1px solid var(--rule);
+  background: var(--paper-3);
+  color: var(--ink-3);
+  cursor: text;
+}
+
+.search:focus-within {
+  background: var(--paper-2);
+  color: var(--ink);
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.search input::placeholder {
+  color: var(--ink-3);
+}
+
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.clear {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+.clear:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.archiveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.archiveBtn:hover {
+  background: var(--paper-3);
+}
+
+/* Pressed: one-step inversion. */
+.archiveBtn[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.archiveDot {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+}
+
+.archiveBtn[data-on] .archiveDot {
+  background: currentColor;
+}
+
+
+/* ── states ───────────────────────────────────────────────────────────── */
+
+.silence {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-2);
+  padding: 4px 0 0 30px;
+}
+
+.none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 56px 0 40px;
+  border-top: 1px solid var(--rule);
+}
+
+.noneTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 126, 'wght' 300;
+  font-size: clamp(24px, 2.6vw, 38px);
+  line-height: 1.02;
+  color: var(--ink);
+  max-width: 30ch;
+}
+
+.noneBody {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+  padding: 26px 0 0 30px;
+  border-top: 1px solid var(--rule);
+}
+
+.end p {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+/* ── archive ──────────────────────────────────────────────────────────── */
+
+.archivo {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 48px;
+  margin-top: 12px;
+  border-top: 2px solid var(--rule);
+  scroll-margin-top: calc(var(--nav-h) + 72px);
+}
+
+.archivoHead {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px 28px;
+  flex-wrap: wrap;
+}
+
+.archivoTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 132, 'wght' 260;
+  font-size: clamp(40px, 5vw, 76px);
+  line-height: 0.86;
+  color: var(--ink);
+}
+
+.archivoSub {
+  flex: 1 1 260px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding-bottom: 6px;
+}
+
+@media (max-width: 760px) {
+  .silence,
+  .end {
+    padding-left: 0;
+  }
+  .archiveBtn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,48 @@
+/* TRAMA tokens with fallbacks to the previous palette. */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+}
+
+.flyer {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--well, var(--obs-2));
+  box-shadow: 0 0 0 1px var(--hair-3);
+}
+
+.flyer:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--rule, var(--ink));
+}
+
+.flyer:disabled {
+  opacity: 0.28;
+}
+
+.flyer[data-on] {
+  box-shadow: 0 0 0 2px var(--rule, var(--ink));
+}
+
+.img {
+  object-fit: cover;
+}
+
+.mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  background: var(--rule, var(--ink));
+  color: var(--paper, var(--obs-0));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

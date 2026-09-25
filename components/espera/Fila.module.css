@@ -1,0 +1,76 @@
+/* La fila — an information graphic: one dot per real row, ink on paper. */
+
+.fila {
+  width: 100%;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.path {
+  fill: none;
+  stroke: var(--hair-3);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.door line {
+  stroke-width: 1;
+}
+
+.hub {
+  fill: var(--paper, var(--obs-0));
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.doorLabel {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  fill: var(--ink);
+}
+
+.dot {
+  fill: var(--ink-3);
+}
+
+.point[data-lit] .dot {
+  fill: var(--ink);
+}
+
+.litRing {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.point[data-mine] .dot {
+  fill: var(--ink);
+}
+
+.meLabel {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  fill: var(--ink);
+}
+
+.empty {
+  text-transform: uppercase;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  fill: var(--ink-2);
+}

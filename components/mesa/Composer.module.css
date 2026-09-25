@@ -1,0 +1,434 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   LA MESA — «TRAMA»: a drafting sheet printed on paper. Rules, mono codes,
+   indexical labels; the piece's energy is the only hue (--m-e = var(--eN)),
+   its type set at that energy (--m-var).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.mesa {
+  --m-e: var(--ink-2);
+  --m-var: 'wdth' 100, 'wght' 440;
+  --m-band: var(--hair-2);
+  --bar-h: 56px;
+  --mono: var(--font-mono, ui-monospace, 'SFMono-Regular', Menlo, monospace);
+  position: relative;
+  min-height: calc(100dvh - var(--nav-h));
+  padding-bottom: 120px;
+}
+
+/* ── the bar ────────────────────────────────────────────────────────────── */
+
+.bar {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 30;
+  height: var(--bar-h);
+  background: var(--paper-2, var(--obs-1));
+  border-top: 1px solid var(--rule, var(--ink));
+  border-bottom: 1px solid var(--rule, var(--ink));
+}
+
+/* The piece's band, printed under the bar: hue = energy. */
+.bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 3px;
+  background: var(--m-band);
+}
+
+.barInner {
+  height: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  flex: none;
+}
+
+.back:hover {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.back svg {
+  transform: rotate(180deg);
+}
+
+.what {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.what small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 6px;
+  background: var(--acid, var(--paper-4));
+  color: var(--ink);
+}
+
+.steps {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  margin: 0 auto;
+  min-width: 0;
+  border-left: 1px solid var(--hair-3);
+}
+
+.step {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 16px;
+  border-right: 1px solid var(--hair-3);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.step:hover {
+  color: var(--ink);
+  background: var(--paper-4, var(--hair));
+}
+
+.step[aria-current='step'] {
+  color: var(--ink);
+}
+
+.stepNum {
+  font-weight: 400;
+  color: var(--ink-4);
+}
+
+.step[aria-current='step'] .stepNum {
+  color: var(--ink);
+}
+
+.stepMiss {
+  width: 6px;
+  height: 6px;
+  background: var(--red, var(--ink-2));
+}
+
+/* Active nav: a red registration bar that moves between the steps. */
+.stepLine {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 4px;
+  width: 10px;
+  background: var(--red, var(--ink));
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.status {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.status[data-pending] {
+  color: var(--ink);
+}
+
+.status[data-pending]::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  background: var(--ink);
+  vertical-align: 1px;
+}
+
+.icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hair-3);
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.icon:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.icon:active:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.icon:disabled {
+  opacity: 0.28;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 6px 0 12px;
+  margin-left: 4px;
+  border: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.close:hover {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+/* ── the table ──────────────────────────────────────────────────────────── */
+
+.frame {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(30px, 4vw, 56px) 0 clamp(22px, 2.6vw, 36px);
+  max-width: 980px;
+}
+
+.headLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.headTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 124, 'wght' 320;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 124px minmax(0, 1fr) minmax(340px, 420px);
+  gap: clamp(24px, 2.6vw, 44px);
+  align-items: start;
+}
+
+.index {
+  position: sticky;
+  top: calc(var(--nav-h) + var(--bar-h) + 28px);
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule, var(--ink));
+}
+
+.indexLabel {
+  padding: 8px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--hair-3);
+}
+
+.indexItem {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 8px;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hair);
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--ink-3);
+}
+
+.indexItem:hover,
+.indexItem[data-on] {
+  color: var(--ink);
+}
+
+.indexItem span:first-child {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-4);
+}
+
+.indexItem[data-on] span:first-child {
+  color: var(--ink);
+}
+
+.indexDot {
+  width: 6px;
+  height: 6px;
+  background: var(--red, var(--ink-2));
+  align-self: center;
+}
+
+.form {
+  min-width: 0;
+  padding: clamp(24px, 2.8vw, 40px) clamp(20px, 2.8vw, 44px) 28px;
+  border: 1px solid var(--rule, var(--ink));
+  background: var(--paper-2, var(--obs-1));
+}
+
+.side {
+  position: sticky;
+  top: calc(var(--nav-h) + var(--bar-h) + 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100dvh - var(--nav-h) - var(--bar-h) - 40px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: 12px;
+}
+
+.side::-webkit-scrollbar {
+  display: none;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 26px;
+  border-top: 1px solid var(--rule, var(--ink));
+}
+
+.footHint {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 1320px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  }
+  .index {
+    display: none;
+  }
+}
+
+@media (max-width: 1040px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .what small {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .stepLabel,
+  .status,
+  .what,
+  .closeLabel {
+    display: none;
+  }
+}
+
+/* Phone: the bar keeps every control (back, all steps, undo/redo, close)
+   by dropping words, never controls. */
+@media (max-width: 560px) {
+  .barInner {
+    gap: 10px;
+  }
+  .backLabel {
+    display: none;
+  }
+  .back {
+    padding: 0 8px;
+  }
+  .step {
+    padding: 0 11px;
+  }
+  .tools {
+    gap: 4px;
+  }
+  .close {
+    margin-left: 2px;
+    padding: 0 5px;
+  }
+}
+
+@media (max-width: 380px) {
+  .step {
+    padding: 0 8px;
+  }
+}

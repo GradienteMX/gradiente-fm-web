@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isDevOpen } from '@/lib/devOpen'
 
 // Per-request session refresh + auth-gating for the whole site.
 //
@@ -11,14 +12,14 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Allowlist for anonymous traffic:
 //   - /welcome itself (the only page they're meant to see)
 //   - /api/auth/*  (login + signup endpoints)
-//   - static assets / _next chunks (already excluded by middleware.ts matcher)
+//   - static assets / _next chunks (already excluded by the proxy.ts matcher)
 //
 // API routes other than /api/auth/* fall through. They each enforce their
 // own auth in their handlers (return 401), which is the right shape for
 // JSON consumers — middleware-redirecting them to HTML would corrupt the
 // response.
 //
-// Wired in via `middleware.ts` at the project root.
+// Wired in via `proxy.ts` at the project root (Next 16 renamed middleware → proxy).
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -63,10 +64,13 @@ export async function updateSession(request: NextRequest) {
   const isDevLab =
     process.env.NODE_ENV !== 'production' &&
     (path.startsWith('/lab') || path === '/mapa')
+  // Dev-only preview of the real world without an account (lib/devOpen.ts:
+  // GRADIENTE_DEV_OPEN=1 under `next dev`; constant-false in production).
+  const devOpen = isDevOpen()
 
   // Anonymous: redirect every page request to /welcome (API routes pass
   // through and self-401 in their handlers).
-  if (!user && !isApi && !isWelcome && !isEspera && !isDevLab) {
+  if (!user && !isApi && !isWelcome && !isEspera && !isDevLab && !devOpen) {
     const url = request.nextUrl.clone()
     url.pathname = '/welcome'
     url.search = ''

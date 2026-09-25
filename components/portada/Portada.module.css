@@ -1,0 +1,406 @@
+/* PORTADA — one printed sheet: headline column | plate. */
+
+.portada {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── indexical head: 01 / PORTADA — … ────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.index {
+  color: var(--ink);
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.name {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--chip, var(--ink));
+  color: var(--chip-on, var(--paper));
+  font-weight: 700;
+}
+
+.sub {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.outside {
+  padding: 1px 6px;
+  outline: 1px dashed var(--hair-3);
+  outline-offset: -1px;
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.count {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav {
+  display: inline-flex;
+  align-self: center;
+}
+
+.nav button {
+  width: 30px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.nav button + button {
+  margin-left: -1px;
+}
+
+.nav button:hover {
+  background: var(--paper-4);
+}
+
+.nav button:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.flip {
+  transform: scaleX(-1);
+}
+
+.unpin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: center;
+  height: 22px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--red-ink);
+  outline: 1px solid var(--red-ink);
+  outline-offset: -1px;
+}
+
+.unpin:hover {
+  background: var(--red);
+  color: var(--paper);
+  outline-color: var(--red);
+}
+
+/* ── the sheet ───────────────────────────────────────────────────────── */
+
+.sheet {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  min-height: clamp(340px, 34vw, 520px);
+  background: var(--paper-2);
+}
+
+.sheet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 26px 22px;
+  min-width: 0;
+  container-type: inline-size;
+  border-right: 1px solid var(--rule);
+}
+
+.format {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.code {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 19px;
+  padding: 0 6px;
+  background: var(--stock);
+  color: var(--stock-on);
+  font-weight: 700;
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.sel {
+  color: var(--red-ink);
+}
+
+.title {
+  font-family: var(--font-display);
+  line-height: 0.9;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  margin-top: auto;
+}
+
+.title button {
+  text-align: left;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+.title button:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.12em;
+}
+
+.dek {
+  font-family: var(--font-read);
+  font-size: clamp(15px, 1.15vw, 18px);
+  line-height: 1.45;
+  color: var(--ink-2);
+  max-width: 50ch;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.byline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.band {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 9px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.bandSwatch {
+  width: 26px;
+  height: 9px;
+  background: var(--band);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 14px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  transition: gap var(--t-base) var(--ease-platen);
+}
+
+.cta:hover {
+  gap: 16px;
+}
+
+.cta:active {
+  background: var(--paper);
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+/* ── the plate ───────────────────────────────────────────────────────── */
+
+.art {
+  position: relative;
+  overflow: hidden;
+  background: var(--well);
+  min-height: 280px;
+}
+
+.artHit {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* The plates stop above the energy rule so a crossing never covers it. */
+.plates {
+  position: absolute;
+  inset: 0 0 7px 0;
+}
+
+.img {
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 240ms steps(3, jump-end);
+}
+
+.img[data-on] {
+  opacity: 1;
+}
+
+.blank {
+  position: absolute;
+  inset: 0;
+  background-color: var(--stock);
+}
+
+.portada[data-outside] .img {
+  filter: grayscale(1) contrast(0.9);
+}
+
+.portada[data-outside] .title,
+.portada[data-outside] .dek {
+  color: var(--ink-3);
+}
+
+.energy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  z-index: 3;
+  background: var(--band);
+  border-top: 1px solid var(--rule);
+}
+
+.portada[data-outside] .energy {
+  filter: grayscale(1);
+}
+
+/* ── rail: dwell + numbered tabs ─────────────────────────────────────── */
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dwell {
+  position: relative;
+  flex: 1;
+  height: 1px;
+  background: var(--hair-2);
+  overflow: hidden;
+}
+
+.dwellFill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: var(--ink);
+}
+
+.tabs {
+  display: flex;
+}
+
+.tab {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab + .tab {
+  margin-left: -1px;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab[data-on] {
+  background: var(--ink);
+  color: var(--paper);
+  outline-color: var(--ink);
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .sheet {
+    grid-template-columns: 1fr;
+  }
+  .text {
+    order: 2;
+    border-right: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .art {
+    aspect-ratio: 4 / 3;
+    /* aspect-ratio drives the height here; a min-height would widen it. */
+    min-height: 0;
+  }
+  .sub {
+    display: none;
+  }
+}

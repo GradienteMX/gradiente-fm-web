@@ -1,0 +1,381 @@
+.recepcion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 52px;
+  align-items: start;
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 112, 'wght' 520;
+  font-size: clamp(30px, 3.4vw, 50px);
+  line-height: 0.94;
+  letter-spacing: -0.01em;
+}
+
+.sub {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* This whole sheet is private: cobalt marks it. */
+.private {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  padding: 3px 7px;
+  border: 1px solid var(--cobalt);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cobalt);
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.controls > [role='tablist'] {
+  border-bottom: 0;
+}
+
+.window {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.since {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.lead {
+  max-width: 46ch;
+  font-family: var(--font-read);
+  font-size: clamp(19px, 1.7vw, 23px);
+  line-height: 1.4;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 16px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.blockTitle {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── margin notes: the real limits, said plainly ────────────────────── */
+
+.margin {
+  position: sticky;
+  top: calc(var(--nav-h) + 76px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0 0 22px;
+  border-left: 1px solid var(--rule);
+}
+
+/* ── per piece ──────────────────────────────────────────────────────── */
+
+.obras {
+  display: flex;
+  flex-direction: column;
+  margin: -4px -18px -4px;
+}
+
+.obra {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--hair-2);
+  animation: rowIn 0.7s var(--ease-materia) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.obras li:first-child {
+  border-top: 0;
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.thumb {
+  position: relative;
+  width: 56px;
+  height: 70px;
+  overflow: hidden;
+  background: var(--well);
+}
+
+.thumbImg {
+  object-fit: cover;
+}
+
+.thumbPlate {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+}
+
+.thumbLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--band);
+}
+
+.obraBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.obraHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.obraTitle {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* HL words: private, cobalt. */
+.hl {
+  flex: none;
+  padding: 2px 5px;
+  border: 1px solid var(--cobalt);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--cobalt);
+  white-space: nowrap;
+}
+
+.obraMeta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.stackBar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin-top: 4px;
+  overflow: hidden;
+  background: var(--paper-3);
+}
+
+.stackBar span {
+  height: 100%;
+  transform-origin: left;
+  animation: grow 1s var(--ease-materia) both;
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Four gestures, four textures of one ink — hue stays reserved for energy. */
+.stackBar span[data-k='click'],
+.legend span[data-k='click'] i {
+  background: var(--ink-4);
+}
+
+.stackBar span[data-k='open'],
+.legend span[data-k='open'] i {
+  background: var(--ink-3);
+}
+
+.stackBar span[data-k='save'],
+.legend span[data-k='save'] i {
+  background: var(--ink);
+}
+
+.stackBar span[data-k='comment'],
+.legend span[data-k='comment'] i {
+  background: repeating-linear-gradient(135deg, var(--ink) 0 2px, var(--paper-3) 2px 4px);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 12px;
+  height: 8px;
+}
+
+.legend b {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.legend span[data-zero] {
+  color: var(--ink-4);
+}
+
+.legend span[data-zero] i {
+  opacity: 0.35;
+}
+
+/* ── pieces with nothing recorded ───────────────────────────────────── */
+
+.quiet {
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.quietHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.quietList {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.quietList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.quietTitle {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1100px) {
+  .recepcion {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .margin {
+    position: static;
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obra,
+  .stackBar span {
+    animation: none;
+  }
+}

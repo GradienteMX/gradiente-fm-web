@@ -16,6 +16,7 @@ async function remove(options: {
   lookupError?: boolean; authError?: boolean; malformed?: boolean; id?: string
 } = {}) {
   const deleted: string[] = []
+  const expired: string[] = []
   let adminClients = 0
   const json = (body: unknown, init?: { status: number }) => ({ body, status: init?.status ?? 200 })
   const query = {
@@ -30,6 +31,8 @@ async function remove(options: {
     exports, console: { error: () => {} },
     require: (name: string) => {
       if (name === 'next/server') return { NextResponse: { json } }
+      if (name === 'next/cache') return { revalidateTag: (tag: string) => expired.push(tag) }
+      if (name === '@/lib/data/tags') return { WORLD_TAG: 'world' }
       if (name === '@/lib/supabase/server') return {}
       if (name === '@/lib/api/requireAdmin') return {
         requireAdmin: async () => options.denied
@@ -52,7 +55,7 @@ async function remove(options: {
     if (options.malformed) throw new Error('invalid json')
     return { username: options.username ?? 'listener' }
   } }, { params: { id: options.id ?? targetId } })
-  return { response, deleted, adminClients }
+  return { response, deleted, adminClients, expired }
 }
 
 for (const denied of [401, 403]) {
@@ -74,14 +77,18 @@ for (const [name, options, status] of [
     const result = await remove(options)
     assert.equal(result.response.status, status)
     assert.equal(result.adminClients, 0)
+    assert.deepEqual(result.expired, [])
   })
 }
 test('deletes the confirmed Auth account', async () => {
   const result = await remove()
   assert.equal(result.response.status, 200)
   assert.deepEqual(result.deleted, [targetId])
+  // The person leaves the public world every member reads.
+  assert.deepEqual(result.expired, ['world'])
 })
 test('reports Auth deletion failure instead of success', async () => {
   const result = await remove({ authError: true })
   assert.equal(result.response.status, 500)
+  assert.deepEqual(result.expired, [])
 })

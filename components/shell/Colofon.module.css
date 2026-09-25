@@ -1,0 +1,136 @@
+/* COLOFÓN — the printer's note: rules, mono, one legend. */
+
+.colofon {
+  margin-top: 80px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 26px var(--gutter) 120px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'lead legend casa'
+    'imprint imprint imprint';
+  gap: 28px 40px;
+  align-items: start;
+}
+
+.lead {
+  grid-area: lead;
+  display: grid;
+  gap: 10px;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 130, 'wght' 800;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.reg {
+  color: var(--red);
+}
+
+.what {
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.legend {
+  grid-area: legend;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ramp {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  height: 14px;
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.ramp span {
+  box-shadow: inset -1px 0 0 var(--paper);
+}
+
+.ramp span:last-child {
+  box-shadow: none;
+}
+
+.caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.casa {
+  grid-area: casa;
+  display: grid;
+  min-width: 190px;
+  border-top: 1px solid var(--rule);
+}
+
+.casa a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hair-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.casa a:hover {
+  background: var(--paper-3);
+}
+
+.idx {
+  color: var(--ink-4);
+}
+
+.imprint {
+  grid-area: imprint;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'lead'
+      'legend'
+      'casa'
+      'imprint';
+  }
+}

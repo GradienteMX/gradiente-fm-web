@@ -1,5 +1,7 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { fetchFranjaRefsByItemIds } from '@/lib/franjaRefs'
+import { chunked, readAll } from '@/lib/data/rows'
 import type { Database, Json } from '@/lib/supabase/database.types'
 import type {
   ArticleBlock,
@@ -55,11 +57,34 @@ type ItemRowWithPoll = ItemRow & {
   marketplace_listings: MarketplaceListingRow[] | null
 }
 
+// The readers below run with either the request's cookie client (RLS as the
+// caller) or the service-role client (lib/data/world.ts builds the cached
+// public snapshot with it, and there are no cookies inside a cache scope).
+// Every query filters `published` explicitly, so both see the same rows.
+type Db = SupabaseClient<Database>
+
 // Listings are pulled via the same SELECT so consumers don't need a second
 // round-trip. The catalog + overlay both render off this one query. Franja
 // attribution is resolved separately — see `attachFranja` below.
-const ITEMS_SELECT =
-  '*, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at), marketplace_listings(*)'
+//
+// Columns are named, not `*`: exactly what rowToContentItem reads. `*` also
+// shipped search_tsv (~290 KB of tsvector text across the published set, a
+// fifth of the payload) plus seed / published / created_at / updated_at /
+// ra_last_seen_at, none of which a ContentItem carries — egress the project
+// has already paid for once. A new column rowToContentItem maps must be added
+// here too; one it doesn't map never needed to travel.
+const ITEM_COLUMNS = [
+  'id, slug, type, title, subtitle, excerpt, vibe_min, vibe_max, genres, tags, format, subject_kind, country, year',
+  'image_url, published_at, date, end_date, expires_at, source, external_id, elevated',
+  'venue, venue_city, artists, ticket_url, price',
+  'mix_url, embeds, links, duration, tracklist, mix_series, recorded_in, mix_format, bpm_range, musical_key, mix_status',
+  'author, read_time, editorial, pinned, body_preview, article_body, footnotes, hero_caption',
+  'franja_kind, franja_url, franja_last_updated, verified, sponsored, featured_item_id, franja_id, created_by',
+  'marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency',
+  'hp, hp_last_updated_at, harvested_at, harvested_amount, hp_decay_multiplier',
+].join(', ')
+
+const ITEMS_SELECT = `${ITEM_COLUMNS}, poll:polls(id, kind, prompt, choices, multi_choice, closes_at, created_at), marketplace_listings(*)`
 
 // Map a marketplace_listings row to the camelCase MarketplaceListing
 // type the rest of the app consumes. Centralized so each row mapper
@@ -338,21 +363,22 @@ type VibeCheckAggregateRow = {
 }
 
 async function fetchVibeCheckAggregates(
+  supabase: Db,
   itemIds: string[],
 ): Promise<Map<string, VibeCheckAggregateRow>> {
   const out = new Map<string, VibeCheckAggregateRow>()
   if (itemIds.length === 0) return out
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('vibe_check_aggregates')
-    .select('item_id, check_count, median_min, median_max')
-    .in('item_id', itemIds)
-  if (error) {
-    console.error('[fetchVibeCheckAggregates] Supabase error:', error)
-    return out
-  }
-  for (const row of (data ?? []) as VibeCheckAggregateRow[]) {
-    out.set(row.item_id, row)
+  const pages = await Promise.all(
+    chunked(itemIds).map((ids) =>
+      supabase.from('vibe_check_aggregates').select('item_id, check_count, median_min, median_max').in('item_id', ids),
+    ),
+  )
+  for (const { data, error } of pages) {
+    if (error) {
+      console.error('[fetchVibeCheckAggregates] Supabase error:', error)
+      continue
+    }
+    for (const row of (data ?? []) as VibeCheckAggregateRow[]) out.set(row.item_id, row)
   }
   return out
 }
@@ -381,20 +407,18 @@ function attachAggregate(
 // behind migrations (PGRST200 errors on first deploy). The two-query
 // approach is cache-agnostic.
 
-async function fetchFranjasByIds(ids: string[]): Promise<Map<string, EmbeddedFranja>> {
+async function fetchFranjasByIds(supabase: Db, ids: string[]): Promise<Map<string, EmbeddedFranja>> {
   const out = new Map<string, EmbeddedFranja>()
   if (ids.length === 0) return out
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('items')
-    .select('id, title, slug, franja_kind, marketplace_enabled')
-    .in('id', ids)
-  if (error) {
-    console.error('[fetchFranjasByIds] Supabase error:', error)
-    return out
-  }
-  for (const row of (data ?? []) as EmbeddedFranja[]) {
-    out.set(row.id, row)
+  const pages = await Promise.all(
+    chunked(ids).map((part) => supabase.from('items').select('id, title, slug, franja_kind, marketplace_enabled').in('id', part)),
+  )
+  for (const { data, error } of pages) {
+    if (error) {
+      console.error('[fetchFranjasByIds] Supabase error:', error)
+      continue
+    }
+    for (const row of (data ?? []) as EmbeddedFranja[]) out.set(row.id, row)
   }
   return out
 }
@@ -429,18 +453,29 @@ function attachFranja(
 //
 // Pages still apply their own filters (filterForHome, etc.) on the result.
 export async function getItems(): Promise<ContentItem[]> {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('items')
-    .select(ITEMS_SELECT)
-    .eq('published', true)
-    .order('published_at', { ascending: false })
-
-  if (error) {
+  try {
+    return await fetchPublishedItems(await createClient())
+  } catch (error) {
     console.error('[getItems] Supabase error:', error)
     return []
   }
-  const items = ((data ?? []) as unknown as ItemRowWithPoll[]).map(rowToContentItem)
+}
+
+// The same read with the client chosen by the caller, and one difference that
+// matters to a cache: a failed main query THROWS instead of returning [].
+// lib/data/world.ts wraps this in unstable_cache, and an empty array that came
+// from an outage would otherwise be cached as "the site has no content" for a
+// whole revalidate window. The follow-up merges (aggregates, attribution,
+// entities) still degrade to "not attached", exactly as getItems always did.
+export async function fetchPublishedItems(supabase: Db): Promise<ContentItem[]> {
+  // Paged: past PostgREST's row cap the oldest pieces would otherwise vanish
+  // without an error. `id` completes the order so pages never overlap.
+  const { rows, error } = await readAll<ItemRowWithPoll>((from, to) =>
+    supabase.from('items').select(ITEMS_SELECT).eq('published', true).order('published_at', { ascending: false }).order('id').range(from, to),
+  )
+
+  if (error) throw new Error(`[fetchPublishedItems] ${error.message}`)
+  const items = rows.map(rowToContentItem)
   // Parallel fetches: vibe-check aggregates, franja-attribution, AND
   // creator-attribution rows. All three look up by ids drawn from the items
   // array; can run concurrently.
@@ -451,10 +486,10 @@ export async function getItems(): Promise<ContentItem[]> {
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
   const [aggregates, franjas, creators, entities, franjaRefs] = await Promise.all([
-    fetchVibeCheckAggregates(items.map((i) => i.id)),
-    fetchFranjasByIds(franjaIds),
-    fetchCreatorsByIds(creatorIds),
-    fetchEntitiesByItemIds(items.map((i) => i.id)),
+    fetchVibeCheckAggregates(supabase, items.map((i) => i.id)),
+    fetchFranjasByIds(supabase, franjaIds),
+    fetchCreatorsByIds(supabase, creatorIds),
+    fetchEntitiesByItemIds(supabase, items.map((i) => i.id)),
     fetchFranjaRefsByItemIds(supabase, items.map((i) => i.id)),
   ])
   return items
@@ -472,7 +507,7 @@ export async function getItems(): Promise<ContentItem[]> {
 // shared fetchEntitiesByItemIds — so the public home feed stays decoupled from
 // 0039 being applied. Admin-read RLS (items_staff_read) covers the items query.
 export async function getAllEventsAdmin(): Promise<ContentItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('items')
     .select(ITEMS_SELECT)
@@ -542,7 +577,7 @@ export async function getAllEventsAdmin(): Promise<ContentItem[]> {
 // logged-in viewer read published rows, so this works for the public
 // profile page without an auth context.
 export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('items')
     .select(ITEMS_SELECT)
@@ -564,10 +599,10 @@ export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]
   )
   // All items here share the same creator (`userId`), so resolve once.
   const [aggregates, franjas, creators, entities] = await Promise.all([
-    fetchVibeCheckAggregates(items.map((i) => i.id)),
-    fetchFranjasByIds(franjaIds),
-    fetchCreatorsByIds([userId]),
-    fetchEntitiesByItemIds(items.map((i) => i.id)),
+    fetchVibeCheckAggregates(supabase, items.map((i) => i.id)),
+    fetchFranjasByIds(supabase, franjaIds),
+    fetchCreatorsByIds(supabase, [userId]),
+    fetchEntitiesByItemIds(supabase, items.map((i) => i.id)),
   ])
   return items
     .map((i) => attachAggregate(i, aggregates.get(i.id)))
@@ -580,7 +615,7 @@ export async function getItemsByCreatedBy(userId: string): Promise<ContentItem[]
 // per-entity page `/e/[slug]`. Two-query: resolve the item ids from the
 // join, then load the items with the same merge chain as `getItems`.
 export async function getItemsByEntity(entityId: string): Promise<ContentItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: links, error: linkErr } = await supabase
     .from('item_entities')
     .select('item_id')
@@ -614,10 +649,10 @@ export async function getItemsByEntity(entityId: string): Promise<ContentItem[]>
     new Set(items.map((i) => i.createdById).filter((id): id is string => !!id)),
   )
   const [aggregates, franjas, creators, entities, franjaRefs] = await Promise.all([
-    fetchVibeCheckAggregates(items.map((i) => i.id)),
-    fetchFranjasByIds(franjaIds),
-    fetchCreatorsByIds(creatorIds),
-    fetchEntitiesByItemIds(items.map((i) => i.id)),
+    fetchVibeCheckAggregates(supabase, items.map((i) => i.id)),
+    fetchFranjasByIds(supabase, franjaIds),
+    fetchCreatorsByIds(supabase, creatorIds),
+    fetchEntitiesByItemIds(supabase, items.map((i) => i.id)),
     fetchFranjaRefsByItemIds(supabase, items.map((i) => i.id)),
   ])
   return items
@@ -634,22 +669,20 @@ export async function getItemsByEntity(entityId: string): Promise<ContentItem[]>
 // attach to each item. Powers the @username chip + link to /u/[username]
 // rendered by ContentCard / overlays.
 
-async function fetchCreatorsByIds(ids: string[]): Promise<Map<string, EmbeddedCreator>> {
+async function fetchCreatorsByIds(supabase: Db, ids: string[]): Promise<Map<string, EmbeddedCreator>> {
   const out = new Map<string, EmbeddedCreator>()
   if (ids.length === 0) return out
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, username, display_name, avatar_url')
-    .in('id', ids)
-  if (error) {
-    console.error('[fetchCreatorsByIds] Supabase error:', error)
-    return out
-  }
-  // `avatar_url` is a post-0017 column; cast through unknown for the same
-  // stale-generated-types reason as franja / created_by handling.
-  for (const row of (data ?? []) as unknown as EmbeddedCreator[]) {
-    out.set(row.id, row)
+  const pages = await Promise.all(
+    chunked(ids).map((part) => supabase.from('users').select('id, username, display_name, avatar_url').in('id', part)),
+  )
+  for (const { data, error } of pages) {
+    if (error) {
+      console.error('[fetchCreatorsByIds] Supabase error:', error)
+      continue
+    }
+    // `avatar_url` is a post-0017 column; cast through unknown for the same
+    // stale-generated-types reason as franja / created_by handling.
+    for (const row of (data ?? []) as unknown as EmbeddedCreator[]) out.set(row.id, row)
   }
   return out
 }
@@ -679,44 +712,34 @@ function attachCreator(
 // chips + the per-entity filter. See migration 0029.
 
 async function fetchEntitiesByItemIds(
+  supabase: Db,
   itemIds: string[],
 ): Promise<Map<string, EntityRef[]>> {
   const out = new Map<string, EntityRef[]>()
   if (itemIds.length === 0) return out
-  const supabase = createClient()
 
-  const { data: links, error: linkError } = await supabase
-    .from('item_entities')
-    .select('item_id, entity_id, relation')
-    .in('item_id', itemIds)
-  if (linkError) {
-    console.error('[fetchEntitiesByItemIds] links error:', linkError)
-    return out
+  const linkPages = await Promise.all(
+    chunked(itemIds).map((ids) => supabase.from('item_entities').select('item_id, entity_id, relation').in('item_id', ids)),
+  )
+  const linkRows: { item_id: string; entity_id: string; relation: EntityRelation }[] = []
+  for (const { data: links, error: linkError } of linkPages) {
+    if (linkError) {
+      console.error('[fetchEntitiesByItemIds] links error:', linkError)
+      return out
+    }
+    linkRows.push(...((links ?? []) as { item_id: string; entity_id: string; relation: EntityRelation }[]))
   }
-  const linkRows = (links ?? []) as {
-    item_id: string
-    entity_id: string
-    relation: EntityRelation
-  }[]
   if (linkRows.length === 0) return out
 
   const entityIds = Array.from(new Set(linkRows.map((l) => l.entity_id)))
-  const { data: ents, error: entError } = await supabase
-    .from('entities')
-    .select('id, kind, name, slug')
-    .in('id', entityIds)
-  if (entError) {
-    console.error('[fetchEntitiesByItemIds] entities error:', entError)
-    return out
-  }
+  const entPages = await Promise.all(chunked(entityIds).map((ids) => supabase.from('entities').select('id, kind, name, slug').in('id', ids)))
   const byId = new Map<string, { id: string; kind: EntityKind; name: string; slug: string }>()
-  for (const e of (ents ?? []) as {
-    id: string
-    kind: EntityKind
-    name: string
-    slug: string
-  }[]) {
-    byId.set(e.id, e)
+  for (const { data: ents, error: entError } of entPages) {
+    if (entError) {
+      console.error('[fetchEntitiesByItemIds] entities error:', entError)
+      return out
+    }
+    for (const e of (ents ?? []) as { id: string; kind: EntityKind; name: string; slug: string }[]) byId.set(e.id, e)
   }
 
   for (const link of linkRows) {
@@ -757,7 +780,7 @@ function attachFranjaRefs(
 
 // Single item by slug — used by overlay deep-links and `/[type]/[slug]` pages.
 export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('items')
     .select(ITEMS_SELECT)
@@ -771,10 +794,10 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
   if (!data) return null
   const item = rowToContentItem(data as unknown as ItemRowWithPoll)
   const [aggregates, franjas, creators, entities, franjaRefs] = await Promise.all([
-    fetchVibeCheckAggregates([item.id]),
-    item.franjaId ? fetchFranjasByIds([item.franjaId]) : Promise.resolve(new Map()),
-    item.createdById ? fetchCreatorsByIds([item.createdById]) : Promise.resolve(new Map()),
-    fetchEntitiesByItemIds([item.id]),
+    fetchVibeCheckAggregates(supabase, [item.id]),
+    item.franjaId ? fetchFranjasByIds(supabase, [item.franjaId]) : Promise.resolve(new Map()),
+    item.createdById ? fetchCreatorsByIds(supabase, [item.createdById]) : Promise.resolve(new Map()),
+    fetchEntitiesByItemIds(supabase, [item.id]),
     fetchFranjaRefsByItemIds(supabase, [item.id]),
   ])
   const withAgg = attachAggregate(item, aggregates.get(item.id))
@@ -790,7 +813,7 @@ export async function getItemBySlug(slug: string): Promise<ContentItem | null> {
 // cards only need base item fields. `franja_id` is a post-0015 column; cast
 // bypasses the stale generated types (same as getItemsByCreatedBy).
 export async function getItemsByFranja(franjaId: string): Promise<ContentItem[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('items')
     .select(ITEMS_SELECT)

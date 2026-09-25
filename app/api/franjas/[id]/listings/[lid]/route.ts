@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // /api/franjas/[id]/listings/[lid] — single-listing endpoint.
 // PATCH  → partial update of an existing listing.
@@ -47,7 +49,7 @@ interface UpdateBody {
 }
 
 async function gateFranjaWrite(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   franjaId: string,
 ) {
   const {
@@ -73,9 +75,10 @@ async function gateFranjaWrite(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; lid: string } },
+  { params: paramsP }: { params: Promise<{ id: string; lid: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateFranjaWrite(supabase, params.id)
   if ('error' in gate) return gate.error
 
@@ -176,14 +179,17 @@ export async function PATCH(
   if (!data) {
     return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
   }
+  // Listings ride on their franja in the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ listing: data })
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string; lid: string } },
+  { params: paramsP }: { params: Promise<{ id: string; lid: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateFranjaWrite(supabase, params.id)
   if ('error' in gate) return gate.error
 
@@ -199,5 +205,7 @@ export async function DELETE(
   if (!data) {
     return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
   }
+  // The listing and its questions leave the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ ok: true })
 }

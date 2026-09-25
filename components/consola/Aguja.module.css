@@ -1,0 +1,111 @@
+/*
+ * The needle reads its colors from the context it sits in: a well (the
+ * capsule sets --aguja-*) or a paper sheet (the defaults). Tokens only.
+ */
+
+.aguja {
+  --p: 0;
+  --h: 1px;
+  --needle: 10px;
+  --rail: var(--aguja-rail, var(--hair-2));
+  --rail-hi: var(--aguja-rail-hi, var(--hair-3));
+  --needle-c: var(--aguja-needle, var(--ink));
+  position: relative;
+  height: 16px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline-offset: 5px;
+}
+
+.aguja:not([data-ready]) {
+  cursor: default;
+}
+
+.aguja[data-variant='sala'],
+.aguja[data-variant='sesion'] {
+  --h: 2px;
+  --needle: 14px;
+  height: 26px;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--h);
+  transform: translateY(-50%);
+  background: var(--rail);
+  overflow: hidden;
+}
+
+/* The elapsed part, flat, in the energy of what sounds. */
+.lit {
+  position: absolute;
+  inset: 0;
+  background: var(--e, var(--needle-c));
+  clip-path: inset(0 calc((1 - var(--p)) * 100%) 0 0);
+}
+
+.aguja[data-ready]:hover .rail,
+.aguja[data-ready]:focus-visible .rail,
+.aguja[data-drag] .rail {
+  height: calc(var(--h) + 2px);
+  background: var(--rail-hi);
+}
+
+.needle {
+  position: absolute;
+  left: calc(var(--p) * 100%);
+  top: 50%;
+  width: 2px;
+  height: var(--needle);
+  margin-left: -1px;
+  transform: translateY(-50%);
+  background: var(--needle-c);
+}
+
+.aguja:not([data-ready]) .needle {
+  opacity: 0.35;
+}
+
+.aguja[data-ready]:hover .needle,
+.aguja[data-drag] .needle {
+  height: calc(var(--needle) + 4px);
+}
+
+.ghost {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: calc(var(--needle) + 2px);
+  margin-left: -0.5px;
+  transform: translateY(-50%);
+  background: var(--needle-c);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ghost em {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 5px;
+  border-radius: var(--r-piece);
+  background: var(--paper-2, var(--obs-2));
+  border: 1px solid var(--rule, var(--hair-2));
+  font-family: var(--font-mono, var(--font-ui));
+  font-style: normal;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.sep {
+  padding: 0 0.35em;
+  opacity: 0.5;
+}

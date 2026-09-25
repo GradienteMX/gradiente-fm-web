@@ -1,0 +1,428 @@
+/* HORIZONTE — the energy scale, printed: eleven swatches, two ink bars. */
+
+.horizonte {
+  position: relative;
+  z-index: 5;
+  padding: 12px 0 8px;
+  /* A cap's tag near the scale's end may hang past the page edge; cut it
+     here rather than let it widen the page. */
+  overflow-x: clip;
+}
+
+.dock {
+  position: fixed;
+  top: var(--nav-h);
+  left: 0;
+  right: 0;
+  z-index: 35;
+  padding: 4px 0 8px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  transform: translateY(calc(-100% - var(--nav-h)));
+  transition: transform 260ms var(--ease-platen);
+  pointer-events: none;
+}
+
+.dock[data-on] {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.inner,
+.dockInner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.dockInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 34px;
+}
+
+.readout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.label {
+  color: var(--ink-3);
+}
+
+.code {
+  padding: 2px 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.reading {
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.reset {
+  height: 20px;
+  padding: 0 7px;
+  font: inherit;
+  color: var(--ink-2);
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+}
+
+.reset:hover {
+  color: var(--ink);
+  outline-color: var(--rule);
+}
+
+.reset:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* The instrument's side padding is exactly half a swatch: the scale runs
+   0..10 between swatch centres and the swatches fill the full width. */
+.instrument {
+  position: relative;
+  padding: 0 calc(100% / 22);
+}
+
+.instrument[data-compact] .track {
+  height: 26px;
+}
+
+.instrument[data-compact] .swatches {
+  height: 10px;
+  margin-top: -5px;
+}
+
+.instrument[data-compact] .capBody {
+  height: 22px;
+}
+
+.instrument[data-compact] .band {
+  margin-top: 8px;
+  height: 2px;
+}
+
+/* ── station names: the scale, each set at its own energy ─────────────── */
+
+.names {
+  position: relative;
+  height: 30px;
+  margin: 10px 0 2px;
+}
+
+.name {
+  position: absolute;
+  bottom: 3px;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: clamp(11px, 1.15vw, 17px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: var(--ink-4);
+  user-select: none;
+  padding: 2px 0;
+}
+
+.name:hover {
+  color: var(--ink-2);
+}
+
+.name[data-in] {
+  color: var(--ink);
+}
+
+/* ── the track ─────────────────────────────────────────────────────────── */
+
+.track {
+  position: relative;
+  height: 46px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.track[data-grab='band'] {
+  cursor: grabbing;
+}
+
+.swatches {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  top: 50%;
+  height: 22px;
+  margin-top: -11px;
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.swatches span {
+  background: color-mix(in srgb, var(--s) 22%, var(--paper));
+  box-shadow: inset -1px 0 0 var(--paper);
+  transition: background 160ms steps(2, jump-end);
+}
+
+.swatches span:last-child {
+  box-shadow: none;
+}
+
+.swatches span[data-in] {
+  background: var(--s);
+}
+
+/* The selection, ruled under the swatches. */
+.band {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  margin-top: 14px;
+  background: var(--ink);
+  cursor: grab;
+}
+
+/* ── caps: two ink bars ───────────────────────────────────────────────── */
+
+.cap {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 46px;
+  margin: -23px 0 0 -11px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  outline: none;
+}
+
+.capBody {
+  position: relative;
+  width: 5px;
+  height: 36px;
+  background: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--paper);
+  transition: width 120ms steps(2, jump-end);
+}
+
+.cap:hover .capBody,
+.cap:focus-visible .capBody,
+.cap[data-active] .capBody {
+  width: 8px;
+}
+
+.cap:focus-visible .capBody {
+  outline: 2px solid var(--red);
+  outline-offset: 3px;
+}
+
+.cap[data-active] {
+  cursor: grabbing;
+}
+
+.capTag {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  background: var(--paper-2);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cap[data-active] .capTag,
+.cap:focus-visible .capTag {
+  opacity: 1;
+}
+
+.instrument:not([data-compact]) .cap .capTag {
+  bottom: auto;
+  top: calc(100% + 4px);
+  box-shadow: var(--lift);
+}
+
+/* ── numbers ───────────────────────────────────────────────────────────── */
+
+.numbers {
+  position: relative;
+  height: 16px;
+}
+
+.numbers span {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.numbers span[data-in] {
+  color: var(--ink);
+}
+
+/* ── first-visit hint ──────────────────────────────────────────────────── */
+
+.pista {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px auto 0;
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.pista button {
+  height: 22px;
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+}
+
+.pista button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pistaDot {
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+}
+
+/* ── genre particles: annotations on the scale ─────────────────────────── */
+
+.particles {
+  position: relative;
+  height: 70px;
+  margin-top: 8px;
+}
+
+.particle {
+  position: absolute;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 19px;
+  padding: 0 6px 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-4);
+  transition:
+    top var(--t-base) var(--ease-platen),
+    left var(--t-stage) var(--ease-platen);
+}
+
+.particle[data-near] {
+  color: var(--ink-2);
+}
+
+.particle:hover {
+  color: var(--ink);
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+}
+
+.particle[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  background: var(--p);
+  opacity: 0.35;
+}
+
+.particle[data-near] .dot,
+.particle[data-on] .dot {
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .head > :last-child {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 0 var(--gutter);
+  }
+  .head > :last-child::-webkit-scrollbar {
+    display: none;
+  }
+  .dock .head > :last-child {
+    display: none;
+  }
+  .name {
+    display: none;
+  }
+  .name:first-child,
+  .name:nth-child(6),
+  .name:last-child {
+    display: block;
+  }
+  /* The end stations anchor to the scale's edges instead of centring past them. */
+  .name:first-child {
+    transform: none;
+  }
+  .name:last-child {
+    transform: translateX(-100%);
+  }
+  .numbers span:nth-child(odd):not(:first-child):not(:last-child) {
+    display: none;
+  }
+  .particles {
+    display: none;
+  }
+}

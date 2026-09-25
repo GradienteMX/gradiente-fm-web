@@ -1,7 +1,9 @@
 import { requiredFields, errorsFrom } from '@/lib/contentReadiness'
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { contentItemToRow } from '@/lib/data/items'
 import type { ContentItem, PollChoice } from '@/lib/types'
@@ -18,10 +20,12 @@ import type { ContentItem, PollChoice } from '@/lib/types'
 //      explicit and verifies ownership before any write.
 //   1. Upsert by `id` (text PK). Covers first-time publish AND re-publishing
 //      an already-published item after edits — no separate PATCH route needed.
-//   2. If `item.poll` is set, upsert the corresponding polls row. Client
-//      `pl-xyz`-style poll ids are ignored — the polls table uses a
-//      server-generated UUID. Poll uniqueness is per item_id, so a
-//      re-publish updates the existing poll row.
+//   2. If `item.poll` is set, upsert the corresponding polls row. Poll
+//      uniqueness is per item_id, so a re-publish updates the existing poll
+//      row (and keeps its id). A NEW poll keeps the uuid the client minted —
+//      so a vote cast a second after publishing names the right poll — and
+//      only a non-uuid client id (`pl-xyz`, older drafts) gets a
+//      server-generated one. The id actually stored is answered as `pollId`.
 //   3. Delete the matching draft row for this user (jsonb path lookup, same
 //      shape as /api/drafts/[itemId] DELETE). Idempotent — no draft, no-op.
 //
@@ -39,8 +43,10 @@ import type { ContentItem, PollChoice } from '@/lib/types'
 
 type PublishMode = 'create' | 'edit'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -253,6 +259,20 @@ export async function POST(request: NextRequest) {
       { onConflict: 'id' }
     )
   if (itemError) {
+    // 23505: another row already has this slug (items_slug_key) — or, racing
+    // a concurrent create, this id. Either way nothing was overwritten.
+    if (itemError.code === '23505') {
+      const slug = /slug/i.test(`${itemError.message} ${itemError.details ?? ''}`)
+      return NextResponse.json(
+        {
+          error: slug ? 'slug_conflict' : 'id_conflict',
+          message: slug
+            ? 'Ya existe una pieza con esa dirección (slug). Cámbiala y publica de nuevo.'
+            : 'Ya existe un ítem con este id.',
+        },
+        { status: 409 }
+      )
+    }
     const isAuthz =
       itemError.message.includes('row-level security') ||
       itemError.code === '42501'
@@ -284,6 +304,7 @@ export async function POST(request: NextRequest) {
   //    a mix whose change had actually landed. We log it, surface a `warning`
   //    in the 200 body, and let the publish succeed.
   let pollWarning: string | null = null
+  let pollId: string | null = null
   if (item.poll) {
     const poll = item.poll
     const { data: existingPoll } = await supabase
@@ -291,6 +312,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('item_id', item.id)
       .maybeSingle()
+    const newPollId = typeof poll.id === 'string' && UUID_RE.test(poll.id) ? poll.id.toLowerCase() : randomUUID()
     const { error: pollError } = existingPoll
       ? await supabase
           .from('polls')
@@ -303,7 +325,7 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', existingPoll.id)
       : await supabase.from('polls').insert({
-          id: randomUUID(),
+          id: newPollId,
           item_id: item.id,
           kind: poll.kind,
           prompt: poll.prompt,
@@ -318,6 +340,8 @@ export async function POST(request: NextRequest) {
         message: pollError.message,
         itemId: item.id,
       })
+    } else {
+      pollId = existingPoll ? existingPoll.id : newPollId
     }
   }
 
@@ -330,8 +354,10 @@ export async function POST(request: NextRequest) {
   //     published item.
   if (Array.isArray(item.entities)) {
     await supabase.from('item_entities').delete().eq('item_id', item.id)
+    // Only real entity rows (uuid ids): one composer-side placeholder
+    // (`ent-<kind>-<slug>`) would fail the whole batch insert below.
     const links = item.entities
-      .filter((e) => typeof e?.id === 'string' && e.id)
+      .filter((e) => typeof e?.id === 'string' && UUID_RE.test(e.id))
       .map((e) => ({
         item_id: item.id,
         entity_id: e.id,
@@ -411,5 +437,8 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  return NextResponse.json({ ok: true, itemId: item.id, warning: pollWarning })
+  // The piece (new or edited), its poll, links and attribution are all part
+  // of the public world every member reads.
+  revalidateTag(WORLD_TAG, { expire: 0 })
+  return NextResponse.json({ ok: true, itemId: item.id, pollId, warning: pollWarning })
 }

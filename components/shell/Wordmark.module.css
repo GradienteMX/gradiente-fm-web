@@ -1,0 +1,28 @@
+.mark {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-display);
+  line-height: 1;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.letter {
+  display: inline-block;
+  transition: font-variation-settings 700ms var(--ease-materia);
+}
+
+.sm {
+  font-size: 15px;
+}
+.md {
+  font-size: 19px;
+}
+.lg {
+  font-size: 44px;
+}
+.xl {
+  font-size: clamp(64px, 11vw, 180px);
+  letter-spacing: -0.01em;
+}

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/franjas/[id]
@@ -29,9 +31,12 @@ const VALID_KINDS: readonly FranjaKind[] = [
 
 interface UpdateBody {
   title?: string
+  /** The card's second line (Central writes «<kind> · <place>»). */
+  subtitle?: string | null
   franja_kind?: FranjaKind
   franja_url?: string | null
-  image_url?: string
+  /** null (or '') clears the logo: a franja can live without one. */
+  image_url?: string | null
   vibe_min?: number
   vibe_max?: number
   marketplace_enabled?: boolean
@@ -40,7 +45,7 @@ interface UpdateBody {
   marketplace_currency?: string | null
 }
 
-async function gateAdmin(supabase: ReturnType<typeof createClient>) {
+async function gateAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -60,9 +65,10 @@ async function gateAdmin(supabase: ReturnType<typeof createClient>) {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateAdmin(supabase)
   if ('error' in gate) return gate.error
 
@@ -82,9 +88,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateAdmin(supabase)
   if ('error' in gate) return gate.error
 
@@ -114,13 +121,14 @@ export async function PATCH(
     }
     patch.franja_kind = body.franja_kind
   }
+  if (body.subtitle !== undefined) {
+    patch.subtitle = body.subtitle?.trim() || null
+  }
   if (body.franja_url !== undefined) {
     patch.franja_url = body.franja_url?.trim() || null
   }
   if (body.image_url !== undefined) {
-    const u = body.image_url.trim()
-    if (!u) return NextResponse.json({ error: 'image_url required' }, { status: 400 })
-    patch.image_url = u
+    patch.image_url = body.image_url?.trim() || null
   }
   if (body.vibe_min !== undefined || body.vibe_max !== undefined) {
     const min = body.vibe_min ?? 0
@@ -159,17 +167,21 @@ export async function PATCH(
     .eq('id', params.id)
     .eq('type', 'franja')
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Esa franja ya no está.' }, { status: 404 })
+  // A franja's card is part of the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ franja: data })
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateAdmin(supabase)
   if ('error' in gate) return gate.error
 
@@ -186,5 +198,6 @@ export async function DELETE(
     .eq('type', 'franja')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ ok: true })
 }

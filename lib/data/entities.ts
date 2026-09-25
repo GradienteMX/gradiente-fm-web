@@ -36,7 +36,7 @@ const ENTITY_SELECT =
 // per kind, so a bare slug can in theory collide across kinds — first match
 // wins (acceptable until/if we route by kind).
 export async function getEntityBySlug(slug: string): Promise<Entity | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('entities')
     .select(ENTITY_SELECT)

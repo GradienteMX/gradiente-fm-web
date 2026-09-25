@@ -639,3 +639,63 @@ export interface ForoReply {
   quotedReplyIds?: string[] // imageboard >>id quote-links
   deletion?: ForoDeletion  // tombstone — body replaced with mod stub, position preserved
 }
+
+// ── V2 client shapes (drafts, HL ledger rows, activity) ─────────────────────
+
+export type DraftState = 'borrador' | 'pendiente' | 'publicado'
+
+export interface Draft {
+  id: string
+  type: ContentType
+  authorId: string
+  /** The piece being composed. Always a full ContentItem shape. */
+  item: ContentItem
+  /** Present when editing an already-published piece. */
+  publishedId?: string
+  state: DraftState
+  updatedAt: string
+  createdAt: string
+}
+
+/** Item-side HL ledger row (what `hp_events` would hold). */
+export interface HpLedgerRow {
+  itemId: string
+  kind: 'click' | 'open' | 'save' | 'comment' | 'admin_adjust' | 'harvest'
+  baseWeight: number
+  weight: number
+  at: string
+  /** Only admin_adjust carries a reason. */
+  note?: string
+}
+
+/** Creator-side presence ledger row (what `user_hp_events` would hold). */
+export interface PresenceRow {
+  userId: string
+  kind:
+    | 'reaction_received'
+    | 'comment_saved'
+    | 'item_saved'
+    | 'comment_received'
+    | 'vibe_check_cast'
+    | 'vibe_check_accurate'
+    | 'publish'
+    | 'harvest'
+  weight: number
+  at: string
+  key: string
+}
+
+export type ActivityKind = 'comment' | 'reply' | 'reaction' | 'quote' | 'trophy' | 'offer'
+
+export interface ActivityRow {
+  id: string
+  userId: string
+  kind: ActivityKind
+  actorId?: string
+  itemId?: string
+  commentId?: string
+  threadId?: string
+  trophyKey?: string
+  text: string
+  at: string
+}

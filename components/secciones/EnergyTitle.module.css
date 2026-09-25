@@ -1,0 +1,16 @@
+.box {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  line-height: 0.86;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  /* Room for descenders (g, p, ñ tails) under the tight leading. */
+  padding-bottom: 0.12em;
+  /* The variation is set inline per frame; never transition it (it would lag the hand). */
+}

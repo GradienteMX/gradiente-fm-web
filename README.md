@@ -1,55 +1,49 @@
-# GRADIENTE FM
+# GRADIENTE
 
-Editorial + event-listing + mix platform for the Mexico City underground electronic music scene.
+Infrastructure and memory for the underground music and sound-art scene in Mexico City: the nights, the mixes, the writing and the franjas (labels, venues, collectives) — navigated by **energy, not genre**.
 
-Rebranded from **Espectro FM** — the repo folder is still named `espectro-fm-web` for historical reasons; the UI brand is `GRADIENTE FM`.
+Rebranded from **Espectro FM** — the repo folder is still named `espectro-fm-web` for historical reasons.
 
 ## What it is
 
-- Live event agenda for CDMX (FASCINOMA, Club Japan, Multiforo Alicia, Foro Indie Rocks, others)
-- Radio / mix platform (ESPECTRO MIX series)
-- Editorial publication covering scene culture, venue politics, sober clubbing, gentrification, and more
+- **Agenda** — the scene's nights, one by one (FASCINOMA, Club Japan, Multiforo Alicia, and more)
+- **Mixes** — sessions recorded in the scene, with a persistent player
+- **Lecturas** — reviews, editorials, opinion, long-form articles, lists, news
+- **Franjas** — the scene's labels, venues and collectives, each with its page and store
+- **Foro**, **Mapa** (the territory by affinity), **Mercado**
+- **La Puerta** — invite-only entry; every member carries a **credencial**: a card in a collector's case, printed on their role's colour, with stickers pressed on and trophies as enamel pins
 
-Content is filtered through a single axis — the **vibe spectrum** (0 glacial/ambient → 10 volcán/peak-hour). Curation is editorial-seeded; HP decay handles ranking; collective attention is the democratic mechanism.
+Everything is filtered through one axis — the **vibe spectrum** (0 glacial → 10 volcán). Curation is editorial-seeded; HL (half-life) decay handles prominence; collective attention is the democratic mechanism. No per-user feed, no visible engagement metrics.
 
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Framework | Next.js 14 (App Router) |
-| Language | TypeScript 5 strict |
-| Styling | Tailwind CSS 3 |
-| Animation | Framer Motion 12 |
-| Icons | Lucide React |
-| Dates | date-fns 3 (Spanish locale) |
-| Data | `lib/mockData.ts` (no backend yet) |
+| Framework | Next.js 16 (App Router, Turbopack) · React 19 |
+| Language | TypeScript 5.9 strict |
+| Styling | CSS Modules + design tokens («TRAMA» / «LIBREA») |
+| Motion & GL | GSAP 3 · three.js (one WebGL context) |
+| State | zustand + immer (the world store) |
+| Backend | Supabase (Postgres + RLS + Auth + Storage + Realtime) on Vercel |
 
 ## Running locally
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run build      # production build
-npm run lint       # eslint
+npm run dev          # needs .env.local (Supabase URL, anon key, service-role key)
+npm run typecheck
+npm run lint
+npm test
+npm run build        # stop the dev server first
 ```
 
-Requires Node 18+.
+`.env.local` points at the production database — read [`CLAUDE.md`](./CLAUDE.md) before testing anything that writes.
 
-## Deeper documentation
+## Documentation
 
-The canonical knowledge base for this repo lives in [`wiki/`](./wiki/) — an Obsidian vault. Plain Markdown, so it renders on GitHub too.
-
-Start here:
-- [`wiki/index.md`](./wiki/index.md) — the map
-- [`wiki/_schema.md`](./wiki/_schema.md) — how the wiki is organized
-- [`wiki/90-Decisions/Guides Not Gatekeepers.md`](./wiki/90-Decisions/Guides Not Gatekeepers.md) — core editorial thesis
-- [`wiki/20-Domain/HP Curation System.md`](./wiki/20-Domain/HP Curation System.md) — ranking math
-- [`wiki/60-Design/NGE Aesthetic.md`](./wiki/60-Design/NGE Aesthetic.md) — visual language
-
-## Also see
-
-- [`CLAUDE.md`](./CLAUDE.md) — developer notes + conventions for LLM-assisted work
-- [`wiki/70-Roadmap/Open Questions.md`](./wiki/70-Roadmap/Open Questions.md) — active TODOs
+- [`docs/`](./docs/) — V2's design system: concept, direction, parity, **the kit** (how to build a surface), TRAMA (the printed sheet), LIBREA (liveries, the credencial, stickers, pins)
+- [`CLAUDE.md`](./CLAUDE.md) / [`AGENTS.md`](./AGENTS.md) — developer notes and conventions for LLM-assisted work
+- [`wiki/`](./wiki/) — Obsidian vault: the domain, the backend, decisions, and the log. Start at [`wiki/index.md`](./wiki/index.md)
 
 ## Collaborators
 

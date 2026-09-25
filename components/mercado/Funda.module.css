@@ -1,0 +1,347 @@
+/* ── the sleeve in its crate ───────────────────────────────────────────── */
+
+.funda {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border-radius: var(--r-piece);
+  outline-offset: 5px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Headroom above the sleeve so it has somewhere to be pulled into. */
+.well {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-top: 11%;
+}
+
+/* The cover is a media frame (a well). Pulled up, it carries the one hard shadow. */
+.sleeve {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--well, var(--obs-2));
+  box-shadow: 0 0 0 1px var(--rule, var(--hair-2));
+  will-change: transform;
+}
+
+.funda:hover .sleeve,
+.funda:focus-visible .sleeve {
+  box-shadow:
+    0 0 0 1px var(--ink),
+    4px 4px 0 var(--ink);
+}
+
+.cover {
+  object-fit: cover;
+}
+
+.funda[data-status='sold'] .cover {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+/* A record-store grade sticker. */
+.grade {
+  position: absolute;
+  z-index: 2;
+  top: 7%;
+  right: 7%;
+  min-width: 30px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-piece);
+  display: grid;
+  place-items: center;
+  background: var(--paper-2, var(--ink));
+  color: var(--rule, var(--obs-0));
+  box-shadow: 0 0 0 1px var(--rule, var(--obs-0));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+.stamp {
+  position: absolute;
+  z-index: 2;
+  top: 8%;
+  left: 7%;
+  padding: 3px 6px 2px;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: var(--paper-2, var(--obs-0));
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sleeve[data-blank] .stamp {
+  top: auto;
+  bottom: 20%;
+  left: auto;
+  right: 7%;
+}
+
+/* ── the crate's lip: a flat plate the sleeve stands behind ────────────── */
+
+.lip {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: -14%;
+  padding: 11px 11px 12px;
+  background: var(--paper-2, var(--obs-1));
+  border-top: 2px solid var(--ink);
+  box-shadow: 0 0 0 1px var(--rule, var(--hair-2));
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.store {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.store + .cat::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--ink-4);
+}
+
+.cat {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  min-height: 2.5em;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.funda:hover .title,
+.funda:focus-visible .title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 2px;
+  padding-top: 7px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.foot > span:last-child {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  gap: 5px;
+}
+
+.price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 84, 'wght' 700;
+  font-size: 18px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.price small {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.funda[data-status='sold'] .price {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+/* ── white label: a plain paper sleeve, the title stamped in ink ───────── */
+
+.blank {
+  --wl-bg: var(--paper-3, var(--ink));
+  --wl-ink: var(--rule, var(--obs-0));
+  position: absolute;
+  inset: 0;
+  display: block;
+  container-type: inline-size;
+  color: var(--wl-ink);
+  background: var(--wl-bg);
+}
+
+.blankStamp {
+  position: absolute;
+  left: 8%;
+  top: 8%;
+  right: 30%;
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 74, 'wght' 820;
+  font-size: max(10px, 8.4cqi);
+  line-height: 0.94;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* The die-cut hole shows the record inside (a small well). */
+.hole {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 44%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--well, var(--obs-0));
+  display: grid;
+  place-items: center;
+}
+
+.disc {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.hole[data-cd] {
+  background: var(--paper-4, var(--obs-2));
+  box-shadow: inset 0 0 0 1px var(--wl-ink);
+}
+
+.label {
+  position: relative;
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--wl-bg);
+}
+
+.hole[data-cd] .label {
+  width: 30%;
+  box-shadow: 0 0 0 1px var(--wl-ink);
+}
+
+.label::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--wl-ink);
+  transform: translate(-50%, -50%);
+}
+
+.tape {
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  top: 46%;
+  height: 24%;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border: 1.5px solid currentColor;
+}
+
+.reel {
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  box-shadow:
+    inset 0 0 0 4px var(--wl-bg),
+    inset 0 0 0 5.5px currentColor;
+}
+
+.glyph {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 40%;
+  transform: translate(-50%, -50%);
+}
+
+.glyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.blankFoot {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 17%;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: max(9px, 4.2cqi);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* In the crate the lip already names the category; the gallery plate keeps it. */
+.blank[data-size='md'] .blankFoot {
+  display: none;
+}
+
+.blank[data-size='lg'] .blankFoot {
+  bottom: 7%;
+}
+
+.blank[data-size='lg'] .blankStamp {
+  font-size: 7cqi;
+}

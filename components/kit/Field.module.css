@@ -1,0 +1,199 @@
+/* FIELD — a printed form: mono labels above, sunken paper boxes with a 1px
+   ink rule, mono counters, errors in red ink. Focus thickens the rule. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.25;
+  color: var(--ink-3);
+}
+
+.req {
+  color: var(--red-ink);
+}
+
+.counter {
+  margin-left: auto;
+  padding-left: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--ink-4);
+}
+
+.counter[data-over] {
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--paper-3);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+
+.input::placeholder {
+  color: var(--ink-4);
+  opacity: 1;
+}
+
+/* The box you're writing in is raised to the sheet and its rule doubles. */
+.input:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+  background-color: var(--paper-2);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+  color: var(--ink-3);
+  border-color: var(--hair-3);
+  background-image: repeating-linear-gradient(-45deg, var(--hair) 0 1px, transparent 1px 6px);
+}
+
+/* Disabled selects keep their arrow cell, in the disabled ink. */
+.select:disabled {
+  background-image:
+    linear-gradient(to bottom left, var(--ink-4) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--ink-4) 50%, transparent 50%),
+    linear-gradient(var(--hair-3), var(--hair-3));
+}
+
+.field[data-error] .input {
+  border-color: var(--red-ink);
+}
+
+.field[data-error] .input:focus {
+  outline-color: var(--red-ink);
+}
+
+.area {
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+/* A drawn arrow in its own ruled cell: ▼ from two half-squares. */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 46px;
+  background-image:
+    linear-gradient(to bottom left, var(--ink) 50%, transparent 50%),
+    linear-gradient(to bottom right, var(--ink) 50%, transparent 50%),
+    linear-gradient(var(--rule), var(--rule));
+  background-size:
+    5px 5px,
+    5px 5px,
+    1px 100%;
+  background-position:
+    right 16px center,
+    right 11px center,
+    right 32px top;
+  background-repeat: no-repeat;
+}
+
+.select option {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.hint,
+.error {
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.hint {
+  color: var(--ink-3);
+}
+
+.error {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--red-ink);
+}
+
+/* A red square, like the registration marks: something here needs you. */
+.error::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--red);
+  transform: translateY(-1px);
+}
+
+/* ── segmented: joined boxes, the chosen one inverted ─────────────────── */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding-left: 1px;
+}
+
+.segmented button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  margin-left: -1px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.segmented button:hover {
+  z-index: 1;
+  color: var(--ink);
+  background: var(--paper-3);
+  border-color: var(--rule);
+}
+
+.segmented button:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.segmented button[data-on] {
+  z-index: 2;
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.segmented button:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

@@ -1,0 +1,318 @@
+/* ── poster peek ───────────────────────────────────────────────────────── */
+
+.peek {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  text-align: left;
+  border-radius: var(--r-piece);
+  outline-offset: 4px;
+}
+
+/* The art is a media frame (a well); lifted on hover with the one hard shadow. */
+.art {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--well, var(--obs-2));
+  box-shadow: 0 0 0 1px var(--rule, var(--hair));
+}
+
+.peek:hover .art,
+.peek:focus-visible .art {
+  transform: translate(-2px, -2px);
+  box-shadow:
+    0 0 0 1px var(--ink),
+    4px 4px 0 var(--ink);
+}
+
+.img {
+  object-fit: cover;
+}
+
+.peek[data-past] .img {
+  filter: grayscale(1);
+}
+
+.plate {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+}
+
+.date {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 38px;
+  padding: 5px 6px 4px;
+  border-radius: var(--r-piece);
+  background: var(--paper-2, var(--obs-0));
+  box-shadow: 0 0 0 1px var(--ink);
+  color: var(--ink);
+}
+
+.date b {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 70, 'wght' 820;
+  font-size: 20px;
+  line-height: 0.9;
+}
+
+.date span {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-2);
+}
+
+.prox {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  padding: 3px 6px;
+  border-radius: var(--r-piece);
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  background: var(--paper-2, var(--obs-0));
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.prox[data-prox='esta-noche'] {
+  background: var(--ink);
+  color: var(--paper, var(--obs-0));
+}
+
+.prox[data-prox='en-vivo'] {
+  background: var(--red, var(--e));
+  color: var(--paper, var(--obs-0));
+  box-shadow: none;
+}
+
+.energy {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--band);
+}
+
+.peek[data-past] .energy {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Format: its pictogram on a flat plate (TRAMA), in mono. */
+.format {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 2px 6px 2px 4px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.format[data-plate='evento'] {
+  background: var(--p-evento, transparent);
+}
+.format[data-plate='mix'] {
+  background: var(--p-mix, transparent);
+}
+.format[data-plate='review'] {
+  background: var(--p-review, transparent);
+}
+.format[data-plate='lista'] {
+  background: var(--p-lista, transparent);
+}
+.format[data-plate='noticia'] {
+  background: var(--p-noticia, transparent);
+}
+.format[data-plate='texto'] {
+  background: var(--p-texto, transparent);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.02;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.meta {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The relation stamp: solid band = its own; dashed = somebody else's. */
+.relation {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.mark {
+  width: 14px;
+  height: 5px;
+  border: 1px solid var(--ink);
+}
+
+.relation[data-relation='presenta'] .mark {
+  background: var(--ink);
+}
+
+.relation[data-relation='aqui'] .mark,
+.relation[data-relation='sobre'] .mark {
+  border-style: dashed;
+}
+
+.relation[data-relation='aqui'],
+.relation[data-relation='sobre'] {
+  color: var(--ink-2);
+}
+
+.peek[data-relation='aqui'] .art,
+.peek[data-relation='sobre'] .art {
+  outline: 1px dashed var(--ink-3);
+  outline-offset: 3px;
+}
+
+/* ── archive row: a hairline ledger line ───────────────────────────────── */
+
+.row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 6px 10px 2px;
+  text-align: left;
+  border-top: 1px solid var(--hair-2);
+}
+
+.row:hover,
+.row:focus-visible {
+  background: var(--paper-3, var(--obs-2));
+}
+
+.rowDate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding-left: 6px;
+}
+
+.rowDate b {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 70, 'wght' 760;
+  font-size: 22px;
+  line-height: 0.9;
+  color: var(--ink);
+}
+
+.rowDate span {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1.05;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-family: var(--font-mono, var(--font-ui));
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowRel {
+  font-style: normal;
+  color: var(--ink);
+}
+
+.rowThumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-piece);
+  overflow: hidden;
+  background: var(--well, var(--obs-2));
+}
+
+.rowThumb .img {
+  filter: grayscale(1);
+}
+
+.row:hover .rowThumb .img {
+  filter: none;
+}
+
+.rowBand {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--band);
+}

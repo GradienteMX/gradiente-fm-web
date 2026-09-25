@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // PUT    /api/vibe-checks/[itemId] { vibeMin, vibeMax }  → upsert vote
 // DELETE /api/vibe-checks/[itemId]                       → revoke vote
@@ -7,7 +9,9 @@ import { createClient } from '@/lib/supabase/server'
 // `vibe_checks` PK is (item_id, user_id). RLS gates self-only via
 // `vibe_checks_self_write`. Revoting upserts the same PK row in place.
 // Constraints enforce 0 <= vibe_min <= vibe_max <= 10; we guard up front
-// for a clean 400 instead of a Postgres constraint error.
+// for a clean 400 instead of a Postgres constraint error. The crowd band
+// (vibe_check_aggregates) travels on every item of the public world, so
+// both writes expire it.
 
 function parseRange(body: unknown): { vibeMin: number; vibeMax: number } | null {
   if (typeof body !== 'object' || body === null) return null
@@ -28,9 +32,10 @@ function parseRange(body: unknown): { vibeMin: number; vibeMax: number } | null 
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { itemId: string } },
+  { params: paramsP }: { params: Promise<{ itemId: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -62,15 +67,21 @@ export async function PUT(
       { onConflict: 'item_id,user_id' },
     )
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // 23503: the piece is gone.
+    if (error.code === '23503') return NextResponse.json({ error: 'Esa pieza ya no está.' }, { status: 404 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { itemId: string } },
+  { params: paramsP }: { params: Promise<{ itemId: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -81,6 +92,11 @@ export async function DELETE(
     .delete()
     .eq('item_id', params.itemId)
     .eq('user_id', user.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // 23503: the piece is gone.
+    if (error.code === '23503') return NextResponse.json({ error: 'Esa pieza ya no está.' }, { status: 404 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ ok: true })
 }

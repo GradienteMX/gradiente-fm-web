@@ -1,0 +1,90 @@
+/*
+ * The record, drawn like the `mix` pictogram: a flat dark disc (a well —
+ * media is one of the few dark surfaces), hairline grooves, the cover as its
+ * label, a spindle. One index tick on the rim turns with it so the rotation
+ * stays legible. No sheen, no texture. Tokens only.
+ */
+
+.disco {
+  --disco-fondo: var(--well-2, var(--obs-2));
+  --disco-linea: color-mix(in srgb, var(--on-well, var(--ink)) 20%, transparent);
+  --disco-marca: var(--on-well-2, var(--ink-3));
+  position: relative;
+  display: block;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+/* The only layer that turns. */
+.plato {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--disco-fondo);
+  box-shadow: inset 0 0 0 1px var(--disco-linea);
+  will-change: transform;
+}
+
+/* Two hairline grooves between the rim and the label. */
+.surcos {
+  position: absolute;
+  inset: calc((1 - var(--label)) * 16%);
+  border-radius: 50%;
+  border: 1px solid var(--disco-linea);
+}
+
+.surcos::after {
+  content: '';
+  position: absolute;
+  inset: calc((1 - var(--label)) * 14%);
+  border-radius: 50%;
+  border: 1px solid var(--disco-linea);
+}
+
+/* The index tick at the rim: what makes the turn visible. */
+.marca {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  width: 1px;
+  height: calc((1 - var(--label)) * 30%);
+  min-height: 3px;
+  margin-left: -0.5px;
+  background: var(--disco-marca);
+}
+
+.etiqueta {
+  position: absolute;
+  inset: calc((1 - var(--label)) * 50%);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--e, var(--disco-fondo));
+  box-shadow: 0 0 0 1px var(--disco-linea);
+}
+
+.img {
+  object-fit: cover;
+}
+
+.vacia {
+  position: absolute;
+  inset: 0;
+  background: var(--e, var(--disco-fondo));
+}
+
+.eje {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5%;
+  height: 5%;
+  min-width: 3px;
+  min-height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--well, var(--obs-0));
+  box-shadow: 0 0 0 1px var(--disco-marca);
+}

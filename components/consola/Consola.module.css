@@ -1,0 +1,534 @@
+/*
+ * Tokens only (with fallbacks to the pre-TRAMA names while the palette
+ * flips). The loaded deck is a well — one of the few dark surfaces; empty,
+ * it's a quiet paper chip. Controls are 1px boxed; pressed/active is a
+ * one-step inversion, no tween. Derived tints are color-mix() of tokens.
+ */
+
+/* ── hidden players ─────────────────────────────────────────────────────── */
+
+.puentes {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 320px;
+  height: 200px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.puentes iframe,
+.host,
+.host iframe {
+  display: block;
+  width: 320px;
+  height: 200px;
+  border: 0;
+}
+
+/* ── the capsule ────────────────────────────────────────────────────────── */
+
+.capsula {
+  --mono: var(--font-mono, var(--font-ui));
+  --ground: var(--well, var(--obs-1));
+  --on: var(--on-well, var(--ink));
+  --on-2: var(--on-well-2, var(--ink-2));
+  --on-3: var(--on-well-3, var(--ink-3));
+  --on-rule: color-mix(in srgb, var(--on-well, var(--ink)) 26%, transparent);
+  /* the needle inside a well */
+  --aguja-rail: var(--on-rule);
+  --aguja-rail-hi: var(--on-3);
+  --aguja-needle: var(--on);
+  --cap-h: 64px;
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  /* Above the reading surface (60): the deck stays usable while you read. */
+  z-index: 61;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--cap-h);
+  max-width: min(620px, calc(100vw - 32px));
+  padding: 0 10px 0 12px;
+  border-radius: var(--r-piece);
+  color: var(--on);
+  background: var(--ground);
+  border: 1px solid var(--ground);
+  /* It floats over the page: the system's one shadow, a hard lift. */
+  box-shadow: var(--lift, none);
+  transition:
+    opacity 420ms var(--ease-materia),
+    transform 560ms var(--ease-materia),
+    height 420ms var(--ease-materia),
+    padding 420ms var(--ease-materia),
+    gap 420ms var(--ease-materia),
+    visibility 0s linear 0s;
+  animation: capIn 600ms var(--ease-materia) both;
+}
+
+/* The energy of what's loaded, as a flat edge. */
+.capsula::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  bottom: -1px;
+  width: 4px;
+  background: var(--e);
+}
+
+@keyframes capIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.capsula[data-hidden] {
+  opacity: 0;
+  transform: translateY(12px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 260ms ease,
+    transform 360ms var(--ease-materia),
+    visibility 0s linear 360ms;
+}
+
+/* disc */
+
+.disc {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transition:
+    width 420ms var(--ease-materia),
+    height 420ms var(--ease-materia);
+}
+
+/* text */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  width: clamp(130px, 17vw, 236px);
+  max-width: 260px;
+  transition:
+    max-width 520ms var(--ease-materia),
+    opacity 320ms ease;
+}
+
+.title {
+  display: block;
+  max-width: 100%;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  line-height: 1.06;
+  letter-spacing: -0.005em;
+  color: var(--on);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.2;
+  color: var(--on-3);
+}
+
+.artist {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--on-2);
+}
+
+.status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--on);
+}
+
+.status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+}
+
+.status[data-tone='vivo']::before {
+  border-color: var(--red, var(--e));
+  background: var(--red, var(--e));
+}
+
+.status[data-tone='falla'] {
+  color: var(--red, var(--on));
+}
+
+.status[data-tone='falla']::before {
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.modo {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--on-3);
+}
+
+/* transport: 1px boxed, pressed = inverted */
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.tbtn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-piece);
+  border: 1px solid transparent;
+  color: var(--on-2);
+  transition:
+    width 420ms var(--ease-materia),
+    opacity 320ms ease;
+}
+
+.tbtn:hover:not(:disabled) {
+  color: var(--on);
+  border-color: var(--on-rule);
+}
+
+.tbtn:active:not(:disabled) {
+  background: var(--on);
+  color: var(--ground);
+}
+
+.tbtn:disabled {
+  opacity: 0.3;
+}
+
+.play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--on);
+  color: var(--on);
+  transition:
+    width 420ms var(--ease-materia),
+    height 420ms var(--ease-materia);
+}
+
+/* Sounding: inverted. */
+.play[data-on] {
+  background: var(--on);
+  color: var(--ground);
+}
+
+.clock {
+  flex: none;
+  min-width: 96px;
+  max-width: 124px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-2);
+  white-space: nowrap;
+  overflow: hidden;
+  transition:
+    max-width 520ms var(--ease-materia),
+    opacity 320ms ease;
+}
+
+.expand {
+  margin-left: -2px;
+}
+
+.seek {
+  position: absolute;
+  left: 68px;
+  right: 32px;
+  bottom: 1px;
+  transition: opacity 320ms ease;
+}
+
+/* Everything but the disc rides a little high: the needle has its own line. */
+.capsula[data-mode='plena'] .body,
+.capsula[data-mode='plena'] .transport,
+.capsula[data-mode='plena'] .clock,
+.capsula[data-mode='plena'] .expand {
+  margin-bottom: 7px;
+}
+
+/* ── puck: a reading is open ─────────────────────────────────────────────── */
+
+.capsula[data-mode='puck'] {
+  --cap-h: 52px;
+  gap: 8px;
+  padding: 0 7px 0 10px;
+}
+
+.capsula[data-mode='puck'] .disc {
+  width: 36px;
+  height: 36px;
+}
+
+.capsula[data-mode='puck'] .play {
+  width: 34px;
+  height: 34px;
+}
+
+.capsula[data-mode='puck'] .expand {
+  display: none;
+}
+
+.capsula[data-mode='puck']:not(:hover):not(:focus-within) .body,
+.capsula[data-mode='puck']:not(:hover):not(:focus-within) .clock {
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+}
+
+.capsula[data-mode='puck']:not(:hover):not(:focus-within) .body {
+  margin-right: -8px;
+}
+
+.capsula[data-mode='puck']:not(:hover):not(:focus-within) .side {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.capsula[data-mode='puck']:not(:hover):not(:focus-within) .seek {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Opened by hover/focus, the puck grows back into the full deck. */
+.capsula[data-mode='puck']:hover,
+.capsula[data-mode='puck']:focus-within {
+  --cap-h: 64px;
+  gap: 12px;
+  padding: 0 10px 0 12px;
+}
+
+.capsula[data-mode='puck']:hover .disc,
+.capsula[data-mode='puck']:focus-within .disc {
+  width: 44px;
+  height: 44px;
+}
+
+.capsula[data-mode='puck']:hover .play,
+.capsula[data-mode='puck']:focus-within .play {
+  width: 38px;
+  height: 38px;
+}
+
+.capsula[data-mode='puck']:hover .body,
+.capsula[data-mode='puck']:focus-within .body,
+.capsula[data-mode='puck']:hover .transport,
+.capsula[data-mode='puck']:focus-within .transport,
+.capsula[data-mode='puck']:hover .clock,
+.capsula[data-mode='puck']:focus-within .clock {
+  margin-bottom: 7px;
+}
+
+.arco {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.arco circle {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.arcoRail {
+  stroke: var(--on-rule);
+}
+
+.arcoLit {
+  stroke: var(--e);
+}
+
+/* ── cue: nothing loaded — a quiet paper chip ───────────────────────────── */
+
+.capsula[data-mode='cue'] {
+  --ground: var(--paper-2, var(--obs-1));
+  --on: var(--ink);
+  --on-2: var(--ink-2);
+  --on-3: var(--ink-3);
+  --on-rule: var(--rule, var(--hair-2));
+  --cap-h: 44px;
+  gap: 10px;
+  padding: 0 5px 0 10px;
+  border-color: var(--on-rule);
+}
+
+.capsula[data-mode='cue']::before {
+  display: none;
+}
+
+.cueOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  margin-left: -2px;
+  padding: 0 6px;
+  border-radius: var(--r-piece);
+  border: 1px solid transparent;
+}
+
+.cueOpen:hover {
+  border-color: var(--on-rule);
+}
+
+.cueMark {
+  display: grid;
+  place-items: center;
+  color: var(--on);
+}
+
+.cueLabel {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--on);
+}
+
+.cueSep {
+  width: 1px;
+  height: 18px;
+  background: var(--on-rule);
+}
+
+.cueWhat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.cueTag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--on-3);
+}
+
+.cueTitle {
+  max-width: 220px;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1.1;
+  color: var(--on);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cueTitle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cueNone {
+  font-size: 12px;
+  color: var(--on-3);
+  padding-right: 8px;
+}
+
+.cuePlay {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-piece);
+  border: 1px solid var(--on);
+  color: var(--on);
+}
+
+.cuePlay:hover,
+.cuePlay:active {
+  background: var(--on);
+  color: var(--ground);
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .capsula[data-mode='plena'] {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-width: none;
+  }
+  .capsula[data-mode='plena'] .body {
+    flex: 1;
+    width: auto;
+    max-width: none;
+  }
+  .capsula[data-mode='plena'] .clock,
+  .capsula[data-mode='plena'] .modo {
+    display: none;
+  }
+  .capsula[data-mode='cue'],
+  .capsula[data-mode='puck'] {
+    left: 10px;
+    bottom: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .capsula[data-mode='plena'] .side:first-child {
+    display: none;
+  }
+}

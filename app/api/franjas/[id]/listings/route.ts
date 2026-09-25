@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // /api/franjas/[id]/listings — collection endpoint.
 // POST → create a marketplace listing under this franja.
@@ -48,7 +50,7 @@ interface CreateBody {
 }
 
 async function gateFranjaWrite(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   franjaId: string,
 ) {
   const {
@@ -74,9 +76,10 @@ async function gateFranjaWrite(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateFranjaWrite(supabase, params.id)
   if ('error' in gate) return gate.error
 
@@ -87,7 +90,9 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  if (!body.id?.trim()) {
+  // The client proposes the id (text PK, `mkl-…`): inserted, never upserted,
+  // so a taken id is a 409 below, not an overwrite.
+  if (!body.id?.trim() || !/^[A-Za-z0-9_-]{3,80}$/.test(body.id.trim())) {
     return NextResponse.json({ error: 'id required' }, { status: 400 })
   }
   if (!body.title?.trim()) {
@@ -167,5 +172,7 @@ export async function POST(
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  // Listings ride on their franja in the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ listing: data })
 }

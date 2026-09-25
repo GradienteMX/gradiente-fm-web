@@ -1,0 +1,86 @@
+/* Format filter: a strip of boxed cells, joined like a printed form. */
+
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  outline: 1px solid var(--hair-3);
+  outline-offset: -1px;
+  margin-left: -1px;
+}
+
+.item:hover {
+  color: var(--ink);
+  background: var(--paper-3);
+  position: relative;
+  z-index: 1;
+}
+
+.item[data-on] {
+  color: var(--paper);
+  background: var(--ink);
+  outline-color: var(--ink);
+  position: relative;
+  z-index: 2;
+}
+
+/* A format's cell carries its livery; chosen, it floods with it. */
+.item[data-on][style] {
+  color: var(--lo);
+  background: var(--lc);
+  outline-color: var(--rule);
+}
+
+.swatch {
+  width: 8px;
+  height: 8px;
+  background: var(--lc);
+  outline: 1px solid currentColor;
+}
+
+.item[data-on] .swatch {
+  background: var(--lo);
+}
+
+.item[data-empty]:not([data-on]) {
+  color: var(--ink-4);
+}
+
+.all {
+  font-weight: 700;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+  font-size: 9.5px;
+  color: inherit;
+  opacity: 0.6;
+}
+
+.row[data-compact] .name {
+  display: none;
+}
+
+.row[data-compact] .item {
+  height: 24px;
+}
+
+@media (max-width: 1280px) {
+  .name {
+    display: none;
+  }
+}

@@ -1,0 +1,900 @@
+/* ── The desk: main work column + the side where the world answers ───── */
+
+.desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(300px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.colMain,
+.colSide {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .desk {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .colMain,
+  .colSide {
+    display: contents;
+  }
+  .desk [data-area='crear'] {
+    order: 1;
+  }
+  .desk [data-area='actividad'] {
+    order: 2;
+  }
+  .desk [data-area='piezas'] {
+    order: 3;
+  }
+  .desk [data-area='agenda'] {
+    order: 4;
+  }
+  .desk [data-area='guardados'] {
+    order: 5;
+  }
+  .desk [data-area='sesiones'] {
+    order: 6;
+  }
+  .desk [data-area='franjas'] {
+    order: 7;
+  }
+}
+
+/* ── Crear: one plate per earned format; acid is the ground of creation ─ */
+
+.formatos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
+}
+
+.formatos li {
+  display: flex;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.formato {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 12px 12px;
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+.formato:hover,
+.formato:focus-visible {
+  background: var(--acid);
+}
+
+.formato:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.formatoGlyph {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 14px;
+  color: var(--ink);
+}
+
+.formatoName {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 94, 'wght' 600;
+  font-size: 16px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.formatoHint {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--ink-2);
+}
+
+.formato:active .formatoHint {
+  color: var(--paper-3);
+}
+
+.formatoPlus {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  color: var(--ink);
+  opacity: 0;
+}
+
+.formato:hover .formatoPlus,
+.formato:focus-visible .formatoPlus {
+  opacity: 1;
+}
+
+/* voice is earned */
+
+.voz {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 76ch;
+}
+
+.vozTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 126, 'wght' 380;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.vozText {
+  font-family: var(--font-read);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.vozText b {
+  font-weight: 600;
+}
+
+.escalera {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule);
+}
+
+.escalera li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair-2);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.escalon {
+  padding-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.vozNote {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+/* ── Tus piezas ─────────────────────────────────────────────────────── */
+
+/* One row of the most recent work, as many as the width holds: the rest is
+   in PUBLICAR. Hidden cards leave the accessibility tree too. */
+.piezasWrap {
+  container-type: inline-size;
+}
+
+.piezas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 14px;
+}
+
+.piezas > li:nth-child(n + 5) {
+  display: none;
+}
+
+@container (min-width: 600px) {
+  .piezas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .piezas > li:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@container (min-width: 780px) {
+  .piezas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .piezas > li:nth-child(4) {
+    display: block;
+  }
+}
+
+@container (min-width: 1000px) {
+  .piezas {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .piezas > li:nth-child(5) {
+    display: block;
+  }
+}
+
+@container (min-width: 1200px) {
+  .piezas {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .piezas > li:nth-child(6) {
+    display: block;
+  }
+}
+
+/* ── Actividad: a ledger of what happened ───────────────────────────── */
+
+.unreadMeta {
+  color: var(--red-ink);
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  margin: -6px -18px 0;
+}
+
+.feedItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.seenLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.seenLine::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.feedRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 11px 18px;
+  text-align: left;
+  border-top: 1px solid var(--hair-2);
+}
+
+.feedItem:first-child .feedRow,
+.seenLine + .feedRow {
+  border-top: 0;
+}
+
+button.feedRow:hover {
+  background: var(--paper-3);
+}
+
+button.feedRow:active {
+  background: var(--paper-4);
+}
+
+.feedMark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.feedTrophy {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.feedText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sentence {
+  font-size: 14px;
+  line-height: 1.38;
+  color: var(--ink-2);
+}
+
+.feedRow[data-unread] .sentence {
+  color: var(--ink);
+}
+
+.who {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.what {
+  font-style: normal;
+  color: var(--ink);
+}
+
+.rx {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.excerpt {
+  font-family: var(--font-read);
+  font-size: 14.5px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.when {
+  padding-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Unread is an alert: red, the only one on this sheet. */
+.dot {
+  position: absolute;
+  left: 7px;
+  top: 22px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  margin: 0 -18px;
+  padding: 8px 12px 0;
+  border-top: 1px solid var(--hair-2);
+}
+
+/* ── Guardados ──────────────────────────────────────────────────────── */
+
+.saved {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 18px 12px;
+}
+
+.savedItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* A kept piece is still a media frame: a well. */
+.tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1.18;
+  overflow: hidden;
+  isolation: isolate;
+  container-type: inline-size;
+  text-align: left;
+  color: var(--on-well);
+  background: var(--well);
+  outline: 1px solid transparent;
+  outline-offset: 3px;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  outline: 1px solid var(--ink);
+}
+
+.tileImg {
+  object-fit: cover;
+}
+
+.tilePlate {
+  position: absolute;
+  inset: 0;
+  opacity: 0.6;
+}
+
+.tileScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, color-mix(in oklab, var(--well) 92%, transparent) 0%, color-mix(in oklab, var(--well) 40%, transparent) 46%, transparent 72%);
+}
+
+.tileFmt {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  display: grid;
+  color: var(--on-well-2);
+}
+
+.tileTitle {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 9px;
+  font-family: var(--font-display);
+  line-height: 0.95;
+  color: var(--on-well);
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.tileLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--band);
+}
+
+.savedFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.savedWhen {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.undo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 100%;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.undoText {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.undoText em {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.undoTimer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--ink);
+  transform-origin: left;
+  animation: countdown linear forwards;
+}
+
+@keyframes countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* ── Tu agenda ──────────────────────────────────────────────────────── */
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  margin: -6px -18px 0;
+}
+
+.agendaRow {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 18px;
+  text-align: left;
+  border-top: 1px solid var(--hair-2);
+}
+
+.agenda li:first-child .agendaRow {
+  border-top: 0;
+}
+
+.agendaRow:hover {
+  background: var(--paper-3);
+}
+
+.agendaRow:active {
+  background: var(--paper-4);
+}
+
+.agendaDate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+
+.agendaDay {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 0.85;
+}
+
+.agendaMonth {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.agendaText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.agendaTitle {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.agendaMeta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.urgency {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.urgency[data-word='hoy'] {
+  padding: 2px 5px;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Live is red — its one job. */
+.urgency[data-word='live'] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--red-ink);
+}
+
+.urgency[data-word='live']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: breathe 2.4s steps(2, jump-none) infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ── Tus sesiones ───────────────────────────────────────────────────── */
+
+.sesiones {
+  display: flex;
+  flex-direction: column;
+  margin: -6px -18px 0;
+}
+
+.sesion {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.sesiones li:first-child {
+  border-top: 0;
+}
+
+.sesionOpen {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  text-align: left;
+}
+
+.cover {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  background: var(--well);
+}
+
+.coverImg {
+  object-fit: cover;
+}
+
+.sesionText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sesionTitle {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sesionOpen:hover .sesionTitle {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sesionMeta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.play {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+
+.play:hover {
+  background: var(--paper-3);
+}
+
+.play:active,
+.sesion[data-playing] .play {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.sesionLine {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--band);
+  opacity: 0;
+}
+
+.sesion[data-playing] .sesionLine {
+  opacity: 1;
+}
+
+.outLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.outLink:hover {
+  border-color: var(--ink);
+}
+
+.noSource {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+/* ── Franjas que sigues ─────────────────────────────────────────────── */
+
+.franjas {
+  display: flex;
+  flex-direction: column;
+  margin: -6px -18px 0;
+}
+
+.franja {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 10px 18px;
+  border-top: 1px solid var(--hair-2);
+}
+
+.franjas li:first-child {
+  border-top: 0;
+}
+
+.franjaOpen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-align: left;
+}
+
+.logo {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: var(--on-well);
+  background: var(--well);
+}
+
+.logoInitial {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 100, 'wght' 700;
+  font-size: 18px;
+}
+
+.franjaText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.franjaName {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.franjaOpen:hover .franjaName {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.franjaMeta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.franjaActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.miniLink {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.miniLink:hover {
+  border-color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgency[data-word='live']::before {
+    animation: none;
+  }
+}

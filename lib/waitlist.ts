@@ -41,6 +41,12 @@ export interface WaitlistJoinResponse {
   error?: string
 }
 
+/** A place in the queue, as the public may see it: its state, never who holds it. */
+export type WaitlistPlace = 'espera' | 'invitado' | 'registrado'
+
+/** How many places `fila` carries at most (the drawing, not the counts, is capped). */
+export const WAITLIST_FILA_MAX = 2000
+
 export interface WaitlistStats {
   /** Total signups ever ("SEÑALES ENCONTRADAS"). */
   senales: number
@@ -48,4 +54,10 @@ export interface WaitlistStats {
   espera: number
   /** status = invited ("ACCESOS CONCEDIDOS"). */
   accesos: number
+  /**
+   * The queue in order of arrival, one state per place — what /espera draws.
+   * 'registrado' = invited and the invitation already activated. No ids,
+   * aliases or emails: the queue is public, the people in it aren't.
+   */
+  fila: WaitlistPlace[]
 }

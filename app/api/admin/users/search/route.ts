@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 // chunk 4 if scale demands it.
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },

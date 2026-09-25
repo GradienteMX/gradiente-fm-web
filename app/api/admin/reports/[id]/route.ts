@@ -22,8 +22,9 @@ interface Body {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
+  const params = await paramsP
   const gate = await requireMod()
   if (!gate.ok) return gate.response
 
@@ -55,7 +56,10 @@ export async function PATCH(
     )
   }
 
-  const { error } = await gate.supabase
+  // reports.id is a bigserial: anything else names no report.
+  if (!/^\d+$/.test(params.id)) return NextResponse.json({ error: 'Ese reporte ya no está.' }, { status: 404 })
+
+  const { data, error } = await gate.supabase
     .from('reports' as never)
     .update({
       status: body.status,
@@ -66,7 +70,10 @@ export async function PATCH(
       resolved_at: closing ? new Date().toISOString() : null,
     } as never)
     .eq('id', params.id)
+    .select('id')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Nothing updated: no such report (the mod gate above already passed).
+  if (!(data as unknown[] | null)?.length) return NextResponse.json({ error: 'Ese reporte ya no está.' }, { status: 404 })
   return NextResponse.json({ ok: true })
 }

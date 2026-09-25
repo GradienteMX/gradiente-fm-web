@@ -7,9 +7,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { lid: string } },
+  { params: paramsP }: { params: Promise<{ lid: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const { error } = await supabase.rpc('increment_listing_views', {
     p_listing_id: params.lid,
   })

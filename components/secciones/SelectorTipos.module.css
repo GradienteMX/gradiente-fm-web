@@ -1,0 +1,80 @@
+.wrap {
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 2px var(--gutter);
+}
+
+.wrap::-webkit-scrollbar {
+  display: none;
+}
+
+/* A boxed ledger strip that prints in whatever ink it sits on (inside a
+   livery masthead it takes the livery's ink). Cells share their rules. */
+.track {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid currentColor;
+  color: inherit;
+}
+
+.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 16px 0 12px;
+  border-right: 1px solid currentColor;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.opt:last-child {
+  border-right: 0;
+}
+
+.opt:hover:not([data-on]) {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+/* Each format carries its own livery swatch — the team you're switching to. */
+.swatch {
+  width: 10px;
+  height: 10px;
+  outline: 1px solid currentColor;
+  outline-offset: 0;
+}
+
+/* Pressed: one-step inversion, no tween. */
+.opt[data-on] {
+  background: currentColor;
+}
+
+.opt[data-on] > * {
+  color: var(--lc, var(--paper));
+}
+
+.opt[data-empty]:not([data-on]) {
+  opacity: 0.5;
+}
+
+.opt:focus-visible {
+  outline-offset: -4px;
+  outline-color: currentColor;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  opacity: 0.66;
+}
+
+@media (max-width: 1100px) {
+  .opt:not([data-on]) .name {
+    display: none;
+  }
+}

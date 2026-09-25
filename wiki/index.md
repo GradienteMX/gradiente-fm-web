@@ -30,7 +30,7 @@
 - [[Publication Readiness]] — hard vs soft publish rules, required genre + tag, franja subject links (0051), publish never waits on a draft save
 - [[Franjas Isolation]] — why franjas never enter the main grid
 - [[Editorial Flag]] — the one editor lever (boost spawn HP)
-- [[Pinned Hero]] — single slot, portada logic
+- [[Pinned Hero]] — portada carousel of every pinned item (any type but franja)
 
 ## 30 — Pages
 

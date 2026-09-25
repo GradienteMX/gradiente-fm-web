@@ -1,0 +1,375 @@
+/* Taller kit — «TRAMA»: printed sheets on paper, 1px rules, mono indexical
+   labels, square corners. Colors only through tokens. */
+
+/* ── Panel: a raised sheet with a structural rule ───────────────────── */
+
+.panel {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 18px 18px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.panel[data-flush] {
+  padding-bottom: 8px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 26px;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.index {
+  color: var(--ink-3);
+}
+
+.meta {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.body {
+  min-width: 0;
+}
+
+/* ── Latch (radiogroup): boxed segments, pressed = inversion ────────── */
+
+.latch {
+  display: inline-flex;
+  flex: none;
+  max-width: 100%;
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.latch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.latch button + button {
+  border-left: 1px solid var(--hair-2);
+}
+
+.latch[data-size='sm'] button {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 10.5px;
+}
+
+.latch button:hover {
+  color: var(--ink);
+  background: var(--paper-3);
+}
+
+.latch button[data-on] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ── Sub-tabs ───────────────────────────────────────────────────────── */
+
+.subtabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.subtabs button {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 11px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.subtabs button:hover {
+  color: var(--ink);
+}
+
+.subtabs button[data-on] {
+  color: var(--ink);
+}
+
+.subtabs button[data-on]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--ink);
+}
+
+.subpanel {
+  padding-top: 24px;
+  outline: none;
+  min-width: 0;
+}
+
+/* ── Proportion rows: a hairline ledger ─────────────────────────────── */
+
+.shares {
+  display: flex;
+  flex-direction: column;
+}
+
+.share,
+.shareHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 44px minmax(64px, 1fr) 52px;
+  align-items: center;
+  gap: 14px;
+}
+
+.share {
+  padding: 9px 0;
+  border-top: 1px solid var(--hair-2);
+}
+
+.shareHead {
+  padding-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.shareHead span:nth-child(2),
+.shareHead span:nth-child(4) {
+  text-align: right;
+}
+
+.shareLabel {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.shareNote {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.shareCount,
+.sharePct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+}
+
+.shareBar {
+  position: relative;
+  height: 8px;
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.shareBar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ink);
+  transition: width var(--t-stage) var(--ease-platen);
+}
+
+.share[data-empty] .shareLabel,
+.share[data-empty] .shareCount,
+.share[data-empty] .sharePct {
+  color: var(--ink-4);
+}
+
+/* ── Sparkline ──────────────────────────────────────────────────────── */
+
+.spark {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spark svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.sparkArea {
+  fill: var(--paper-3);
+}
+
+.sparkLine {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linejoin: miter;
+}
+
+.days {
+  display: grid;
+  gap: 2px;
+  height: 6px;
+}
+
+.days span {
+  background: var(--paper-3);
+}
+
+.days span[data-on] {
+  background: var(--ink);
+}
+
+/* ── Notes & emptiness ──────────────────────────────────────────────── */
+
+.nota {
+  font-family: var(--font-read);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--hair-2);
+}
+
+.panel[data-flush] .vacio {
+  margin-bottom: 10px;
+}
+
+.vacio p {
+  max-width: 54ch;
+  padding: 2px 6px;
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  display: inline;
+}
+
+.vacioAction {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Actions: 1px boxed, mono, pressed = inversion ──────────────────── */
+
+.accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--hair-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  white-space: nowrap;
+}
+
+.accion:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.accion:active:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.accion[data-tone='strong'] {
+  border-color: var(--ink);
+}
+
+.accion[data-tone='danger'] {
+  color: var(--red-ink);
+}
+
+.accion[data-tone='danger']:hover:not(:disabled) {
+  border-color: var(--red-ink);
+}
+
+.accion[data-tone='danger']:active:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--paper);
+}
+
+.accion:disabled {
+  opacity: 0.4;
+}
+
+.accionIcon {
+  display: inline-grid;
+  place-items: center;
+}

@@ -1,20 +1,35 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // /api/franjas/[id]
 // Franja-side API (distinct from /api/admin/franjas/[id] which is admin-
 // only). Gated on canManageFranja: site admin OR a team member whose
-// users.franja_id matches the requested franja. Used by the dashboard
-// MiFranjaSection so franja team members can fetch + edit their own
-// franja without needing admin role.
+// users.franja_id matches the requested franja. Used by the Taller's
+// Franja and Mercado spaces so franja team members can fetch + edit their
+// own franja without needing admin role.
 //
 // PATCH whitelist is narrower than the admin route — franja team can
 // edit marketplace fields + the public-facing image / external URL.
 // Structural fields (title, slug, franja_kind) stay admin-only.
+//
+// WHY THE WRITE USES THE SERVICE ROLE. No RLS policy lets a team member
+// update the franja's OWN row (checked against production's pg_policies
+// 2026-09-25): items_partner_team_update only covers rows *attributed* to
+// the franja (franja_id = theirs, source = 'manual:franja'), and the
+// franja row itself carries no franja_id. So through the caller's client
+// this PATCH matched zero rows for everyone but site admins, and the team's
+// self-service storefront switch (fase D) never saved. A policy can't be the
+// fix — a row-level grant would hand the team every column of their franja
+// (title, verified, sponsored, pinned…). The authority is this route: the
+// gate below reads the caller's own row with their own session, and the
+// update writes ONLY the whitelisted columns, only on this franja's row.
 
 interface UpdateBody {
   franja_url?: string | null
-  image_url?: string
+  image_url?: string | null
   marketplace_enabled?: boolean
   marketplace_description?: string | null
   marketplace_location?: string | null
@@ -22,7 +37,7 @@ interface UpdateBody {
 }
 
 async function gateFranjaAccess(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   franjaId: string,
 ) {
   const {
@@ -42,16 +57,17 @@ async function gateFranjaAccess(
   // canManageFranja: site admin OR any team member of this franja
   const allowed = profile.role === 'admin' || profile.franja_id === franjaId
   if (!allowed) {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+    return { error: NextResponse.json({ error: 'Solo el equipo de la franja (o administración) puede cambiarla.' }, { status: 403 }) }
   }
   return { user, profile }
 }
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateFranjaAccess(supabase, params.id)
   if ('error' in gate) return gate.error
 
@@ -71,9 +87,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = createClient()
+  const params = await paramsP
+  const supabase = await createClient()
   const gate = await gateFranjaAccess(supabase, params.id)
   if ('error' in gate) return gate.error
 
@@ -93,8 +110,8 @@ export async function PATCH(
     patch.franja_url = body.franja_url?.trim() || null
   }
   if (body.image_url !== undefined) {
-    const u = body.image_url.trim()
-    if (!u) return NextResponse.json({ error: 'image_url required' }, { status: 400 })
+    const u = body.image_url?.trim() ?? ''
+    if (!u) return NextResponse.json({ error: 'El logo no puede quedar vacío.' }, { status: 400 })
     patch.image_url = u
   }
   if (body.marketplace_enabled !== undefined) {
@@ -115,19 +132,27 @@ export async function PATCH(
   if (body.marketplace_currency !== undefined) {
     patch.marketplace_currency = body.marketplace_currency?.trim() || null
   }
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: 'Empty patch' }, { status: 400 })
+  }
 
   // franja_last_updated bumps on every PATCH so the rail re-orders the
   // edited franja toward the front (the rail orders by this field).
   patch.franja_last_updated = new Date().toISOString()
 
-  const { data, error } = await supabase
+  // The service role, after the gate above (see the header): whitelisted
+  // columns, this franja's row only.
+  const { data, error } = await createAdminClient()
     .from('items')
-    .update(patch)
+    .update(patch as never)
     .eq('id', params.id)
     .eq('type', 'franja')
-    .select()
-    .single()
+    .select('id, slug, title, franja_kind, franja_url, image_url, marketplace_enabled, marketplace_description, marketplace_location, marketplace_currency, franja_last_updated')
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Esa franja ya no está.' }, { status: 404 })
+  // A franja's card and storefront are part of the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ franja: data })
 }

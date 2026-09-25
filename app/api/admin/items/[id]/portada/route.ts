@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { requireAdmin } from '@/lib/api/requireAdmin'
+import { WORLD_TAG } from '@/lib/data/tags'
 
 // PATCH /api/admin/items/[id]/portada { pinned: boolean }
 //
@@ -13,8 +14,9 @@ import { requireAdmin } from '@/lib/api/requireAdmin'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params: paramsP }: { params: Promise<{ id: string }> },
 ) {
+  const params = await paramsP
   const gate = await requireAdmin()
   if (!gate.ok) return gate.response
 
@@ -38,8 +40,9 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
 
-  // The home is force-dynamic, so this only clears any full-route cache a
-  // deployment might add later; the client refreshes itself after the call.
+  // The portada is read from the public world (cached, tag WORLD_TAG); the
+  // path revalidation only clears any full-route cache a deployment adds.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   revalidatePath('/')
   return NextResponse.json({ ok: true, itemId: data.id, pinned: data.pinned })
 }

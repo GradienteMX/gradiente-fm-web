@@ -35,7 +35,7 @@ export type Gate =
   | { ok: false; response: NextResponse }
 
 async function gate(allow: (role: Role) => boolean, label: string): Promise<Gate> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },

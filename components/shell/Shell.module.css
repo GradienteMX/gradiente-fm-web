@@ -1,0 +1,39 @@
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  position: relative;
+}
+
+/* Skip link: an ink tab that drops in on focus, one step, no tween. */
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.skip:focus {
+  top: 12px;
+}
+
+.skip:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}

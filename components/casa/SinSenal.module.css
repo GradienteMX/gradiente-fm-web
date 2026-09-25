@@ -1,0 +1,261 @@
+.page {
+  min-height: calc(100dvh - var(--nav-h));
+  padding: clamp(40px, 9vh, 104px) var(--gutter) 150px;
+}
+
+.inner {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+}
+
+/* A carrier with nothing on it: a flat, unlit line. */
+.flat {
+  width: 34px;
+  height: 1.5px;
+  background: var(--ink-3);
+}
+
+/* A carrier that snapped. */
+.broken {
+  width: 34px;
+  height: 0;
+  border-top: 1.5px dashed var(--ink-3);
+}
+
+.lede {
+  max-width: 60ch;
+  font-family: var(--font-read);
+  font-size: clamp(18px, 1.5vw, 22px);
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.lede b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.path {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.78em;
+  padding: 1px 7px 2px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+}
+
+/* ── ways back: a boxed row of four ───────────────────────────────────── */
+
+.salidas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-top: 8px;
+}
+
+.salida {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 22px 26px;
+  color: var(--ink);
+  border-right: 1px solid var(--rule);
+}
+
+.salida:last-child {
+  border-right: 0;
+}
+
+.salida:hover,
+.salida:focus-visible {
+  background: var(--paper-3);
+}
+
+.salida:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.salidaGlyphs {
+  display: inline-flex;
+  gap: 5px;
+  height: 16px;
+  align-items: center;
+}
+
+.salidaName {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 118, 'wght' 420;
+  font-size: clamp(26px, 2.4vw, 36px);
+  line-height: 1;
+}
+
+/* The name takes heat when you point at it — energy typography, no colour. */
+.salida:hover .salidaName,
+.salida:focus-visible .salidaName {
+  font-variation-settings: 'wdth' 84, 'wght' 760;
+}
+
+.salidaLine {
+  font-size: 13.5px;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+
+.salidaGo {
+  position: absolute;
+  right: 22px;
+  top: 26px;
+}
+
+.extra {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+
+.queEs {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hair-3);
+  text-underline-offset: 4px;
+}
+
+.queEs:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+.buscar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 10px 0 14px;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.buscar:hover {
+  background: var(--paper-3);
+}
+
+.buscar:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border: 1px solid currentColor;
+  color: inherit;
+}
+
+/* ── error ────────────────────────────────────────────────────────────── */
+
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.primary:hover {
+  background: var(--ink-2);
+}
+
+.primary svg {
+  transform: rotate(180deg) scaleX(-1);
+}
+
+.secondary {
+  color: var(--ink);
+}
+
+.secondary:hover {
+  background: var(--paper-3);
+}
+
+.secondary:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.detalle {
+  max-width: 70ch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.detalle summary {
+  cursor: pointer;
+  width: fit-content;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.detalle p {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .salidas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .salida:nth-child(2) {
+    border-right: 0;
+  }
+  .salida:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
+  }
+}

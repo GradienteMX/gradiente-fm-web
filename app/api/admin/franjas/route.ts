@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { WORLD_TAG } from '@/lib/data/tags'
 import type { Database } from '@/lib/supabase/database.types'
 
 // /api/admin/franjas
@@ -34,7 +36,7 @@ const VALID_KINDS: readonly FranjaKind[] = [
   'plataforma',
 ]
 
-async function gateAdmin(supabase: ReturnType<typeof createClient>) {
+async function gateAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -53,7 +55,7 @@ async function gateAdmin(supabase: ReturnType<typeof createClient>) {
 }
 
 export async function GET() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const gate = await gateAdmin(supabase)
   if ('error' in gate) return gate.error
 
@@ -84,7 +86,7 @@ interface CreateBody {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
@@ -175,5 +177,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  // A new band on the dial is part of the public world.
+  revalidateTag(WORLD_TAG, { expire: 0 })
   return NextResponse.json({ franja: data })
 }

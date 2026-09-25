@@ -1,0 +1,25 @@
+.ausente {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 26px 24px;
+}
+
+.ausenteTitle {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 118, 'wght' 380;
+  font-size: 25px;
+  line-height: 1.05;
+}
+
+.ausenteBody {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.ausenteActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

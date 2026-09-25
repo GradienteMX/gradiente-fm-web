@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FranjaKind, FranjaRef } from '@/lib/types'
+import { chunked } from '@/lib/data/rows'
 
 // ── Franja subject links — shared two-query resolver ─────────────────────────
 //
@@ -11,6 +12,7 @@ import type { FranjaKind, FranjaRef } from '@/lib/types'
 
 export async function fetchFranjaRefsByItemIds(
   // Untyped on purpose — generated Database types lag hand-applied migrations.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any, any, any>,
   itemIds: string[],
 ): Promise<Map<string, FranjaRef[]>> {
@@ -18,30 +20,30 @@ export async function fetchFranjaRefsByItemIds(
   const ids = Array.from(new Set(itemIds.filter(Boolean)))
   if (ids.length === 0) return out
 
-  const { data: links, error: linkError } = await supabase
-    .from('item_franjas')
-    .select('item_id, franja_id')
-    .in('item_id', ids)
-  if (linkError) {
-    // 42P01 = table missing (migration 0051 not applied yet) — silent.
-    if (linkError.code !== '42P01') console.error('[fetchFranjaRefsByItemIds] links', linkError)
-    return out
+  // `.in()` lists travel in the URL: long ones are split (lib/data/rows.ts).
+  const linkPages = await Promise.all(chunked(ids).map((part) => supabase.from('item_franjas').select('item_id, franja_id').in('item_id', part)))
+  const linkRows: { item_id: string; franja_id: string }[] = []
+  for (const { data: links, error: linkError } of linkPages) {
+    if (linkError) {
+      // 42P01 = table missing (migration 0051 not applied yet) — silent.
+      if (linkError.code !== '42P01') console.error('[fetchFranjaRefsByItemIds] links', linkError)
+      return out
+    }
+    linkRows.push(...((links ?? []) as { item_id: string; franja_id: string }[]))
   }
-  const linkRows = (links ?? []) as { item_id: string; franja_id: string }[]
   if (linkRows.length === 0) return out
 
   const franjaIds = Array.from(new Set(linkRows.map((l) => l.franja_id)))
-  const { data: rows, error: rowError } = await supabase
-    .from('items')
-    .select('id, title, slug, franja_kind')
-    .in('id', franjaIds)
-  if (rowError) {
-    console.error('[fetchFranjaRefsByItemIds] franjas', rowError)
-    return out
-  }
+  const rowPages = await Promise.all(chunked(franjaIds).map((part) => supabase.from('items').select('id, title, slug, franja_kind').in('id', part)))
   const byId = new Map<string, FranjaRef>()
-  for (const r of (rows ?? []) as { id: string; title: string; slug: string; franja_kind: string | null }[]) {
-    byId.set(r.id, { id: r.id, title: r.title, slug: r.slug, kind: (r.franja_kind ?? 'venue') as FranjaKind })
+  for (const { data: rows, error: rowError } of rowPages) {
+    if (rowError) {
+      console.error('[fetchFranjaRefsByItemIds] franjas', rowError)
+      return out
+    }
+    for (const r of (rows ?? []) as { id: string; title: string; slug: string; franja_kind: string | null }[]) {
+      byId.set(r.id, { id: r.id, title: r.title, slug: r.slug, kind: (r.franja_kind ?? 'venue') as FranjaKind })
+    }
   }
   for (const link of linkRows) {
     const ref = byId.get(link.franja_id)

@@ -1,0 +1,45 @@
+/* The land is drawn by the stage canvas behind this element: the root stays
+   transparent so the GL shows through; everything here is DOM on top. */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+  outline: none;
+  overscroll-behavior: none;
+}
+
+.root[data-hover] {
+  cursor: pointer;
+}
+
+.root[data-dragging] {
+  cursor: grabbing;
+}
+
+/* The focusable terrain layer, under the chrome; the canvas shows through. */
+.terrain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  outline: none;
+}
+
+.terrain:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.root[data-fallback] {
+  cursor: auto;
+  touch-action: pan-y;
+  user-select: text;
+  -webkit-user-select: text;
+  background: var(--obs-0);
+}

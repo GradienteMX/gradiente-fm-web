@@ -15,7 +15,7 @@ import type { ContentItem } from '@/lib/types'
 // for clarity / a clean 0-row condition.
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

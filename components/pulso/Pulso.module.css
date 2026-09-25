@@ -1,0 +1,301 @@
+/* PULSO — a fortnight printed as a timetable: columns, rules, squares. */
+
+.pulso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.index {
+  color: var(--ink);
+}
+
+.slash {
+  color: var(--ink-4);
+}
+
+.name {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--chip, var(--ink));
+  color: var(--chip-on, var(--paper));
+  font-weight: 700;
+}
+
+.sub {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.more {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 9px;
+  color: var(--ink);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+  white-space: nowrap;
+}
+
+.more:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.viewport {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  touch-action: pan-y;
+}
+
+.day {
+  width: 216px;
+  flex: none;
+  padding: 0 12px 12px;
+  border-right: 1px solid var(--hair-2);
+}
+
+.day[data-today] {
+  background: var(--paper-2);
+}
+
+.dayHead {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 0 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--hair-2);
+}
+
+.day[data-today] .dayHead {
+  border-bottom: 2px solid var(--red);
+  margin-bottom: 9px;
+}
+
+.dayNum {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 76, 'wght' 800;
+  font-size: 34px;
+  line-height: 0.82;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: var(--ink-3);
+}
+
+.weekday {
+  color: var(--ink);
+}
+
+.day[data-today] .weekday {
+  color: var(--red-ink);
+  font-weight: 700;
+}
+
+/* Where in today we are: a red tick through the day's rule. */
+.now {
+  position: absolute;
+  bottom: -7px;
+  width: 3px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--red);
+}
+
+.nights {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.night {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  text-align: left;
+  padding: 5px 5px 7px;
+}
+
+.night:hover {
+  background: var(--paper-3);
+}
+
+.night:active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.night[data-dim] {
+  color: var(--ink-4);
+}
+
+.night[data-dim] .thumbImg {
+  filter: grayscale(1) contrast(0.85);
+  opacity: 0.55;
+}
+
+.thumb {
+  position: relative;
+  width: 50px;
+  height: 62px;
+  overflow: hidden;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+}
+
+.night[data-live] .thumb {
+  border-color: var(--red);
+  outline: 1px solid var(--red);
+}
+
+.thumbImg {
+  object-fit: cover;
+}
+
+.nightText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.night[data-live] .time {
+  color: var(--red-ink);
+}
+
+.liveSq {
+  width: 6px;
+  height: 6px;
+  background: var(--red);
+  animation: blink 1.6s steps(2, jump-none) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.sel {
+  padding: 0 3px;
+  color: var(--red-ink);
+  outline: 1px solid var(--red-ink);
+  outline-offset: -1px;
+  font-size: 8.5px;
+}
+
+.nightTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.venue {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Each night's band as a short swatch under its text. */
+.energy {
+  position: absolute;
+  left: 64px;
+  bottom: 2px;
+  width: 22px;
+  height: 3px;
+  background: var(--e);
+}
+
+.night[data-dim] .energy {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin: 2px 0 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.extra:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.quiet {
+  display: grid;
+  place-items: center;
+  height: 74px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}

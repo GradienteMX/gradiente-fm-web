@@ -1,0 +1,66 @@
+/* RELEVO — slabs of the incoming livery, retracting in steps. */
+
+.relevo {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--nav-h);
+  bottom: 0;
+  z-index: 39;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: 1fr 0.35fr 2.2fr 0.35fr 1fr;
+  overflow: hidden;
+}
+
+.slab {
+  position: relative;
+  overflow: hidden;
+  background: var(--lc);
+  color: var(--lo);
+  will-change: transform;
+}
+
+.slab[data-kind='ink'] {
+  background: var(--la);
+}
+
+.pat {
+  position: absolute;
+  inset: 0;
+}
+
+.main {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 44px);
+  padding: 0 var(--gutter);
+  border-top: 2px solid var(--lo);
+  border-bottom: 2px solid var(--lo);
+}
+
+.canal {
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 1.2vw, 16px);
+  letter-spacing: 0.14em;
+  padding: 4px 10px;
+  background: var(--lo);
+  color: var(--lc);
+  white-space: nowrap;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 150, 'wght' 900;
+  font-size: clamp(48px, 11vw, 180px);
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.glyph {
+  margin-left: auto;
+  width: clamp(56px, 9vw, 140px);
+  height: clamp(56px, 9vw, 140px);
+  flex: none;
+}
